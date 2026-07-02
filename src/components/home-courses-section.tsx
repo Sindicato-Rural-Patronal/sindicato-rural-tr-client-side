@@ -8,7 +8,8 @@ import { useCourses } from '@/hooks/useCourse'
 import { CourseCard } from '@/components/course-card'
 
 export function CoursesSection({ autoplayPlugin }: { autoplayPlugin: React.RefObject<AutoplayType> }) {
-  const { data: courses = [] } = useCourses()
+  const { data: result } = useCourses({ limit: 9 })
+  const courses = result?.data ?? []
   const { t } = useTranslation()
 
   return (

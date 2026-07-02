@@ -26,14 +26,10 @@ export function PublicHeader() {
         {/* Logo */}
         <Link to="/" className="flex items-center gap-2 shrink-0">
           <img
-            src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/logo_rodape2%201-grg6Gf7BKrfEuICS8lvz0t5GZ7sglX.png"
+            src="/logo-full.png"
             alt="Sindicato Rural de Terra Roxa"
-            className="object-contain w-10 h-10"
+            className="object-contain h-10 w-auto"
           />
-          <span className="hidden font-bold text-foreground sm:inline-block text-sm leading-tight">
-            Sindicato Rural<br />
-            <span className="text-primary">de Terra Roxa</span>
-          </span>
         </Link>
 
         {/* Desktop Nav */}

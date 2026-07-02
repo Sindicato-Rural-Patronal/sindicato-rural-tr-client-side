@@ -1,10 +1,10 @@
 import * as React from 'react'
-import { BookOpen, DoorOpen, LayoutDashboard, Newspaper, Shield, Users } from 'lucide-react'
+import { BookOpen, DoorOpen, Images, LayoutDashboard, Mail, Newspaper, Users } from 'lucide-react'
 import { Link, useRouterState } from '@tanstack/react-router'
 import { useTranslation } from 'react-i18next'
 import { NavUser } from '@/components/nav-user'
 import { LanguageToggle } from '@/components/LanguageToggle'
-import { useMe } from '@/hooks/useAdmin'
+import { useMe, useAdminUser } from '@/hooks/useAdmin'
 import {
   Sidebar, SidebarContent, SidebarFooter, SidebarGroup,
   SidebarGroupContent, SidebarGroupLabel, SidebarHeader,
@@ -14,10 +14,9 @@ import {
 export function AdminSideBar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { location } = useRouterState()
   const { t } = useTranslation()
-  const { data: me } = useMe()
-
-  const { isLoading: loadingMe } = useMe()
-  const perms = me?.permitions ?? null
+  const { data: me, isLoading: loadingMe } = useMe()
+  const { data: meUser } = useAdminUser(me?.userDataId ?? '')
+  const perms = me?.permissions ?? null
 
   function can(perm: string) {
     if (loadingMe || !perms) return true // ainda carregando → mostra tudo
@@ -26,8 +25,8 @@ export function AdminSideBar({ ...props }: React.ComponentProps<typeof Sidebar>)
 
   const user = {
     name: me?.username ?? 'Administrador',
-    email: '',
-    avatar: '',
+    email: meUser?.email ?? '',
+    avatar: meUser?.avatar ?? '',
   }
 
   const navSections = [
@@ -44,12 +43,8 @@ export function AdminSideBar({ ...props }: React.ComponentProps<typeof Sidebar>)
         { title: t('admin.sidebar.news'), url: '/admin/noticias', icon: Newspaper, perm: 'READ_COURSE' },
         { title: t('admin.sidebar.users'), url: '/admin/usuarios', icon: Users, perm: 'READ_USER' },
         { title: t('admin.sidebar.rooms'), url: '/admin/salas', icon: DoorOpen, perm: 'READ_COURSE' },
-      ],
-    },
-    {
-      label: t('admin.sidebar.settings'),
-      items: [
-        { title: t('admin.sidebar.rules'), url: '/admin/regras', icon: Shield, perm: 'READ_RULE' },
+        { title: 'Banners', url: '/admin/banners', icon: Images, perm: 'READ_BANNER' },
+        { title: 'Mensagens', url: '/admin/mensagens', icon: Mail, perm: 'READ_CONTACT' },
       ],
     },
   ]
@@ -61,9 +56,11 @@ export function AdminSideBar({ ...props }: React.ComponentProps<typeof Sidebar>)
           <SidebarMenuItem>
             <SidebarMenuButton size="lg" asChild>
               <Link to="/admin/dashboard">
-                <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-                  <BookOpen className="size-4" />
-                </div>
+                <img
+                  src="/favicon.ico"
+                  alt="Sindicato Rural"
+                  className="size-8 rounded object-contain shrink-0"
+                />
                 <div className="grid flex-1 text-left text-sm leading-tight">
                   <span className="truncate font-semibold">Sindicato Rural</span>
                   <span className="truncate text-xs text-muted-foreground">Terra Roxa – PR</span>

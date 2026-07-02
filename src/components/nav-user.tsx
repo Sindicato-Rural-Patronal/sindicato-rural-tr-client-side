@@ -14,6 +14,10 @@ import { useNavigate } from '@tanstack/react-router'
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
 
+function initials(name: string) {
+  return name.split(' ').slice(0, 2).map(w => w[0]).join('').toUpperCase() || '?'
+}
+
 export function NavUser({ user }: { user: { name: string; email: string; avatar: string } }) {
   const { isMobile } = useSidebar()
   const { logout } = useAuth()
@@ -38,7 +42,7 @@ export function NavUser({ user }: { user: { name: string; email: string; avatar:
             >
               <Avatar className="h-8 w-8 rounded-lg">
                 <AvatarImage src={user.avatar} alt={user.name} />
-                <AvatarFallback className="rounded-lg">CN</AvatarFallback>
+                <AvatarFallback className="rounded-lg">{initials(user.name)}</AvatarFallback>
               </Avatar>
               <div className="grid flex-1 text-left text-sm leading-tight">
                 <span className="truncate font-medium">{user.name}</span>
@@ -57,7 +61,7 @@ export function NavUser({ user }: { user: { name: string; email: string; avatar:
               <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
                 <Avatar className="h-8 w-8 rounded-lg">
                   <AvatarImage src={user.avatar} alt={user.name} />
-                  <AvatarFallback className="rounded-lg">CN</AvatarFallback>
+                  <AvatarFallback className="rounded-lg">{initials(user.name)}</AvatarFallback>
                 </Avatar>
                 <div className="grid flex-1 text-left text-sm leading-tight">
                   <span className="truncate font-medium">{user.name}</span>
