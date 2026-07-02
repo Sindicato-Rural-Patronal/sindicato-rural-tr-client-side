@@ -1,7 +1,7 @@
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, Link } from '@tanstack/react-router'
 import { useState, useMemo } from 'react'
 import { useAdminCourses } from '@/hooks/useCourse'
-import { useAdminStats } from '@/hooks/useAdmin'
+import { useAdminStats, useAdminUsers } from '@/hooks/useAdmin'
 import { useRooms } from '@/hooks/useRooms'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -9,9 +9,8 @@ import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
   BookOpen, Users, ChevronLeft, ChevronRight,
-  Calendar, Shield, GraduationCap, DoorOpen,
+  Calendar, Shield, GraduationCap, DoorOpen, UserX, ArrowRight,
 } from 'lucide-react'
-import type { Course } from '@/@types/course'
 
 export const Route = createFileRoute('/_admin/admin/dashboard')({
   component: RouteComponent,
@@ -47,7 +46,7 @@ function buildCalendar(year: number, month: number) {
   return cells
 }
 
-function coursesInRange(courses: Course[], date: string) {
+function coursesInRange(courses: { startDate?: string | null; endDate?: string | null }[], date: string) {
   return courses.filter(c => {
     const start = c.startDate?.slice(0, 10)
     const end = c.endDate?.slice(0, 10)
@@ -84,9 +83,11 @@ function StatCard({
 // ─── component ────────────────────────────────────────────────────────────────
 
 function RouteComponent() {
-  const { data: cursos } = useAdminCourses()
+  const { data: cursosPage } = useAdminCourses({ page: 1, limit: 100 })
+  const cursos = cursosPage?.data
   const { data: stats } = useAdminStats()
   const { data: salas } = useRooms()
+  const { data: incompletosData } = useAdminUsers({ page: 1, limit: 5, incompleteRegistration: true })
 
   const today = new Date()
   const todayStr = isoDate(today.getFullYear(), today.getMonth(), today.getDate())
@@ -97,9 +98,6 @@ function RouteComponent() {
   const cells = useMemo(() => buildCalendar(mesAtual.year, mesAtual.month), [mesAtual])
 
   const cursosPublicos = (cursos ?? []).filter(c => c.status === 'PUBLIC')
-  const inscricoesAbertas = (cursos ?? []).filter(c =>
-    c.status === 'PUBLIC' && c.registrationDeadline && c.registrationDeadline.slice(0, 10) >= todayStr
-  ).sort((a, b) => (a.registrationDeadline ?? '').localeCompare(b.registrationDeadline ?? ''))
 
   // Dias com cursos (para marcar no calendário)
   const diasComCurso = useMemo(() => {
@@ -144,12 +142,6 @@ function RouteComponent() {
     return `${d}/${m}/${y}`
   }
 
-  function diasRestantes(iso: string) {
-    const d = new Date(iso.slice(0, 10) + 'T12:00:00')
-    const today2 = new Date(todayStr + 'T12:00:00')
-    return Math.ceil((d.getTime() - today2.getTime()) / 86_400_000)
-  }
-
   return (
     <div className="p-6 flex flex-col gap-6">
       <div>
@@ -175,7 +167,7 @@ function RouteComponent() {
               icon={BookOpen}
             />
             <StatCard
-              title="Trabalhadores"
+              title="Associados"
               value={stats.totalUsers}
               description="Cadastrados no sistema"
               icon={Users}
@@ -372,34 +364,54 @@ function RouteComponent() {
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Inscrições Abertas</CardTitle>
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-base flex items-center gap-2">
+                <UserX className="size-4 text-amber-500" />
+                Cadastros Incompletos
+              </CardTitle>
+              {incompletosData !== undefined && incompletosData.total > 0 && (
+                <Badge variant="secondary">{incompletosData.total}</Badge>
+              )}
+            </div>
           </CardHeader>
           <CardContent>
             <div className="flex flex-col gap-3">
-              {cursos === undefined && Array.from({ length: 3 }).map((_, i) => (
+              {incompletosData === undefined && Array.from({ length: 3 }).map((_, i) => (
                 <Skeleton key={i} className="h-14 w-full rounded-lg" />
               ))}
-              {inscricoesAbertas.slice(0, 5).map(course => {
-                const dias = diasRestantes(course.registrationDeadline!)
-                const badgeCls = dias <= 7 ? 'bg-rose-100 text-rose-700'
-                  : dias <= 30 ? 'bg-amber-100 text-amber-700'
-                  : 'bg-emerald-100 text-emerald-700'
-                return (
-                  <div key={course.id} className="flex items-center justify-between rounded-lg border border-border bg-card p-3">
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-medium text-foreground">{course.title}</p>
-                      <p className="text-xs text-muted-foreground">Até {formatDate(course.registrationDeadline!.slice(0, 10))}</p>
-                    </div>
-                    <span className={`ml-3 shrink-0 inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${badgeCls}`}>
-                      {dias}d
-                    </span>
+              {incompletosData?.data.map(user => (
+                <div key={user.id} className="flex items-center justify-between rounded-lg border border-border bg-card p-3">
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium text-foreground">{user.name}</p>
+                    <p className="text-xs text-muted-foreground">{user.email}</p>
                   </div>
-                )
-              })}
-              {cursos !== undefined && inscricoesAbertas.length === 0 && (
-                <p className="text-center text-sm text-muted-foreground py-4">Nenhuma inscrição aberta no momento</p>
+                  {user.memberType && (
+                    <span className="ml-3 shrink-0 inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-amber-100 text-amber-700">
+                      {user.memberType}
+                    </span>
+                  )}
+                </div>
+              ))}
+              {incompletosData !== undefined && incompletosData.total === 0 && (
+                <div className="flex flex-col items-center justify-center py-8 text-center">
+                  <div className="mb-2 rounded-full bg-emerald-50 p-3">
+                    <UserX className="size-5 text-emerald-500" />
+                  </div>
+                  <p className="text-sm font-medium text-foreground">Nenhum cadastro incompleto</p>
+                  <p className="text-xs text-muted-foreground">Todos os associados estão com cadastro completo</p>
+                </div>
               )}
             </div>
+            {incompletosData !== undefined && incompletosData.total > 0 && (
+              <div className="mt-3 pt-3 border-t">
+                <Link to="/admin/usuarios" search={{ incomplete: true }}>
+                  <Button variant="outline" size="sm" className="w-full gap-1.5">
+                    Ver todos os {incompletosData.total} cadastros incompletos
+                    <ArrowRight className="size-3.5" />
+                  </Button>
+                </Link>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>

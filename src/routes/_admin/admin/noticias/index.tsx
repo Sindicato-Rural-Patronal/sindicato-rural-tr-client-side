@@ -35,6 +35,7 @@ import {
 } from '@/components/ui/select'
 import { EmptyState } from '@/components/EmptyState'
 import { ErrorAlert } from '@/components/ErrorAlert'
+import { Pagination } from '@/components/ui/pagination'
 import type { News, ContentBlock, ParagraphBlock, ImageBlock, ImageTextBlock } from '@/@types/news'
 import { parseBlocks, serializeBlocks } from '@/@types/news'
 
@@ -187,7 +188,7 @@ function ImageEdit({
           <img
             src={block.url}
             alt={block.caption ?? ''}
-            className="w-full rounded-xl object-cover max-h-[480px]"
+            className="w-full rounded-xl object-cover max-h-120"
           />
           <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/img:opacity-100 flex items-center justify-center rounded-xl transition-opacity">
             {!isPending && (
@@ -420,7 +421,7 @@ function NewsEditor({
   return (
     <div className="fixed inset-0 z-50 bg-background overflow-y-auto">
       {/* ── Top toolbar ── */}
-      <div className="sticky top-0 z-10 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 border-b px-4 py-2.5 flex items-center gap-3">
+      <div className="sticky top-0 z-10 bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/80 border-b px-4 py-2.5 flex items-center gap-3">
         <Button variant="ghost" size="icon" onClick={tryClose} className="shrink-0 size-8">
           <ArrowLeft className="size-4" />
         </Button>
@@ -502,7 +503,7 @@ function NewsEditor({
             onChange={e => { setForm(p => ({ ...p, summary: e.target.value })); setSaved(false) }}
             placeholder="Resumo da notícia (exibido nos cards e acima do conteúdo)..."
             rows={2}
-            className="mt-4 w-full bg-transparent border-l-4 border-primary pl-4 italic text-base text-muted-foreground leading-relaxed resize-none outline-none placeholder:text-muted-foreground/30 border-b border-transparent hover:border-border/30 focus:border-primary/30 transition-colors pb-1"
+            className="mt-4 w-full bg-transparent border-l-4 border-transparent pl-4 italic text-base text-muted-foreground leading-relaxed resize-none outline-none placeholder:text-muted-foreground/30 border-b hover:border-border/30 focus:border-primary/30 transition-colors pb-1"
           />
         </header>
 
@@ -665,11 +666,20 @@ function AdminNewsCard({
 
 // ─── Route component ──────────────────────────────────────────────────────────
 
+const NEWS_LIMIT_OPTIONS = [6, 12, 24] as const
+
 function RouteComponent() {
   const { t } = useTranslation()
-  const { data: news = [], isLoading } = useAdminNews()
   const deleteNews = useDeleteNews()
   const { can } = usePermissions()
+
+  const [page, setPage] = useState(1)
+  const [limit, setLimit] = useState<typeof NEWS_LIMIT_OPTIONS[number]>(6)
+
+  const { data: newsData, isLoading } = useAdminNews({ page, limit })
+  const news       = newsData?.data       ?? []
+  const totalNews  = newsData?.total      ?? 0
+  const totalPages = newsData?.totalPages ?? 1
 
   const [editorMode, setEditorMode] = useState<'create' | 'edit' | null>(null)
   const [selectedNews, setSelectedNews] = useState<News | null>(null)
@@ -731,14 +741,29 @@ function RouteComponent() {
           <h1 className="text-2xl font-bold tracking-tight">{t('admin.news.title')}</h1>
           <p className="text-sm text-muted-foreground">Gerencie as notícias publicadas no site</p>
         </div>
-        <PermissionButton
-          allowed={can('CREATE_NEWS')}
-          noPermissionMessage="Sem permissão para criar notícias"
-          onClick={openCreate}
-          className="shrink-0"
-        >
-          <Plus className="size-4" /> {t('admin.news.newNews')}
-        </PermissionButton>
+        <div className="flex items-center gap-2 shrink-0">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <span className="hidden sm:inline">Itens por página:</span>
+            <Select
+              value={String(limit)}
+              onValueChange={v => { setLimit(Number(v) as typeof NEWS_LIMIT_OPTIONS[number]); setPage(1) }}
+            >
+              <SelectTrigger className="h-9 w-18">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {NEWS_LIMIT_OPTIONS.map(n => <SelectItem key={n} value={String(n)}>{n}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          <PermissionButton
+            allowed={can('CREATE_NEWS')}
+            noPermissionMessage="Sem permissão para criar notícias"
+            onClick={openCreate}
+          >
+            <Plus className="size-4" /> {t('admin.news.newNews')}
+          </PermissionButton>
+        </div>
       </div>
 
       <input ref={bannerInputRef} type="file" accept="image/*" className="hidden" onChange={handleBannerChange} />
@@ -765,17 +790,27 @@ function RouteComponent() {
       )}
 
       {!isLoading && news.length > 0 && (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {news.map(n => (
-            <AdminNewsCard
-              key={n.id}
-              news={n}
-              onEdit={() => openEdit(n)}
-              onDelete={() => setDeleteTarget(n)}
-              onUploadBanner={() => openBanner(n)}
-            />
-          ))}
-        </div>
+        <>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {news.map(n => (
+              <AdminNewsCard
+                key={n.id}
+                news={n}
+                onEdit={() => openEdit(n)}
+                onDelete={() => setDeleteTarget(n)}
+                onUploadBanner={() => openBanner(n)}
+              />
+            ))}
+          </div>
+          <Pagination
+            page={page}
+            totalPages={totalPages}
+            total={totalNews}
+            limit={limit}
+            onPageChange={setPage}
+            showLimitSelector={false}
+          />
+        </>
       )}
 
       {/* Delete confirm */}

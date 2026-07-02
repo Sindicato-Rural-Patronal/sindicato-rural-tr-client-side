@@ -30,7 +30,7 @@ function AdminLayout() {
   return (
     <SidebarProvider>
       <AdminSideBar />
-      <SidebarInset>
+      <SidebarInset className="overflow-y-auto">
         <header className="flex h-12 items-center border-b px-4 md:hidden">
           <SidebarTrigger />
         </header>

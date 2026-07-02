@@ -11,10 +11,11 @@ import { useTranslation } from 'react-i18next'
 import {
   useAdminCourses, useAdminCourse, useCreateCourse, useUpdateCourse, useDeleteCourse,
   useUploadBanner, useUploadGalleryPhoto, useDeleteGalleryPhoto,
+  useAssignInstructor, useRemoveInstructorAssignment,
 } from '@/hooks/useCourse'
 import type { CourseCardItem } from '@/hooks/useCourse'
 import { useRooms, useCreateRoom } from '@/hooks/useRooms'
-import { useCourseRegistrations, useCancelRegistration } from '@/hooks/useAdmin'
+import { useCourseRegistrations, useCancelRegistration, useInstructors } from '@/hooks/useAdmin'
 import { formatDateFromString } from '@/utils/format-data-from-string'
 import { roomSchema, courseBaseSchema } from '@/lib/schemas'
 import type { RoomFormData, CourseFormData } from '@/lib/schemas'
@@ -47,6 +48,7 @@ import type { Course } from '@/@types/course'
 import { StatusBadge } from '@/components/StatusBadge'
 import { ErrorAlert } from '@/components/ErrorAlert'
 import { EmptyState } from '@/components/EmptyState'
+import { Pagination } from '@/components/ui/pagination'
 
 function calcDaysUntil(startDate: string) {
   if (!startDate) return 0
@@ -137,10 +139,19 @@ function CourseCardSkeleton() {
   return (
     <div className="flex flex-col rounded-lg border border-border bg-card overflow-hidden">
       <Skeleton className="h-40 w-full rounded-none" />
-      <div className="p-4 flex flex-col gap-2">
-        <Skeleton className="h-4 w-3/4" />
-        <Skeleton className="h-3 w-full" />
-        <Skeleton className="h-3 w-2/3" />
+      <div className="p-4 flex flex-col">
+        {/* title — até 2 linhas */}
+        <Skeleton className="h-4 w-3/4 mb-1" />
+        <Skeleton className="h-4 w-1/2 mb-1.5" />
+        {/* descrição — até 2 linhas */}
+        <Skeleton className="h-3 w-full mb-1" />
+        <Skeleton className="h-3 w-2/3 mb-3" />
+        {/* data + instrutor */}
+        <div className="flex flex-col gap-1.5 mb-3">
+          <Skeleton className="h-3 w-28" />
+          <Skeleton className="h-3 w-24" />
+        </div>
+        {/* separator + footer */}
         <div className="pt-3 border-t border-border flex justify-between">
           <Skeleton className="h-5 w-16" />
           <Skeleton className="h-5 w-14" />
@@ -229,7 +240,12 @@ function GalleryManager({ course }: { course: Course }) {
 // ─── registrations tab ───────────────────────────────────────────────────────
 
 function RegistrationsTab({ courseId }: { courseId: string }) {
-  const { data: registrations, isLoading } = useCourseRegistrations(courseId)
+  const [page, setPage] = useState(1)
+  const limit = 20
+  const { data: resp, isLoading } = useCourseRegistrations(courseId, { page, limit })
+  const registrations = resp?.data ?? []
+  const total = resp?.total ?? 0
+  const totalPages = resp ? Math.ceil(total / limit) : 1
   const cancelReg = useCancelRegistration(courseId)
   const [confirmId, setConfirmId] = useState<string | null>(null)
   const { t } = useTranslation()
@@ -238,7 +254,7 @@ function RegistrationsTab({ courseId }: { courseId: string }) {
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
         <p className="text-sm text-muted-foreground">
-          {registrations ? `${registrations.length} ${t('admin.courses.registrations').toLowerCase()}` : t('common.loading')}
+          {resp ? `${total} ${t('admin.courses.registrations').toLowerCase()}` : t('common.loading')}
         </p>
       </div>
 
@@ -253,14 +269,14 @@ function RegistrationsTab({ courseId }: { courseId: string }) {
         </div>
       )}
 
-      {!isLoading && (registrations ?? []).length === 0 && (
+      {!isLoading && registrations.length === 0 && (
         <div className="flex flex-col items-center justify-center py-10 text-center border-2 border-dashed rounded-xl">
           <UserCheck className="size-10 text-muted-foreground/30 mb-3" />
           <p className="text-sm font-medium text-foreground">{t('admin.courses.noRegistrations')}</p>
         </div>
       )}
 
-      {(registrations ?? []).map(reg => (
+      {registrations.map(reg => (
         <div key={reg.id} className="flex items-center gap-3 rounded-lg border border-border bg-card p-3">
           <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary font-semibold text-sm">
             {reg.userData.name.charAt(0).toUpperCase()}
@@ -309,6 +325,10 @@ function RegistrationsTab({ courseId }: { courseId: string }) {
           </div>
         </div>
       ))}
+
+      {totalPages > 1 && (
+        <Pagination page={page} totalPages={totalPages} total={total} limit={limit} onPageChange={setPage} />
+      )}
     </div>
   )
 }
@@ -327,14 +347,45 @@ function ViewDialog({
   onDelete: (id: string) => void
 }) {
   const [galleryIndex, setGalleryIndex] = useState(0)
+  const [selInstrId, setSelInstrId] = useState('')
+  const [instrTitle, setInstrTitle] = useState('')
+  const [instrCategory, setInstrCategory] = useState('')
   const { t } = useTranslation()
   const { can } = usePermissions()
 
   const { data: detail, isLoading: detailLoading } = useAdminCourse(course?.id ?? '')
+  const { data: instructors } = useInstructors()
+  const assignInstructor = useAssignInstructor(course?.id ?? '')
+  const removeAssignment = useRemoveInstructorAssignment(course?.id ?? '')
 
   useEffect(() => {
     setGalleryIndex(0)
+    setSelInstrId('')
+    setInstrTitle('')
+    setInstrCategory('')
   }, [course?.id])
+
+  async function handleAssignInstructor() {
+    if (!selInstrId) return
+    try {
+      const res = await assignInstructor.mutateAsync({
+        instructorUserDataId: selInstrId,
+        title: instrTitle || undefined,
+        category: instrCategory || undefined,
+      })
+      if (!res.ok) {
+        const data = await res.json().catch(() => null)
+        toast.error(data?.error ?? 'Instrutor já vinculado ou não encontrado.')
+        return
+      }
+      setSelInstrId('')
+      setInstrTitle('')
+      setInstrCategory('')
+      toast.success('Instrutor adicionado!')
+    } catch {
+      toast.error('Erro ao adicionar instrutor.')
+    }
+  }
 
   const liveCourse = detail ?? null
 
@@ -427,6 +478,15 @@ function ViewDialog({
                 {(course.photoCount ?? 0) > 0 && (
                   <span className="ml-1.5 rounded-full bg-muted px-1.5 py-0.5 text-[10px]">
                     {course.photoCount}
+                  </span>
+                )}
+              </TabsTrigger>
+              <TabsTrigger value="instructors">
+                <GraduationCap className="size-3.5 mr-1" />
+                Instrutores
+                {(liveCourse?.instructors?.length ?? 0) > 0 && (
+                  <span className="ml-1.5 rounded-full bg-muted px-1.5 py-0.5 text-[10px]">
+                    {liveCourse!.instructors.length}
                   </span>
                 )}
               </TabsTrigger>
@@ -545,6 +605,99 @@ function ViewDialog({
             ) : liveCourse ? (
               <GalleryManager course={liveCourse} />
             ) : null}
+          </TabsContent>
+
+          <TabsContent value="instructors" className="px-6 pb-4 mt-4">
+            {detailLoading ? (
+              <div className="flex flex-col gap-2">
+                {Array.from({ length: 2 }).map((_, i) => <Skeleton key={i} className="h-14 rounded-lg" />)}
+              </div>
+            ) : (
+              <div className="flex flex-col gap-4">
+                {(liveCourse?.instructors ?? []).length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-10 border-2 border-dashed rounded-xl text-center">
+                    <GraduationCap className="size-10 text-muted-foreground/30 mb-3" />
+                    <p className="text-sm font-medium text-foreground">Nenhum instrutor vinculado</p>
+                  </div>
+                ) : (
+                  <ul className="flex flex-col gap-2">
+                    {(liveCourse?.instructors ?? []).map(a => (
+                      <li key={a.id} className="flex items-center justify-between rounded-lg border px-4 py-3 bg-card">
+                        <div className="flex items-center gap-3">
+                          {a.avatar
+                            ? <img src={a.avatar} alt={a.name} className="size-9 rounded-full object-cover border shrink-0" />
+                            : <div className="size-9 rounded-full bg-primary/10 flex items-center justify-center border shrink-0"><GraduationCap className="size-4 text-primary/60" /></div>
+                          }
+                          <div>
+                            <p className="text-sm font-medium">{a.name}</p>
+                            {(a.title || a.category) && (
+                              <p className="text-xs text-muted-foreground mt-0.5">
+                                {[a.title, a.category].filter(Boolean).join(' · ')}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="size-7 p-0 text-destructive/60 hover:text-destructive hover:bg-destructive/10"
+                          disabled={removeAssignment.isPending}
+                          onClick={async () => {
+                            try {
+                              await removeAssignment.mutateAsync(a.id)
+                              toast.success('Instrutor removido.')
+                            } catch {
+                              toast.error('Erro ao remover instrutor.')
+                            }
+                          }}
+                        >
+                          <Trash2 className="size-3.5" />
+                        </Button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+
+                {can('UPDATE_COURSE') && (
+                  <div className="border-t pt-4 flex flex-col gap-3">
+                    <p className="text-sm font-semibold">Adicionar instrutor</p>
+                    <select
+                      value={selInstrId}
+                      onChange={e => setSelInstrId(e.target.value)}
+                      className="rounded-md border border-input px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring bg-background h-9 disabled:opacity-50"
+                    >
+                      <option value="">Selecione um instrutor...</option>
+                      {(instructors ?? [])
+                        .filter(i => !(liveCourse?.instructors ?? []).some(a => a.userDataId === i.userData.id))
+                        .map(i => (
+                          <option key={i.userData.id} value={i.userData.id}>{i.userData.name}</option>
+                        ))
+                      }
+                    </select>
+                    <Input
+                      placeholder="Título (ex: Engenheiro Agrônomo)"
+                      value={instrTitle}
+                      onChange={e => setInstrTitle(e.target.value)}
+                      className="h-9"
+                    />
+                    <Input
+                      placeholder="Categoria (ex: Palestrante)"
+                      value={instrCategory}
+                      onChange={e => setInstrCategory(e.target.value)}
+                      className="h-9"
+                    />
+                    <Button
+                      size="sm"
+                      disabled={!selInstrId || assignInstructor.isPending}
+                      onClick={handleAssignInstructor}
+                      className="self-end"
+                    >
+                      {assignInstructor.isPending ? 'Adicionando...' : 'Adicionar'}
+                    </Button>
+                  </div>
+                )}
+              </div>
+            )}
           </TabsContent>
         </Tabs>
 
@@ -1108,8 +1261,13 @@ export const Route = createFileRoute('/_admin/admin/cursos/')({
   component: RouteComponent,
 })
 
+const LIMIT_OPTIONS = [8, 16, 24, 32] as const
+
+
 function RouteComponent() {
-  const { data: courses, isLoading, isError } = useAdminCourses()
+  const [page, setPage] = useState(1)
+  const [limit, setLimit] = useState<typeof LIMIT_OPTIONS[number]>(8)
+  const { data, isLoading, isError } = useAdminCourses({ page, limit })
   const deleteCourse = useDeleteCourse()
   const [search, setSearch] = useState('')
   const [viewDialog, setViewDialog] = useState<CourseCardItem | null>(null)
@@ -1118,11 +1276,20 @@ function RouteComponent() {
   const { t } = useTranslation()
   const { can } = usePermissions()
 
-  const filtered = (courses ?? []).filter(c =>
-    c.title.toLowerCase().includes(search.toLowerCase()) ||
-    (c.instructorName ?? '').toLowerCase().includes(search.toLowerCase()) ||
-    (c.eventNumber ?? '').includes(search)
-  )
+  const courses = data?.data ?? []
+  const totalPages = data?.totalPages ?? 1
+  const total = data?.total ?? 0
+
+  const visible = search
+    ? courses.filter(c => {
+        const q = search.toLowerCase()
+        return (
+          c.title.toLowerCase().includes(q) ||
+          (c.instructorName ?? '').toLowerCase().includes(q) ||
+          (c.eventNumber ?? '').includes(q)
+        )
+      })
+    : courses
 
   async function handleDelete(id: string) {
     try {
@@ -1142,7 +1309,7 @@ function RouteComponent() {
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-foreground">{t('admin.courses.title')}</h1>
           <p className="text-sm text-muted-foreground">
-            {courses ? `${courses.length} course${courses.length !== 1 ? 's' : ''}` : t('common.loading')}
+            {data ? `${total} curso${total !== 1 ? 's' : ''}` : t('common.loading')}
           </p>
         </div>
         <div className="flex gap-2 shrink-0">
@@ -1157,14 +1324,30 @@ function RouteComponent() {
         </div>
       </div>
 
-      <div className="relative max-w-sm">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
-        <Input
-          placeholder={t('admin.courses.searchPlaceholder')}
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          className="pl-9"
-        />
+      <div className="flex items-center gap-3">
+        <div className="relative flex-1 max-w-sm">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+          <Input
+            placeholder={t('admin.courses.searchPlaceholder')}
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            className="pl-9"
+          />
+        </div>
+        <div className="flex items-center gap-2 text-sm text-muted-foreground shrink-0">
+          <span className="hidden sm:inline">Itens por página:</span>
+          <Select
+            value={String(limit)}
+            onValueChange={v => { setLimit(Number(v) as typeof LIMIT_OPTIONS[number]); setPage(1) }}
+          >
+            <SelectTrigger className="h-9 w-18">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {LIMIT_OPTIONS.map(n => <SelectItem key={n} value={String(n)}>{n}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       {isError && (
@@ -1174,12 +1357,12 @@ function RouteComponent() {
       )}
 
       {isLoading && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {Array.from({ length: 6 }).map((_, i) => <CourseCardSkeleton key={i} />)}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {Array.from({ length: limit }).map((_, i) => <CourseCardSkeleton key={i} />)}
         </div>
       )}
 
-      {!isLoading && filtered.length === 0 && (
+      {!isLoading && visible.length === 0 && total === 0 && (
         <EmptyState
           icon={GraduationCap}
           title={search ? t('courses.notFound') : t('admin.courses.empty')}
@@ -1192,12 +1375,24 @@ function RouteComponent() {
         />
       )}
 
-      {filtered.length > 0 && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filtered.map(course => (
+      {!isLoading && total > 0 && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {visible.map(course => (
             <AdminCourseCard key={course.id} course={course} onClick={() => setViewDialog(course)} />
           ))}
         </div>
+      )}
+
+      {(totalPages > 1 || total > 0) && (
+        <Pagination
+          page={page}
+          totalPages={totalPages}
+          total={total}
+          limit={limit}
+          onPageChange={setPage}
+          isLoading={isLoading}
+          showLimitSelector={false}
+        />
       )}
 
       <ViewDialog
