@@ -706,15 +706,9 @@ function ViewDialog({
             allowed={can('UPDATE_COURSE')}
             noPermissionMessage="Sem permissão para alterar banner"
             variant="outline"
-            asChild={can('UPDATE_COURSE')}
+            onClick={() => { if (liveCourse) { onEdit(liveCourse); onClose() } }}
           >
-            {can('UPDATE_COURSE') ? (
-              <Link to="/admin/cursos/$id" params={{ id: course.id }}>
-                <ImageUp className="size-4" /> {t('admin.courses.bannerUpload')}
-              </Link>
-            ) : (
-              <><ImageUp className="size-4" /> {t('admin.courses.bannerUpload')}</>
-            )}
+            <ImageUp className="size-4" /> {t('admin.courses.bannerUpload')}
           </PermissionButton>
           <div className="flex gap-2">
             <Button variant="outline" onClick={onClose}>{t('common.close')}</Button>

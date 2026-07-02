@@ -10,7 +10,6 @@ import {
   SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar,
 } from '@/components/ui/sidebar'
 import { useAuth } from '@/context/AuthContext'
-import { useNavigate } from '@tanstack/react-router'
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
 
@@ -21,7 +20,6 @@ function initials(name: string) {
 export function NavUser({ user }: { user: { name: string; email: string; avatar: string } }) {
   const { isMobile } = useSidebar()
   const { logout } = useAuth()
-  const navigate = useNavigate()
   const { t } = useTranslation()
   const queryClient = useQueryClient()
 

@@ -46,7 +46,7 @@ function buildCalendar(year: number, month: number) {
   return cells
 }
 
-function coursesInRange(courses: { startDate?: string | null; endDate?: string | null }[], date: string) {
+function coursesInRange<T extends { startDate?: string | null; endDate?: string | null }>(courses: T[], date: string): T[] {
   return courses.filter(c => {
     const start = c.startDate?.slice(0, 10)
     const end = c.endDate?.slice(0, 10)

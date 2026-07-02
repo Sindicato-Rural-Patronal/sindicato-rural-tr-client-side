@@ -2,7 +2,6 @@ import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
 import { useQueryClient } from '@tanstack/react-query'
 import { useState, useEffect, useRef } from 'react'
 import { toast } from 'sonner'
-import { FaLinkedin, FaInstagram, FaFacebook } from 'react-icons/fa'
 import {
   useAdminUser, useUpdateWorker, useDeleteWorker, useUploadAvatar, useUploadPartnerLogo,
   useUserProperties, useCreateUserProperty, useDeleteUserProperty,

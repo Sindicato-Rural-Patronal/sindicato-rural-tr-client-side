@@ -690,7 +690,7 @@ function RouteComponent() {
     incompleteRegistration: incompleteOnly ? true : undefined,
     gender: genderFilter || undefined,
     ethnicity: ethnicityFilter || undefined,
-    educationLevel: educationFilter || undefined,
+    educationLevel: (educationFilter || undefined) as 'NO_FORMAL_EDUCATION' | 'INCOMPLETE_PRIMARY' | 'COMPLETE_PRIMARY' | 'INCOMPLETE_SECONDARY' | 'COMPLETE_SECONDARY' | 'INCOMPLETE_HIGHER' | 'COMPLETE_HIGHER' | 'POSTGRADUATE' | undefined,
     memberType: memberTypeFilter || undefined,
     memberClassification: memberClassFilter || undefined,
   })
