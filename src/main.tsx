@@ -10,8 +10,6 @@ import { AuthProvider } from '@/context/AuthContext'
 import { Toaster } from 'sonner'
 import './index.css';
 import './i18n';
-import { SidebarProvider } from './components/ui/sidebar.tsx';
-
 // Cria o roteador com a árvore de rotas
 const router = createRouter({ routeTree });
 
@@ -25,15 +23,13 @@ declare module '@tanstack/react-router' {
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>
-      <SidebarProvider>
-              <ReactQueryDevtools initialIsOpen={false} />
-        <AuthProvider>
-          <TooltipProvider>
-            <RouterProvider router={router} />
-            <Toaster position="bottom-right" richColors closeButton />
-          </TooltipProvider>
-        </AuthProvider>
-      </SidebarProvider>
+      <ReactQueryDevtools initialIsOpen={false} />
+      <AuthProvider>
+        <TooltipProvider>
+          <RouterProvider router={router} />
+          <Toaster position="bottom-right" richColors closeButton />
+        </TooltipProvider>
+      </AuthProvider>
     </QueryClientProvider>
   </StrictMode>
 );

@@ -1,8 +1,21 @@
+export class ApiError extends Error {
+  constructor(public status: number, message: string) {
+    super(message)
+    this.name = 'ApiError'
+  }
+}
+
 function handleUnauthorized(status: number) {
   if (status === 401) {
     localStorage.removeItem('token')
     window.location.href = '/login'
   }
+}
+
+async function throwApiError(res: Response): Promise<never> {
+  handleUnauthorized(res.status)
+  const data = await res.clone().json().catch(() => null)
+  throw new ApiError(res.status, data?.error ?? data?.message ?? `HTTP ${res.status}`)
 }
 
 export async function apiFetch(path: string, options: RequestInit = {}): Promise<Response> {
@@ -15,11 +28,7 @@ export async function apiFetch(path: string, options: RequestInit = {}): Promise
       ...(options.headers ?? {}),
     },
   })
-  if (!res.ok) {
-    handleUnauthorized(res.status)
-    const data = await res.clone().json().catch(() => null)
-    throw new Error(data?.error ?? data?.message ?? `HTTP ${res.status}`)
-  }
+  if (!res.ok) await throwApiError(res)
   return res
 }
 
@@ -32,10 +41,6 @@ export async function apiUpload(path: string, file: File, field = 'file'): Promi
     headers: token ? { Authorization: `Bearer ${token}` } : {},
     body: formData,
   })
-  if (!res.ok) {
-    handleUnauthorized(res.status)
-    const data = await res.clone().json().catch(() => null)
-    throw new Error(data?.error ?? data?.message ?? `HTTP ${res.status}`)
-  }
+  if (!res.ok) await throwApiError(res)
   return res
 }
