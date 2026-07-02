@@ -1,0 +1,22 @@
+# Production compose — frontend only.
+#
+# Backend is a separate stack. This container serves the built React app via
+# nginx and proxies /api/* → BACKEND_URL (stripping the /api prefix).
+#
+# Managed (Hostinger): paste the variables below into the platform's
+#   "Environment variables" field. The platform runs `docker compose` itself
+#   and does NOT use --env-file, so an .env.production file is ignored.
+# Manual VPS:
+#   docker compose -f docker-compose.prod.yml --env-file .env.production up -d --build
+#
+# Required env vars: BACKEND_URL
+
+services:
+  web:
+    build: .
+    container_name: sindicato_web
+    ports:
+      - "80:80"               # put a reverse proxy (Caddy/nginx) in front for TLS
+    environment:
+      BACKEND_URL: ${BACKEND_URL}
+    restart: unless-stopped
