@@ -72,6 +72,7 @@ const ptBR = {
     workload: '{{hours}}h de carga horária',
     location: 'Local',
     instructor: 'Instrutor',
+    instructors: 'Instrutores',
     spots: 'Vagas',
     spotsCount: '{{enrolled}} / {{max}} inscritos',
     spotsLeft: '{{count}} vagas restantes',
@@ -129,6 +130,7 @@ const ptBR = {
     tagline: 'Junto somamos forças para o desenvolvimento do agro',
     restricted: 'Área administrativa restrita a membros autorizados',
     copyright: '© {{year}} Sindicato Rural de Terra Roxa · Todos os direitos reservados',
+    backToHome: 'Voltar ao site',
   },
   admin: {
     sidebar: {

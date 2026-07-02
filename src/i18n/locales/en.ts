@@ -72,6 +72,7 @@ const en = {
     workload: '{{hours}}h workload',
     location: 'Location',
     instructor: 'Instructor',
+    instructors: 'Instructors',
     spots: 'Spots',
     spotsCount: '{{enrolled}} / {{max}} enrolled',
     spotsLeft: '{{count}} spots remaining',
@@ -129,6 +130,7 @@ const en = {
     tagline: 'Together we grow stronger for agriculture',
     restricted: 'Administrative area restricted to authorized members',
     copyright: '© {{year}} Sindicato Rural de Terra Roxa · All rights reserved',
+    backToHome: 'Back to site',
   },
   admin: {
     sidebar: {
