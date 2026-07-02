@@ -1,10 +1,10 @@
-import { createFileRoute, redirect } from '@tanstack/react-router'
+import { createFileRoute, redirect, Link } from '@tanstack/react-router'
 import { useState } from 'react'
 import { useAuth } from '@/context/AuthContext'
 import { authenticateUser } from '@/hooks/use-users'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Leaf, Lock, User } from 'lucide-react'
+import { ArrowLeft, Leaf, Lock, User } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
 function isTokenValid(token: string): boolean {
@@ -44,7 +44,7 @@ function LoginPage() {
     try {
       const token = await authenticateUser(username, password)
       login(token)
-      window.location.replace('/admin/cursos')
+      window.location.replace('/admin/dashboard')
     } catch (err) {
       setError(err instanceof Error ? err.message : t('login.errorDefault'))
     } finally {
@@ -86,7 +86,14 @@ function LoginPage() {
       </div>
 
       {/* Right panel — form */}
-      <div className="flex flex-1 flex-col items-center justify-center bg-background px-6 py-12">
+      <div className="relative flex flex-1 flex-col items-center justify-center bg-background px-6 py-12">
+        <Link
+          to="/"
+          className="absolute left-6 top-6 flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
+        >
+          <ArrowLeft className="size-4" />
+          {t('login.backToHome')}
+        </Link>
         {/* Mobile logo */}
         <div className="mb-8 flex items-center gap-2 lg:hidden">
           <div className="flex size-9 items-center justify-center rounded-full bg-primary">

@@ -4,6 +4,7 @@ import { Input } from '@/components/ui/input'
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
+import { Pagination } from '@/components/ui/pagination'
 import { GraduationCap, Search } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useCourses } from '@/hooks/useCourse'
@@ -16,9 +17,13 @@ export const Route = createFileRoute('/_public/cursos/')({
 function RouteComponent() {
   const [search, setSearch] = useState('')
   const [priceFilter, setPriceFilter] = useState('all')
+  const [page, setPage] = useState(1)
   const { t } = useTranslation()
 
-  const { data: courses = [], isLoading, isError } = useCourses()
+  const { data: result, isLoading, isError } = useCourses({ page, limit: 12 })
+  const courses = result?.data ?? []
+  const total = result?.total ?? 0
+  const totalPages = result?.totalPages ?? 1
 
   const filtered = courses.filter((course) => {
     const matchSearch = course.title.toLowerCase().includes(search.toLowerCase())
@@ -49,11 +54,11 @@ function RouteComponent() {
                 <Input
                   placeholder={t('courses.searchPlaceholder')}
                   value={search}
-                  onChange={(e) => setSearch(e.target.value)}
+                  onChange={(e) => { setSearch(e.target.value); setPage(1) }}
                   className="pl-10 text-sm"
                 />
               </div>
-              <Select value={priceFilter} onValueChange={setPriceFilter}>
+              <Select value={priceFilter} onValueChange={(v) => { setPriceFilter(v); setPage(1) }}>
                 <SelectTrigger className="w-full sm:w-45 text-sm">
                   <SelectValue />
                 </SelectTrigger>
@@ -87,11 +92,24 @@ function RouteComponent() {
                 <p className="mt-2 text-sm text-muted-foreground">{t('courses.notFoundHint')}</p>
               </div>
             ) : (
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                {filtered.map((course) => (
-                  <CourseCard key={course.id} course={course} />
-                ))}
-              </div>
+              <>
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                  {filtered.map((course) => (
+                    <CourseCard key={course.id} course={course} />
+                  ))}
+                </div>
+                {totalPages > 1 && (
+                  <Pagination
+                    page={page}
+                    totalPages={totalPages}
+                    total={total}
+                    limit={12}
+                    onPageChange={setPage}
+                    showLimitSelector={false}
+                    isLoading={isLoading}
+                  />
+                )}
+              </>
             )}
           </div>
         </section>

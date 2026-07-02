@@ -23,6 +23,7 @@ import {
 import {
   ArrowLeft, Calendar, CheckCircle2, Clock, GraduationCap, MapPin, User, Users,
 } from 'lucide-react'
+import { FaLinkedin, FaInstagram, FaFacebook } from 'react-icons/fa'
 
 export const Route = createFileRoute('/_public/cursos/$id')({
   component: RouteComponent,
@@ -274,6 +275,46 @@ function RouteComponent() {
                 </div>
               </div>
             )}
+
+            {(course.instructors?.length ?? 0) > 0 && (
+              <div>
+                <h2 className="mb-3 text-lg font-semibold text-foreground">{t('courseDetail.instructors')}</h2>
+                <div className="flex flex-col gap-3">
+                  {course.instructors.map(instructor => (
+                    <div key={instructor.id} className="flex items-start gap-4 rounded-xl border bg-card p-4">
+                      {instructor.avatar
+                        ? <img src={instructor.avatar} alt={instructor.name} className="size-14 rounded-full object-cover border-2 border-border shrink-0" />
+                        : <div className="size-14 rounded-full bg-primary/10 flex items-center justify-center shrink-0"><User className="size-6 text-primary/40" /></div>
+                      }
+                      <div className="flex flex-col gap-1 min-w-0 flex-1">
+                        <p className="font-semibold text-foreground">{instructor.name}</p>
+                        {instructor.title && <p className="text-xs font-medium text-primary">{instructor.title}</p>}
+                        {instructor.bio && <p className="text-sm text-muted-foreground mt-0.5">{instructor.bio}</p>}
+                        {(instructor.linkedin || instructor.instagram || instructor.facebook) && (
+                          <div className="flex items-center gap-3 mt-1.5">
+                            {instructor.linkedin && (
+                              <a href={instructor.linkedin} target="_blank" rel="noreferrer" className="text-muted-foreground hover:text-primary transition-colors">
+                                <FaLinkedin className="size-4" />
+                              </a>
+                            )}
+                            {instructor.instagram && (
+                              <a href={instructor.instagram} target="_blank" rel="noreferrer" className="text-muted-foreground hover:text-primary transition-colors">
+                                <FaInstagram className="size-4" />
+                              </a>
+                            )}
+                            {instructor.facebook && (
+                              <a href={instructor.facebook} target="_blank" rel="noreferrer" className="text-muted-foreground hover:text-primary transition-colors">
+                                <FaFacebook className="size-4" />
+                              </a>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Info sidebar */}
@@ -313,7 +354,10 @@ function RouteComponent() {
                   <User className="mt-0.5 size-4 shrink-0 text-primary" />
                   <div>
                     <p className="font-medium">{t('courseDetail.instructor')}</p>
-                    <p className="text-muted-foreground">{course.instructorName}</p>
+                    {(course.instructors?.length ?? 0) > 0
+                      ? <p className="text-muted-foreground">{course.instructors.map(i => i.name).join(', ')}</p>
+                      : <p className="text-muted-foreground">{course.instructorName}</p>
+                    }
                   </div>
                 </div>
 
