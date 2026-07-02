@@ -1,4 +1,7 @@
-# Production compose — frontend via Traefik.
+# Production compose — frontend.
+#
+# SEM DOMÍNIO (atual): acesso direto via porta 8080, sem Traefik.
+# COM DOMÍNIO: remover `ports`, descomentar bloco de labels Traefik abaixo.
 #
 # CI/CD (normal): GitHub Actions builda no ghcr.io, VPS faz pull.
 # Build local (emergência):
@@ -6,30 +9,29 @@
 #
 # Required env vars (.env.production):
 #   BACKEND_URL — URL do backend sem trailing slash (ex: http://2.24.80.138:3000)
-#   DOMAIN      — domínio ou IP do frontend (ex: meusite.com.br ou 2.24.80.138)
+#   DOMAIN      — domínio do frontend (ex: sindicatorural.com.br) — usado quando Traefik ativo
 
 services:
   web:
     image: ghcr.io/sindicato-rural-patronal/sindicato-rural-tr-client-side:latest
     build: .                          # fallback para build local com --build
     container_name: sindicato_web
+    ports:
+      - "8080:80"                     # acesso direto: http://IP:8080 — remover quando usar Traefik
     environment:
       BACKEND_URL: ${BACKEND_URL}
-    labels:
-      - "traefik.enable=true"
-      # --- Rota HTTP (ativa agora, sem domínio) ---
-      - "traefik.http.routers.sindicato-web.rule=Host(`${DOMAIN}`)"
-      - "traefik.http.routers.sindicato-web.entrypoints=web"
-      - "traefik.http.services.sindicato-web.loadbalancer.server.port=80"
-      # --- Quando tiver domínio: descomentar abaixo e comentar as 2 linhas acima ---
-      # - "traefik.http.routers.sindicato-web.rule=Host(`${DOMAIN}`)"
-      # - "traefik.http.routers.sindicato-web.entrypoints=websecure"
-      # - "traefik.http.routers.sindicato-web.tls.certresolver=letsencrypt"
-      # - "traefik.http.services.sindicato-web.loadbalancer.server.port=80"
-      # - "traefik.http.routers.sindicato-web-http.rule=Host(`${DOMAIN}`)"
-      # - "traefik.http.routers.sindicato-web-http.entrypoints=web"
-      # - "traefik.http.routers.sindicato-web-http.middlewares=redirect-https"
-      # - "traefik.http.middlewares.redirect-https.redirectscheme.scheme=https"
+    # --- Traefik: descomentar quando tiver domínio ---
+    # labels:
+    #   - "traefik.enable=true"
+    #   - "traefik.docker.network=traefik-crga"
+    #   - "traefik.http.routers.sindicato-web.rule=Host(`${DOMAIN}`)"
+    #   - "traefik.http.routers.sindicato-web.entrypoints=websecure"
+    #   - "traefik.http.routers.sindicato-web.tls.certresolver=letsencrypt"
+    #   - "traefik.http.services.sindicato-web.loadbalancer.server.port=80"
+    #   - "traefik.http.routers.sindicato-web-http.rule=Host(`${DOMAIN}`)"
+    #   - "traefik.http.routers.sindicato-web-http.entrypoints=web"
+    #   - "traefik.http.routers.sindicato-web-http.middlewares=sindicato-https"
+    #   - "traefik.http.middlewares.sindicato-https.redirectscheme.scheme=https"
     networks:
       - traefik-crga
     restart: unless-stopped
