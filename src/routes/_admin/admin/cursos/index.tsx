@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from '@tanstack/react-router'
+import { createFileRoute } from '@tanstack/react-router'
 import { useState, useRef, useEffect } from 'react'
 import { toast } from 'sonner'
 import { usePermissions } from '@/hooks/usePermissions'
