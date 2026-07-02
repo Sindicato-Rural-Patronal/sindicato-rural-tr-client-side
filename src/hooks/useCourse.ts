@@ -17,7 +17,10 @@ export type CreateCourseBody = {
   minStudents?: number
 }
 
-export type UpdateCourseBody = Partial<CreateCourseBody>
+export type UpdateCourseBody = Partial<CreateCourseBody> & {
+  preEnrolled?: number
+  waitlist?: number
+}
 
 export type CourseCardItem = {
   id: string
@@ -25,17 +28,43 @@ export type CourseCardItem = {
   title: string
   eventNumber: string | null
   startDate: string
+  endDate: string | null
+  startTime: string | null
+  endTime: string | null
   enrolled: number
   maxStudents: number
   price: number
   coverImage: string | null
   photoCount: number
+  description?: string | null
+  registrationDeadline: string | null
+  location: string | null
+  instructorName: string | null
+  workloadHours: number | null
 }
 
-export function useAdminCourses() {
-  return useQuery<CourseCardItem[]>({
-    queryKey: ['admin', 'courses'],
-    queryFn: () => apiFetch('/admin/courses').then(r => r.json()),
+export type PaginatedCourses = {
+  data: CourseCardItem[]
+  total: number
+  page: number
+  limit: number
+  totalPages: number
+}
+
+export function useAdminCourses(params: {
+  page: number
+  limit: number
+  status?: 'PUBLIC' | 'PRIVATE' | 'UNPUBLISHED'
+  search?: string
+}) {
+  const { page, limit, status, search } = params
+  const qs = new URLSearchParams({ page: String(page), limit: String(limit) })
+  if (status) qs.set('status', status)
+  if (search?.trim()) qs.set('search', search.trim())
+
+  return useQuery<PaginatedCourses>({
+    queryKey: ['admin', 'courses', page, limit, status ?? '', search ?? ''],
+    queryFn: () => apiFetch(`/admin/courses?${qs}`).then(r => r.json()),
   })
 }
 
@@ -47,10 +76,11 @@ export function useAdminCourse(id: string) {
   })
 }
 
-export function useCourses() {
-  return useQuery<Course[]>({
-    queryKey: ['courses'],
-    queryFn: () => apiFetch('/courses').then(r => r.json()),
+export function useCourses(params: { page?: number; limit?: number } = {}) {
+  const { page = 1, limit = 20 } = params
+  return useQuery<{ data: Course[]; total: number; page: number; limit: number; totalPages: number }>({
+    queryKey: ['courses', page, limit],
+    queryFn: () => apiFetch(`/courses?page=${page}&limit=${limit}`).then(r => r.json()),
   })
 }
 
@@ -69,7 +99,7 @@ export function useCreateCourse() {
       apiFetch('/courses', { method: 'POST', body: JSON.stringify(body) }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['courses'] })
-      queryClient.invalidateQueries({ queryKey: ['admin', 'courses'] })
+      queryClient.invalidateQueries({ queryKey: ['admin', 'courses'], exact: false })
     },
   })
 }
@@ -80,8 +110,8 @@ export function useUpdateCourse(courseId: string) {
     mutationFn: (body: UpdateCourseBody) =>
       apiFetch(`/courses/${courseId}`, { method: 'PATCH', body: JSON.stringify(body) }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['courses'], exact: true })
-      queryClient.invalidateQueries({ queryKey: ['admin', 'courses'], exact: true })
+      queryClient.invalidateQueries({ queryKey: ['courses'], exact: false })
+      queryClient.invalidateQueries({ queryKey: ['admin', 'courses'], exact: false })
       queryClient.invalidateQueries({ queryKey: ['admin', 'courses', courseId] })
     },
   })
@@ -95,7 +125,7 @@ export function useDeleteCourse() {
     onSuccess: (_, courseId) => {
       queryClient.removeQueries({ queryKey: ['admin', 'courses', courseId] })
       queryClient.invalidateQueries({ queryKey: ['courses'], exact: true })
-      queryClient.invalidateQueries({ queryKey: ['admin', 'courses'], exact: true })
+      queryClient.invalidateQueries({ queryKey: ['admin', 'courses'], exact: false })
     },
   })
 }
@@ -136,6 +166,42 @@ export function useRegisterCourse(courseId: string) {
   return useMutation({
     mutationFn: (body: RegisterCourseBody) =>
       apiFetch(`/courses/${courseId}/register`, { method: 'POST', body: JSON.stringify(body) }).then(r => r.json()),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['courses', courseId] })
+    },
+  })
+}
+
+export function useAssignInstructor(courseId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (body: { instructorUserDataId: string; title?: string; category?: string }) =>
+      apiFetch(`/admin/courses/${courseId}/instructors`, { method: 'POST', body: JSON.stringify(body) }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'courses', courseId] })
+    },
+  })
+}
+
+export function useRemoveInstructorAssignment(courseId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (assignmentId: string) =>
+      apiFetch(`/admin/courses/${courseId}/instructors/${assignmentId}`, { method: 'DELETE' }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'courses', courseId] })
+    },
+  })
+}
+
+export function useRegisterByCpf(courseId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (cpf: string) =>
+      apiFetch(`/courses/${courseId}/register-by-cpf`, {
+        method: 'POST',
+        body: JSON.stringify({ cpf }),
+      }).then(r => r.json()),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['courses', courseId] })
     },

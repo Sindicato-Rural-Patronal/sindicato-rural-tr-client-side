@@ -19,7 +19,7 @@ export type CreateRoomBody = {
 export function useRooms() {
   return useQuery<Room[]>({
     queryKey: ['rooms'],
-    queryFn: () => apiFetch('/rooms').then(r => r.json()),
+    queryFn: () => apiFetch('/rooms?limit=1000').then(r => r.json()).then(d => Array.isArray(d) ? d : (d.data ?? [])),
   })
 }
 

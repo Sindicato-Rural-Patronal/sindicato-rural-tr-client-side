@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { apiFetch, apiUpload } from '@/lib/api'
 import type { News } from '@/@types/news'
+import type { PaginatedResponse } from '@/hooks/useAdmin'
 
 export type CreateNewsBody = {
   title: string
@@ -12,17 +13,31 @@ export type CreateNewsBody = {
 
 export type UpdateNewsBody = Partial<CreateNewsBody>
 
-export function useNews() {
+export function useNews(params: { page?: number; limit?: number } = {}) {
+  const { page = 1, limit = 20 } = params
   return useQuery<News[]>({
-    queryKey: ['news'],
-    queryFn: () => apiFetch('/news').then(r => r.json()),
+    queryKey: ['news', page, limit],
+    queryFn: () =>
+      apiFetch(`/news?page=${page}&limit=${limit}`)
+        .then(r => r.json())
+        .then(d => Array.isArray(d) ? d : (d.data ?? [])),
   })
 }
 
-export function useAdminNews() {
-  return useQuery<News[]>({
-    queryKey: ['admin', 'news'],
-    queryFn: () => apiFetch('/admin/news').then(r => r.json()),
+export type AdminNewsFilters = {
+  page?: number
+  limit?: number
+  status?: 'PUBLISHED' | 'UNPUBLISHED'
+}
+
+export function useAdminNews(filters: AdminNewsFilters = {}) {
+  const { page = 1, limit = 20, status } = filters
+  const params = new URLSearchParams({ page: String(page), limit: String(limit) })
+  if (status) params.set('status', status)
+
+  return useQuery<PaginatedResponse<News>>({
+    queryKey: ['admin', 'news', page, limit, status ?? ''],
+    queryFn: () => apiFetch(`/admin/news?${params}`).then(r => r.json()),
   })
 }
 

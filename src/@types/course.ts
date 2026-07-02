@@ -1,3 +1,16 @@
+export type CourseInstructor = {
+  id: string
+  userDataId: string
+  title: string | null
+  category: string | null
+  name: string
+  bio: string | null
+  avatar: string | null
+  linkedin: string | null
+  instagram: string | null
+  facebook: string | null
+}
+
 /** Shape returned by the backend — already English field names. */
 export type Course = {
   id: string
@@ -22,6 +35,7 @@ export type Course = {
   observations: string | null
   eventNumber: string | null
   photoGallery: { id: string; url: string; caption: string }[]
+  instructors: CourseInstructor[]
 }
 
 /** @deprecated Use Course instead */

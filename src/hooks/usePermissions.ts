@@ -2,7 +2,7 @@ import { useMe } from './useAdmin'
 
 export function usePermissions() {
   const { data: me, isLoading } = useMe()
-  const perms = me?.permitions ?? []
+  const perms = me?.permissions ?? []
 
   function can(perm: string): boolean {
     if (isLoading) return false
