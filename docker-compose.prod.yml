@@ -1,22 +1,39 @@
-# Production compose — frontend only.
+# Production compose — frontend via Traefik.
 #
-# Backend is a separate stack. This container serves the built React app via
-# nginx and proxies /api/* → BACKEND_URL (stripping the /api prefix).
-#
-# Managed (Hostinger): paste the variables below into the platform's
-#   "Environment variables" field. The platform runs `docker compose` itself
-#   and does NOT use --env-file, so an .env.production file is ignored.
-# Manual VPS:
+# CI/CD (normal): GitHub Actions builda no ghcr.io, VPS faz pull.
+# Build local (emergência):
 #   docker compose -f docker-compose.prod.yml --env-file .env.production up -d --build
 #
-# Required env vars: BACKEND_URL
+# Required env vars (.env.production):
+#   BACKEND_URL — URL do backend sem trailing slash (ex: http://2.24.80.138:3000)
+#   DOMAIN      — domínio ou IP do frontend (ex: meusite.com.br ou 2.24.80.138)
 
 services:
   web:
-    build: .
+    image: ghcr.io/sindicato-rural-patronal/sindicato-rural-tr-client-side:latest
+    build: .                          # fallback para build local com --build
     container_name: sindicato_web
-    ports:
-      - "80:80"               # put a reverse proxy (Caddy/nginx) in front for TLS
     environment:
       BACKEND_URL: ${BACKEND_URL}
+    labels:
+      - "traefik.enable=true"
+      # --- Rota HTTP (ativa agora, sem domínio) ---
+      - "traefik.http.routers.sindicato-web.rule=Host(`${DOMAIN}`)"
+      - "traefik.http.routers.sindicato-web.entrypoints=web"
+      - "traefik.http.services.sindicato-web.loadbalancer.server.port=80"
+      # --- Quando tiver domínio: descomentar abaixo e comentar as 2 linhas acima ---
+      # - "traefik.http.routers.sindicato-web.rule=Host(`${DOMAIN}`)"
+      # - "traefik.http.routers.sindicato-web.entrypoints=websecure"
+      # - "traefik.http.routers.sindicato-web.tls.certresolver=letsencrypt"
+      # - "traefik.http.services.sindicato-web.loadbalancer.server.port=80"
+      # - "traefik.http.routers.sindicato-web-http.rule=Host(`${DOMAIN}`)"
+      # - "traefik.http.routers.sindicato-web-http.entrypoints=web"
+      # - "traefik.http.routers.sindicato-web-http.middlewares=redirect-https"
+      # - "traefik.http.middlewares.redirect-https.redirectscheme.scheme=https"
+    networks:
+      - traefik-crga
     restart: unless-stopped
+
+networks:
+  traefik-crga:
+    external: true
