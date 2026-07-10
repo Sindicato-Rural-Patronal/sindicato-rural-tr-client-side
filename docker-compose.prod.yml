@@ -8,7 +8,8 @@
 #   docker compose -f docker-compose.prod.yml --env-file .env.production up -d --build
 #
 # Required env vars (.env.production):
-#   BACKEND_URL — URL do backend sem trailing slash (ex: http://2.24.80.138:3000)
+#   BACKEND_URL — URL do backend sem trailing slash. Padrão: http://sindicato_api:3000
+#                 (nome do container da API na rede traefik-crga — tráfego interno).
 #   DOMAIN      — domínio do frontend (ex: sindicatorural.com.br) — usado quando Traefik ativo
 
 services:
