@@ -32,6 +32,7 @@ import {
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { DatePicker } from '@/components/ui/date-picker'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Card, CardContent } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
@@ -1032,7 +1033,7 @@ export function CourseFormDialog({
                     <FormLabel>{t('admin.courses.form.startDate')}</FormLabel>
                     <div className="grid grid-cols-[1fr_auto] gap-2">
                       <FormField control={form.control} name="startDate" render={({ field }) => (
-                        <FormControl><Input type="date" {...field} /></FormControl>
+                        <DatePicker value={field.value ?? ''} onChange={field.onChange} />
                       )} />
                       <FormField control={form.control} name="startHour" render={({ field }) => (
                         <FormControl><Input type="time" {...field} className="w-27.5" /></FormControl>
@@ -1044,7 +1045,7 @@ export function CourseFormDialog({
                     <FormLabel>{t('admin.courses.form.endDate')}</FormLabel>
                     <div className="grid grid-cols-[1fr_auto] gap-2">
                       <FormField control={form.control} name="endDate" render={({ field }) => (
-                        <FormControl><Input type="date" {...field} /></FormControl>
+                        <DatePicker value={field.value ?? ''} onChange={field.onChange} />
                       )} />
                       <FormField control={form.control} name="endHour" render={({ field }) => (
                         <FormControl><Input type="time" {...field} className="w-27.5" /></FormControl>
@@ -1058,7 +1059,7 @@ export function CourseFormDialog({
                   <FormLabel>{t('admin.courses.form.regDeadlineDate')}</FormLabel>
                   <div className="grid grid-cols-[1fr_auto] gap-2">
                     <FormField control={form.control} name="regDeadlineDate" render={({ field }) => (
-                      <FormControl><Input type="date" {...field} /></FormControl>
+                      <DatePicker value={field.value ?? ''} onChange={field.onChange} />
                     )} />
                     <FormField control={form.control} name="regDeadlineHour" render={({ field }) => (
                       <FormControl><Input type="time" {...field} className="w-27.5" /></FormControl>

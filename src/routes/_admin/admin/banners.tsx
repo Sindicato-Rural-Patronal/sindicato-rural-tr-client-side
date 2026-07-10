@@ -10,6 +10,7 @@ import {
 import type { Banner, BannerButton, CreateBannerBody } from '@/hooks/useBanner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { DatePicker } from '@/components/ui/date-picker'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -256,11 +257,11 @@ function BannerSheet({
           <div className="grid grid-cols-2 gap-3">
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="bn-start">Início (opcional)</Label>
-              <Input id="bn-start" type="date" value={form.startDate} onChange={e => set('startDate', e.target.value)} className="h-9" />
+              <DatePicker id="bn-start" value={form.startDate} onChange={v => set('startDate', v)} placeholder="Início" />
             </div>
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="bn-end">Término (opcional)</Label>
-              <Input id="bn-end" type="date" value={form.endDate} onChange={e => set('endDate', e.target.value)} className="h-9" />
+              <DatePicker id="bn-end" value={form.endDate} onChange={v => set('endDate', v)} placeholder="Término" />
             </div>
           </div>
 
