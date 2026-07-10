@@ -30,6 +30,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from '@/components/ui/dialog'
 import { ConfirmCloseDialog } from '@/components/confirm-close-dialog'
+import { ImageCropDialog } from '@/components/ImageCropDialog'
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
@@ -317,6 +318,7 @@ function NewsEditor({
   )
   const [savedId, setSavedId] = useState<string | null>(news?.id ?? null)
   const [bannerUrl, setBannerUrl] = useState<string | null>(news?.bannerUrl ?? null)
+  const [bannerCropSrc, setBannerCropSrc] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [confirmClose, setConfirmClose] = useState(false)
   const [saved, setSaved] = useState(mode === 'edit')
@@ -397,16 +399,22 @@ function NewsEditor({
     }
   }
 
-  async function handleBannerChange(e: React.ChangeEvent<HTMLInputElement>) {
+  function handleBannerSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file) return
     if (!savedId) { setError('Salve a notícia antes de adicionar banner.'); return }
+    setBannerCropSrc(URL.createObjectURL(file))
+    if (bannerInputRef.current) bannerInputRef.current.value = ''
+  }
+
+  async function handleBannerCropConfirm(file: File) {
+    setBannerCropSrc(null)
+    if (!savedId) return
     try {
       const res = await uploadBanner.mutateAsync(file)
       const data = await res.json()
       if (data?.url) setBannerUrl(data.url)
     } catch { /* silent */ }
-    if (bannerInputRef.current) bannerInputRef.current.value = ''
   }
 
   function tryClose() {
@@ -453,7 +461,16 @@ function NewsEditor({
 
       {/* ── Page body (mimics /noticias/$id) ── */}
       <div className="container mx-auto max-w-3xl px-4 py-10">
-        <input ref={bannerInputRef} type="file" accept="image/*" className="hidden" onChange={handleBannerChange} />
+        <input ref={bannerInputRef} type="file" accept="image/*" className="hidden" onChange={handleBannerSelect} />
+
+        <ImageCropDialog
+          src={bannerCropSrc}
+          aspect={1440 / 600}
+          outputWidth={1440}
+          outputHeight={600}
+          onConfirm={handleBannerCropConfirm}
+          onCancel={() => setBannerCropSrc(null)}
+        />
 
         {/* Banner */}
         <div className="mb-6">
@@ -483,6 +500,11 @@ function NewsEditor({
                 </p>
               </div>
             </div>
+          )}
+          {savedId && (
+            <p className="mt-1.5 text-[11px] text-muted-foreground text-center">
+              Proporção ideal: 1440 × 600 px (a imagem será recortada nessa proporção)
+            </p>
           )}
         </div>
 
@@ -685,6 +707,7 @@ function RouteComponent() {
   const [selectedNews, setSelectedNews] = useState<News | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<News | null>(null)
   const [bannerNewsId, setBannerNewsId] = useState<string | null>(null)
+  const [bannerCropSrc, setBannerCropSrc] = useState<string | null>(null)
 
   const uploadBanner = useUploadNewsBanner(bannerNewsId ?? '')
   const bannerInputRef = useRef<HTMLInputElement>(null)
@@ -704,14 +727,20 @@ function RouteComponent() {
     setTimeout(() => bannerInputRef.current?.click(), 50)
   }
 
-  async function handleBannerChange(e: React.ChangeEvent<HTMLInputElement>) {
+  function handleBannerSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file || !bannerNewsId) return
+    setBannerCropSrc(URL.createObjectURL(file))
+    if (bannerInputRef.current) bannerInputRef.current.value = ''
+  }
+
+  async function handleBannerCropConfirm(file: File) {
+    setBannerCropSrc(null)
+    if (!bannerNewsId) return
     try {
       await uploadBanner.mutateAsync(file)
       toast.success('Banner atualizado!')
     } catch { toast.error('Erro ao atualizar banner.') }
-    if (bannerInputRef.current) bannerInputRef.current.value = ''
   }
 
   async function handleDelete() {
@@ -766,7 +795,16 @@ function RouteComponent() {
         </div>
       </div>
 
-      <input ref={bannerInputRef} type="file" accept="image/*" className="hidden" onChange={handleBannerChange} />
+      <input ref={bannerInputRef} type="file" accept="image/*" className="hidden" onChange={handleBannerSelect} />
+
+      <ImageCropDialog
+        src={bannerCropSrc}
+        aspect={1440 / 600}
+        outputWidth={1440}
+        outputHeight={600}
+        onConfirm={handleBannerCropConfirm}
+        onCancel={() => setBannerCropSrc(null)}
+      />
 
       {isLoading && (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
