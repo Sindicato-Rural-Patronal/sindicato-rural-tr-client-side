@@ -13,7 +13,7 @@ export const Route = createFileRoute('/_public/noticias/$id')({
 
 function ParagraphBlock({ text }: { text: string }) {
   return (
-    <p className="text-base leading-relaxed text-foreground/90 whitespace-pre-line">
+    <p className="text-base leading-relaxed text-foreground/90 whitespace-pre-line wrap-break-word">
       {text}
     </p>
   )
@@ -56,7 +56,7 @@ function ImageTextBlock({
         alt=""
         className="w-full md:w-2/5 rounded-xl object-cover max-h-64"
       />
-      <p className="flex-1 text-base leading-relaxed text-foreground/90 whitespace-pre-line">
+      <p className="flex-1 min-w-0 text-base leading-relaxed text-foreground/90 whitespace-pre-line wrap-break-word">
         {text}
       </p>
     </div>
@@ -142,14 +142,14 @@ function RouteComponent() {
       )}
 
       <header className="mb-8">
-        <h1 className="text-2xl font-bold leading-tight md:text-3xl">{news.title}</h1>
+        <h1 className="text-2xl font-bold leading-tight md:text-3xl wrap-break-word">{news.title}</h1>
         {date && (
           <p className="mt-2 text-sm text-muted-foreground">
             {t('newsPage.publishedAt')}{date}
           </p>
         )}
         {news.summary && (
-          <p className="mt-4 text-base text-muted-foreground leading-relaxed border-l-4 border-primary pl-4 italic">
+          <p className="mt-4 text-base text-muted-foreground leading-relaxed border-l-4 border-primary pl-4 italic wrap-break-word">
             {news.summary}
           </p>
         )}
