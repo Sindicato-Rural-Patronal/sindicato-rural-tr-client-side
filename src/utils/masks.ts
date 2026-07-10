@@ -17,6 +17,17 @@ export function maskCEP(v: string) {
   return d.replace(/^(\d{5})(\d{1,3})$/, '$1-$2')
 }
 
+export function maskMoney(v: string) {
+  const digits = v.replace(/\D/g, '').slice(0, 12)
+  if (!digits) return ''
+  const n = parseInt(digits, 10) / 100
+  return 'R$ ' + n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+}
+
+export function maskCNH(v: string) {
+  return v.replace(/\D/g, '').slice(0, 11)
+}
+
 export function maskRG(v: string) {
   const raw = v.replace(/[^0-9Xx]/g, '').slice(0, 9).toUpperCase()
   if (raw.length <= 2) return raw

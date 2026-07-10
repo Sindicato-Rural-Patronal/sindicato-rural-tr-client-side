@@ -14,6 +14,7 @@ import { Pagination } from '@/components/ui/pagination'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { DatePicker } from '@/components/ui/date-picker'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -28,7 +29,7 @@ import {
   User, FileText, Globe, Briefcase, Heart, TreePine,
   Pencil, X, GraduationCap, Handshake, ImageUp,
 } from 'lucide-react'
-import { maskCPF, maskPhone, maskCEP, maskRG } from '@/utils/masks'
+import { maskCPF, maskPhone, maskCEP, maskRG, maskCNH, maskMoney } from '@/utils/masks'
 import { ApiError } from '@/lib/api'
 
 export const Route = createFileRoute('/_admin/admin/usuarios/$id')({
@@ -143,7 +144,7 @@ function dadosFromDetail(u: UserDataDetail): DadosForm {
     specialNeeds: u.specialNeeds ?? false,
     memberClassification: u.memberClassification ?? '',
     cadPro: u.cadPro ?? '',
-    familyIncome: u.familyIncome ?? '',
+    familyIncome: maskMoney(u.familyIncome ?? ''),
     memberType: u.memberType ?? '',
     boardPosition: u.boardPosition ?? '',
     boardMember: u.boardMember ?? false,
@@ -278,8 +279,7 @@ function DadosTab({ userId, user, completeMode, onCompleteModeEnd, hasNoProperti
   const promote = usePromoteInstructor(userId)
   const demote = useRemoveInstructor(userId)
   const updateInstructor = useUpdateInstructor(userId)
-  const [showPromote, setShowPromote] = useState(false)
-  const [bioInput, setBioInput] = useState('')
+  const [wantInstructor, setWantInstructor] = useState(false)
   const [instrBio, setInstrBio] = useState(user.userInstructor?.bio ?? '')
   const [instrLinkedin, setInstrLinkedin] = useState(user.userInstructor?.linkedin ?? '')
   const [instrInstagram, setInstrInstagram] = useState(user.userInstructor?.instagram ?? '')
@@ -374,6 +374,11 @@ function DadosTab({ userId, user, completeMode, onCompleteModeEnd, hasNoProperti
   function handleCancel() {
     setForm(saved)
     setPartnerLogoPreview(null)
+    setWantInstructor(false)
+    setInstrBio(user.userInstructor?.bio ?? '')
+    setInstrLinkedin(user.userInstructor?.linkedin ?? '')
+    setInstrInstagram(user.userInstructor?.instagram ?? '')
+    setInstrFacebook(user.userInstructor?.facebook ?? '')
     setEditing(false)
     if (completeMode) onCompleteModeEnd()
   }
@@ -382,6 +387,11 @@ function DadosTab({ userId, user, completeMode, onCompleteModeEnd, hasNoProperti
     const rgDigits = form.rg.replace(/\D/g, '')
     if (form.rg && rgDigits.length < 7) {
       toast.error('RG inválido — mínimo 7 dígitos.')
+      return
+    }
+    const cnhDigits = form.driverLicense.replace(/\D/g, '')
+    if (form.driverLicense && cnhDigits.length !== 11) {
+      toast.error('CNH inválida — deve ter 11 dígitos.')
       return
     }
     try {
@@ -409,7 +419,7 @@ function DadosTab({ userId, user, completeMode, onCompleteModeEnd, hasNoProperti
         specialNeeds: form.specialNeeds,
         memberClassification: form.memberClassification || null,
         cadPro: form.cadPro || null,
-        familyIncome: form.familyIncome || null,
+        familyIncome: form.familyIncome.replace(/\D/g, '') || null,
         memberType: form.memberType || null,
         boardPosition: form.boardPosition || null,
         boardMember: form.boardMember,
@@ -450,7 +460,7 @@ function DadosTab({ userId, user, completeMode, onCompleteModeEnd, hasNoProperti
           specialNeeds: form.specialNeeds,
           memberClassification: form.memberClassification || null,
           cadPro: form.cadPro || null,
-          familyIncome: form.familyIncome || null,
+          familyIncome: form.familyIncome.replace(/\D/g, '') || null,
           memberType: form.memberType || null,
           boardPosition: form.boardPosition || null,
           boardMember: form.boardMember,
@@ -469,9 +479,19 @@ function DadosTab({ userId, user, completeMode, onCompleteModeEnd, hasNoProperti
           instagram: instrInstagram || null,
           facebook: instrFacebook || null,
         })
+      } else if (wantInstructor) {
+        await promote.mutateAsync(instrBio || undefined)
+        if (instrLinkedin || instrInstagram || instrFacebook) {
+          await updateInstructor.mutateAsync({
+            linkedin: instrLinkedin || null,
+            instagram: instrInstagram || null,
+            facebook: instrFacebook || null,
+          })
+        }
       }
       toast.success('Dados salvos com sucesso!')
       setSaved(form)
+      setWantInstructor(false)
       setEditing(false)
       if (completeMode) onCompleteModeEnd()
     } catch (e) {
@@ -631,17 +651,33 @@ function DadosTab({ userId, user, completeMode, onCompleteModeEnd, hasNoProperti
             <Input className={inp} disabled={d} value={form.rgIssuer} onChange={e => set('rgIssuer', e.target.value)} />
           </FieldRow>
           <FieldRow label="Data emissão RG">
-            <Input className={inp} disabled={d} type="date" value={form.rgIssuedAt} onChange={e => set('rgIssuedAt', e.target.value)} />
+            <DatePicker disabled={d} value={form.rgIssuedAt} onChange={v => set('rgIssuedAt', v)} />
           </FieldRow>
           <FieldRow label="Data nascimento" highlight={hi('birthDate')}>
-            <Input className={inp} disabled={d} type="date" value={form.birthDate} onChange={e => set('birthDate', e.target.value)} />
+            <DatePicker disabled={d} value={form.birthDate} onChange={v => set('birthDate', v)} />
           </FieldRow>
           <FieldRow label="CNH">
-            <Input className={inp} disabled={d} value={form.driverLicense} onChange={e => set('driverLicense', e.target.value)} />
+            <Input className={inp} disabled={d} value={form.driverLicense} onChange={e => {
+              const v = maskCNH(e.target.value)
+              set('driverLicense', v)
+              if (!v) set('driverLicenseCategory', '')
+            }} placeholder="00000000000" inputMode="numeric" maxLength={11} />
           </FieldRow>
-          <FieldRow label="Categoria CNH">
-            <Input className={inp} disabled={d} value={form.driverLicenseCategory} onChange={e => set('driverLicenseCategory', e.target.value)} placeholder="A, B, AB..." />
-          </FieldRow>
+          {form.driverLicense && (
+            <FieldRow label="Categoria CNH">
+              <SelectField disabled={d} value={form.driverLicenseCategory} onChange={v => set('driverLicenseCategory', v)} placeholder="Selecione" options={[
+                { value: 'A', label: 'A' },
+                { value: 'B', label: 'B' },
+                { value: 'C', label: 'C' },
+                { value: 'D', label: 'D' },
+                { value: 'E', label: 'E' },
+                { value: 'AB', label: 'AB' },
+                { value: 'AC', label: 'AC' },
+                { value: 'AD', label: 'AD' },
+                { value: 'AE', label: 'AE' },
+              ]} />
+            </FieldRow>
+          )}
         </CardContent>
       </Card>
 
@@ -692,7 +728,7 @@ function DadosTab({ userId, user, completeMode, onCompleteModeEnd, hasNoProperti
             <Input className={inp} disabled={d} value={form.cadPro} onChange={e => set('cadPro', e.target.value)} />
           </FieldRow>
           <FieldRow label="Renda familiar">
-            <Input className={inp} disabled={d} value={form.familyIncome} onChange={e => set('familyIncome', e.target.value)} />
+            <Input className={inp} disabled={d} value={form.familyIncome} onChange={e => set('familyIncome', maskMoney(e.target.value))} placeholder="R$ 0,00" inputMode="numeric" />
           </FieldRow>
           <div className="flex items-center gap-2 pt-5">
             <input type="checkbox" id="specialNeeds" disabled={d} checked={form.specialNeeds} onChange={e => set('specialNeeds', e.target.checked)} className="accent-primary disabled:opacity-50 disabled:cursor-not-allowed" />
@@ -714,7 +750,7 @@ function DadosTab({ userId, user, completeMode, onCompleteModeEnd, hasNoProperti
             <Input className={inp} disabled={d} value={form.memberType} onChange={e => set('memberType', e.target.value)} />
           </FieldRow>
           <FieldRow label="Associado desde">
-            <Input className={inp} disabled={d} type="date" value={form.memberSince} onChange={e => set('memberSince', e.target.value)} />
+            <DatePicker disabled={d} value={form.memberSince} onChange={v => set('memberSince', v)} />
           </FieldRow>
           <FieldRow label="Nº observação">
             <Input className={inp} disabled={d} value={form.memberNotesNumber} onChange={e => set('memberNotesNumber', e.target.value)} />
@@ -882,76 +918,43 @@ function DadosTab({ userId, user, completeMode, onCompleteModeEnd, hasNoProperti
             </div>
           ) : (
             <div className="flex flex-col gap-3">
-              <p className="text-sm text-muted-foreground">Usuário não é instrutor.</p>
-              {editing && (
-                showPromote ? (
-                  <div className="flex flex-col gap-3 border rounded-lg p-3 bg-muted/30">
-                    <FieldRow label="Bio">
-                      <textarea
-                        value={bioInput}
-                        onChange={e => setBioInput(e.target.value)}
-                        placeholder="Bio (opcional)"
-                        rows={3}
-                        className="rounded-md border border-input px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring bg-background w-full resize-none"
-                      />
-                    </FieldRow>
-                    <FieldRow label="LinkedIn">
-                      <Input className="h-9" value={instrLinkedin} onChange={e => setInstrLinkedin(e.target.value)} placeholder="https://linkedin.com/in/..." />
-                    </FieldRow>
-                    <FieldRow label="Instagram">
-                      <Input className="h-9" value={instrInstagram} onChange={e => setInstrInstagram(e.target.value)} placeholder="https://instagram.com/..." />
-                    </FieldRow>
-                    <FieldRow label="Facebook">
-                      <Input className="h-9" value={instrFacebook} onChange={e => setInstrFacebook(e.target.value)} placeholder="https://facebook.com/..." />
-                    </FieldRow>
-                    <div className="flex gap-2">
-                      <Button
-                        size="sm"
-                        disabled={promote.isPending || updateInstructor.isPending}
-                        onClick={async () => {
-                          try {
-                            await promote.mutateAsync(bioInput || undefined)
-                            if (instrLinkedin || instrInstagram || instrFacebook) {
-                              await updateInstructor.mutateAsync({
-                                linkedin: instrLinkedin || null,
-                                instagram: instrInstagram || null,
-                                facebook: instrFacebook || null,
-                              })
-                            }
-                            setBioInput('')
-                            setShowPromote(false)
-                            toast.success('Usuário promovido a instrutor!')
-                          } catch (e) {
-                            if (e instanceof ApiError && e.status === 409) {
-                              // já é instrutor — atualiza dados e fecha o form
-                              queryClient.invalidateQueries({ queryKey: ['admin', 'users', userId] })
-                              setShowPromote(false)
-                              setBioInput('')
-                              toast.info('Este usuário já é instrutor.')
-                            } else {
-                              toast.error(e instanceof ApiError ? e.message : 'Erro ao promover a instrutor.')
-                            }
-                          }
-                        }}
-                      >
-                        {(promote.isPending || updateInstructor.isPending) ? 'Salvando...' : 'Confirmar'}
-                      </Button>
-                      <Button size="sm" variant="ghost" onClick={() => {
-                        setShowPromote(false)
-                        setBioInput('')
-                        setInstrLinkedin('')
-                        setInstrInstagram('')
-                        setInstrFacebook('')
-                      }}>
-                        Cancelar
-                      </Button>
+              {editing ? (
+                <>
+                  <label className="flex items-center gap-2 text-sm cursor-pointer w-fit">
+                    <input
+                      type="checkbox"
+                      checked={wantInstructor}
+                      onChange={e => setWantInstructor(e.target.checked)}
+                      className="accent-primary"
+                    />
+                    Tornar este usuário instrutor
+                  </label>
+                  {wantInstructor && (
+                    <div className="grid grid-cols-1 gap-4">
+                      <FieldRow label="Bio">
+                        <textarea
+                          value={instrBio}
+                          onChange={e => setInstrBio(e.target.value)}
+                          placeholder="Bio (opcional)"
+                          rows={3}
+                          className="rounded-md border border-input px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring bg-background w-full resize-none"
+                        />
+                      </FieldRow>
+                      <FieldRow label="LinkedIn">
+                        <Input className={inp} value={instrLinkedin} onChange={e => setInstrLinkedin(e.target.value)} placeholder="https://linkedin.com/in/..." />
+                      </FieldRow>
+                      <FieldRow label="Instagram">
+                        <Input className={inp} value={instrInstagram} onChange={e => setInstrInstagram(e.target.value)} placeholder="https://instagram.com/..." />
+                      </FieldRow>
+                      <FieldRow label="Facebook">
+                        <Input className={inp} value={instrFacebook} onChange={e => setInstrFacebook(e.target.value)} placeholder="https://facebook.com/..." />
+                      </FieldRow>
+                      <p className="text-xs text-muted-foreground">A promoção é aplicada ao salvar o formulário.</p>
                     </div>
-                  </div>
-                ) : (
-                  <Button size="sm" variant="outline" className="w-fit" onClick={() => setShowPromote(true)}>
-                    Promover a instrutor
-                  </Button>
-                )
+                  )}
+                </>
+              ) : (
+                <p className="text-sm text-muted-foreground">Usuário não é instrutor.</p>
               )}
             </div>
           )}
