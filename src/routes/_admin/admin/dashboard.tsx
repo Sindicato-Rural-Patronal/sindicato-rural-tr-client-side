@@ -186,8 +186,8 @@ function RouteComponent() {
             />
             <StatCard
               title="Inscrições"
-              value={stats.totalRegistrations}
-              description="Total em todos os cursos"
+              value={stats.registrationsLast30Days}
+              description="Nos últimos 30 dias"
               icon={GraduationCap}
             />
           </>

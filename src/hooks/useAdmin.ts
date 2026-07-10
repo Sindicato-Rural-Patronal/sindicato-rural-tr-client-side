@@ -11,6 +11,7 @@ export type DashboardStats = {
     unpublished: number
   }
   totalRegistrations: number
+  registrationsLast30Days: number
 }
 
 export type Registration = {
