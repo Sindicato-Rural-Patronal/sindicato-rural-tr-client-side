@@ -68,7 +68,7 @@ const ptBR = {
     gallery: 'Galeria',
     info: 'Informações do curso',
     period: 'Período',
-    schedule: 'Horário',
+    schedule: 'Horário de funcionamento',
     workload: '{{hours}}h de carga horária',
     location: 'Local',
     instructor: 'Instrutor',

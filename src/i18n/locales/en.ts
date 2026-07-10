@@ -68,7 +68,7 @@ const en = {
     gallery: 'Gallery',
     info: 'Course information',
     period: 'Period',
-    schedule: 'Schedule',
+    schedule: 'Operating hours',
     workload: '{{hours}}h workload',
     location: 'Location',
     instructor: 'Instructor',
