@@ -13,4 +13,13 @@ describe('formatDateFromString', () => {
   it('converte final de ano', () => {
     expect(formatDateFromString('2023-12-31')).toBe('31/12/23')
   })
+
+  it('aceita ISO datetime e descarta a hora', () => {
+    expect(formatDateFromString('2026-07-01T12:34:56.000Z')).toBe('01/07/26')
+  })
+
+  it('retorna vazio para entrada inválida ou vazia', () => {
+    expect(formatDateFromString('')).toBe('')
+    expect(formatDateFromString('lixo')).toBe('')
+  })
 })
