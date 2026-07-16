@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
+import { apiErrorMessage } from '@/lib/api-error-message'
 import { z } from 'zod'
 import { useState, useEffect } from 'react'
 import { toast } from 'sonner'
@@ -734,7 +735,7 @@ function RouteComponent() {
       toast.success(`Associado "${deleteAssociadoTarget.name}" excluído.`)
       setDeleteAssociadoTarget(null)
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Erro ao excluir associado.')
+      toast.error(apiErrorMessage(e, 'Erro ao excluir associado.'))
     }
   }
 
@@ -745,7 +746,7 @@ function RouteComponent() {
       toast.success(`Administrador "${deleteAdminTarget.userData.name}" excluído.`)
       setDeleteAdminTarget(null)
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Erro ao excluir administrador.')
+      toast.error(apiErrorMessage(e, 'Erro ao excluir administrador.'))
     }
   }
 
@@ -1092,7 +1093,7 @@ function RouteComponent() {
                     <TableRow key={a.id}>
                       <TableCell>
                         <div className="flex items-center gap-3">
-                          <AvatarCircle name={a.userData.name} size="sm" />
+                          <AvatarCircle name={a.userData.name} avatar={a.userData.avatar} size="sm" />
                           <div>
                             <p className="font-medium text-sm text-foreground">{a.userData.name}</p>
                             <p className="text-xs text-muted-foreground font-mono">@{a.username}</p>

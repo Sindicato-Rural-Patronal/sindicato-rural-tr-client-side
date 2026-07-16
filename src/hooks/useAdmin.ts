@@ -185,7 +185,7 @@ export type UserAdmin = {
   publicTitle: string | null
   createdAt: string
   updatedAt: string
-  userData: { name: string; email: string; cpf: string | null }
+  userData: { name: string; email: string; cpf: string | null; avatar: string | null }
   rules: { name: string; permissions: string[] }
 }
 
