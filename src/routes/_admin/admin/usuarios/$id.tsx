@@ -30,7 +30,7 @@ import {
   Pencil, X, GraduationCap, Handshake, ImageUp,
 } from 'lucide-react'
 import { maskCPF, maskPhone, maskCEP, maskRG, maskCNH, maskMoney } from '@/utils/masks'
-import { ApiError } from '@/lib/api'
+import { apiErrorMessage } from '@/lib/api-error-message'
 
 export const Route = createFileRoute('/_admin/admin/usuarios/$id')({
   component: RouteComponent,
@@ -394,44 +394,55 @@ function DadosTab({ userId, user, completeMode, onCompleteModeEnd, hasNoProperti
       toast.error('CNH inválida — deve ter 11 dígitos.')
       return
     }
+    // Corpo completo a partir de um snapshot do form (mesmo mapeamento do backend)
+    const buildBody = (f: DadosForm): Parameters<typeof updateWorker.mutateAsync>[0] => ({
+      name: f.name || undefined,
+      email: f.email || undefined,
+      phone: f.phone || undefined,
+      cpf: f.cpf || undefined,
+      nickname: f.nickname || null,
+      maritalStatus: (f.maritalStatus as UserDataDetail['maritalStatus']) || null,
+      phone2: f.phone2 || null,
+      phone3: f.phone3 || null,
+      rg: f.rg || null,
+      rgIssuer: f.rgIssuer || null,
+      rgIssuedAt: f.rgIssuedAt ? toIso(f.rgIssuedAt) : null,
+      birthDate: f.birthDate ? toIso(f.birthDate) : null,
+      driverLicense: f.driverLicense || null,
+      driverLicenseCategory: f.driverLicenseCategory || null,
+      birthPlace: f.birthPlace || null,
+      nationality: f.nationality || null,
+      gender: (f.gender as UserDataDetail['gender']) || null,
+      ethnicity: (f.ethnicity as UserDataDetail['ethnicity']) || null,
+      educationLevel: (f.educationLevel as UserDataDetail['educationLevel']) || null,
+      functionalCategory: f.functionalCategory || null,
+      specialNeeds: f.specialNeeds,
+      memberClassification: f.memberClassification || null,
+      cadPro: f.cadPro || null,
+      familyIncome: f.familyIncome.replace(/\D/g, '') || null,
+      memberType: f.memberType || null,
+      boardPosition: f.boardPosition || null,
+      boardMember: f.boardMember,
+      memberSince: f.memberSince ? toIso(f.memberSince) : null,
+      memberNotes: f.memberNotes || null,
+      memberNotesNumber: f.memberNotesNumber || null,
+      avatar: f.avatar || null,
+      isPartner: f.isPartner,
+      partnerUrl: f.partnerUrl || null,
+      partnerOrder: f.partnerOrder ? parseInt(f.partnerOrder, 10) : null,
+    })
     try {
-      const body: Parameters<typeof updateWorker.mutateAsync>[0] = {
-        name: form.name || undefined,
-        email: form.email || undefined,
-        phone: form.phone || undefined,
-        cpf: form.cpf || undefined,
-        nickname: form.nickname || null,
-        maritalStatus: (form.maritalStatus as UserDataDetail['maritalStatus']) || null,
-        phone2: form.phone2 || null,
-        phone3: form.phone3 || null,
-        rg: form.rg || null,
-        rgIssuer: form.rgIssuer || null,
-        rgIssuedAt: form.rgIssuedAt ? toIso(form.rgIssuedAt) : null,
-        birthDate: form.birthDate ? toIso(form.birthDate) : null,
-        driverLicense: form.driverLicense || null,
-        driverLicenseCategory: form.driverLicenseCategory || null,
-        birthPlace: form.birthPlace || null,
-        nationality: form.nationality || null,
-        gender: (form.gender as UserDataDetail['gender']) || null,
-        ethnicity: (form.ethnicity as UserDataDetail['ethnicity']) || null,
-        educationLevel: (form.educationLevel as UserDataDetail['educationLevel']) || null,
-        functionalCategory: form.functionalCategory || null,
-        specialNeeds: form.specialNeeds,
-        memberClassification: form.memberClassification || null,
-        cadPro: form.cadPro || null,
-        familyIncome: form.familyIncome.replace(/\D/g, '') || null,
-        memberType: form.memberType || null,
-        boardPosition: form.boardPosition || null,
-        boardMember: form.boardMember,
-        memberSince: form.memberSince ? toIso(form.memberSince) : null,
-        memberNotes: form.memberNotes || null,
-        memberNotesNumber: form.memberNotesNumber || null,
-        avatar: form.avatar || null,
-        isPartner: form.isPartner,
-        partnerUrl: form.partnerUrl || null,
-        partnerOrder: form.partnerOrder ? parseInt(form.partnerOrder, 10) : null,
+      // Envia SÓ o que mudou: um campo legado inválido (ex: CPF antigo fora do
+      // padrão) não pode derrubar a edição de um campo não relacionado.
+      const bodyNow = buildBody(form)
+      const bodyOld = buildBody(saved)
+      const body: Record<string, unknown> = {}
+      for (const key of Object.keys(bodyNow) as (keyof typeof bodyNow)[]) {
+        if (bodyNow[key] !== bodyOld[key]) body[key] = bodyNow[key]
       }
-      await updateWorker.mutateAsync(body)
+      if (Object.keys(body).length > 0) {
+        await updateWorker.mutateAsync(body as Parameters<typeof updateWorker.mutateAsync>[0])
+      }
       queryClient.setQueryData<UserDataDetail>(['admin', 'users', userId], (old) => {
         if (!old) return old
         return {
@@ -495,7 +506,7 @@ function DadosTab({ userId, user, completeMode, onCompleteModeEnd, hasNoProperti
       setEditing(false)
       if (completeMode) onCompleteModeEnd()
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Erro ao salvar.')
+      toast.error(apiErrorMessage(e, 'Erro ao salvar.'))
     }
   }
 
@@ -908,7 +919,7 @@ function DadosTab({ userId, user, completeMode, onCompleteModeEnd, hasNoProperti
                       await demote.mutateAsync()
                       toast.success('Status de instrutor removido.')
                     } catch (e) {
-                      toast.error(e instanceof ApiError ? e.message : 'Erro ao remover status de instrutor.')
+                      toast.error(apiErrorMessage(e, 'Erro ao remover status de instrutor.'))
                     }
                   }}
                 >
@@ -1042,7 +1053,7 @@ function PropriedadesTab({ userId }: { userId: string }) {
       setAdding(false)
       toast.success('Propriedade adicionada!')
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Erro ao adicionar propriedade.')
+      toast.error(apiErrorMessage(e, 'Erro ao adicionar propriedade.'))
     }
   }
 
@@ -1053,7 +1064,7 @@ function PropriedadesTab({ userId }: { userId: string }) {
       setDeleteTarget(null)
       toast.success('Propriedade removida.')
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Erro ao remover propriedade.')
+      toast.error(apiErrorMessage(e, 'Erro ao remover propriedade.'))
     }
   }
 
@@ -1287,7 +1298,7 @@ function RelacoesTab({ userId }: { userId: string }) {
       setAdding(false)
       toast.success('Relação adicionada!')
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Erro ao adicionar relação.')
+      toast.error(apiErrorMessage(e, 'Erro ao adicionar relação.'))
     }
   }
 
@@ -1298,7 +1309,7 @@ function RelacoesTab({ userId }: { userId: string }) {
       setDeleteTarget(null)
       toast.success('Relação removida.')
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Erro ao remover relação.')
+      toast.error(apiErrorMessage(e, 'Erro ao remover relação.'))
     }
   }
 
