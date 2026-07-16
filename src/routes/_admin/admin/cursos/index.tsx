@@ -1,4 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router'
+import { useQueryClient } from '@tanstack/react-query'
+import { apiErrorMessage } from '@/lib/api-error-message'
+import { apiUpload } from '@/lib/api'
 import { useState, useRef, useEffect } from 'react'
 import { toast } from 'sonner'
 import { usePermissions } from '@/hooks/usePermissions'
@@ -179,7 +182,7 @@ function GalleryManager({ course }: { course: Course }) {
       await uploadPhoto.mutateAsync(file)
       toast.success('Foto adicionada!')
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Upload error.'
+      const msg = apiErrorMessage(err, 'Upload error.')
       setUploadError(msg)
       toast.error(msg)
     }
@@ -766,7 +769,10 @@ function courseToForm(c: Course): CourseFormData {
 
 function toISO(date: string, hour: string) {
   if (!date) return undefined
-  return new Date(`${date}T${hour || '00:00'}:00`).toISOString()
+  // Hora "de parede", sem fuso: envia como se fosse UTC porque o backend devolve
+  // a hora fatiando o ISO em UTC. Converter do fuso local (new Date(...).toISOString())
+  // deslocava a hora no round-trip — digitava 08:00 e voltava 11:00.
+  return `${date}T${hour || '00:00'}:00.000Z`
 }
 
 function BannerTab({ courseId }: { courseId: string | null }) {
@@ -800,7 +806,7 @@ function BannerTab({ courseId }: { courseId: string | null }) {
       setBannerCacheBust(v => v + 1)
       toast.success('Banner atualizado!')
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Upload error.'
+      const msg = apiErrorMessage(err, 'Upload error.')
       setBannerError(msg)
       toast.error(msg)
     }
@@ -815,7 +821,7 @@ function BannerTab({ courseId }: { courseId: string | null }) {
       await uploadPhoto.mutateAsync(file)
       toast.success('Foto adicionada!')
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Upload error.'
+      const msg = apiErrorMessage(err, 'Upload error.')
       setPhotoError(msg)
       toast.error(msg)
     }
@@ -898,6 +904,110 @@ function BannerTab({ courseId }: { courseId: string | null }) {
   )
 }
 
+// Imagens escolhidas antes do curso existir — sobem logo após o create.
+export type StagedImage = { file: File; url: string }
+
+function StagedImagesTab({
+  stagedBanner, onBannerChange, stagedPhotos, onPhotosChange,
+}: {
+  stagedBanner: StagedImage | null
+  onBannerChange: (img: StagedImage | null) => void
+  stagedPhotos: StagedImage[]
+  onPhotosChange: (imgs: StagedImage[]) => void
+}) {
+  const bannerRef = useRef<HTMLInputElement>(null)
+  const photoRef = useRef<HTMLInputElement>(null)
+  const { t } = useTranslation()
+
+  function pickBanner(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    if (stagedBanner) URL.revokeObjectURL(stagedBanner.url)
+    onBannerChange({ file, url: URL.createObjectURL(file) })
+    e.target.value = ''
+  }
+
+  function pickPhotos(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(e.target.files ?? [])
+    if (!files.length) return
+    onPhotosChange([...stagedPhotos, ...files.map(file => ({ file, url: URL.createObjectURL(file) }))])
+    e.target.value = ''
+  }
+
+  function removePhoto(url: string) {
+    URL.revokeObjectURL(url)
+    onPhotosChange(stagedPhotos.filter(p => p.url !== url))
+  }
+
+  return (
+    <div className="flex flex-col gap-6">
+      <p className="text-xs text-muted-foreground bg-muted/50 rounded-lg px-3 py-2">
+        As imagens serão enviadas automaticamente assim que o curso for criado.
+      </p>
+
+      {/* Banner */}
+      <div className="flex flex-col gap-3">
+        <Label>{t('admin.courses.bannerUpload')}</Label>
+        <div
+          className="relative h-40 rounded-xl overflow-hidden bg-muted flex items-center justify-center border border-border group cursor-pointer"
+          onClick={() => bannerRef.current?.click()}
+        >
+          {stagedBanner
+            ? <img src={stagedBanner.url} alt="Banner" className="h-full w-full object-cover" />
+            : <div className="flex flex-col items-center gap-2 text-muted-foreground/40">
+                <ImageUp className="size-10" />
+              </div>
+          }
+          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+            <Button variant="secondary" size="sm" type="button">
+              <ImageUp className="size-4" />
+              {t('admin.courses.bannerUpload')}
+            </Button>
+          </div>
+        </div>
+        <input ref={bannerRef} type="file" accept="image/*" className="hidden" onChange={pickBanner} />
+      </div>
+
+      {/* Gallery */}
+      <div className="flex flex-col gap-3 border-t pt-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <Label className="flex items-center gap-2"><Images className="size-4" /> {t('admin.courses.tabs.images')}</Label>
+            <p className="text-xs text-muted-foreground mt-0.5">{stagedPhotos.length} photo{stagedPhotos.length !== 1 ? 's' : ''}</p>
+          </div>
+          <Button size="sm" variant="outline" type="button" onClick={() => photoRef.current?.click()}>
+            <ImagePlus className="size-4" />
+            {t('admin.courses.galleryUpload')}
+          </Button>
+        </div>
+        <input ref={photoRef} type="file" accept="image/*" multiple className="hidden" onChange={pickPhotos} />
+        {stagedPhotos.length === 0
+          ? <div className="border-2 border-dashed rounded-xl p-8 text-center text-muted-foreground">
+              <Images className="size-10 mx-auto mb-2 opacity-40" />
+              <p className="text-sm">{t('admin.courses.galleryEmpty')}</p>
+            </div>
+          : <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+              {stagedPhotos.map(photo => (
+                <div key={photo.url} className="relative aspect-video rounded-xl overflow-hidden bg-muted group">
+                  <img src={photo.url} alt={photo.file.name} className="h-full w-full object-cover" />
+                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                    <button
+                      type="button"
+                      onClick={() => removePhoto(photo.url)}
+                      className="size-8 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center"
+                    >
+                      <Trash2 className="size-4" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+        }
+      </div>
+    </div>
+  )
+}
+
 export function CourseFormDialog({
   open,
   editing,
@@ -913,6 +1023,12 @@ export function CourseFormDialog({
   const { t } = useTranslation()
 
   const isCreating = !editing
+  const queryClient = useQueryClient()
+
+  // imagens escolhidas antes do curso existir (modo criação)
+  const [stagedBanner, setStagedBanner] = useState<StagedImage | null>(null)
+  const [stagedPhotos, setStagedPhotos] = useState<StagedImage[]>([])
+  const [uploadingStaged, setUploadingStaged] = useState(false)
 
   const form = useForm<CourseFormData>({
     resolver: zodResolver(courseBaseSchema),
@@ -921,10 +1037,14 @@ export function CourseFormDialog({
   })
 
   useEffect(() => {
-    if (open) form.reset(editing ? courseToForm(editing) : emptyFormDefaults)
+    if (open) {
+      form.reset(editing ? courseToForm(editing) : emptyFormDefaults)
+      setStagedBanner(null)
+      setStagedPhotos([])
+    }
   }, [open]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const isPending = createCourse.isPending || updateCourse.isPending
+  const isPending = createCourse.isPending || updateCourse.isPending || uploadingStaged
 
   async function onSubmit(data: CourseFormData) {
     if (isCreating && !data.roomId) {
@@ -946,13 +1066,37 @@ export function CourseFormDialog({
       ...(data.minStudents != null ? { minStudents: data.minStudents } : {}),
     }
     try {
-      editing
-        ? await updateCourse.mutateAsync(body)
-        : await createCourse.mutateAsync({ ...body, roomId: data.roomId! })
+      if (editing) {
+        await updateCourse.mutateAsync(body)
+      } else {
+        const res = await createCourse.mutateAsync({ ...body, roomId: data.roomId! })
+        const created = await res.json().catch(() => null) as { id?: string } | null
+
+        // sobe as imagens escolhidas antes do curso existir
+        if (created?.id && (stagedBanner || stagedPhotos.length > 0)) {
+          setUploadingStaged(true)
+          const failed: string[] = []
+          if (stagedBanner) {
+            try { await apiUpload(`/courses/${created.id}/banner`, stagedBanner.file) }
+            catch { failed.push('banner') }
+          }
+          for (const photo of stagedPhotos) {
+            try { await apiUpload(`/courses/${created.id}/gallery`, photo.file) }
+            catch { failed.push(photo.file.name) }
+          }
+          setUploadingStaged(false)
+          queryClient.invalidateQueries({ queryKey: ['admin', 'courses'] })
+          queryClient.invalidateQueries({ queryKey: ['courses'] })
+          if (failed.length) {
+            toast.error(`Curso criado, mas falhou o upload de: ${failed.join(', ')}. Adicione pela edição.`)
+          }
+        }
+      }
       toast.success(editing ? 'Curso atualizado com sucesso!' : 'Curso criado com sucesso!')
       onClose()
     } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : t('common.error')
+      setUploadingStaged(false)
+      const msg = apiErrorMessage(e, t('common.error'))
       form.setError('root', { message: msg })
       toast.error(msg)
     }
@@ -1122,7 +1266,14 @@ export function CourseFormDialog({
               </TabsContent>
 
               <TabsContent value="images" className="flex-1 overflow-y-auto px-6 py-4">
-                <BannerTab courseId={editing?.id ?? null} />
+                {isCreating
+                  ? <StagedImagesTab
+                      stagedBanner={stagedBanner}
+                      onBannerChange={setStagedBanner}
+                      stagedPhotos={stagedPhotos}
+                      onPhotosChange={setStagedPhotos}
+                    />
+                  : <BannerTab courseId={editing?.id ?? null} />}
               </TabsContent>
             </Tabs>
 

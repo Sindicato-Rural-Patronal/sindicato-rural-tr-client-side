@@ -1,4 +1,5 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
+import { apiErrorMessage } from '@/lib/api-error-message'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useCreateCourse } from '@/hooks/useCourse'
@@ -58,11 +59,12 @@ function RouteComponent() {
       description: form.description,
       roomId: form.roomId,
       status: form.status as 'PUBLIC' | 'PRIVATE' | 'UNPUBLISHED',
-      startTime: new Date(form.startTime).toISOString(),
-      endTime: new Date(form.endTime).toISOString(),
+      // hora "de parede" — mesma convenção do dialog de cursos (backend fatia em UTC)
+      startTime: `${form.startTime}:00.000Z`,
+      endTime: `${form.endTime}:00.000Z`,
       ...(form.price ? { price: Number(form.price) } : {}),
       ...(form.workloadHours ? { workloadHours: Number(form.workloadHours) } : {}),
-      ...(form.registrationDeadline ? { registrationDeadline: new Date(form.registrationDeadline).toISOString() } : {}),
+      ...(form.registrationDeadline ? { registrationDeadline: `${form.registrationDeadline}:00.000Z` } : {}),
       ...(form.observations ? { observations: form.observations } : {}),
     }
 
@@ -70,7 +72,7 @@ function RouteComponent() {
       const res = await createCourse.mutateAsync(body)
       if (!res.ok) {
         const data = await res.json().catch(() => null)
-        setError(data?.error ?? data?.message ?? 'Erro ao criar curso.')
+        setError(apiErrorMessage(data?.error ?? data?.message ?? '', 'Erro ao criar curso.'))
         return
       }
       navigate({ to: '/admin/cursos' })
