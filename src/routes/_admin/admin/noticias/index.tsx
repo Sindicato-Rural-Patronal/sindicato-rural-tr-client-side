@@ -1,4 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router'
+import { useQueryClient } from '@tanstack/react-query'
+import { apiFetch, apiUpload } from '@/lib/api'
+import { apiErrorMessage } from '@/lib/api-error-message'
 import { useState, useRef } from 'react'
 import { toast } from 'sonner'
 import { usePermissions } from '@/hooks/usePermissions'
@@ -64,10 +67,13 @@ function BlockUploadButton({
   onUploaded,
   newsId,
   label = 'Escolher imagem',
+  stageFile,
 }: {
   onUploaded: (url: string) => void
   newsId: string
   label?: string
+  /** Modo criação: registra o arquivo localmente e devolve URL de preview — o upload real acontece após o create. */
+  stageFile?: (file: File) => string
 }) {
   const upload = useUploadNewsBlockImage(newsId)
   const ref = useRef<HTMLInputElement>(null)
@@ -75,6 +81,11 @@ function BlockUploadButton({
   async function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file) return
+    if (stageFile) {
+      onUploaded(stageFile(file))
+      if (ref.current) ref.current.value = ''
+      return
+    }
     try {
       const res = await upload.mutateAsync(file)
       const data = await res.json()
@@ -176,12 +187,15 @@ function ImageEdit({
   block,
   onChange,
   newsId,
+  stageFile,
 }: {
   block: ImageBlock
   onChange: (b: ImageBlock) => void
   newsId: string
+  stageFile?: (file: File) => string
 }) {
   const isPending = newsId === '__pending__'
+  const staged = isPending ? stageFile : undefined
   return (
     <figure className="my-2">
       {block.url ? (
@@ -192,9 +206,10 @@ function ImageEdit({
             className="w-full rounded-xl object-cover max-h-120"
           />
           <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/img:opacity-100 flex items-center justify-center rounded-xl transition-opacity">
-            {!isPending && (
+            {(!isPending || staged) && (
               <BlockUploadButton
                 newsId={newsId}
+                stageFile={staged}
                 onUploaded={url => onChange({ ...block, url })}
                 label="Trocar imagem"
               />
@@ -203,13 +218,14 @@ function ImageEdit({
         </div>
       ) : (
         <div className="flex h-40 items-center justify-center rounded-xl border-2 border-dashed bg-muted">
-          {isPending ? (
+          {isPending && !staged ? (
             <p className="text-xs text-muted-foreground text-center px-6">
               Salve a notícia primeiro para fazer upload de imagens
             </p>
           ) : (
             <BlockUploadButton
               newsId={newsId}
+              stageFile={staged}
               onUploaded={url => onChange({ ...block, url })}
               label="Carregar imagem"
             />
@@ -230,12 +246,15 @@ function ImageTextEdit({
   block,
   onChange,
   newsId,
+  stageFile,
 }: {
   block: ImageTextBlock
   onChange: (b: ImageTextBlock) => void
   newsId: string
+  stageFile?: (file: File) => string
 }) {
   const isPending = newsId === '__pending__'
+  const staged = isPending ? stageFile : undefined
   return (
     <div
       className={`flex flex-col gap-4 md:flex-row md:items-start ${
@@ -247,9 +266,10 @@ function ImageTextEdit({
           <div className="relative group/img">
             <img src={block.url} alt="" className="w-full rounded-xl object-cover max-h-64" />
             <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/img:opacity-100 flex items-center justify-center rounded-xl transition-opacity">
-              {!isPending && (
+              {(!isPending || staged) && (
                 <BlockUploadButton
                   newsId={newsId}
+                  stageFile={staged}
                   onUploaded={url => onChange({ ...block, url })}
                   label="Trocar"
                 />
@@ -258,11 +278,12 @@ function ImageTextEdit({
           </div>
         ) : (
           <div className="flex h-36 items-center justify-center rounded-xl border-2 border-dashed bg-muted">
-            {isPending ? (
+            {isPending && !staged ? (
               <p className="text-xs text-muted-foreground text-center px-4">Salve primeiro</p>
             ) : (
               <BlockUploadButton
                 newsId={newsId}
+                stageFile={staged}
                 onUploaded={url => onChange({ ...block, url })}
                 label="Imagem"
               />
@@ -319,6 +340,10 @@ function NewsEditor({
   const [savedId, setSavedId] = useState<string | null>(news?.id ?? null)
   const [bannerUrl, setBannerUrl] = useState<string | null>(news?.bannerUrl ?? null)
   const [bannerCropSrc, setBannerCropSrc] = useState<string | null>(null)
+  // arquivos escolhidos antes da notícia existir — sobem logo após o create
+  const [stagedBannerFile, setStagedBannerFile] = useState<File | null>(null)
+  const stagedFilesRef = useRef<Map<string, File>>(new Map())
+  const queryClient = useQueryClient()
   const [error, setError] = useState<string | null>(null)
   const [confirmClose, setConfirmClose] = useState(false)
   const [saved, setSaved] = useState(mode === 'edit')
@@ -366,34 +391,103 @@ function NewsEditor({
   }
 
   const newsId = savedId ?? '__pending__'
-  const isPending = createNews.isPending || updateNews.isPending || uploadBanner.isPending
+  const [uploadingStaged, setUploadingStaged] = useState(false)
+  const isPending = createNews.isPending || updateNews.isPending || uploadBanner.isPending || uploadingStaged
+
+  /** Modo criação: registra o arquivo do bloco localmente e devolve URL de preview. */
+  function stageBlockFile(file: File): string {
+    const url = URL.createObjectURL(file)
+    stagedFilesRef.current.set(url, file)
+    setSaved(false)
+    return url
+  }
+
+  const isBlobUrl = (url: string) => url.startsWith('blob:')
 
   async function handleSave() {
     setError(null)
     if (!form.title.trim()) { setError('Título é obrigatório.'); return }
-    const content = serializeBlocks(toBlocks(blockItems))
     try {
       if (!savedId) {
+        // nunca persiste URLs blob: — cria com url vazia e corrige via PATCH após os uploads
+        const createContent = serializeBlocks(toBlocks(blockItems).map(b =>
+          (b.type === 'image' || b.type === 'image-text') && isBlobUrl(b.url) ? { ...b, url: '' } : b,
+        ))
         const res = await createNews.mutateAsync({
           title: form.title,
           summary: form.summary || undefined,
           status: form.status,
-          content,
+          content: createContent,
         })
         const data = await res.json()
-        setSavedId(data.id)
+        const newId: string = data.id
+        setSavedId(newId)
+
+        const failed: string[] = []
+        const hasStagedBlocks = blockItems.some(i => (i.type === 'image' || i.type === 'image-text') && isBlobUrl(i.url))
+
+        if (stagedBannerFile || hasStagedBlocks) {
+          setUploadingStaged(true)
+
+          // banner escolhido antes do create
+          if (stagedBannerFile) {
+            try {
+              const bRes = await apiUpload(`/news/${newId}/banner`, stagedBannerFile)
+              const bData = await bRes.json().catch(() => null)
+              if (bData?.url) setBannerUrl(bData.url)
+            } catch { failed.push('banner') }
+            setStagedBannerFile(null)
+          }
+
+          // imagens de bloco escolhidas antes do create
+          if (hasStagedBlocks) {
+            const finalItems: BlockItem[] = []
+            for (const item of blockItems) {
+              if ((item.type === 'image' || item.type === 'image-text') && isBlobUrl(item.url)) {
+                const file = stagedFilesRef.current.get(item.url)
+                let realUrl = ''
+                if (file) {
+                  try {
+                    const uRes = await apiUpload(`/news/${newId}/image`, file)
+                    const uData = await uRes.json().catch(() => null)
+                    realUrl = uData?.url ?? ''
+                  } catch { /* fica vazio */ }
+                }
+                if (!realUrl) failed.push('imagem de bloco')
+                URL.revokeObjectURL(item.url)
+                finalItems.push({ ...item, url: realUrl })
+              } else {
+                finalItems.push(item)
+              }
+            }
+            stagedFilesRef.current.clear()
+            setBlockItems(finalItems)
+            await apiFetch(`/news/${newId}`, {
+              method: 'PATCH',
+              body: JSON.stringify({ content: serializeBlocks(toBlocks(finalItems)) }),
+            })
+          }
+
+          setUploadingStaged(false)
+          queryClient.invalidateQueries({ queryKey: ['news'] })
+          queryClient.invalidateQueries({ queryKey: ['admin', 'news'] })
+          if (failed.length) {
+            toast.error(`Notícia criada, mas falhou o upload de: ${failed.join(', ')}. Tente novamente pela edição.`)
+          }
+        }
       } else {
         await updateNews.mutateAsync({
           title: form.title,
           summary: form.summary || undefined,
           status: form.status,
-          content,
+          content: serializeBlocks(toBlocks(blockItems)),
         })
       }
       setSaved(true)
       toast.success(savedId ? 'Notícia atualizada!' : 'Notícia criada!')
     } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : 'Erro ao salvar.'
+      setUploadingStaged(false)
+      const msg = apiErrorMessage(e, 'Erro ao salvar.')
       setError(msg)
       toast.error(msg)
     }
@@ -402,14 +496,22 @@ function NewsEditor({
   function handleBannerSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file) return
-    if (!savedId) { setError('Salve a notícia antes de adicionar banner.'); return }
     setBannerCropSrc(URL.createObjectURL(file))
     if (bannerInputRef.current) bannerInputRef.current.value = ''
   }
 
   async function handleBannerCropConfirm(file: File) {
     setBannerCropSrc(null)
-    if (!savedId) return
+    if (!savedId) {
+      // criação: guarda localmente, mostra preview e sobe após o create
+      setStagedBannerFile(file)
+      setBannerUrl(prev => {
+        if (prev && isBlobUrl(prev)) URL.revokeObjectURL(prev)
+        return URL.createObjectURL(file)
+      })
+      setSaved(false)
+      return
+    }
     try {
       const res = await uploadBanner.mutateAsync(file)
       const data = await res.json()
@@ -477,35 +579,30 @@ function NewsEditor({
           {bannerUrl ? (
             <div
               className="relative group/banner overflow-hidden rounded-xl cursor-pointer"
-              onClick={() => savedId && bannerInputRef.current?.click()}
+              onClick={() => bannerInputRef.current?.click()}
             >
               <img src={bannerUrl} alt="" className="w-full max-h-80 object-cover" />
-              {savedId && (
-                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/banner:opacity-100 flex items-center justify-center transition-opacity rounded-xl">
-                  <span className="text-white text-sm font-medium flex items-center gap-2">
-                    <ImageUp className="size-4" /> Trocar banner
-                  </span>
-                </div>
-              )}
+              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/banner:opacity-100 flex items-center justify-center transition-opacity rounded-xl">
+                <span className="text-white text-sm font-medium flex items-center gap-2">
+                  <ImageUp className="size-4" /> Trocar banner
+                </span>
+              </div>
             </div>
           ) : (
             <div
-              className={`flex h-44 items-center justify-center border-2 border-dashed rounded-xl bg-muted transition-colors ${savedId ? 'cursor-pointer hover:bg-muted/70' : ''}`}
-              onClick={() => savedId && bannerInputRef.current?.click()}
+              className="flex h-44 items-center justify-center border-2 border-dashed rounded-xl bg-muted transition-colors cursor-pointer hover:bg-muted/70"
+              onClick={() => bannerInputRef.current?.click()}
             >
               <div className="text-center text-muted-foreground pointer-events-none">
                 <ImageUp className="size-8 mx-auto mb-2 opacity-40" />
-                <p className="text-sm">
-                  {savedId ? 'Clique para adicionar banner' : 'Salve a notícia para adicionar banner'}
-                </p>
+                <p className="text-sm">Clique para adicionar banner</p>
               </div>
             </div>
           )}
-          {savedId && (
-            <p className="mt-1.5 text-[11px] text-muted-foreground text-center">
-              Proporção ideal: 1440 × 600 px (a imagem será recortada nessa proporção)
-            </p>
-          )}
+          <p className="mt-1.5 text-[11px] text-muted-foreground text-center">
+            Proporção ideal: 1440 × 600 px (a imagem será recortada nessa proporção)
+            {!savedId && ' — o upload acontece ao salvar'}
+          </p>
         </div>
 
         {/* Header */}
@@ -559,6 +656,7 @@ function NewsEditor({
                       block={item}
                       onChange={b => updateBlock(item._id, b)}
                       newsId={newsId}
+                      stageFile={stageBlockFile}
                     />
                   )}
                   {item.type === 'image-text' && (
@@ -566,6 +664,7 @@ function NewsEditor({
                       block={item}
                       onChange={b => updateBlock(item._id, b)}
                       newsId={newsId}
+                      stageFile={stageBlockFile}
                     />
                   )}
                 </SortableBlockWrapper>

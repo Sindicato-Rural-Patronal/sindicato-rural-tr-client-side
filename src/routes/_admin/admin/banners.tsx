@@ -1,4 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router'
+import { useQueryClient } from '@tanstack/react-query'
+import { apiErrorMessage } from '@/lib/api-error-message'
+import { apiUpload } from '@/lib/api'
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { toast } from 'sonner'
 import { ImageCropDialog } from '@/components/ImageCropDialog'
@@ -136,12 +139,16 @@ function BannerSheet({
   const [form, setForm] = useState<BannerFormState>(emptyForm)
   const [error, setError] = useState<string | null>(null)
   const [cropSrc, setCropSrc] = useState<string | null>(null)
+  // imagem recortada antes do banner existir (modo criação) — sobe após o create
+  const [stagedImage, setStagedImage] = useState<{ file: File; url: string } | null>(null)
+  const queryClient = useQueryClient()
 
   useEffect(() => {
     if (!mode) return
     setForm(banner ? formFromBanner(banner) : emptyForm())
     setError(null)
     setCropSrc(null)
+    setStagedImage(null)
   }, [mode?.mode, banner?.id])
 
   function set<K extends keyof BannerFormState>(k: K, v: BannerFormState[K]) {
@@ -158,7 +165,14 @@ function BannerSheet({
 
   const handleCropConfirm = useCallback(async (file: File) => {
     setCropSrc(null)
-    if (!banner) return
+    if (!banner) {
+      // criação: guarda localmente e sobe depois do create
+      setStagedImage(prev => {
+        if (prev) URL.revokeObjectURL(prev.url)
+        return { file, url: URL.createObjectURL(file) }
+      })
+      return
+    }
     try {
       const res = await uploadImage.mutateAsync(file)
       if (!res.ok) { toast.error('Erro ao fazer upload.'); return }
@@ -190,12 +204,24 @@ function BannerSheet({
         toast.success('Banner atualizado!')
       } else {
         const res = await createBanner.mutateAsync(body)
-        if (!res.ok) { const d = await res.json().catch(() => null); setError(d?.error ?? 'Erro ao criar.'); return }
+        if (!res.ok) { const d = await res.json().catch(() => null); setError(apiErrorMessage(d?.error ?? '', 'Erro ao criar.')); return }
+        if (stagedImage) {
+          const created = await res.json().catch(() => null) as { id?: string } | null
+          if (created?.id) {
+            try {
+              await apiUpload(`/admin/banners/${created.id}/image`, stagedImage.file)
+              queryClient.invalidateQueries({ queryKey: ['banners'] })
+              queryClient.invalidateQueries({ queryKey: ['admin', 'banners'] })
+            } catch {
+              toast.error('Banner criado, mas o upload da imagem falhou. Adicione pela edição.')
+            }
+          }
+        }
         toast.success('Banner criado!')
       }
       onClose()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erro ao salvar.')
+      setError(apiErrorMessage(err, 'Erro ao salvar.'))
     }
   }
 
@@ -230,9 +256,27 @@ function BannerSheet({
             </div>
           )}
           {!isEdit && (
-            <p className="text-xs text-muted-foreground bg-muted/50 rounded-lg px-3 py-2">
-              Após criar o banner, volte para editar e adicionar a imagem.
-            </p>
+            <div className="flex flex-col gap-2">
+              <Label className="text-xs font-semibold">Imagem</Label>
+              {stagedImage ? (
+                <img src={stagedImage.url} alt="Prévia do banner" className="w-full h-32 object-cover rounded-lg border" />
+              ) : (
+                <div className="flex h-32 items-center justify-center border-2 border-dashed rounded-lg bg-muted/50 text-muted-foreground">
+                  <ImageUp className="size-8 opacity-40" />
+                </div>
+              )}
+              <div className="flex items-center gap-2 flex-wrap">
+                <input ref={imageInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileSelect} />
+                <Button
+                  type="button" variant="outline" size="sm" className="gap-1.5"
+                  onClick={() => imageInputRef.current?.click()}
+                >
+                  <ImageUp className="size-3.5" />
+                  {stagedImage ? 'Trocar imagem' : 'Adicionar imagem'}
+                </Button>
+                <span className="text-[11px] text-muted-foreground">Proporção ideal: 1440 × 600 px — sobe junto com a criação</span>
+              </div>
+            </div>
           )}
 
           <ImageCropDialog
