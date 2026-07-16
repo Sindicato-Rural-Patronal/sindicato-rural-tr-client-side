@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
+import { apiErrorMessage } from '@/lib/api-error-message'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { useState } from 'react'
@@ -57,7 +58,7 @@ function RegistrationDialog({
       await register.mutateAsync({ name: data.name, email: data.email, phone: data.phone, cpf: data.cpf })
       setStep('success')
     } catch (e: unknown) {
-      form.setError('root', { message: e instanceof Error ? e.message : t('registration.errorDefault') })
+      form.setError('root', { message: apiErrorMessage(e, t('registration.errorDefault')) })
     }
   }
 

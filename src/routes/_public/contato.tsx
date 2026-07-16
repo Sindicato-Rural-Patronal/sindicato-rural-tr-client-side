@@ -1,4 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router'
+import { apiErrorMessage } from '@/lib/api-error-message'
 import { useState } from 'react'
 import { usePublicContacts, useSendContactMessage } from '@/hooks/useAdmin'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -158,7 +159,7 @@ function ContactForm() {
       setSent(true)
       setForm(emptyForm())
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erro ao enviar mensagem. Tente novamente.')
+      setError(apiErrorMessage(err, 'Erro ao enviar mensagem. Tente novamente.'))
     }
   }
 
