@@ -1,7 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { useQueryClient } from '@tanstack/react-query'
 import { apiErrorMessage } from '@/lib/api-error-message'
-import { apiUpload } from '@/lib/api'
+import { apiFetch, apiUpload } from '@/lib/api'
 import { useState, useRef, useEffect } from 'react'
 import { toast } from 'sonner'
 import { usePermissions } from '@/hooks/usePermissions'
@@ -19,6 +19,7 @@ import {
 import type { CourseCardItem } from '@/hooks/useCourse'
 import { useRooms, useCreateRoom } from '@/hooks/useRooms'
 import { useCourseRegistrations, useCancelRegistration, useInstructors } from '@/hooks/useAdmin'
+import type { UserDataDetail } from '@/hooks/useAdmin'
 import { formatDateFromString } from '@/utils/format-data-from-string'
 import { roomSchema, courseBaseSchema } from '@/lib/schemas'
 import type { RoomFormData, CourseFormData } from '@/lib/schemas'
@@ -27,6 +28,7 @@ import {
   Plus, Building2, GraduationCap, Calendar, Search,
   BookOpen, Images, ChevronLeft, ChevronRight, X, Pencil, Trash2,
   Clock, MapPin, User, ImageUp, ImagePlus, Upload, UserCheck, UserX,
+  FileDown, Loader2,
 } from 'lucide-react'
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
 import {
@@ -243,7 +245,15 @@ function GalleryManager({ course }: { course: Course }) {
 
 // ─── registrations tab ───────────────────────────────────────────────────────
 
-function RegistrationsTab({ courseId }: { courseId: string }) {
+function RegistrationsTab({
+  courseId,
+  eventNumber,
+  courseTitle,
+}: {
+  courseId: string
+  eventNumber: string | null
+  courseTitle: string
+}) {
   const [page, setPage] = useState(1)
   const limit = 20
   const { data: resp, isLoading } = useCourseRegistrations(courseId, { page, limit })
@@ -252,14 +262,63 @@ function RegistrationsTab({ courseId }: { courseId: string }) {
   const totalPages = resp ? Math.ceil(total / limit) : 1
   const cancelReg = useCancelRegistration(courseId)
   const [confirmId, setConfirmId] = useState<string | null>(null)
+  const [fichaId, setFichaId] = useState<string | null>(null)
+  const [exportingAll, setExportingAll] = useState(false)
   const { t } = useTranslation()
+
+  const course = { eventNumber, title: courseTitle }
+
+  async function exportOne(userDataId: string) {
+    setFichaId(userDataId)
+    try {
+      const { downloadFichaPdf } = await import('@/lib/ficha-inscricao-pdf')
+      const user: UserDataDetail = await apiFetch(`/admin/users/${userDataId}`).then(r => r.json())
+      await downloadFichaPdf([{ course, user }], `ficha-${user.name}`)
+    } catch {
+      toast.error(t('admin.courses.fichaError'))
+    } finally {
+      setFichaId(null)
+    }
+  }
+
+  async function exportAll() {
+    setExportingAll(true)
+    try {
+      const { downloadFichaPdf } = await import('@/lib/ficha-inscricao-pdf')
+      // busca todas as inscrições (não só a página atual)
+      const all: { data: { userDataId: string }[] } = await apiFetch(
+        `/admin/courses/${courseId}/registrations?page=1&limit=1000`,
+      ).then(r => r.json())
+      if (all.data.length === 0) {
+        toast.error(t('admin.courses.noRegistrations'))
+        return
+      }
+      const users: UserDataDetail[] = await Promise.all(
+        all.data.map(r => apiFetch(`/admin/users/${r.userDataId}`).then(res => res.json())),
+      )
+      await downloadFichaPdf(
+        users.map(user => ({ course, user })),
+        `fichas-${courseTitle}`,
+      )
+    } catch {
+      toast.error(t('admin.courses.fichaError'))
+    } finally {
+      setExportingAll(false)
+    }
+  }
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-2">
         <p className="text-sm text-muted-foreground">
           {resp ? `${total} ${t('admin.courses.registrations').toLowerCase()}` : t('common.loading')}
         </p>
+        {total > 0 && (
+          <Button size="sm" variant="outline" className="h-8 gap-1.5" disabled={exportingAll} onClick={exportAll}>
+            {exportingAll ? <Loader2 className="size-3.5 animate-spin" /> : <FileDown className="size-3.5" />}
+            {t('admin.courses.exportAllFichas')}
+          </Button>
+        )}
       </div>
 
       {isLoading && (
@@ -297,6 +356,16 @@ function RegistrationsTab({ courseId }: { courseId: string }) {
             <span className="text-xs text-muted-foreground hidden sm:inline">
               {new Date(reg.createdAt).toLocaleDateString('pt-BR')}
             </span>
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-7 gap-1 px-2 text-xs"
+              disabled={fichaId === reg.userDataId}
+              onClick={() => exportOne(reg.userDataId)}
+            >
+              {fichaId === reg.userDataId ? <Loader2 className="size-3.5 animate-spin" /> : <FileDown className="size-3.5" />}
+              <span className="hidden sm:inline">{t('admin.courses.ficha')}</span>
+            </Button>
             {confirmId === reg.id ? (
               <div className="flex items-center gap-1">
                 <Button
@@ -598,7 +667,7 @@ function ViewDialog({
           </TabsContent>
 
           <TabsContent value="registrations" className="px-6 pb-4 mt-4">
-            <RegistrationsTab courseId={course.id} />
+            <RegistrationsTab courseId={course.id} eventNumber={course.eventNumber} courseTitle={course.title} />
           </TabsContent>
 
           <TabsContent value="gallery" className="px-6 pb-4 mt-4">
