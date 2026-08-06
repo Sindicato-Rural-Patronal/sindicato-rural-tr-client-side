@@ -268,7 +268,6 @@ function RegistrationsTab({
   const startCourse = useStartCourse()
   const [confirmId, setConfirmId] = useState<string | null>(null)
   const [fichaId, setFichaId] = useState<string | null>(null)
-  const [autId, setAutId] = useState<string | null>(null)
   const [exportingAll, setExportingAll] = useState(false)
   const { t } = useTranslation()
 
@@ -298,19 +297,14 @@ function RegistrationsTab({
     }
   }
 
-  async function exportAutorizacao(
-    regId: string,
-    participant: { name: string; cpf: string | null; birthDate: string | null },
-  ) {
-    setAutId(regId)
-    try {
-      const { downloadAutorizacaoPdf } = await import('@/lib/autorizacao-menor-pdf')
-      await downloadAutorizacaoPdf([{ course, participant }], `autorizacao-${participant.name}`)
-    } catch {
-      toast.error('Erro ao gerar a autorização.')
-    } finally {
-      setAutId(null)
-    }
+  function baixarAutorizacao() {
+    // Termo oficial SENAR (formulário em branco) servido como asset estático
+    const a = document.createElement('a')
+    a.href = '/termo-autorizacao-menor.pdf'
+    a.download = 'termo-autorizacao-menor.pdf'
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
   }
 
   async function exportAll() {
@@ -456,11 +450,10 @@ function RegistrationsTab({
                   size="sm"
                   variant="ghost"
                   className="h-7 gap-1 px-2 text-xs text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/30"
-                  disabled={autId === reg.id}
-                  onClick={() => exportAutorizacao(reg.id, { name: reg.userData.name, cpf: reg.userData.cpf, birthDate: reg.userData.birthDate })}
-                  title="Autorização do responsável (menor de idade)"
+                  onClick={baixarAutorizacao}
+                  title="Baixar termo de autorização do responsável (menor de idade)"
                 >
-                  {autId === reg.id ? <Loader2 className="size-3.5 animate-spin" /> : <FileDown className="size-3.5" />}
+                  <FileDown className="size-3.5" />
                   <span className="hidden sm:inline">Autorização</span>
                 </Button>
               ) : null
