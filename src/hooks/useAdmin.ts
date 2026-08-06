@@ -49,6 +49,7 @@ export type Registration = {
     cpf: string | null
     cnpj: string | null
     avatar: string | null
+    birthDate: string | null
     isPartner: boolean
     boardMember: boolean
     boardPosition: string | null

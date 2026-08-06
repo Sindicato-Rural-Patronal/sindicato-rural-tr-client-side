@@ -21,6 +21,7 @@ import { useRooms, useCreateRoom } from '@/hooks/useRooms'
 import { useCourseRegistrations, useCancelRegistration, useInstructors, useConfirmRegistration, useStartCourse } from '@/hooks/useAdmin'
 import type { UserDataDetail } from '@/hooks/useAdmin'
 import { formatDateFromString } from '@/utils/format-data-from-string'
+import { calcAge } from '@/utils/age'
 import { roomSchema, courseBaseSchema } from '@/lib/schemas'
 import type { RoomFormData, CourseFormData } from '@/lib/schemas'
 import { Label } from '@/components/ui/label'
@@ -380,6 +381,17 @@ function RegistrationsTab({
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-1.5 flex-wrap">
               <p className="text-sm font-medium text-foreground truncate">{reg.userData.name}</p>
+              {(() => {
+                const age = calcAge(reg.userData.birthDate)
+                return age !== null && age < 18 ? (
+                  <span
+                    className="inline-flex items-center rounded-full border border-red-300 bg-red-100 px-1.5 text-[10px] font-semibold text-red-700"
+                    title="Menor de idade — precisa da assinatura do responsável na ficha"
+                  >
+                    Menor · {age} anos
+                  </span>
+                ) : null
+              })()}
               {reg.userData.isPartner && (
                 <span className="inline-flex items-center rounded-full border border-amber-200 bg-amber-100 px-1.5 text-[10px] font-medium text-amber-700">Sócio</span>
               )}

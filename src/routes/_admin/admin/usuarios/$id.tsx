@@ -30,6 +30,7 @@ import {
   Pencil, X, GraduationCap, Handshake, ImageUp, Star,
 } from 'lucide-react'
 import { maskCPF, maskPhone, maskCEP, maskRG, maskCNH, maskMoney } from '@/utils/masks'
+import { ageLabel } from '@/utils/age'
 import { apiErrorMessage } from '@/lib/api-error-message'
 
 export const Route = createFileRoute('/_admin/admin/usuarios/$id')({
@@ -664,7 +665,7 @@ function DadosTab({ userId, user, completeMode, onCompleteModeEnd, hasNoProperti
           <FieldRow label="Data emissão RG">
             <DatePicker disabled={d} value={form.rgIssuedAt} onChange={v => set('rgIssuedAt', v)} />
           </FieldRow>
-          <FieldRow label="Data nascimento" highlight={hi('birthDate')}>
+          <FieldRow label={`Data nascimento${ageLabel(form.birthDate) ? ` — ${ageLabel(form.birthDate)}` : ''}`} highlight={hi('birthDate')}>
             <DatePicker disabled={d} value={form.birthDate} onChange={v => set('birthDate', v)} />
           </FieldRow>
           <FieldRow label="CNH">
