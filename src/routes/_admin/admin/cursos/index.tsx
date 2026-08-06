@@ -378,7 +378,18 @@ function RegistrationsTab({
             {reg.userData.name.charAt(0).toUpperCase()}
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-foreground truncate">{reg.userData.name}</p>
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <p className="text-sm font-medium text-foreground truncate">{reg.userData.name}</p>
+              {reg.userData.isPartner && (
+                <span className="inline-flex items-center rounded-full border border-amber-200 bg-amber-100 px-1.5 text-[10px] font-medium text-amber-700">Sócio</span>
+              )}
+              {reg.userData.boardPosition && (
+                <span className="inline-flex items-center rounded-full border border-blue-200 bg-blue-100 px-1.5 text-[10px] font-medium text-blue-700">{reg.userData.boardPosition}</span>
+              )}
+              {reg.userData.userAdmin?.isPublic && reg.userData.userAdmin.publicTitle && (
+                <span className="inline-flex items-center rounded-full border border-purple-200 bg-purple-100 px-1.5 text-[10px] font-medium text-purple-700">{reg.userData.userAdmin.publicTitle}</span>
+              )}
+            </div>
             <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
               <span>{reg.userData.email}</span>
               {reg.userData.phone && <span>{reg.userData.phone}</span>}

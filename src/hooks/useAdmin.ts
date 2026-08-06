@@ -28,6 +28,10 @@ export type Registration = {
     cpf: string | null
     cnpj: string | null
     avatar: string | null
+    isPartner: boolean
+    boardMember: boolean
+    boardPosition: string | null
+    userAdmin: { publicTitle: string | null; isPublic: boolean } | null
   }
 }
 
