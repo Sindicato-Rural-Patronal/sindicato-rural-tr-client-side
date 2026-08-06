@@ -128,8 +128,12 @@ const styles = StyleSheet.create({
   checkGrid: { flexDirection: 'row', flexWrap: 'wrap', paddingVertical: 4, gap: 2 },
   checkItem: { flexDirection: 'row', alignItems: 'center', width: '20%', marginBottom: 3 },
   checkItemWide: { flexDirection: 'row', alignItems: 'center', width: '33%', marginBottom: 3 },
-  box: { width: 8, height: 8, borderWidth: 1, borderColor: '#000', marginRight: 3, alignItems: 'center', justifyContent: 'center' },
-  boxMark: { fontSize: 7, fontFamily: 'Helvetica-Bold', lineHeight: 1 },
+  // Checkbox: quadrado com borda; quando marcado, um quadradinho preto interno.
+  // (Um <Text> "X" dentro de um <View> pequeno com borda não renderiza no
+  // react-pdf, e um <Text> com altura fixa clipa o conteúdo — por isso a marca
+  // é um <View> preenchido, que sempre renderiza.)
+  box: { width: 9, height: 9, borderWidth: 1, borderColor: '#000', marginRight: 3, padding: 1.5 },
+  boxFill: { flex: 1, backgroundColor: '#000' },
   declaration: { fontSize: 6, textAlign: 'justify', marginTop: 8, color: '#333' },
   signRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 28 },
   signCol: { width: '45%', alignItems: 'center' },
@@ -140,7 +144,7 @@ const styles = StyleSheet.create({
 })
 
 function Box({ on }: { on?: boolean }) {
-  return <View style={styles.box}>{on ? <Text style={styles.boxMark}>X</Text> : null}</View>
+  return <View style={styles.box}>{on ? <View style={styles.boxFill} /> : null}</View>
 }
 
 function Check({ on, label, wide }: { on?: boolean; label: string; wide?: boolean }) {
