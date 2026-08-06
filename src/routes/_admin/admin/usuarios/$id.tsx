@@ -27,7 +27,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
   AlertCircle, ArrowLeft, Camera, CheckCircle2, Save, Plus, Trash2, Building2, Eye,
   User, FileText, Globe, Briefcase, Heart, TreePine,
-  Pencil, X, GraduationCap, Handshake, ImageUp,
+  Pencil, X, GraduationCap, Handshake, ImageUp, Star,
 } from 'lucide-react'
 import { maskCPF, maskPhone, maskCEP, maskRG, maskCNH, maskMoney } from '@/utils/masks'
 import { apiErrorMessage } from '@/lib/api-error-message'
@@ -1012,10 +1012,22 @@ function PropriedadesTab({ userId }: { userId: string }) {
   const createProp = useCreateUserProperty(userId)
   const deleteProp = useDeleteUserProperty(userId)
   const cepLookup = useCEPLookup()
+  const { data: user } = useAdminUser(userId)
+  const updateWorker = useUpdateWorker(userId)
+  const primaryId = user?.primaryPropertyId ?? null
   const [adding, setAdding] = useState(false)
   const [form, setForm] = useState<PropForm>(emptyPropForm)
   const [deleteTarget, setDeleteTarget] = useState<UserProperty | null>(null)
   const [detailProp, setDetailProp] = useState<UserProperty | null>(null)
+
+  async function setPrimary(propId: string) {
+    try {
+      await updateWorker.mutateAsync({ primaryPropertyId: propId })
+      toast.success('Propriedade principal definida.')
+    } catch (e) {
+      toast.error(apiErrorMessage(e, 'Erro ao definir propriedade principal.'))
+    }
+  }
 
   function setAddr(k: keyof PropForm['address'], v: string) {
     setForm(prev => ({ ...prev, address: { ...prev.address, [k]: v } }))
@@ -1162,10 +1174,17 @@ function PropriedadesTab({ userId }: { userId: string }) {
         {loadingProps && properties.length === 0 && (
           <div className="flex items-center justify-center py-8 text-sm text-muted-foreground">Carregando...</div>
         )}
-        {properties.map(prop => (
-          <div key={prop.id} className="flex items-center justify-between rounded-lg border p-3 bg-card">
+        {properties.map(prop => {
+          const isPrimary = prop.id === primaryId
+          return (
+          <div key={prop.id} className={`flex items-center justify-between rounded-lg border p-3 bg-card ${isPrimary ? 'border-primary/50 ring-1 ring-primary/20' : ''}`}>
             <div>
-              <p className="font-medium text-sm">{prop.name}</p>
+              <div className="flex items-center gap-2">
+                <p className="font-medium text-sm">{prop.name}</p>
+                {isPrimary && (
+                  <Badge variant="secondary" className="gap-1 text-[10px]"><Star className="size-2.5 fill-current" /> Principal</Badge>
+                )}
+              </div>
               {prop.registration && <p className="text-xs text-muted-foreground">Matrícula: {prop.registration}</p>}
               {prop.address && (
                 <p className="text-xs text-muted-foreground mt-0.5">
@@ -1176,6 +1195,17 @@ function PropriedadesTab({ userId }: { userId: string }) {
               )}
             </div>
             <div className="flex items-center gap-1">
+              {!isPrimary && (
+                <Button
+                  variant="ghost" size="sm"
+                  className="h-7 gap-1 px-2 text-xs text-muted-foreground"
+                  disabled={updateWorker.isPending}
+                  onClick={() => setPrimary(prop.id)}
+                >
+                  <Star className="size-3.5" />
+                  <span className="hidden sm:inline">Definir principal</span>
+                </Button>
+              )}
               <Button variant="ghost" size="icon" className="size-7" onClick={() => setDetailProp(prop)}>
                 <Eye className="size-3.5" />
               </Button>
@@ -1184,7 +1214,8 @@ function PropriedadesTab({ userId }: { userId: string }) {
               </Button>
             </div>
           </div>
-        ))}
+          )
+        })}
       </div>
 
       {totalPages > 1 && (

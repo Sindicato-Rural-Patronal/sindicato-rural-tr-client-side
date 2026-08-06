@@ -110,6 +110,7 @@ export type UserData = {
   memberSince: string | null
   memberNotes: string | null
   memberNotesNumber: string | null
+  primaryPropertyId: string | null
 }
 
 export type UserAddress = {
@@ -351,6 +352,7 @@ export type UpdateWorkerBody = {
   memberSince?: string | null
   memberNotes?: string | null
   memberNotesNumber?: string | null
+  primaryPropertyId?: string | null
   avatar?: string | null
   isPartner?: boolean
   partnerUrl?: string | null

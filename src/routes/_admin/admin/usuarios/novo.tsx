@@ -208,9 +208,15 @@ function RouteComponent() {
       // 3. endereço → vira a propriedade principal do associado
       const addressBody = buildAddressBody(form.address)
       if (addressBody) {
-        await apiFetch(`/admin/users/${newId}/properties`, {
+        const propRes = await apiFetch(`/admin/users/${newId}/properties`, {
           method: 'POST',
           body: JSON.stringify({ name: form.propertyName.trim() || 'Principal', address: addressBody }),
+        })
+        const prop = await propRes.json()
+        // marca a propriedade recém-criada como principal
+        await apiFetch(`/users/${newId}`, {
+          method: 'PATCH',
+          body: JSON.stringify({ primaryPropertyId: prop.id }),
         })
       }
 

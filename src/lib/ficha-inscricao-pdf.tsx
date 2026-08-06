@@ -164,7 +164,9 @@ function Field({ label, value, flex = 1 }: { label: string; value: string; flex?
 // ─── página da ficha ──────────────────────────────────────────────────────────
 
 function FichaPage({ course, user }: FichaParticipant) {
-  const a = user.properties?.[0]?.address ?? null
+  const props = user.properties ?? []
+  const mainProp = props.find(p => p.id === user.primaryPropertyId) ?? props[0]
+  const a = mainProp?.address ?? null
   const edu = user.educationLevel ? EDUCATION_MAP[user.educationLevel] : null
   const eth = user.ethnicity ? ETHNICITY_MAP[user.ethnicity] : null
   const cat = functionalCategoryKey(user.functionalCategory)
