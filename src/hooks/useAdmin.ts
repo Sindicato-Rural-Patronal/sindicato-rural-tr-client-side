@@ -1,5 +1,18 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import type { QueryClient } from '@tanstack/react-query'
 import { apiFetch, apiUpload, API_BASE } from '@/lib/api'
+
+// Invalida TODAS as listas onde um usuário aparece, para não ficarem defasadas
+// após editar a ficha (associados, admins, instrutores, parceiros, contatos
+// públicos e inscrições em cursos).
+function invalidateUserViews(qc: QueryClient) {
+  qc.invalidateQueries({ queryKey: ['admin', 'users'] })
+  qc.invalidateQueries({ queryKey: ['admin', 'admins'] })
+  qc.invalidateQueries({ queryKey: ['admin', 'instructors'] })
+  qc.invalidateQueries({ queryKey: ['partners'] })
+  qc.invalidateQueries({ queryKey: ['contacts'] })
+  qc.invalidateQueries({ queryKey: ['admin', 'courses'] })
+}
 
 export type DashboardStats = {
   totalUsers: number
@@ -370,7 +383,7 @@ export function useUpdateWorker(userId: string) {
     mutationFn: (body: UpdateWorkerBody) =>
       apiFetch(`/users/${userId}`, { method: 'PATCH', body: JSON.stringify(body) }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['admin', 'users'] })
+      invalidateUserViews(queryClient)
       queryClient.invalidateQueries({ queryKey: ['admin', 'users', userId] })
     },
   })
@@ -521,8 +534,8 @@ export function useUploadAvatar(userId: string) {
   return useMutation({
     mutationFn: (file: File) => apiUpload(`/admin/users/${userId}/avatar`, file),
     onSuccess: () => {
+      invalidateUserViews(queryClient)
       queryClient.invalidateQueries({ queryKey: ['admin', 'users', userId] })
-      queryClient.invalidateQueries({ queryKey: ['admin', 'users'] })
     },
   })
 }
