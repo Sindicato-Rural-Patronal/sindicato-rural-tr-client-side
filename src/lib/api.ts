@@ -1,6 +1,6 @@
 // Base da API. Em produção aponta pro backend direto (VITE_API_URL, embutido
 // no build). Em dev fica '/api' e o proxy do Vite encaminha pro backend local.
-export const API_BASE = import.meta.env.VITE_API_URL || '/api'
+export const API_BASE = (import.meta.env.VITE_API_URL || '/api').replace(/\/+$/, '')
 
 export class ApiError extends Error {
   status: number
