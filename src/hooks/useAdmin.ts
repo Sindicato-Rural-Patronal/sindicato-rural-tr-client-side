@@ -14,6 +14,14 @@ function invalidateUserViews(qc: QueryClient) {
   qc.invalidateQueries({ queryKey: ['admin', 'courses'] })
 }
 
+// Permissões do usuário logado vêm de /admin/me (em cache). Quando a regra dele
+// muda (permissões da regra editadas, ou regra reatribuída), desloga para forçar
+// re-login com permissões novas — evita a UI mostrar funcionalidades revogadas.
+function logoutForPermissionChange() {
+  localStorage.removeItem('token')
+  window.location.href = '/login'
+}
+
 export type DashboardStats = {
   totalUsers: number
   totalAdmins: number
@@ -311,6 +319,10 @@ export function useUpdateRule(ruleId: string) {
       apiFetch(`/rules/${ruleId}`, { method: 'PATCH', body: JSON.stringify(body) }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin', 'rules'] })
+      queryClient.invalidateQueries({ queryKey: ['admin', 'me'] })
+      // Se a regra editada é a do próprio usuário logado, desloga.
+      const me = queryClient.getQueryData<AdminMe>(['admin', 'me'])
+      if (me?.rulesId === ruleId) logoutForPermissionChange()
     },
   })
 }
@@ -413,8 +425,12 @@ export function useUpdateAdmin(adminId: string) {
   return useMutation({
     mutationFn: (body: UpdateAdminBody) =>
       apiFetch(`/admin/users/${adminId}`, { method: 'PATCH', body: JSON.stringify(body) }),
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['admin', 'admins'] })
+      queryClient.invalidateQueries({ queryKey: ['admin', 'me'] })
+      // Se reatribuiu a regra do próprio usuário logado, desloga.
+      const me = queryClient.getQueryData<AdminMe>(['admin', 'me'])
+      if (me?.userId === adminId && variables.rulesId) logoutForPermissionChange()
     },
   })
 }
