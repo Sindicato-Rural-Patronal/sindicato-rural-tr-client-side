@@ -6,6 +6,11 @@ COPY package*.json ./
 # runs with NODE_ENV=production, which npm would otherwise use to skip them.
 RUN npm ci --include=dev
 
+# Backend URL baked into the bundle at build time. Set it in Coolify as a
+# build-time env var (e.g. https://sindicatoruraltrbackend.nakaidev.tech).
+ARG VITE_API_URL
+ENV VITE_API_URL=$VITE_API_URL
+
 COPY . .
 RUN npm run build
 

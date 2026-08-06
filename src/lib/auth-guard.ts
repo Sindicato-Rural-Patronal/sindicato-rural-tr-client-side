@@ -1,4 +1,5 @@
 import { redirect } from '@tanstack/react-router'
+import { API_BASE } from '@/lib/api'
 
 export async function requirePermission(perm: string) {
   const token = localStorage.getItem('token')
@@ -6,7 +7,7 @@ export async function requirePermission(perm: string) {
 
   let permissions: string[] = []
   try {
-    const res = await fetch('/api/admin/me', {
+    const res = await fetch(`${API_BASE}/admin/me`, {
       headers: { Authorization: `Bearer ${token}` },
     })
     if (res.ok) {

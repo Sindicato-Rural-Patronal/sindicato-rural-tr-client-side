@@ -1,3 +1,7 @@
+// Base da API. Em produção aponta pro backend direto (VITE_API_URL, embutido
+// no build). Em dev fica '/api' e o proxy do Vite encaminha pro backend local.
+export const API_BASE = import.meta.env.VITE_API_URL || '/api'
+
 export class ApiError extends Error {
   status: number
   constructor(status: number, message: string) {
@@ -22,7 +26,7 @@ async function throwApiError(res: Response): Promise<never> {
 
 export async function apiFetch(path: string, options: RequestInit = {}): Promise<Response> {
   const token = localStorage.getItem('token')
-  const res = await fetch(`/api${path}`, {
+  const res = await fetch(`${API_BASE}${path}`, {
     ...options,
     headers: {
       'Content-Type': 'application/json',
@@ -38,7 +42,7 @@ export async function apiUpload(path: string, file: File, field = 'file'): Promi
   const token = localStorage.getItem('token')
   const formData = new FormData()
   formData.append(field, file)
-  const res = await fetch(`/api${path}`, {
+  const res = await fetch(`${API_BASE}${path}`, {
     method: 'POST',
     headers: token ? { Authorization: `Bearer ${token}` } : {},
     body: formData,

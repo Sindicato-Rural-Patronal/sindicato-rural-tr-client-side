@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { apiFetch, apiUpload } from '@/lib/api'
+import { apiFetch, apiUpload, API_BASE } from '@/lib/api'
 
 export type DashboardStats = {
   totalUsers: number
@@ -652,7 +652,7 @@ export function usePartners() {
   return useQuery<PublicPartner[]>({
     queryKey: ['partners'],
     queryFn: () =>
-      fetch('/api/partners')
+      fetch(`${API_BASE}/partners`)
         .then(r => r.json())
         .then(d => Array.isArray(d) ? d : (d.data ?? [])),
   })
@@ -716,7 +716,7 @@ export function useDeleteContactMessage() {
 export function useSendContactMessage() {
   return useMutation({
     mutationFn: (body: { name: string; email: string; phone?: string; subject?: string; message: string }) =>
-      fetch('/api/contacts/message', {
+      fetch(`${API_BASE}/contacts/message`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),

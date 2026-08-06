@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { apiFetch, apiUpload } from '@/lib/api'
+import { apiFetch, apiUpload, API_BASE } from '@/lib/api'
 
 export type BannerButton = {
   label: string
@@ -39,7 +39,7 @@ export function useBanners() {
   return useQuery<PublicBanner[]>({
     queryKey: ['banners'],
     queryFn: () =>
-      fetch('/api/banners')
+      fetch(`${API_BASE}/banners`)
         .then(r => r.json())
         .then(d => Array.isArray(d) ? d : (d.data ?? [])),
   })

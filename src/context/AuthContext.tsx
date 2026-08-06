@@ -1,5 +1,6 @@
 import { createContext, useContext, useState } from 'react';
 import type { ReactNode } from 'react';
+import { API_BASE } from '@/lib/api';
 
 interface AuthContextType {
   token: string | null;
@@ -12,7 +13,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [token, setToken] = useState<string | null>(() => localStorage.getItem('token'));
-  const baseUrl = '/api';
+  const baseUrl = API_BASE;
 
   const login = (newToken: string) => {
     localStorage.setItem('token', newToken);
