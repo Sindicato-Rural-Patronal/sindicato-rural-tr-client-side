@@ -6,7 +6,7 @@ export type CreateCourseBody = {
   name: string
   description: string
   roomId: string
-  status?: 'PUBLIC' | 'PRIVATE' | 'UNPUBLISHED'
+  status?: 'PUBLIC' | 'PRIVATE' | 'UNPUBLISHED' | 'IN_PROGRESS'
   startTime: string
   endTime: string
   price?: number
@@ -24,7 +24,7 @@ export type UpdateCourseBody = Partial<CreateCourseBody> & {
 
 export type CourseCardItem = {
   id: string
-  status: 'PUBLIC' | 'PRIVATE' | 'UNPUBLISHED'
+  status: 'PUBLIC' | 'PRIVATE' | 'UNPUBLISHED' | 'IN_PROGRESS'
   title: string
   eventNumber: string | null
   startDate: string
@@ -54,7 +54,7 @@ export type PaginatedCourses = {
 export function useAdminCourses(params: {
   page: number
   limit: number
-  status?: 'PUBLIC' | 'PRIVATE' | 'UNPUBLISHED'
+  status?: 'PUBLIC' | 'PRIVATE' | 'UNPUBLISHED' | 'IN_PROGRESS'
   search?: string
 }) {
   const { page, limit, status, search } = params

@@ -18,7 +18,7 @@ import {
 } from '@/hooks/useCourse'
 import type { CourseCardItem } from '@/hooks/useCourse'
 import { useRooms, useCreateRoom } from '@/hooks/useRooms'
-import { useCourseRegistrations, useCancelRegistration, useInstructors } from '@/hooks/useAdmin'
+import { useCourseRegistrations, useCancelRegistration, useInstructors, useConfirmRegistration, useStartCourse } from '@/hooks/useAdmin'
 import type { UserDataDetail } from '@/hooks/useAdmin'
 import { formatDateFromString } from '@/utils/format-data-from-string'
 import { roomSchema, courseBaseSchema } from '@/lib/schemas'
@@ -28,7 +28,7 @@ import {
   Plus, Building2, GraduationCap, Calendar, Search,
   BookOpen, Images, ChevronLeft, ChevronRight, X, Pencil, Trash2,
   Clock, MapPin, User, ImageUp, ImagePlus, Upload, UserCheck, UserX,
-  FileDown, Loader2,
+  FileDown, Loader2, CheckCircle2, Circle, PlayCircle,
 } from 'lucide-react'
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
 import {
@@ -249,10 +249,12 @@ function RegistrationsTab({
   courseId,
   eventNumber,
   courseTitle,
+  courseStatus,
 }: {
   courseId: string
   eventNumber: string | null
   courseTitle: string
+  courseStatus: string
 }) {
   const [page, setPage] = useState(1)
   const limit = 20
@@ -261,10 +263,23 @@ function RegistrationsTab({
   const total = resp?.total ?? 0
   const totalPages = resp ? Math.ceil(total / limit) : 1
   const cancelReg = useCancelRegistration(courseId)
+  const confirmReg = useConfirmRegistration(courseId)
+  const startCourse = useStartCourse()
   const [confirmId, setConfirmId] = useState<string | null>(null)
   const [fichaId, setFichaId] = useState<string | null>(null)
   const [exportingAll, setExportingAll] = useState(false)
   const { t } = useTranslation()
+
+  const inProgress = courseStatus === 'IN_PROGRESS'
+
+  async function handleStart() {
+    try {
+      await startCourse.mutateAsync(courseId)
+      toast.success('Curso iniciado! Status: Em andamento.')
+    } catch (e) {
+      toast.error(apiErrorMessage(e, 'Não foi possível iniciar o curso.'))
+    }
+  }
 
   const course = { eventNumber, title: courseTitle }
 
@@ -313,13 +328,31 @@ function RegistrationsTab({
         <p className="text-sm text-muted-foreground">
           {resp ? `${total} ${t('admin.courses.registrations').toLowerCase()}` : t('common.loading')}
         </p>
-        {total > 0 && (
-          <Button size="sm" variant="outline" className="h-8 gap-1.5" disabled={exportingAll} onClick={exportAll}>
-            {exportingAll ? <Loader2 className="size-3.5 animate-spin" /> : <FileDown className="size-3.5" />}
-            {t('admin.courses.exportAllFichas')}
-          </Button>
-        )}
+        <div className="flex items-center gap-2">
+          {total > 0 && (
+            <Button size="sm" variant="outline" className="h-8 gap-1.5" disabled={exportingAll} onClick={exportAll}>
+              {exportingAll ? <Loader2 className="size-3.5 animate-spin" /> : <FileDown className="size-3.5" />}
+              {t('admin.courses.exportAllFichas')}
+            </Button>
+          )}
+          {total > 0 && !inProgress && (
+            <Button size="sm" className="h-8 gap-1.5" disabled={startCourse.isPending} onClick={handleStart}>
+              {startCourse.isPending ? <Loader2 className="size-3.5 animate-spin" /> : <PlayCircle className="size-3.5" />}
+              {t('admin.courses.startCourse')}
+            </Button>
+          )}
+          {inProgress && (
+            <span className="inline-flex items-center gap-1 rounded-full border border-blue-200 bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700">
+              <PlayCircle className="size-3" /> {t('admin.courses.form.statusInProgress')}
+            </span>
+          )}
+        </div>
       </div>
+      {total > 0 && !inProgress && (
+        <p className="text-xs text-muted-foreground -mt-2">
+          {t('admin.courses.startCourseHint')}
+        </p>
+      )}
 
       {isLoading && (
         <div className="flex flex-col gap-2">
@@ -356,6 +389,17 @@ function RegistrationsTab({
             <span className="text-xs text-muted-foreground hidden sm:inline">
               {new Date(reg.createdAt).toLocaleDateString('pt-BR')}
             </span>
+            <Button
+              size="sm"
+              variant={reg.confirmed ? 'ghost' : 'outline'}
+              className={`h-7 gap-1 px-2 text-xs ${reg.confirmed ? 'text-emerald-600 hover:text-emerald-700' : ''}`}
+              disabled={confirmReg.isPending}
+              onClick={() => confirmReg.mutate({ id: reg.id, confirmed: !reg.confirmed })}
+              title={reg.confirmed ? 'Desmarcar confirmação' : 'Confirmar inscrição'}
+            >
+              {reg.confirmed ? <CheckCircle2 className="size-3.5" /> : <Circle className="size-3.5" />}
+              <span className="hidden sm:inline">{reg.confirmed ? t('admin.courses.confirmed') : t('admin.courses.confirm')}</span>
+            </Button>
             <Button
               size="sm"
               variant="ghost"
@@ -667,7 +711,7 @@ function ViewDialog({
           </TabsContent>
 
           <TabsContent value="registrations" className="px-6 pb-4 mt-4">
-            <RegistrationsTab courseId={course.id} eventNumber={course.eventNumber} courseTitle={course.title} />
+            <RegistrationsTab courseId={course.id} eventNumber={course.eventNumber} courseTitle={course.title} courseStatus={liveCourse?.status ?? course.status} />
           </TabsContent>
 
           <TabsContent value="gallery" className="px-6 pb-4 mt-4">
@@ -1200,6 +1244,9 @@ export function CourseFormDialog({
                           <SelectItem value="UNPUBLISHED">{t('admin.courses.form.statusDraft')}</SelectItem>
                           <SelectItem value="PRIVATE">{t('admin.courses.form.statusPrivate')}</SelectItem>
                           <SelectItem value="PUBLIC">{t('admin.courses.form.statusPublic')}</SelectItem>
+                          {field.value === 'IN_PROGRESS' && (
+                            <SelectItem value="IN_PROGRESS">{t('admin.courses.form.statusInProgress')}</SelectItem>
+                          )}
                         </SelectContent>
                       </Select>
                       <FormMessage />

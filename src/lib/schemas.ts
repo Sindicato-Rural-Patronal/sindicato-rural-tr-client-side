@@ -29,7 +29,7 @@ export const courseBaseSchema = z.object({
   name:            z.string().min(1, 'Título obrigatório'),
   description:     z.string().optional().default(''),
   roomId:          z.string().optional(),
-  status:          z.enum(['PUBLIC', 'PRIVATE', 'UNPUBLISHED']),
+  status:          z.enum(['PUBLIC', 'PRIVATE', 'UNPUBLISHED', 'IN_PROGRESS']),
   startDate:       z.string().min(1, 'Data de início obrigatória'),
   startHour:       z.string().min(1, 'Horário de início obrigatório'),
   endDate:         z.string().min(1, 'Data de término obrigatória'),

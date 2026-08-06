@@ -14,7 +14,7 @@ export type CourseInstructor = {
 /** Shape returned by the backend — already English field names. */
 export type Course = {
   id: string
-  status: 'PUBLIC' | 'PRIVATE' | 'UNPUBLISHED'
+  status: 'PUBLIC' | 'PRIVATE' | 'UNPUBLISHED' | 'IN_PROGRESS'
   title: string
   description: string
   maxStudents: number

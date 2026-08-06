@@ -18,6 +18,7 @@ export type Registration = {
   id: string
   courseId: string
   userDataId: string
+  confirmed: boolean
   createdAt: string
   userData: {
     id: string
@@ -428,6 +429,27 @@ export function useCancelRegistration(courseId: string) {
       apiFetch(`/admin/registrations/${registrationId}`, { method: 'DELETE' }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin', 'courses', courseId, 'registrations'] })
+      queryClient.invalidateQueries({ queryKey: ['admin', 'courses'] })
+    },
+  })
+}
+
+export function useConfirmRegistration(courseId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, confirmed }: { id: string; confirmed: boolean }) =>
+      apiFetch(`/admin/registrations/${id}/confirm`, { method: 'PATCH', body: JSON.stringify({ confirmed }) }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'courses', courseId, 'registrations'] })
+    },
+  })
+}
+
+export function useStartCourse() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (courseId: string) => apiFetch(`/admin/courses/${courseId}/start`, { method: 'POST' }),
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin', 'courses'] })
     },
   })
