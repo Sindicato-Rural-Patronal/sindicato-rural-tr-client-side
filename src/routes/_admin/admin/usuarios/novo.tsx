@@ -66,6 +66,7 @@ type Form = {
   memberType: string; memberClassification: string; memberStatus: string
   memberSince: string; boardMember: boolean; boardPosition: string
   memberNotes: string; memberNotesNumber: string
+  propertyName: string
   address: {
     type: 'URBAN' | 'RURAL'
     zipCode: string; street: string; number: string; neighborhood: string
@@ -86,6 +87,7 @@ const emptyForm: Form = {
   memberType: '', memberClassification: '', memberStatus: '',
   memberSince: '', boardMember: false, boardPosition: '',
   memberNotes: '', memberNotesNumber: '',
+  propertyName: 'Principal',
   address: {
     type: 'URBAN',
     zipCode: '', street: '', number: '', neighborhood: '',
@@ -203,10 +205,13 @@ function RouteComponent() {
         await apiFetch(`/users/${newId}`, { method: 'PATCH', body: JSON.stringify(patchBody) })
       }
 
-      // 3. endereço (upsert)
+      // 3. endereço → vira a propriedade principal do associado
       const addressBody = buildAddressBody(form.address)
       if (addressBody) {
-        await apiFetch(`/admin/users/${newId}/address`, { method: 'PATCH', body: JSON.stringify(addressBody) })
+        await apiFetch(`/admin/users/${newId}/properties`, {
+          method: 'POST',
+          body: JSON.stringify({ name: form.propertyName.trim() || 'Principal', address: addressBody }),
+        })
       }
 
       toast.success('Associado cadastrado com sucesso!')
@@ -370,12 +375,16 @@ function RouteComponent() {
           </CardContent>
         </Card>
 
-        {/* Endereço */}
+        {/* Propriedade principal (endereço) */}
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm flex items-center gap-2"><MapPin className="size-4" /> Endereço</CardTitle>
+            <CardTitle className="text-sm flex items-center gap-2"><MapPin className="size-4" /> Propriedade principal</CardTitle>
+            <p className="text-xs text-muted-foreground">O endereço do associado é registrado como sua propriedade principal.</p>
           </CardHeader>
           <CardContent className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <FieldRow label="Nome da propriedade">
+              <Input className={inp} value={form.propertyName} onChange={e => set('propertyName', e.target.value)} placeholder="Principal" />
+            </FieldRow>
             <FieldRow label="Tipo">
               <SelectField value={form.address.type} onChange={v => setAddr('type', v)} options={[
                 { value: 'URBAN', label: 'Urbano' },

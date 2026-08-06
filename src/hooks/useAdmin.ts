@@ -155,8 +155,10 @@ export type UserInstructor = {
 }
 
 export type UserDataDetail = UserData & {
+  /** @deprecated endereço agora vive nas propriedades — use `properties[0].address` */
   address: UserAddress | null
   userInstructor: UserInstructor | null
+  properties?: UserProperty[]
 }
 
 export type UpdateUserAddressBody = {

@@ -6,8 +6,12 @@ import {
   StyleSheet,
   pdf,
 } from '@react-pdf/renderer'
-import type { UserDataDetail } from '@/hooks/useAdmin'
+import type { UserDataDetail, UserProperty } from '@/hooks/useAdmin'
 import { formatDateFromString } from '@/utils/format-data-from-string'
+
+// Endereço agora vive na propriedade principal do associado (o user.address
+// legado foi descontinuado).
+type PropAddress = NonNullable<UserProperty['address']>
 
 // Salário mínimo de referência (centavos) usado para enquadrar a renda familiar
 // nas faixas da ficha SENAR. Ajuste quando o piso nacional mudar.
@@ -27,8 +31,7 @@ function formatCep(cep: string | null | undefined): string {
   return `${d.slice(0, 2)}.${d.slice(2, 5)}-${d.slice(5)}`
 }
 
-function composeAddress(u: UserDataDetail): string {
-  const a = u.address
+function composeAddress(a: PropAddress | null): string {
   if (!a) return ''
   if (a.type === 'RURAL') {
     return [a.localityName, a.road, a.km && `KM ${a.km}`, a.lot && `Lote ${a.lot}`, a.section]
@@ -161,7 +164,7 @@ function Field({ label, value, flex = 1 }: { label: string; value: string; flex?
 // ─── página da ficha ──────────────────────────────────────────────────────────
 
 function FichaPage({ course, user }: FichaParticipant) {
-  const a = user.address
+  const a = user.properties?.[0]?.address ?? null
   const edu = user.educationLevel ? EDUCATION_MAP[user.educationLevel] : null
   const eth = user.ethnicity ? ETHNICITY_MAP[user.ethnicity] : null
   const cat = functionalCategoryKey(user.functionalCategory)
@@ -203,7 +206,7 @@ function FichaPage({ course, user }: FichaParticipant) {
         <Field label="CAD/PRO:" value={user.cadPro ?? ''} />
         <Field label="ESTADO:" value={a?.state ?? ''} flex={0.7} />
       </View>
-      <View style={styles.fieldRow}><Field label="ENDEREÇO:" value={composeAddress(user)} /></View>
+      <View style={styles.fieldRow}><Field label="ENDEREÇO:" value={composeAddress(a)} /></View>
       <View style={styles.fieldRow}>
         <Field label="BAIRRO:" value={a?.neighborhood ?? ''} />
         <Field label="CEP:" value={formatCep(a?.zipCode)} flex={0.7} />
