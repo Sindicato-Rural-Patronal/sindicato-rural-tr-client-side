@@ -7,7 +7,7 @@ import { usePermissions } from '@/hooks/usePermissions'
 import { PermissionButton } from '@/components/PermissionButton'
 import {
   useAdminUsers, useAdminAdmins, useAdminRules,
-  useCreateAdmin, useCreateRule, useUpdateRule, useCreateWorker,
+  useCreateAdmin, useCreateRule, useUpdateRule,
   useDeleteWorker,
   useUpdateAdmin, useDeleteAdmin,
   type UserData, type UserAdmin, type Rule,
@@ -28,7 +28,6 @@ import {
   TableRow, TableHead, TableCell,
 } from '@/components/ui/table'
 import { AlertCircle, Plus, Shield, Users, Pencil, Trash2, ExternalLink, Globe, ChevronDown, X, SlidersHorizontal } from 'lucide-react'
-import { maskCPF, maskPhone } from '@/utils/masks'
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
@@ -398,75 +397,6 @@ function RegrasSheet() {
   )
 }
 
-function NovoAssociadoSheet() {
-  const createWorker = useCreateWorker()
-  const [open, setOpen] = useState(false)
-  const [form, setForm] = useState({ name: '', email: '', phone: '', cpf: '' })
-  const [error, setError] = useState<string | null>(null)
-  const [success, setSuccess] = useState(false)
-
-  function handleOpen(v: boolean) {
-    setOpen(v)
-    if (v) { setForm({ name: '', email: '', phone: '', cpf: '' }); setError(null); setSuccess(false) }
-  }
-
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    setError(null)
-    setSuccess(false)
-    const cpfDigits = form.cpf.replace(/\D/g, '')
-    const phoneDigits = form.phone.replace(/\D/g, '')
-    if (cpfDigits.length !== 11) { setError('CPF inválido.'); return }
-    if (![10, 11].includes(phoneDigits.length)) { setError('Telefone inválido.'); return }
-    try {
-      await createWorker.mutateAsync({ name: form.name, email: form.email, phone: phoneDigits, cpf: cpfDigits })
-      setForm({ name: '', email: '', phone: '', cpf: '' })
-      setSuccess(true)
-      toast.success('Associado criado com sucesso!')
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : 'Erro ao criar associado.'
-      setError(msg)
-      toast.error(msg)
-    }
-  }
-
-  return (
-    <Sheet open={open} onOpenChange={handleOpen}>
-      <SheetTrigger asChild>
-        <Button><Plus className="size-4" /> Novo associado</Button>
-      </SheetTrigger>
-      <SheetContent className="w-full sm:max-w-md overflow-y-auto">
-        <SheetHeader><SheetTitle>Novo associado</SheetTitle></SheetHeader>
-        <div className="p-4">
-          <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="trab-nome">Nome *</Label>
-              <Input id="trab-nome" value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} required />
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="trab-email">E-mail *</Label>
-              <Input id="trab-email" type="email" value={form.email} onChange={e => setForm(p => ({ ...p, email: e.target.value }))} required />
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="trab-phone">Telefone *</Label>
-              <Input id="trab-phone" value={form.phone} onChange={e => setForm(p => ({ ...p, phone: maskPhone(e.target.value) }))} placeholder="(00) 00000-0000" required />
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="trab-cpf">CPF *</Label>
-              <Input id="trab-cpf" value={form.cpf} onChange={e => setForm(p => ({ ...p, cpf: maskCPF(e.target.value) }))} placeholder="000.000.000-00" required />
-            </div>
-            {error && <p className="text-sm text-destructive">{error}</p>}
-            {success && <p className="text-sm text-emerald-600">Associado criado com sucesso!</p>}
-            <Button type="submit" disabled={createWorker.isPending}>
-              {createWorker.isPending ? 'Salvando...' : 'Criar associado'}
-            </Button>
-          </form>
-        </div>
-      </SheetContent>
-    </Sheet>
-  )
-}
-
 function NovoAdminSheet() {
   const { data: usuariosData } = useAdminUsers({ limit: 1000 })
   const { data: regrasData } = useAdminRules()
@@ -775,7 +705,11 @@ function RouteComponent() {
                 </Select>
               </div>
             )}
-            {activeTab === 'associados' && can('CREATE_USER') && <NovoAssociadoSheet />}
+            {activeTab === 'associados' && can('CREATE_USER') && (
+              <Button asChild>
+                <Link to="/admin/usuarios/novo"><Plus className="size-4" /> Novo associado</Link>
+              </Button>
+            )}
             {activeTab === 'administradores' && (
               <>
                 {can('READ_RULE') && <RegrasSheet />}
