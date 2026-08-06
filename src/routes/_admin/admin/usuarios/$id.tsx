@@ -115,7 +115,7 @@ type DadosForm = {
   educationLevel: string; functionalCategory: string; specialNeeds: boolean
   memberClassification: string; cadPro: string; familyIncome: string
   memberType: string; boardPosition: string; boardMember: boolean
-  memberSince: string; memberNotes: string; memberNotesNumber: string
+  memberSince: string; membershipValidUntil: string; memberNotes: string; memberNotesNumber: string
   avatar: string
   isPartner: boolean; partnerUrl: string; partnerOrder: string
 }
@@ -150,6 +150,7 @@ function dadosFromDetail(u: UserDataDetail): DadosForm {
     boardPosition: u.boardPosition ?? '',
     boardMember: u.boardMember ?? false,
     memberSince: toDateInput(u.memberSince),
+    membershipValidUntil: toDateInput(u.membershipValidUntil),
     memberNotes: u.memberNotes ?? '',
     memberNotesNumber: u.memberNotesNumber ?? '',
     avatar: u.avatar ?? '',
@@ -425,6 +426,7 @@ function DadosTab({ userId, user, completeMode, onCompleteModeEnd, hasNoProperti
       boardPosition: f.boardPosition || null,
       boardMember: f.boardMember,
       memberSince: f.memberSince ? toIso(f.memberSince) : null,
+      membershipValidUntil: f.membershipValidUntil ? toIso(f.membershipValidUntil) : null,
       memberNotes: f.memberNotes || null,
       memberNotesNumber: f.memberNotesNumber || null,
       avatar: f.avatar || null,
@@ -477,6 +479,7 @@ function DadosTab({ userId, user, completeMode, onCompleteModeEnd, hasNoProperti
           boardPosition: form.boardPosition || null,
           boardMember: form.boardMember,
           memberSince: form.memberSince ? toIso(form.memberSince) : null,
+          membershipValidUntil: form.membershipValidUntil ? toIso(form.membershipValidUntil) : null,
           memberNotes: form.memberNotes || null,
           memberNotesNumber: form.memberNotesNumber || null,
           isPartner: form.isPartner,
@@ -763,6 +766,9 @@ function DadosTab({ userId, user, completeMode, onCompleteModeEnd, hasNoProperti
           </FieldRow>
           <FieldRow label="Associado desde">
             <DatePicker disabled={d} value={form.memberSince} onChange={v => set('memberSince', v)} />
+          </FieldRow>
+          <FieldRow label="Validade da associação">
+            <DatePicker disabled={d} value={form.membershipValidUntil} onChange={v => set('membershipValidUntil', v)} />
           </FieldRow>
           <FieldRow label="Nº observação">
             <Input className={inp} disabled={d} value={form.memberNotesNumber} onChange={e => set('memberNotesNumber', e.target.value)} />

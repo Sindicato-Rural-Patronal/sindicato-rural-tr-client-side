@@ -135,6 +135,7 @@ export type UserData = {
   boardMember: boolean
   memberStatus: 'ACTIVE' | 'INACTIVE' | null
   memberSince: string | null
+  membershipValidUntil: string | null
   memberNotes: string | null
   memberNotesNumber: string | null
   primaryPropertyId: string | null
@@ -381,6 +382,7 @@ export type UpdateWorkerBody = {
   boardMember?: boolean
   memberStatus?: 'ACTIVE' | 'INACTIVE' | null
   memberSince?: string | null
+  membershipValidUntil?: string | null
   memberNotes?: string | null
   memberNotesNumber?: string | null
   primaryPropertyId?: string | null

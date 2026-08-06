@@ -65,7 +65,7 @@ type Form = {
   educationLevel: string; functionalCategory: string; cadPro: string
   familyIncome: string; specialNeeds: boolean
   memberType: string; memberClassification: string; memberStatus: string
-  memberSince: string; boardMember: boolean; boardPosition: string
+  memberSince: string; membershipValidUntil: string; boardMember: boolean; boardPosition: string
   memberNotes: string; memberNotesNumber: string
   propertyName: string
   address: {
@@ -86,7 +86,7 @@ const emptyForm: Form = {
   educationLevel: '', functionalCategory: '', cadPro: '',
   familyIncome: '', specialNeeds: false,
   memberType: '', memberClassification: '', memberStatus: '',
-  memberSince: '', boardMember: false, boardPosition: '',
+  memberSince: '', membershipValidUntil: '', boardMember: false, boardPosition: '',
   memberNotes: '', memberNotesNumber: '',
   propertyName: 'Principal',
   address: {
@@ -125,6 +125,7 @@ function buildPatchBody(f: Form): Record<string, unknown> {
   put('memberClassification', f.memberClassification)
   put('memberStatus', f.memberStatus)
   put('memberSince', f.memberSince ? toIso(f.memberSince) : '')
+  put('membershipValidUntil', f.membershipValidUntil ? toIso(f.membershipValidUntil) : '')
   if (f.boardMember) b.boardMember = true
   put('boardPosition', f.boardPosition)
   put('memberNotes', f.memberNotes)
@@ -446,6 +447,7 @@ function RouteComponent() {
               ]} />
             </FieldRow>
             <FieldRow label="Associado desde"><DatePicker value={form.memberSince} onChange={v => set('memberSince', v)} /></FieldRow>
+            <FieldRow label="Validade da associação"><DatePicker value={form.membershipValidUntil} onChange={v => set('membershipValidUntil', v)} /></FieldRow>
             <FieldRow label="Nº cooperado"><Input className={inp} value={form.memberNotesNumber} onChange={e => set('memberNotesNumber', e.target.value)} /></FieldRow>
             <FieldRow label="Observações"><Input className={inp} value={form.memberNotes} onChange={e => set('memberNotes', e.target.value)} /></FieldRow>
             <div className="flex items-center gap-2 pt-5">
