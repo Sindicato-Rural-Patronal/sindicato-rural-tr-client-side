@@ -3,26 +3,21 @@ import { apiErrorMessage } from '@/lib/api-error-message'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { useState } from 'react'
-import { useForm } from 'react-hook-form'
-import { zodResolver } from '@hookform/resolvers/zod'
 import { useTranslation } from 'react-i18next'
-import { useCourse, useRegisterCourse } from '@/hooks/useCourse'
+import { useCourse } from '@/hooks/useCourse'
+import { API_BASE } from '@/lib/api'
 import { formatDateFromString } from '@/utils/format-data-from-string'
-import { maskCPF, maskPhone } from '@/utils/masks'
-import { pessoaSchema } from '@/lib/schemas'
-import type { PessoaFormData } from '@/lib/schemas'
+import { maskCPF, maskPhone, maskCEP } from '@/utils/masks'
 import { ErrorAlert } from '@/components/ErrorAlert'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from '@/components/ui/dialog'
 import {
-  Form, FormField, FormItem, FormLabel, FormControl, FormMessage,
-} from '@/components/ui/form'
-import {
-  ArrowLeft, Calendar, CheckCircle2, Clock, GraduationCap, MapPin, User, Users,
+  ArrowLeft, Calendar, CheckCircle2, Clock, GraduationCap, MapPin, User, Users, Search, UserCheck,
 } from 'lucide-react'
 import { FaLinkedin, FaInstagram, FaFacebook } from 'react-icons/fa'
 
@@ -30,7 +25,33 @@ export const Route = createFileRoute('/_public/cursos/$id')({
   component: RouteComponent,
 })
 
-type Step = 'form' | 'success'
+type Step = 'cpf' | 'confirm' | 'form' | 'success'
+
+const emptyFullForm = {
+  name: '', rg: '', birthDate: '', phone: '', email: '',
+  street: '', number: '', neighborhood: '', zipCode: '', city: '', terms: false,
+}
+
+async function postJson(url: string, body: unknown): Promise<void> {
+  const r = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+  if (!r.ok) {
+    const d = await r.json().catch(() => null)
+    throw new Error(d?.error ?? d?.message ?? `HTTP ${r.status}`)
+  }
+}
+
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="flex flex-col gap-1.5">
+      <Label className="text-xs font-medium text-muted-foreground">{label}</Label>
+      {children}
+    </div>
+  )
+}
 
 function RegistrationDialog({
   open,
@@ -43,134 +64,219 @@ function RegistrationDialog({
   courseName: string
   onClose: () => void
 }) {
-  const register = useRegisterCourse(courseId)
-  const [step, setStep] = useState<Step>('form')
   const { t } = useTranslation()
+  const [step, setStep] = useState<Step>('cpf')
+  const [cpf, setCpf] = useState('')
+  const [lookupName, setLookupName] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [f, setF] = useState(emptyFullForm)
 
-  const form = useForm<PessoaFormData>({
-    resolver: zodResolver(pessoaSchema),
-    mode: 'onTouched',
-    defaultValues: { name: '', email: '', phone: '', cpf: '' },
-  })
-
-  async function onSubmit(data: PessoaFormData) {
-    try {
-      await register.mutateAsync({ name: data.name, email: data.email, phone: data.phone, cpf: data.cpf })
-      setStep('success')
-    } catch (e: unknown) {
-      form.setError('root', { message: apiErrorMessage(e, t('registration.errorDefault')) })
-    }
-  }
+  const cpfDigits = cpf.replace(/\D/g, '')
 
   function handleClose() {
-    form.reset()
-    setStep('form')
+    setStep('cpf'); setCpf(''); setLookupName(''); setError(null); setF(emptyFullForm)
     onClose()
   }
 
-  const nameValue = form.watch('name')
+  // Etapa 1: busca por CPF
+  async function handleLookup() {
+    if (cpfDigits.length !== 11) { setError('CPF inválido.'); return }
+    setLoading(true); setError(null)
+    try {
+      const res = await fetch(`${API_BASE}/users/lookup-cpf/${cpfDigits}`).then(r => r.json())
+      if (res.found) { setLookupName(res.name ?? ''); setStep('confirm') }
+      else { setF({ ...emptyFullForm }); setStep('form') }
+    } catch (e) {
+      setError(apiErrorMessage(e, t('registration.errorDefault')))
+    } finally { setLoading(false) }
+  }
+
+  // Etapa 2a: já existe → confirma e inscreve
+  async function confirmExisting() {
+    setLoading(true); setError(null)
+    try {
+      await postJson(`${API_BASE}/courses/${courseId}/register-by-cpf`, { cpf: cpfDigits })
+      setStep('success')
+    } catch (e) {
+      setError(apiErrorMessage(e, t('registration.errorDefault')))
+    } finally { setLoading(false) }
+  }
+
+  // Etapa 2b: não existe → cadastro simples + inscrição
+  async function submitFull() {
+    const phoneDigits = f.phone.replace(/\D/g, '')
+    if (!f.name.trim()) { setError('Informe o nome.'); return }
+    if (!f.email.trim()) { setError('Informe o e-mail.'); return }
+    if (![10, 11].includes(phoneDigits.length)) { setError('Telefone inválido.'); return }
+    if (!f.terms) { setError('É preciso aceitar os termos.'); return }
+    setLoading(true); setError(null)
+    try {
+      await postJson(`${API_BASE}/courses/${courseId}/register-full`, {
+        name: f.name.trim(),
+        phone: phoneDigits,
+        email: f.email.trim(),
+        cpf: cpfDigits,
+        rg: f.rg || undefined,
+        birthDate: f.birthDate || undefined,
+        address: {
+          type: 'URBAN',
+          zipCode: f.zipCode.replace(/\D/g, '') || undefined,
+          street: f.street || undefined,
+          number: f.number || undefined,
+          neighborhood: f.neighborhood || undefined,
+          city: f.city || undefined,
+        },
+      })
+      setStep('success')
+    } catch (e) {
+      setError(apiErrorMessage(e, t('registration.errorDefault')))
+    } finally { setLoading(false) }
+  }
 
   return (
     <Dialog open={open} onOpenChange={o => { if (!o) handleClose() }}>
-      <DialogContent className="sm:max-w-md">
-        {step === 'success' ? (
+      <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
+        {step === 'success' && (
           <>
             <div className="flex flex-col items-center text-center py-4 gap-3">
               <div className="flex size-16 items-center justify-center rounded-full bg-emerald-100">
                 <CheckCircle2 className="size-8 text-emerald-600" />
               </div>
               <DialogTitle className="text-xl">{t('registration.successTitle')}</DialogTitle>
-              <p
-                className="text-sm text-muted-foreground"
-                dangerouslySetInnerHTML={{
-                  __html: t('registration.successMessage', { courseName }),
-                }}
-              />
+              <p className="text-sm text-muted-foreground" dangerouslySetInnerHTML={{ __html: t('registration.successMessage', { courseName }) }} />
             </div>
             <DialogFooter>
               <Button className="w-full" onClick={handleClose}>{t('registration.close')}</Button>
             </DialogFooter>
           </>
-        ) : (
+        )}
+
+        {step === 'cpf' && (
           <>
             <DialogHeader>
               <DialogTitle>{t('registration.title')}</DialogTitle>
-              <DialogDescription
-                dangerouslySetInnerHTML={{
-                  __html: t('registration.description', { courseName }),
-                }}
-              />
+              <DialogDescription dangerouslySetInnerHTML={{ __html: t('registration.description', { courseName }) }} />
             </DialogHeader>
+            <div className="flex flex-col gap-4">
+              <Field label="CPF">
+                <Input
+                  value={cpf}
+                  onChange={e => { setCpf(maskCPF(e.target.value)); setError(null) }}
+                  onKeyDown={e => { if (e.key === 'Enter') handleLookup() }}
+                  placeholder="000.000.000-00"
+                  inputMode="numeric"
+                  autoFocus
+                />
+              </Field>
+              <p className="text-xs text-muted-foreground">Informe seu CPF para começar a inscrição.</p>
+              {error && <ErrorAlert message={error} />}
+              <DialogFooter className="flex-col gap-2 sm:flex-row">
+                <Button type="button" variant="outline" onClick={handleClose} className="sm:flex-none">
+                  {t('registration.cancel')}
+                </Button>
+                <Button className="flex-1 gap-2" disabled={loading || cpfDigits.length !== 11} onClick={handleLookup}>
+                  <Search className="size-4" />
+                  {loading ? 'Buscando...' : 'Continuar'}
+                </Button>
+              </DialogFooter>
+            </div>
+          </>
+        )}
 
-            <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col gap-4">
-                <FormField control={form.control} name="name" render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>{t('registration.fullName')}</FormLabel>
-                    <FormControl>
-                      <Input {...field} placeholder="Ex: Maria da Silva" maxLength={50} autoFocus />
-                    </FormControl>
-                    {nameValue.length > 40 && (
-                      <span className="text-xs text-muted-foreground text-right">{nameValue.length}/50</span>
-                    )}
-                    <FormMessage />
-                  </FormItem>
-                )} />
-                <FormField control={form.control} name="email" render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>{t('registration.email')}</FormLabel>
-                    <FormControl>
-                      <Input type="email" {...field} placeholder="maria@email.com" />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )} />
-                <FormField control={form.control} name="phone" render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>{t('registration.phone')}</FormLabel>
-                    <FormControl>
-                      <Input
-                        value={field.value}
-                        onChange={e => field.onChange(maskPhone(e.target.value))}
-                        onBlur={field.onBlur}
-                        ref={field.ref}
-                        placeholder="(44) 99999-9999"
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )} />
-                <FormField control={form.control} name="cpf" render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>{t('registration.cpf')}</FormLabel>
-                    <FormControl>
-                      <Input
-                        value={field.value}
-                        onChange={e => field.onChange(maskCPF(e.target.value))}
-                        onBlur={field.onBlur}
-                        ref={field.ref}
-                        placeholder="000.000.000-00"
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )} />
-                {form.formState.errors.root && <ErrorAlert message={form.formState.errors.root.message ?? null} />}
+        {step === 'confirm' && (
+          <>
+            <DialogHeader>
+              <DialogTitle>Confirmar identidade</DialogTitle>
+              <DialogDescription>Encontramos um cadastro com esse CPF. É você?</DialogDescription>
+            </DialogHeader>
+            <div className="flex flex-col gap-4">
+              <div className="flex items-center gap-3 rounded-lg border bg-muted/30 p-4">
+                <div className="flex size-10 items-center justify-center rounded-full bg-primary/10 text-primary">
+                  <UserCheck className="size-5" />
+                </div>
+                <div>
+                  <p className="font-semibold">{lookupName}</p>
+                  <p className="text-xs text-muted-foreground font-mono">{cpf}</p>
+                </div>
+              </div>
+              {error && <ErrorAlert message={error} />}
+              <DialogFooter className="flex-col gap-2 sm:flex-row">
+                <Button type="button" variant="outline" onClick={() => { setError(null); setStep('cpf') }} className="sm:flex-none">
+                  Não sou eu
+                </Button>
+                <Button className="flex-1" disabled={loading} onClick={confirmExisting}>
+                  {loading ? t('registration.submitting') : 'Sim, confirmar inscrição'}
+                </Button>
+              </DialogFooter>
+            </div>
+          </>
+        )}
 
-                <DialogFooter className="flex-col gap-2 sm:flex-row">
-                  <Button type="button" variant="outline" onClick={handleClose} className="sm:flex-none">
-                    {t('registration.cancel')}
-                  </Button>
-                  <Button
-                    type="submit"
-                    className="flex-1"
-                    disabled={!form.formState.isValid || register.isPending}
-                  >
-                    {register.isPending ? t('registration.submitting') : t('registration.confirm')}
-                  </Button>
-                </DialogFooter>
-              </form>
-            </Form>
+        {step === 'form' && (
+          <>
+            <DialogHeader>
+              <DialogTitle>Cadastro do participante</DialogTitle>
+              <DialogDescription>Não encontramos esse CPF. Preencha seus dados para se inscrever.</DialogDescription>
+            </DialogHeader>
+            <div className="flex flex-col gap-3">
+              <Field label="Nome completo">
+                <Input value={f.name} onChange={e => setF(p => ({ ...p, name: e.target.value }))} placeholder="Ex: Maria da Silva" autoFocus />
+              </Field>
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="CPF">
+                  <Input value={cpf} disabled className="font-mono" />
+                </Field>
+                <Field label="RG">
+                  <Input value={f.rg} onChange={e => setF(p => ({ ...p, rg: e.target.value }))} />
+                </Field>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="Data de nascimento">
+                  <Input type="date" value={f.birthDate} onChange={e => setF(p => ({ ...p, birthDate: e.target.value }))} />
+                </Field>
+                <Field label="Telefone">
+                  <Input value={f.phone} onChange={e => setF(p => ({ ...p, phone: maskPhone(e.target.value) }))} placeholder="(44) 99999-9999" />
+                </Field>
+              </div>
+              <Field label="E-mail">
+                <Input type="email" value={f.email} onChange={e => setF(p => ({ ...p, email: e.target.value }))} placeholder="maria@email.com" />
+              </Field>
+              <div className="grid grid-cols-3 gap-3">
+                <div className="col-span-2">
+                  <Field label="Endereço">
+                    <Input value={f.street} onChange={e => setF(p => ({ ...p, street: e.target.value }))} />
+                  </Field>
+                </div>
+                <Field label="Nº / KM">
+                  <Input value={f.number} onChange={e => setF(p => ({ ...p, number: e.target.value }))} />
+                </Field>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="Bairro">
+                  <Input value={f.neighborhood} onChange={e => setF(p => ({ ...p, neighborhood: e.target.value }))} />
+                </Field>
+                <Field label="CEP">
+                  <Input value={f.zipCode} onChange={e => setF(p => ({ ...p, zipCode: maskCEP(e.target.value) }))} placeholder="00000-000" />
+                </Field>
+              </div>
+              <Field label="Cidade">
+                <Input value={f.city} onChange={e => setF(p => ({ ...p, city: e.target.value }))} />
+              </Field>
+              <label className="flex items-start gap-2 pt-1 cursor-pointer">
+                <input type="checkbox" checked={f.terms} onChange={e => setF(p => ({ ...p, terms: e.target.checked }))} className="accent-primary mt-0.5" />
+                <span className="text-xs text-muted-foreground">Li e aceito os termos de participação e o uso dos meus dados para a realização do curso.</span>
+              </label>
+              {error && <ErrorAlert message={error} />}
+              <DialogFooter className="flex-col gap-2 sm:flex-row">
+                <Button type="button" variant="outline" onClick={() => { setError(null); setStep('cpf') }} className="sm:flex-none">
+                  {t('registration.cancel')}
+                </Button>
+                <Button className="flex-1" disabled={loading} onClick={submitFull}>
+                  {loading ? t('registration.submitting') : t('registration.confirm')}
+                </Button>
+              </DialogFooter>
+            </div>
           </>
         )}
       </DialogContent>
