@@ -18,7 +18,7 @@ import {
 } from '@/hooks/useCourse'
 import type { CourseCardItem } from '@/hooks/useCourse'
 import { useRooms, useCreateRoom } from '@/hooks/useRooms'
-import { useCourseRegistrations, useCancelRegistration, useInstructors, useConfirmRegistration, useStartCourse } from '@/hooks/useAdmin'
+import { useCourseRegistrations, useCancelRegistration, useInstructors, useConfirmRegistration, useStartCourse, useUploadRegistrationFicha, useDeleteRegistrationFicha, openRegistrationFicha } from '@/hooks/useAdmin'
 import type { UserDataDetail } from '@/hooks/useAdmin'
 import { formatDateFromString } from '@/utils/format-data-from-string'
 import { calcAge } from '@/utils/age'
@@ -29,7 +29,7 @@ import {
   Plus, Building2, GraduationCap, Calendar, Search,
   BookOpen, Images, ChevronLeft, ChevronRight, X, Pencil, Trash2,
   Clock, MapPin, User, ImageUp, ImagePlus, Upload, UserCheck, UserX,
-  FileDown, Loader2, CheckCircle2, Circle, PlayCircle,
+  FileDown, Loader2, CheckCircle2, Circle, PlayCircle, Paperclip, Eye,
 } from 'lucide-react'
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
 import {
@@ -266,6 +266,9 @@ function RegistrationsTab({
   const cancelReg = useCancelRegistration(courseId)
   const confirmReg = useConfirmRegistration(courseId)
   const startCourse = useStartCourse()
+  const uploadFicha = useUploadRegistrationFicha(courseId)
+  const deleteFicha = useDeleteRegistrationFicha(courseId)
+  const [fichaBusyId, setFichaBusyId] = useState<string | null>(null)
   const [confirmId, setConfirmId] = useState<string | null>(null)
   const [fichaId, setFichaId] = useState<string | null>(null)
   const [exportingAll, setExportingAll] = useState(false)
@@ -305,6 +308,46 @@ function RegistrationsTab({
     document.body.appendChild(a)
     a.click()
     document.body.removeChild(a)
+  }
+
+  async function anexarFicha(regId: string, file: File | undefined) {
+    if (!file) return
+    if (file.type !== 'application/pdf') {
+      toast.error('Envie um arquivo PDF.')
+      return
+    }
+    setFichaBusyId(regId)
+    try {
+      await uploadFicha.mutateAsync({ id: regId, file })
+      toast.success('Ficha anexada!')
+    } catch (e) {
+      toast.error(apiErrorMessage(e, 'Erro ao anexar a ficha.'))
+    } finally {
+      setFichaBusyId(null)
+    }
+  }
+
+  async function verFicha(regId: string) {
+    setFichaBusyId(regId)
+    try {
+      await openRegistrationFicha(regId)
+    } catch {
+      toast.error('Erro ao abrir a ficha.')
+    } finally {
+      setFichaBusyId(null)
+    }
+  }
+
+  async function removerFicha(regId: string) {
+    setFichaBusyId(regId)
+    try {
+      await deleteFicha.mutateAsync(regId)
+      toast.success('Ficha removida.')
+    } catch (e) {
+      toast.error(apiErrorMessage(e, 'Erro ao remover a ficha.'))
+    } finally {
+      setFichaBusyId(null)
+    }
   }
 
   async function exportAll() {
@@ -458,6 +501,49 @@ function RegistrationsTab({
                 </Button>
               ) : null
             })()}
+            {reg.ficha ? (
+              <>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-7 gap-1 px-2 text-xs text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-950/30"
+                  disabled={fichaBusyId === reg.id}
+                  onClick={() => verFicha(reg.id)}
+                  title={`Ver ficha anexada (${reg.ficha.filename})`}
+                >
+                  {fichaBusyId === reg.id ? <Loader2 className="size-3.5 animate-spin" /> : <Eye className="size-3.5" />}
+                  <span className="hidden sm:inline">Ver ficha</span>
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-7 px-2 text-xs text-muted-foreground hover:text-destructive"
+                  disabled={fichaBusyId === reg.id}
+                  onClick={() => removerFicha(reg.id)}
+                  title="Remover ficha anexada"
+                >
+                  <X className="size-3.5" />
+                </Button>
+              </>
+            ) : (
+              <Button asChild size="sm" variant="ghost" className="h-7 gap-1 px-2 text-xs">
+                <label className={fichaBusyId === reg.id ? 'pointer-events-none opacity-60' : 'cursor-pointer'}>
+                  {fichaBusyId === reg.id ? <Loader2 className="size-3.5 animate-spin" /> : <Paperclip className="size-3.5" />}
+                  <span className="hidden sm:inline">Anexar ficha</span>
+                  <input
+                    type="file"
+                    accept="application/pdf"
+                    className="hidden"
+                    onChange={e => {
+                      const input = e.currentTarget
+                      const f = input.files?.[0]
+                      input.value = ''
+                      anexarFicha(reg.id, f)
+                    }}
+                  />
+                </label>
+              </Button>
+            )}
             {confirmId === reg.id ? (
               <div className="flex items-center gap-1">
                 <Button

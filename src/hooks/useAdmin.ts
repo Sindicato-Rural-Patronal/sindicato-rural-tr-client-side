@@ -55,6 +55,7 @@ export type Registration = {
     boardPosition: string | null
     userAdmin: { publicTitle: string | null; isPublic: boolean } | null
   }
+  ficha: { id: string; filename: string; createdAt: string } | null
 }
 
 export type CreateWorkerBody = {
@@ -489,6 +490,42 @@ export function useStartCourse() {
       queryClient.invalidateQueries({ queryKey: ['admin', 'courses'] })
     },
   })
+}
+
+// Anexo da ficha escaneada/preenchida (PDF) na inscrição.
+export function useUploadRegistrationFicha(courseId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, file }: { id: string; file: File }) =>
+      apiUpload(`/admin/registrations/${id}/ficha`, file),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'courses', courseId, 'registrations'] })
+    },
+  })
+}
+
+export function useDeleteRegistrationFicha(courseId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) =>
+      apiFetch(`/admin/registrations/${id}/ficha`, { method: 'DELETE' }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'courses', courseId, 'registrations'] })
+    },
+  })
+}
+
+// Baixa/abre o PDF anexado (endpoint exige Bearer, então não dá pra usar <a href>).
+export async function openRegistrationFicha(registrationId: string) {
+  const token = localStorage.getItem('token')
+  const res = await fetch(`${API_BASE}/admin/registrations/${registrationId}/ficha`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  })
+  if (!res.ok) throw new Error('Falha ao abrir a ficha')
+  const blob = await res.blob()
+  const url = URL.createObjectURL(blob)
+  window.open(url, '_blank', 'noopener')
+  setTimeout(() => URL.revokeObjectURL(url), 60_000)
 }
 
 export function useAdminUser(userId: string) {
