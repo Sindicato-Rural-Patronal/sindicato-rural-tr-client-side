@@ -11,7 +11,7 @@ import { DatePicker } from '@/components/ui/date-picker'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { ArrowLeft, User, FileText, Globe, MapPin, Briefcase, Save } from 'lucide-react'
 import { maskCPF, maskPhone, maskCEP, maskRG, maskCNH, maskMoney } from '@/utils/masks'
-import { ageLabel } from '@/utils/age'
+import { AgeHint } from '@/components/AgeHint'
 
 export const Route = createFileRoute('/_admin/admin/usuarios/novo')({
   component: RouteComponent,
@@ -272,8 +272,9 @@ function RouteComponent() {
             <FieldRow label="Telefone 3">
               <Input className={inp} value={form.phone3} onChange={e => set('phone3', maskPhone(e.target.value))} placeholder="(00) 00000-0000" />
             </FieldRow>
-            <FieldRow label={`Data nascimento${ageLabel(form.birthDate) ? ` — ${ageLabel(form.birthDate)}` : ''}`}>
+            <FieldRow label="Data nascimento">
               <DatePicker value={form.birthDate} onChange={v => set('birthDate', v)} />
+              <AgeHint birthDate={form.birthDate} />
             </FieldRow>
             <FieldRow label="Naturalidade">
               <Input className={inp} value={form.birthPlace} onChange={e => set('birthPlace', e.target.value)} />

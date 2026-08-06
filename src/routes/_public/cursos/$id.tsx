@@ -8,7 +8,7 @@ import { useCourse } from '@/hooks/useCourse'
 import { API_BASE } from '@/lib/api'
 import { formatDateFromString } from '@/utils/format-data-from-string'
 import { maskCPF, maskPhone, maskCEP } from '@/utils/masks'
-import { ageLabel } from '@/utils/age'
+import { AgeHint } from '@/components/AgeHint'
 import { ErrorAlert } from '@/components/ErrorAlert'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -233,8 +233,9 @@ function RegistrationDialog({
                 </Field>
               </div>
               <div className="grid grid-cols-2 gap-3">
-                <Field label={`Data de nascimento${ageLabel(f.birthDate) ? ` — ${ageLabel(f.birthDate)}` : ''}`}>
+                <Field label="Data de nascimento">
                   <Input type="date" value={f.birthDate} onChange={e => setF(p => ({ ...p, birthDate: e.target.value }))} />
+                  <AgeHint birthDate={f.birthDate} />
                 </Field>
                 <Field label="Telefone">
                   <Input value={f.phone} onChange={e => setF(p => ({ ...p, phone: maskPhone(e.target.value) }))} placeholder="(44) 99999-9999" />

@@ -268,6 +268,7 @@ function RegistrationsTab({
   const startCourse = useStartCourse()
   const [confirmId, setConfirmId] = useState<string | null>(null)
   const [fichaId, setFichaId] = useState<string | null>(null)
+  const [autId, setAutId] = useState<string | null>(null)
   const [exportingAll, setExportingAll] = useState(false)
   const { t } = useTranslation()
 
@@ -294,6 +295,21 @@ function RegistrationsTab({
       toast.error(t('admin.courses.fichaError'))
     } finally {
       setFichaId(null)
+    }
+  }
+
+  async function exportAutorizacao(
+    regId: string,
+    participant: { name: string; cpf: string | null; birthDate: string | null },
+  ) {
+    setAutId(regId)
+    try {
+      const { downloadAutorizacaoPdf } = await import('@/lib/autorizacao-menor-pdf')
+      await downloadAutorizacaoPdf([{ course, participant }], `autorizacao-${participant.name}`)
+    } catch {
+      toast.error('Erro ao gerar a autorização.')
+    } finally {
+      setAutId(null)
     }
   }
 
@@ -433,6 +449,22 @@ function RegistrationsTab({
               {fichaId === reg.userDataId ? <Loader2 className="size-3.5 animate-spin" /> : <FileDown className="size-3.5" />}
               <span className="hidden sm:inline">{t('admin.courses.ficha')}</span>
             </Button>
+            {(() => {
+              const age = calcAge(reg.userData.birthDate)
+              return age !== null && age < 18 ? (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-7 gap-1 px-2 text-xs text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/30"
+                  disabled={autId === reg.id}
+                  onClick={() => exportAutorizacao(reg.id, { name: reg.userData.name, cpf: reg.userData.cpf, birthDate: reg.userData.birthDate })}
+                  title="Autorização do responsável (menor de idade)"
+                >
+                  {autId === reg.id ? <Loader2 className="size-3.5 animate-spin" /> : <FileDown className="size-3.5" />}
+                  <span className="hidden sm:inline">Autorização</span>
+                </Button>
+              ) : null
+            })()}
             {confirmId === reg.id ? (
               <div className="flex items-center gap-1">
                 <Button
