@@ -33,3 +33,24 @@ export function useCreateRoom() {
     },
   })
 }
+
+export function useUpdateRoom() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, body }: { id: string; body: CreateRoomBody }) =>
+      apiFetch(`/rooms/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['rooms'] })
+    },
+  })
+}
+
+export function useDeleteRoom() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) => apiFetch(`/rooms/${id}`, { method: 'DELETE' }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['rooms'] })
+    },
+  })
+}

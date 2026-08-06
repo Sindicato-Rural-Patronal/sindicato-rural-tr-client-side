@@ -1,8 +1,8 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { useState } from 'react'
 import { toast } from 'sonner'
-import { useRooms, useCreateRoom } from '@/hooks/useRooms'
-import { Plus, Search, DoorOpen } from 'lucide-react'
+import { useRooms, useCreateRoom, useUpdateRoom, useDeleteRoom, type Room } from '@/hooks/useRooms'
+import { Plus, Search, DoorOpen, Pencil, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -14,6 +14,10 @@ import {
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from '@/components/ui/dialog'
+import {
+  AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogFooter,
+  AlertDialogTitle, AlertDialogDescription, AlertDialogAction, AlertDialogCancel,
+} from '@/components/ui/alert-dialog'
 
 export const Route = createFileRoute('/_admin/admin/salas/')({
   component: RouteComponent,
@@ -22,11 +26,15 @@ export const Route = createFileRoute('/_admin/admin/salas/')({
 function RouteComponent() {
   const { data: salas, isLoading, isError } = useRooms()
   const createRoom = useCreateRoom()
+  const updateRoom = useUpdateRoom()
+  const deleteRoom = useDeleteRoom()
 
   const [busca, setBusca] = useState('')
   const [dialogOpen, setDialogOpen] = useState(false)
+  const [editId, setEditId] = useState<string | null>(null)
   const [form, setForm] = useState({ name: '', description: '', maxCapacity: '' })
   const [error, setError] = useState<string | null>(null)
+  const [deleteTarget, setDeleteTarget] = useState<Room | null>(null)
 
   const salasFiltradas = (salas ?? []).filter(s =>
     s.name.toLowerCase().includes(busca.toLowerCase()) ||
@@ -34,27 +42,55 @@ function RouteComponent() {
   )
 
   function abrirNovo() {
+    setEditId(null)
     setForm({ name: '', description: '', maxCapacity: '' })
+    setError(null)
+    setDialogOpen(true)
+  }
+
+  function abrirEditar(sala: Room) {
+    setEditId(sala.id)
+    setForm({ name: sala.name, description: sala.description ?? '', maxCapacity: String(sala.maxCapacity) })
     setError(null)
     setDialogOpen(true)
   }
 
   async function handleSubmit() {
     setError(null)
+    const body = {
+      name: form.name,
+      description: form.description,
+      maxCapacity: Number(form.maxCapacity),
+    }
     try {
-      await createRoom.mutateAsync({
-        name: form.name,
-        description: form.description,
-        maxCapacity: Number(form.maxCapacity),
-      })
-      toast.success('Sala criada com sucesso!')
+      if (editId) {
+        await updateRoom.mutateAsync({ id: editId, body })
+        toast.success('Sala atualizada com sucesso!')
+      } else {
+        await createRoom.mutateAsync(body)
+        toast.success('Sala criada com sucesso!')
+      }
       setDialogOpen(false)
     } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : 'Erro ao criar sala.'
+      const msg = e instanceof Error ? e.message : 'Erro ao salvar sala.'
       setError(msg)
       toast.error(msg)
     }
   }
+
+  async function handleDelete() {
+    if (!deleteTarget) return
+    try {
+      await deleteRoom.mutateAsync(deleteTarget.id)
+      toast.success('Sala removida.')
+      setDeleteTarget(null)
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : 'Erro ao remover sala.'
+      toast.error(msg)
+    }
+  }
+
+  const saving = createRoom.isPending || updateRoom.isPending
 
   return (
     <div className="p-6 flex flex-col gap-6">
@@ -95,6 +131,7 @@ function RouteComponent() {
               <TableHead>Nome</TableHead>
               <TableHead className="hidden md:table-cell">Descrição</TableHead>
               <TableHead>Capacidade</TableHead>
+              <TableHead className="text-right">Ações</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -103,11 +140,12 @@ function RouteComponent() {
                 <TableCell><Skeleton className="h-4 w-36" /></TableCell>
                 <TableCell className="hidden md:table-cell"><Skeleton className="h-4 w-48" /></TableCell>
                 <TableCell><Skeleton className="h-5 w-20 rounded-full" /></TableCell>
+                <TableCell><Skeleton className="h-7 w-16 ml-auto" /></TableCell>
               </TableRow>
             ))}
             {!isLoading && salasFiltradas.length === 0 && (
               <TableRow>
-                <TableCell colSpan={3} className="py-16 text-center">
+                <TableCell colSpan={4} className="py-16 text-center">
                   <DoorOpen className="size-10 text-muted-foreground/30 mx-auto mb-3" />
                   <p className="text-sm font-medium text-foreground">
                     {busca ? 'Nenhuma sala encontrada' : 'Nenhuma sala cadastrada'}
@@ -132,6 +170,28 @@ function RouteComponent() {
                 <TableCell>
                   <Badge variant="secondary">{sala.maxCapacity} lugares</Badge>
                 </TableCell>
+                <TableCell className="text-right">
+                  <div className="flex items-center justify-end gap-1">
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-8 px-2"
+                      onClick={() => abrirEditar(sala)}
+                      title="Editar sala"
+                    >
+                      <Pencil className="size-4" />
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-8 px-2 text-muted-foreground hover:text-destructive"
+                      onClick={() => setDeleteTarget(sala)}
+                      title="Excluir sala"
+                    >
+                      <Trash2 className="size-4" />
+                    </Button>
+                  </div>
+                </TableCell>
               </TableRow>
             ))}
           </TableBody>
@@ -141,8 +201,10 @@ function RouteComponent() {
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Nova Sala</DialogTitle>
-            <DialogDescription>Preencha os dados para cadastrar uma nova sala</DialogDescription>
+            <DialogTitle>{editId ? 'Editar Sala' : 'Nova Sala'}</DialogTitle>
+            <DialogDescription>
+              {editId ? 'Atualize os dados da sala' : 'Preencha os dados para cadastrar uma nova sala'}
+            </DialogDescription>
           </DialogHeader>
           <div className="flex flex-col gap-4">
             <div className="flex flex-col gap-1.5">
@@ -177,13 +239,35 @@ function RouteComponent() {
             <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancelar</Button>
             <Button
               onClick={handleSubmit}
-              disabled={!form.name || !form.maxCapacity || createRoom.isPending}
+              disabled={!form.name || !form.maxCapacity || saving}
             >
-              {createRoom.isPending ? 'Salvando...' : 'Cadastrar'}
+              {saving ? 'Salvando...' : editId ? 'Salvar' : 'Cadastrar'}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={!!deleteTarget} onOpenChange={open => { if (!open) setDeleteTarget(null) }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir sala</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja excluir a sala <strong>{deleteTarget?.name}</strong>? Esta ação
+              não pode ser desfeita. Salas vinculadas a cursos não podem ser removidas.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleteRoom.isPending}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={e => { e.preventDefault(); handleDelete() }}
+              disabled={deleteRoom.isPending}
+              className="bg-destructive text-white hover:bg-destructive/90"
+            >
+              {deleteRoom.isPending ? 'Excluindo...' : 'Excluir'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }
