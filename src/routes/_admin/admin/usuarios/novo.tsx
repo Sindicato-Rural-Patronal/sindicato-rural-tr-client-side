@@ -1,9 +1,10 @@
 import { createFileRoute, useNavigate, Link } from '@tanstack/react-router'
+import { useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { toast } from 'sonner'
 import { apiFetch } from '@/lib/api'
 import { apiErrorMessage } from '@/lib/api-error-message'
-import { useCEPLookup } from '@/hooks/useAdmin'
+import { useCEPLookup, invalidateUserViews } from '@/hooks/useAdmin'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -150,6 +151,7 @@ function buildAddressBody(a: Form['address']): Record<string, unknown> | null {
 
 function RouteComponent() {
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
   const cepLookup = useCEPLookup()
   const [form, setForm] = useState<Form>(emptyForm)
   const [error, setError] = useState<string | null>(null)
@@ -222,6 +224,8 @@ function RouteComponent() {
         })
       }
 
+      // Novas listagens (associados/instrutores/etc.) precisam refletir o cadastro.
+      invalidateUserViews(queryClient)
       toast.success('Associado cadastrado com sucesso!')
       navigate({ to: '/admin/usuarios/$id', params: { id: newId } })
     } catch (err) {

@@ -5,7 +5,7 @@ import { apiFetch, apiUpload, API_BASE } from '@/lib/api'
 // Invalida TODAS as listas onde um usuário aparece, para não ficarem defasadas
 // após editar a ficha (associados, admins, instrutores, parceiros, contatos
 // públicos e inscrições em cursos).
-function invalidateUserViews(qc: QueryClient) {
+export function invalidateUserViews(qc: QueryClient) {
   qc.invalidateQueries({ queryKey: ['admin', 'users'] })
   qc.invalidateQueries({ queryKey: ['admin', 'admins'] })
   qc.invalidateQueries({ queryKey: ['admin', 'instructors'] })
@@ -411,7 +411,9 @@ export function useDeleteWorker() {
     mutationFn: (userId: string) =>
       apiFetch(`/users/${userId}`, { method: 'DELETE' }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['admin', 'users'] })
+      // O usuário pode ser também instrutor/parceiro/contato/admin — invalida
+      // todas as listagens onde ele aparece, não só ['admin','users'].
+      invalidateUserViews(queryClient)
     },
   })
 }
@@ -432,6 +434,8 @@ export function useUpdateAdmin(adminId: string) {
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['admin', 'admins'] })
       queryClient.invalidateQueries({ queryKey: ['admin', 'me'] })
+      // Admin com isPublic/publicTitle vira contato público — refresca /contatos.
+      queryClient.invalidateQueries({ queryKey: ['contacts'] })
       // Se reatribuiu a regra do próprio usuário logado, desloga.
       const me = queryClient.getQueryData<AdminMe>(['admin', 'me'])
       if (me?.userId === adminId && variables.rulesId) logoutForPermissionChange()
@@ -446,6 +450,7 @@ export function useDeleteAdmin() {
       apiFetch(`/admin/users/${adminId}`, { method: 'DELETE' }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin', 'admins'] })
+      queryClient.invalidateQueries({ queryKey: ['contacts'] })
     },
   })
 }

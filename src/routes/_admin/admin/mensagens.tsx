@@ -106,6 +106,8 @@ function RouteComponent() {
   const readParam = readFilter === 'unread' ? false : readFilter === 'read' ? true : null
 
   const { data, isLoading } = useContactMessages({ page, limit: 20, read: readParam, search })
+  // Contagem global de não-lidas (não só a página atual): consulta leve read:false.
+  const { data: unreadData } = useContactMessages({ page: 1, limit: 1, read: false })
   const markRead = useMarkContactMessageRead()
   const deleteMsg = useDeleteContactMessage()
 
@@ -130,7 +132,7 @@ function RouteComponent() {
 
   const messages = data?.data ?? []
   const totalPages = data?.totalPages ?? 1
-  const unreadCount = messages.filter(m => !m.read).length
+  const unreadCount = unreadData?.total ?? 0
 
   return (
     <div className="p-6">

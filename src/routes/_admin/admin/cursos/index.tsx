@@ -1663,9 +1663,15 @@ const LIMIT_OPTIONS = [8, 16, 24, 32] as const
 function RouteComponent() {
   const [page, setPage] = useState(1)
   const [limit, setLimit] = useState<typeof LIMIT_OPTIONS[number]>(8)
-  const { data, isLoading, isError } = useAdminCourses({ page, limit })
-  const deleteCourse = useDeleteCourse()
   const [search, setSearch] = useState('')
+  const [debouncedSearch, setDebouncedSearch] = useState('')
+  // Busca é server-side (o hook aceita `search`); debounce evita 1 request por tecla.
+  useEffect(() => {
+    const t = setTimeout(() => { setDebouncedSearch(search); setPage(1) }, 350)
+    return () => clearTimeout(t)
+  }, [search])
+  const { data, isLoading, isError } = useAdminCourses({ page, limit, search: debouncedSearch })
+  const deleteCourse = useDeleteCourse()
   const [viewDialog, setViewDialog] = useState<CourseCardItem | null>(null)
   const [formDialog, setFormDialog] = useState<{ open: boolean; editing: Course | null }>({ open: false, editing: null })
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null)
@@ -1676,16 +1682,9 @@ function RouteComponent() {
   const totalPages = data?.totalPages ?? 1
   const total = data?.total ?? 0
 
-  const visible = search
-    ? courses.filter(c => {
-        const q = search.toLowerCase()
-        return (
-          c.title.toLowerCase().includes(q) ||
-          (c.instructorName ?? '').toLowerCase().includes(q) ||
-          (c.eventNumber ?? '').includes(q)
-        )
-      })
-    : courses
+  // Filtragem feita no servidor via `search` — não filtrar de novo no cliente
+  // (isso quebrava a busca entre páginas).
+  const visible = courses
 
   async function handleDelete(id: string) {
     try {

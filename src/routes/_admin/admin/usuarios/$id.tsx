@@ -174,16 +174,25 @@ function CameraDialog({ open, onClose, onCapture }: {
     if (!open) return
     setCaptured(null)
     setError(null)
+    let active = true
+    let localStream: MediaStream | null = null
     navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } })
       .then(s => {
+        // Resolveu depois do dialog fechar/desmontar → não deixa a câmera ligada.
+        if (!active) { s.getTracks().forEach(t => t.stop()); return }
+        localStream = s
         setStream(s)
         if (videoRef.current) {
           videoRef.current.srcObject = s
           videoRef.current.play()
         }
       })
-      .catch(() => setError('Câmera não disponível ou permissão negada.'))
-    return () => {}
+      .catch(() => { if (active) setError('Câmera não disponível ou permissão negada.') })
+    return () => {
+      active = false
+      localStream?.getTracks().forEach(t => t.stop())
+      setStream(null)
+    }
   }, [open])
 
   function stopStream(s: MediaStream | null) {

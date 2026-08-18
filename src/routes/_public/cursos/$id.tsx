@@ -3,6 +3,7 @@ import { apiErrorMessage } from '@/lib/api-error-message'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { useState } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { useCourse } from '@/hooks/useCourse'
 import { API_BASE } from '@/lib/api'
@@ -66,6 +67,7 @@ function RegistrationDialog({
   onClose: () => void
 }) {
   const { t } = useTranslation()
+  const queryClient = useQueryClient()
   const [step, setStep] = useState<Step>('cpf')
   const [cpf, setCpf] = useState('')
   const [lookupName, setLookupName] = useState('')
@@ -98,6 +100,7 @@ function RegistrationDialog({
     setLoading(true); setError(null)
     try {
       await postJson(`${API_BASE}/courses/${courseId}/register-by-cpf`, { cpf: cpfDigits })
+      queryClient.invalidateQueries({ queryKey: ['courses', courseId] })
       setStep('success')
     } catch (e) {
       setError(apiErrorMessage(e, t('registration.errorDefault')))
@@ -129,6 +132,7 @@ function RegistrationDialog({
           city: f.city || undefined,
         },
       })
+      queryClient.invalidateQueries({ queryKey: ['courses', courseId] })
       setStep('success')
     } catch (e) {
       setError(apiErrorMessage(e, t('registration.errorDefault')))
@@ -315,8 +319,10 @@ function RouteComponent() {
     )
   }
 
-  const spotsLeft = course.maxStudents - course.enrolled
-  const occupancyPercent = Math.round((course.enrolled / course.maxStudents) * 100)
+  const spotsLeft = Math.max(0, course.maxStudents - course.enrolled)
+  const occupancyPercent = course.maxStudents > 0
+    ? Math.min(100, Math.round((course.enrolled / course.maxStudents) * 100))
+    : 100
   const isFull = spotsLeft <= 0
 
   const registrationClosed = course.registrationDeadline
