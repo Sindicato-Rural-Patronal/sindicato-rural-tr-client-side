@@ -43,6 +43,11 @@ import { Pagination } from '@/components/ui/pagination'
 import type { News, ContentBlock, ParagraphBlock, ImageBlock, ImageTextBlock } from '@/@types/news'
 import { parseBlocks, serializeBlocks } from '@/@types/news'
 
+// Revoga um object URL de blob (evita vazamento de memória em sessões longas).
+function revokeBlobUrl(url: string | null) {
+  if (url && url.startsWith('blob:')) URL.revokeObjectURL(url)
+}
+
 export const Route = createFileRoute('/_admin/admin/noticias/')({
   component: RouteComponent,
 })
@@ -496,12 +501,12 @@ function NewsEditor({
   function handleBannerSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file) return
-    setBannerCropSrc(URL.createObjectURL(file))
+    setBannerCropSrc(prev => { revokeBlobUrl(prev); return URL.createObjectURL(file) })
     if (bannerInputRef.current) bannerInputRef.current.value = ''
   }
 
   async function handleBannerCropConfirm(file: File) {
-    setBannerCropSrc(null)
+    setBannerCropSrc(prev => { revokeBlobUrl(prev); return null })
     if (!savedId) {
       // criação: guarda localmente, mostra preview e sobe após o create
       setStagedBannerFile(file)
@@ -571,7 +576,7 @@ function NewsEditor({
           outputWidth={1440}
           outputHeight={600}
           onConfirm={handleBannerCropConfirm}
-          onCancel={() => setBannerCropSrc(null)}
+          onCancel={() => setBannerCropSrc(prev => { revokeBlobUrl(prev); return null })}
         />
 
         {/* Banner */}
@@ -829,12 +834,12 @@ function RouteComponent() {
   function handleBannerSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file || !bannerNewsId) return
-    setBannerCropSrc(URL.createObjectURL(file))
+    setBannerCropSrc(prev => { revokeBlobUrl(prev); return URL.createObjectURL(file) })
     if (bannerInputRef.current) bannerInputRef.current.value = ''
   }
 
   async function handleBannerCropConfirm(file: File) {
-    setBannerCropSrc(null)
+    setBannerCropSrc(prev => { revokeBlobUrl(prev); return null })
     if (!bannerNewsId) return
     try {
       await uploadBanner.mutateAsync(file)
@@ -902,7 +907,7 @@ function RouteComponent() {
         outputWidth={1440}
         outputHeight={600}
         onConfirm={handleBannerCropConfirm}
-        onCancel={() => setBannerCropSrc(null)}
+        onCancel={() => setBannerCropSrc(prev => { revokeBlobUrl(prev); return null })}
       />
 
       {isLoading && (

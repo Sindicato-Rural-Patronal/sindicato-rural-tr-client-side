@@ -619,22 +619,19 @@ function ViewDialog({
   async function handleAssignInstructor() {
     if (!selInstrId) return
     try {
-      const res = await assignInstructor.mutateAsync({
+      // apiFetch lança em não-2xx, então não há branch !res.ok — o erro real
+      // do backend (ex.: "Instrutor já vinculado") vem no catch.
+      await assignInstructor.mutateAsync({
         instructorUserDataId: selInstrId,
         title: instrTitle || undefined,
         category: instrCategory || undefined,
       })
-      if (!res.ok) {
-        const data = await res.json().catch(() => null)
-        toast.error(data?.error ?? 'Instrutor já vinculado ou não encontrado.')
-        return
-      }
       setSelInstrId('')
       setInstrTitle('')
       setInstrCategory('')
       toast.success('Instrutor adicionado!')
-    } catch {
-      toast.error('Erro ao adicionar instrutor.')
+    } catch (e) {
+      toast.error(apiErrorMessage(e, 'Erro ao adicionar instrutor.'))
     }
   }
 

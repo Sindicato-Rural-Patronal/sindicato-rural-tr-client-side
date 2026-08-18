@@ -325,8 +325,11 @@ function RouteComponent() {
     : 100
   const isFull = spotsLeft <= 0
 
+  // O prazo é salvo como hora "de parede" rotulada em UTC (…Z). Comparar direto
+  // com o instante real fecha ~3h cedo em UTC-3; removendo o Z ele é interpretado
+  // como hora local, respeitando o horário que o admin digitou.
   const registrationClosed = course.registrationDeadline
-    ? new Date(course.registrationDeadline) < new Date()
+    ? new Date(course.registrationDeadline.replace(/Z$/, '')) < new Date()
     : false
 
   const enrollDisabled = isFull || registrationClosed
