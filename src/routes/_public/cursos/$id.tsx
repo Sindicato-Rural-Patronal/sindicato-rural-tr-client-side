@@ -6,6 +6,7 @@ import { useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { useCourse } from '@/hooks/useCourse'
+import { useSeo } from '@/hooks/useSeo'
 import { API_BASE } from '@/lib/api'
 import { formatDateFromString } from '@/utils/format-data-from-string'
 import { maskCPF, maskPhone, maskCEP } from '@/utils/masks'
@@ -295,6 +296,12 @@ function RouteComponent() {
   const { data: course, isLoading, isError } = useCourse(id)
   const [registrationOpen, setRegistrationOpen] = useState(false)
   const { t } = useTranslation()
+
+  useSeo({
+    title: course?.title,
+    description: course?.description,
+    image: course?.coverImage ?? undefined,
+  })
 
   if (isLoading) {
     return (

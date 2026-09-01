@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
 import { useTranslation } from 'react-i18next'
 import { useNewsDetail } from '@/hooks/useNews'
+import { useSeo } from '@/hooks/useSeo'
 import { parseBlocks } from '@/@types/news'
 import type { ContentBlock } from '@/@types/news'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -81,6 +82,12 @@ function RouteComponent() {
   const { id } = Route.useParams()
   const { t } = useTranslation()
   const { data: news, isLoading, isError } = useNewsDetail(id)
+
+  useSeo({
+    title: news?.title,
+    description: news?.summary ?? undefined,
+    image: news?.bannerUrl ?? undefined,
+  })
 
   if (isLoading) {
     return (

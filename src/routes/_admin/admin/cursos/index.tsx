@@ -19,7 +19,7 @@ import {
 import type { CourseCardItem } from '@/hooks/useCourse'
 import { useRooms, useCreateRoom } from '@/hooks/useRooms'
 import { useCourseRegistrations, useCancelRegistration, useInstructors, useConfirmRegistration, useStartCourse, useUploadRegistrationFicha, useDeleteRegistrationFicha, openRegistrationFicha } from '@/hooks/useAdmin'
-import type { UserDataDetail } from '@/hooks/useAdmin'
+import type { UserDataDetail, Registration } from '@/hooks/useAdmin'
 import { formatDateFromString } from '@/utils/format-data-from-string'
 import { calcAge } from '@/utils/age'
 import { roomSchema, courseBaseSchema } from '@/lib/schemas'
@@ -29,7 +29,7 @@ import {
   Plus, Building2, GraduationCap, Calendar, Search,
   BookOpen, Images, ChevronLeft, ChevronRight, X, Pencil, Trash2,
   Clock, MapPin, User, ImageUp, ImagePlus, Upload, UserCheck, UserX,
-  FileDown, Loader2, CheckCircle2, Circle, PlayCircle, Paperclip, Eye,
+  FileDown, Loader2, CheckCircle2, Circle, PlayCircle, Paperclip, Eye, FileSpreadsheet, Award,
 } from 'lucide-react'
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
 import {
@@ -272,6 +272,10 @@ function RegistrationsTab({
   const [confirmId, setConfirmId] = useState<string | null>(null)
   const [fichaId, setFichaId] = useState<string | null>(null)
   const [exportingAll, setExportingAll] = useState(false)
+  const [exportingCsv, setExportingCsv] = useState(false)
+  const [certId, setCertId] = useState<string | null>(null)
+  const [exportingCerts, setExportingCerts] = useState(false)
+  const { data: courseDetail } = useAdminCourse(courseId)
   const { t } = useTranslation()
 
   const inProgress = courseStatus === 'IN_PROGRESS'
@@ -376,6 +380,101 @@ function RegistrationsTab({
     }
   }
 
+  // Exporta todas as inscrições como planilha CSV (Excel-friendly: BOM + ';').
+  async function exportCsv() {
+    setExportingCsv(true)
+    try {
+      const all: { data: Registration[] } = await apiFetch(
+        `/admin/courses/${courseId}/registrations?page=1&limit=1000`,
+      ).then(r => r.json())
+      if (all.data.length === 0) {
+        toast.error(t('admin.courses.noRegistrations'))
+        return
+      }
+      const headers = ['Nome', 'CPF', 'E-mail', 'Telefone', 'Nascimento', 'Idade', 'Confirmado', 'Sócio', 'Cargo', 'Título']
+      const rows = all.data.map(r => {
+        const age = calcAge(r.userData.birthDate)
+        return [
+          r.userData.name,
+          r.userData.cpf ?? '',
+          r.userData.email ?? '',
+          r.userData.phone ?? '',
+          r.userData.birthDate ? formatDateFromString(r.userData.birthDate) : '',
+          age !== null ? String(age) : '',
+          r.confirmed ? 'Sim' : 'Não',
+          r.userData.isPartner ? 'Sim' : 'Não',
+          r.userData.boardPosition ?? '',
+          r.userData.userAdmin?.publicTitle ?? '',
+        ]
+      })
+      const esc = (v: string) => `"${String(v).replace(/"/g, '""')}"`
+      const csv = '﻿' + [headers, ...rows].map(cols => cols.map(esc).join(';')).join('\r\n')
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `inscricoes-${courseTitle}.csv`.replace(/[^\w.-]+/g, '-')
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+    } catch (e) {
+      toast.error(apiErrorMessage(e, 'Erro ao exportar planilha.'))
+    } finally {
+      setExportingCsv(false)
+    }
+  }
+
+  function certCourse() {
+    return {
+      title: courseTitle,
+      eventNumber,
+      workloadHours: courseDetail?.workloadHours ?? null,
+      startDate: courseDetail?.startDate ?? null,
+      endDate: courseDetail?.endDate ?? null,
+      location: courseDetail?.location ?? null,
+    }
+  }
+
+  async function certOne(reg: Registration) {
+    setCertId(reg.id)
+    try {
+      const { downloadCertificadoPdf } = await import('@/lib/certificado-pdf')
+      await downloadCertificadoPdf(
+        [{ course: certCourse(), participant: { name: reg.userData.name, cpf: reg.userData.cpf } }],
+        `certificado-${reg.userData.name}`,
+      )
+    } catch {
+      toast.error('Erro ao gerar o certificado.')
+    } finally {
+      setCertId(null)
+    }
+  }
+
+  async function certAll() {
+    setExportingCerts(true)
+    try {
+      const { downloadCertificadoPdf } = await import('@/lib/certificado-pdf')
+      const all: { data: Registration[] } = await apiFetch(
+        `/admin/courses/${courseId}/registrations?page=1&limit=1000`,
+      ).then(r => r.json())
+      const confirmed = all.data.filter(r => r.confirmed)
+      if (confirmed.length === 0) {
+        toast.error('Nenhuma inscrição confirmada para emitir certificado.')
+        return
+      }
+      const course = certCourse()
+      await downloadCertificadoPdf(
+        confirmed.map(r => ({ course, participant: { name: r.userData.name, cpf: r.userData.cpf } })),
+        `certificados-${courseTitle}`,
+      )
+    } catch {
+      toast.error('Erro ao gerar os certificados.')
+    } finally {
+      setExportingCerts(false)
+    }
+  }
+
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between gap-2">
@@ -387,6 +486,18 @@ function RegistrationsTab({
             <Button size="sm" variant="outline" className="h-8 gap-1.5" disabled={exportingAll} onClick={exportAll}>
               {exportingAll ? <Loader2 className="size-3.5 animate-spin" /> : <FileDown className="size-3.5" />}
               {t('admin.courses.exportAllFichas')}
+            </Button>
+          )}
+          {total > 0 && (
+            <Button size="sm" variant="outline" className="h-8 gap-1.5" disabled={exportingCsv} onClick={exportCsv}>
+              {exportingCsv ? <Loader2 className="size-3.5 animate-spin" /> : <FileSpreadsheet className="size-3.5" />}
+              <span className="hidden sm:inline">Planilha</span>
+            </Button>
+          )}
+          {total > 0 && (
+            <Button size="sm" variant="outline" className="h-8 gap-1.5" disabled={exportingCerts} onClick={certAll} title="Certificados dos confirmados">
+              {exportingCerts ? <Loader2 className="size-3.5 animate-spin" /> : <Award className="size-3.5" />}
+              <span className="hidden sm:inline">Certificados</span>
             </Button>
           )}
           {total > 0 && !inProgress && (
@@ -486,6 +597,19 @@ function RegistrationsTab({
               {fichaId === reg.userDataId ? <Loader2 className="size-3.5 animate-spin" /> : <FileDown className="size-3.5" />}
               <span className="hidden sm:inline">{t('admin.courses.ficha')}</span>
             </Button>
+            {reg.confirmed && (
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-7 gap-1 px-2 text-xs text-amber-600 hover:text-amber-700 hover:bg-amber-50 dark:hover:bg-amber-950/30"
+                disabled={certId === reg.id}
+                onClick={() => certOne(reg)}
+                title="Emitir certificado de conclusão"
+              >
+                {certId === reg.id ? <Loader2 className="size-3.5 animate-spin" /> : <Award className="size-3.5" />}
+                <span className="hidden sm:inline">Certificado</span>
+              </Button>
+            )}
             {(() => {
               const age = calcAge(reg.userData.birthDate)
               return age !== null && age < 18 ? (

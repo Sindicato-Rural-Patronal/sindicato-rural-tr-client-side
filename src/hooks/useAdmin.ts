@@ -833,3 +833,22 @@ export function useSendContactMessage() {
       }),
   })
 }
+
+export type AuditLog = {
+  id: string
+  actorId: string | null
+  actorName: string
+  method: string
+  path: string
+  entity: string
+  statusCode: number
+  createdAt: string
+}
+
+export function useAuditLogs(params: { page?: number; limit?: number } = {}) {
+  const { page = 1, limit = 30 } = params
+  return useQuery<PaginatedResponse<AuditLog>>({
+    queryKey: ['admin', 'audit-logs', page, limit],
+    queryFn: () => apiFetch(`/admin/audit-logs?page=${page}&limit=${limit}`).then(r => r.json()),
+  })
+}
