@@ -13,6 +13,7 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as PublicRouteImport } from './routes/_public'
 import { Route as AdminRouteImport } from './routes/_admin'
 import { Route as PublicIndexRouteImport } from './routes/_public/index'
+import { Route as ConviteTokenRouteImport } from './routes/convite/$token'
 import { Route as PublicSobreRouteImport } from './routes/_public/sobre'
 import { Route as PublicContatoRouteImport } from './routes/_public/contato'
 import { Route as PublicNoticiasIndexRouteImport } from './routes/_public/noticias/index'
@@ -56,6 +57,11 @@ const PublicIndexRoute = PublicIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => PublicRoute,
+} as any)
+const ConviteTokenRoute = ConviteTokenRouteImport.update({
+  id: '/convite/$token',
+  path: '/convite/$token',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const PublicSobreRoute = PublicSobreRouteImport.update({
   id: '/sobre',
@@ -191,6 +197,7 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/contato': typeof PublicContatoRoute
   '/sobre': typeof PublicSobreRoute
+  '/convite/$token': typeof ConviteTokenRoute
   '/admin/administradores': typeof AdminAdminAdministradoresRouteWithChildren
   '/admin/banners': typeof AdminAdminBannersRoute
   '/admin/cursos': typeof AdminAdminCursosRouteWithChildren
@@ -220,6 +227,7 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/contato': typeof PublicContatoRoute
   '/sobre': typeof PublicSobreRoute
+  '/convite/$token': typeof ConviteTokenRoute
   '/admin/banners': typeof AdminAdminBannersRoute
   '/admin/dashboard': typeof AdminAdminDashboardRoute
   '/admin/mensagens': typeof AdminAdminMensagensRoute
@@ -246,6 +254,7 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/_public/contato': typeof PublicContatoRoute
   '/_public/sobre': typeof PublicSobreRoute
+  '/convite/$token': typeof ConviteTokenRoute
   '/_public/': typeof PublicIndexRoute
   '/_admin/admin/administradores': typeof AdminAdminAdministradoresRouteWithChildren
   '/_admin/admin/banners': typeof AdminAdminBannersRoute
@@ -278,6 +287,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/contato'
     | '/sobre'
+    | '/convite/$token'
     | '/admin/administradores'
     | '/admin/banners'
     | '/admin/cursos'
@@ -307,6 +317,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/contato'
     | '/sobre'
+    | '/convite/$token'
     | '/admin/banners'
     | '/admin/dashboard'
     | '/admin/mensagens'
@@ -332,6 +343,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/_public/contato'
     | '/_public/sobre'
+    | '/convite/$token'
     | '/_public/'
     | '/_admin/admin/administradores'
     | '/_admin/admin/banners'
@@ -362,6 +374,7 @@ export interface RootRouteChildren {
   AdminRoute: typeof AdminRouteWithChildren
   PublicRoute: typeof PublicRouteWithChildren
   LoginRoute: typeof LoginRoute
+  ConviteTokenRoute: typeof ConviteTokenRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -393,6 +406,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/'
       preLoaderRoute: typeof PublicIndexRouteImport
       parentRoute: typeof PublicRoute
+    }
+    '/convite/$token': {
+      id: '/convite/$token'
+      path: '/convite/$token'
+      fullPath: '/convite/$token'
+      preLoaderRoute: typeof ConviteTokenRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/_public/sobre': {
       id: '/_public/sobre'
@@ -694,6 +714,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminRoute: AdminRouteWithChildren,
   PublicRoute: PublicRouteWithChildren,
   LoginRoute: LoginRoute,
+  ConviteTokenRoute: ConviteTokenRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

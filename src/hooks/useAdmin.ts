@@ -336,6 +336,16 @@ export function useDeleteRule() {
   })
 }
 
+// Convite de admin: gestor escolhe pessoa + regra → gera token/link.
+export function useCreateAdminInvite() {
+  return useMutation({
+    mutationFn: (body: { userDataId: string; rulesId: string }) =>
+      apiFetch('/admin/invites', { method: 'POST', body: JSON.stringify(body) }).then(
+        r => r.json() as Promise<{ token: string; expiresAt: string }>,
+      ),
+  })
+}
+
 export function useCreateAdmin() {
   const queryClient = useQueryClient()
   return useMutation({

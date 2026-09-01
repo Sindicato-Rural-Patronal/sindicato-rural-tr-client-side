@@ -7,7 +7,7 @@ import { usePermissions } from '@/hooks/usePermissions'
 import { PermissionButton } from '@/components/PermissionButton'
 import {
   useAdminUsers, useAdminAdmins, useAdminRules,
-  useCreateAdmin, useCreateRule, useUpdateRule, useDeleteRule,
+  useCreateAdminInvite, useCreateRule, useUpdateRule, useDeleteRule,
   useDeleteWorker,
   useUpdateAdmin, useDeleteAdmin,
   type UserData, type UserAdmin, type Rule,
@@ -429,28 +429,39 @@ function NovoAdminSheet() {
   const { data: regrasData } = useAdminRules()
   const usuarios = usuariosData?.data ?? []
   const regras = regrasData?.data ?? []
-  const createAdmin = useCreateAdmin()
-  const [form, setForm] = useState({ username: '', password: '', userDataId: '', userRole: '' })
+  const createInvite = useCreateAdminInvite()
+  const [form, setForm] = useState({ userDataId: '', userRole: '' })
+  const [link, setLink] = useState<string | null>(null)
+  const [copied, setCopied] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [success, setSuccess] = useState(false)
 
-  function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) {
+  function handleChange(e: React.ChangeEvent<HTMLSelectElement>) {
     setForm(prev => ({ ...prev, [e.target.name]: e.target.value }))
+    setLink(null)
   }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError(null)
-    setSuccess(false)
     try {
-      await createAdmin.mutateAsync(form)
-      setForm({ username: '', password: '', userDataId: '', userRole: '' })
-      setSuccess(true)
-      toast.success('Administrador criado com sucesso!')
+      const { token } = await createInvite.mutateAsync({ userDataId: form.userDataId, rulesId: form.userRole })
+      setLink(`${window.location.origin}/convite/${token}`)
     } catch (e) {
-      const msg = e instanceof Error ? e.message : 'Erro ao criar administrador.'
+      const msg = e instanceof Error ? e.message : 'Erro ao gerar o convite.'
       setError(msg)
       toast.error(msg)
+    }
+  }
+
+  async function copy() {
+    if (!link) return
+    try {
+      await navigator.clipboard.writeText(link)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+      toast.success('Link copiado!')
+    } catch {
+      toast.error('Não foi possível copiar — selecione e copie manualmente.')
     }
   }
 
@@ -460,21 +471,17 @@ function NovoAdminSheet() {
         <Button><Plus className="size-4" /> Novo admin</Button>
       </SheetTrigger>
       <SheetContent className="w-full sm:max-w-md overflow-y-auto">
-        <SheetHeader><SheetTitle>Novo administrador</SheetTitle></SheetHeader>
+        <SheetHeader><SheetTitle>Convidar administrador</SheetTitle></SheetHeader>
         <div className="p-4">
+          <p className="mb-4 text-xs text-muted-foreground">
+            Escolha a pessoa e a regra de acesso. Um link é gerado para você enviar —
+            a própria pessoa define o usuário e a senha dela para ativar o acesso.
+          </p>
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="admin-username">Username *</Label>
-              <Input id="admin-username" name="username" value={form.username} onChange={handleChange} required />
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="admin-password">Senha *</Label>
-              <Input id="admin-password" type="password" name="password" value={form.password} onChange={handleChange} required />
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="admin-user">Associado vinculado *</Label>
+              <Label htmlFor="admin-user">Pessoa (associado) *</Label>
               <select id="admin-user" name="userDataId" value={form.userDataId} onChange={handleChange} required className="rounded-md border border-input px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring bg-background">
-                <option value="">Selecione um associado</option>
+                <option value="">Selecione uma pessoa</option>
                 {usuarios.map(u => (
                   <option key={u.id} value={u.id}>{u.name} — {u.email}</option>
                 ))}
@@ -490,11 +497,23 @@ function NovoAdminSheet() {
               </select>
             </div>
             {error && <p className="text-sm text-destructive">{error}</p>}
-            {success && <p className="text-sm text-emerald-600">Administrador criado com sucesso!</p>}
-            <Button type="submit" disabled={createAdmin.isPending}>
-              {createAdmin.isPending ? 'Salvando...' : 'Criar administrador'}
+            <Button type="submit" disabled={!form.userDataId || !form.userRole || createInvite.isPending}>
+              {createInvite.isPending ? 'Gerando...' : 'Gerar link de convite'}
             </Button>
           </form>
+
+          {link && (
+            <div className="mt-5 rounded-lg border border-border bg-muted/30 p-3 flex flex-col gap-2">
+              <p className="text-xs font-medium text-foreground">Link de convite (válido por 7 dias)</p>
+              <p className="text-[11px] text-muted-foreground">Envie para a pessoa. Ela abre e define usuário + senha.</p>
+              <div className="flex gap-2">
+                <Input readOnly value={link} onFocus={e => e.currentTarget.select()} className="text-xs" />
+                <Button type="button" variant="outline" onClick={copy} className="shrink-0">
+                  {copied ? 'Copiado ✓' : 'Copiar'}
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
       </SheetContent>
     </Sheet>
