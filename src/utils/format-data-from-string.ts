@@ -4,5 +4,5 @@ export function formatDateFromString(dateStr: string): string {
     const datePart = dateStr.split('T')[0];
     const [year, month, day] = datePart.split('-').map(Number);
     if (!year || !month || !day) return '';
-    return `${String(day).padStart(2, '0')}/${String(month).padStart(2, '0')}/${String(year).slice(2)}`;
+    return `${String(day).padStart(2, '0')}/${String(month).padStart(2, '0')}/${String(year).padStart(4, '0')}`;
 }

@@ -345,5 +345,6 @@ export async function downloadFichaPdf(fichas: FichaParticipant[], filename: str
   document.body.appendChild(a)
   a.click()
   document.body.removeChild(a)
-  URL.revokeObjectURL(url)
+  // revoga com atraso — revogar imediato pode truncar PDFs grandes em alguns navegadores.
+  setTimeout(() => URL.revokeObjectURL(url), 60_000)
 }

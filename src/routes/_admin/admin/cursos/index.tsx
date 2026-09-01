@@ -246,6 +246,21 @@ function GalleryManager({ course }: { course: Course }) {
 
 // ─── registrations tab ───────────────────────────────────────────────────────
 
+// Busca TODAS as inscrições paginando (não trunca em 1000).
+async function fetchAllRegistrations(courseId: string): Promise<Registration[]> {
+  const limit = 500
+  const acc: Registration[] = []
+  for (let page = 1; ; page++) {
+    const resp: { data?: Registration[]; totalPages?: number } = await apiFetch(
+      `/admin/courses/${courseId}/registrations?page=${page}&limit=${limit}`,
+    ).then(r => r.json())
+    const batch = resp.data ?? []
+    acc.push(...batch)
+    if (batch.length < limit || page >= (resp.totalPages ?? 1)) break
+  }
+  return acc
+}
+
 function RegistrationsTab({
   courseId,
   eventNumber,
@@ -297,7 +312,8 @@ function RegistrationsTab({
       const { downloadFichaPdf } = await import('@/lib/ficha-inscricao-pdf')
       const user: UserDataDetail = await apiFetch(`/admin/users/${userDataId}`).then(r => r.json())
       await downloadFichaPdf([{ course, user }], `ficha-${user.name}`)
-    } catch {
+    } catch (e) {
+      console.error(e)
       toast.error(t('admin.courses.fichaError'))
     } finally {
       setFichaId(null)
@@ -335,7 +351,8 @@ function RegistrationsTab({
     setFichaBusyId(regId)
     try {
       await openRegistrationFicha(regId)
-    } catch {
+    } catch (e) {
+      console.error(e)
       toast.error('Erro ao abrir a ficha.')
     } finally {
       setFichaBusyId(null)
@@ -358,22 +375,20 @@ function RegistrationsTab({
     setExportingAll(true)
     try {
       const { downloadFichaPdf } = await import('@/lib/ficha-inscricao-pdf')
-      // busca todas as inscrições (não só a página atual)
-      const all: { data: { userDataId: string }[] } = await apiFetch(
-        `/admin/courses/${courseId}/registrations?page=1&limit=1000`,
-      ).then(r => r.json())
-      if (all.data.length === 0) {
+      const regs = await fetchAllRegistrations(courseId)
+      if (regs.length === 0) {
         toast.error(t('admin.courses.noRegistrations'))
         return
       }
       const users: UserDataDetail[] = await Promise.all(
-        all.data.map(r => apiFetch(`/admin/users/${r.userDataId}`).then(res => res.json())),
+        regs.map(r => apiFetch(`/admin/users/${r.userDataId}`).then(res => res.json())),
       )
       await downloadFichaPdf(
         users.map(user => ({ course, user })),
         `fichas-${courseTitle}`,
       )
-    } catch {
+    } catch (e) {
+      console.error(e)
       toast.error(t('admin.courses.fichaError'))
     } finally {
       setExportingAll(false)
@@ -384,15 +399,13 @@ function RegistrationsTab({
   async function exportCsv() {
     setExportingCsv(true)
     try {
-      const all: { data: Registration[] } = await apiFetch(
-        `/admin/courses/${courseId}/registrations?page=1&limit=1000`,
-      ).then(r => r.json())
-      if (all.data.length === 0) {
+      const regs = await fetchAllRegistrations(courseId)
+      if (regs.length === 0) {
         toast.error(t('admin.courses.noRegistrations'))
         return
       }
       const headers = ['Nome', 'CPF', 'E-mail', 'Telefone', 'Nascimento', 'Idade', 'Confirmado', 'Sócio', 'Cargo', 'Título']
-      const rows = all.data.map(r => {
+      const rows = regs.map(r => {
         const age = calcAge(r.userData.birthDate)
         return [
           r.userData.name,
@@ -417,7 +430,8 @@ function RegistrationsTab({
       document.body.appendChild(a)
       a.click()
       document.body.removeChild(a)
-      URL.revokeObjectURL(url)
+      // revoga com atraso — revogar imediato pode truncar downloads grandes.
+      setTimeout(() => URL.revokeObjectURL(url), 60_000)
     } catch (e) {
       toast.error(apiErrorMessage(e, 'Erro ao exportar planilha.'))
     } finally {
@@ -444,7 +458,8 @@ function RegistrationsTab({
         [{ course: certCourse(), participant: { name: reg.userData.name, cpf: reg.userData.cpf } }],
         `certificado-${reg.userData.name}`,
       )
-    } catch {
+    } catch (e) {
+      console.error(e)
       toast.error('Erro ao gerar o certificado.')
     } finally {
       setCertId(null)
@@ -455,10 +470,8 @@ function RegistrationsTab({
     setExportingCerts(true)
     try {
       const { downloadCertificadoPdf } = await import('@/lib/certificado-pdf')
-      const all: { data: Registration[] } = await apiFetch(
-        `/admin/courses/${courseId}/registrations?page=1&limit=1000`,
-      ).then(r => r.json())
-      const confirmed = all.data.filter(r => r.confirmed)
+      const regs = await fetchAllRegistrations(courseId)
+      const confirmed = regs.filter(r => r.confirmed)
       if (confirmed.length === 0) {
         toast.error('Nenhuma inscrição confirmada para emitir certificado.')
         return
@@ -468,7 +481,8 @@ function RegistrationsTab({
         confirmed.map(r => ({ course, participant: { name: r.userData.name, cpf: r.userData.cpf } })),
         `certificados-${courseTitle}`,
       )
-    } catch {
+    } catch (e) {
+      console.error(e)
       toast.error('Erro ao gerar os certificados.')
     } finally {
       setExportingCerts(false)
