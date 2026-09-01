@@ -4,6 +4,7 @@ import { Link, useRouterState } from '@tanstack/react-router'
 import { useTranslation } from 'react-i18next'
 import { NavUser } from '@/components/nav-user'
 import { LanguageToggle } from '@/components/LanguageToggle'
+import { ThemeToggle } from '@/components/ThemeToggle'
 import { useMe, useAdminUser, useContactMessages } from '@/hooks/useAdmin'
 import {
   Sidebar, SidebarContent, SidebarFooter, SidebarGroup,
@@ -117,8 +118,11 @@ export function AdminSideBar({ ...props }: React.ComponentProps<typeof Sidebar>)
       </SidebarContent>
 
       <SidebarFooter className="flex flex-col gap-2 pb-3">
-        <div className="px-2">
-          <LanguageToggle variant="outline" />
+        <div className="flex items-center gap-2 px-2">
+          <div className="flex-1">
+            <LanguageToggle variant="outline" />
+          </div>
+          <ThemeToggle />
         </div>
         <NavUser user={user} />
       </SidebarFooter>
