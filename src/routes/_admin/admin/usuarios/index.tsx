@@ -7,7 +7,7 @@ import { usePermissions } from '@/hooks/usePermissions'
 import { PermissionButton } from '@/components/PermissionButton'
 import {
   useAdminUsers, useAdminAdmins, useAdminRules,
-  useCreateAdmin, useCreateRule, useUpdateRule,
+  useCreateAdmin, useCreateRule, useUpdateRule, useDeleteRule,
   useDeleteWorker,
   useUpdateAdmin, useDeleteAdmin,
   type UserData, type UserAdmin, type Rule,
@@ -315,6 +315,18 @@ function RegrasSheet() {
   const { data: regrasResult, isLoading } = useAdminRules()
   const regras = regrasResult?.data ?? []
   const [dialog, setDialog] = useState<RegraDialogState | null>(null)
+  const { can } = usePermissions()
+  const deleteRule = useDeleteRule()
+
+  async function excluirRegra(r: { id: string; name: string }) {
+    if (!window.confirm(`Excluir a regra "${r.name}"? Esta ação não pode ser desfeita.`)) return
+    try {
+      await deleteRule.mutateAsync(r.id)
+      toast.success('Regra excluída.')
+    } catch (e) {
+      toast.error(apiErrorMessage(e, 'Erro ao excluir a regra.'))
+    }
+  }
 
   return (
     <>
@@ -380,13 +392,26 @@ function RegrasSheet() {
                       <PermSummary permissions={r.permissions} />
                     </div>
                   </div>
-                  <Button
-                    variant="ghost" size="icon"
-                    className="size-7 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
-                    onClick={() => setDialog({ mode: 'edit', rule: r })}
-                  >
-                    <Pencil className="size-3.5" />
-                  </Button>
+                  <div className="flex shrink-0 items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <Button
+                      variant="ghost" size="icon"
+                      className="size-7"
+                      onClick={() => setDialog({ mode: 'edit', rule: r })}
+                    >
+                      <Pencil className="size-3.5" />
+                    </Button>
+                    {can('DELETE_RULE') && (
+                      <Button
+                        variant="ghost" size="icon"
+                        className="size-7 text-muted-foreground hover:text-destructive"
+                        disabled={deleteRule.isPending}
+                        onClick={() => excluirRegra(r)}
+                        title="Excluir regra"
+                      >
+                        <Trash2 className="size-3.5" />
+                      </Button>
+                    )}
+                  </div>
                 </div>
               </div>
             ))}

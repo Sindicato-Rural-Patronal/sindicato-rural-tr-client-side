@@ -330,6 +330,16 @@ export function useUpdateRule(ruleId: string) {
   })
 }
 
+export function useDeleteRule() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (ruleId: string) => apiFetch(`/rules/${ruleId}`, { method: 'DELETE' }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'rules'] })
+    },
+  })
+}
+
 export function useCreateAdmin() {
   const queryClient = useQueryClient()
   return useMutation({
