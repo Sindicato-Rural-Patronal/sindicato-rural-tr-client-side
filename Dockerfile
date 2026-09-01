@@ -15,13 +15,22 @@ COPY . .
 RUN npm run build
 
 
-FROM nginx:alpine AS runner
+FROM node:22-alpine AS runner
+WORKDIR /app
+ENV NODE_ENV=production
 
-COPY --from=builder /app/dist /usr/share/nginx/html
+# Só deps de produção (inclui fastify + @fastify/static usados pelo servidor).
+COPY package*.json ./
+RUN npm ci --omit=dev
 
-# Template is processed by envsubst at container start (nginx official image feature)
-COPY nginx.conf /etc/nginx/templates/default.conf.template
+COPY --from=builder /app/dist ./dist
+COPY server ./server
+
+# BACKEND_URL é usado em RUNTIME pelo servidor pra buscar curso/notícia e
+# injetar as meta OpenGraph. Pode ser sobrescrito no Coolify.
+ENV BACKEND_URL=https://sindicatoruraltrbackend.nakaidev.tech
+ENV PORT=80
 
 EXPOSE 80
 
-CMD ["nginx", "-g", "daemon off;"]
+CMD ["node", "server/index.mjs"]
