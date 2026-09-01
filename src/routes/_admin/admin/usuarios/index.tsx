@@ -52,6 +52,8 @@ const PERM_GROUPS = [
   { label: 'Notícias',        perms: ['CREATE_NEWS', 'READ_NEWS', 'UPDATE_NEWS', 'DELETE_NEWS'] },
   { label: 'Contatos',        perms: ['READ_CONTACT', 'UPDATE_CONTACT'] },
   { label: 'Banners',         perms: ['CREATE_BANNER', 'READ_BANNER', 'UPDATE_BANNER', 'DELETE_BANNER'] },
+  { label: 'Cotações',        perms: ['CREATE_MARKET_QUOTE', 'READ_MARKET_QUOTE', 'UPDATE_MARKET_QUOTE', 'DELETE_MARKET_QUOTE'] },
+  { label: 'Auditoria',       perms: ['READ_AUDIT'] },
 ]
 
 function AvatarCircle({ name, avatar, size = 'md' }: { name: string; avatar?: string | null; size?: 'sm' | 'md' }) {

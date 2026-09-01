@@ -1,6 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { useState } from 'react'
 import { useAuditLogs } from '@/hooks/useAdmin'
+import { usePermissions } from '@/hooks/usePermissions'
 import { ScrollText, ChevronLeft, ChevronRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -21,10 +22,21 @@ const methodColor: Record<string, string> = {
 }
 
 function RouteComponent() {
+  const { can, isLoading: permLoading } = usePermissions()
   const [page, setPage] = useState(1)
   const { data, isLoading, isError } = useAuditLogs({ page, limit: 30 })
   const rows = data?.data ?? []
   const totalPages = data?.totalPages ?? 1
+
+  if (!permLoading && !can('READ_AUDIT')) {
+    return (
+      <div className="p-6">
+        <div className="rounded-lg border border-border bg-muted/30 px-4 py-12 text-center text-sm text-muted-foreground">
+          Você não tem permissão para ver a auditoria.
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="p-6 flex flex-col gap-6">

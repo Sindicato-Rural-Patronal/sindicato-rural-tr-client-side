@@ -49,9 +49,9 @@ export function AdminSideBar({ ...props }: React.ComponentProps<typeof Sidebar>)
         { title: t('admin.sidebar.users'), url: '/admin/usuarios', icon: Users, perm: 'READ_USER' },
         { title: t('admin.sidebar.rooms'), url: '/admin/salas', icon: DoorOpen, perm: 'READ_COURSE' },
         { title: 'Banners', url: '/admin/banners', icon: Images, perm: 'READ_BANNER' },
-        { title: 'Cotações', url: '/admin/cotacoes', icon: TrendingUp, perm: 'READ_BANNER' },
+        { title: 'Cotações', url: '/admin/cotacoes', icon: TrendingUp, perm: 'READ_MARKET_QUOTE' },
         { title: 'Mensagens', url: '/admin/mensagens', icon: Mail, perm: 'READ_CONTACT' },
-        { title: 'Auditoria', url: '/admin/auditoria', icon: ScrollText, perm: 'READ_USER_ADMIN' },
+        { title: 'Auditoria', url: '/admin/auditoria', icon: ScrollText, perm: 'READ_AUDIT' },
       ],
     },
   ]

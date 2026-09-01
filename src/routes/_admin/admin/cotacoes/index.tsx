@@ -8,6 +8,7 @@ import {
 } from '@/hooks/useMarketQuotes'
 import { apiFetch } from '@/lib/api'
 import { apiErrorMessage } from '@/lib/api-error-message'
+import { usePermissions } from '@/hooks/usePermissions'
 import { formatDateFromString } from '@/utils/format-data-from-string'
 import { Plus, Search, TrendingUp, TrendingDown, Minus, Pencil, Trash2, Eye, EyeOff, GripVertical } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -41,6 +42,7 @@ type Form = { label: string; value: string; referenceDate: string; order: string
 const emptyForm: Form = { label: '', value: '', referenceDate: '', order: '0', isActive: true }
 
 function RouteComponent() {
+  const { can, isLoading: permLoading } = usePermissions()
   const { data: quotes, isLoading, isError } = useAdminMarketQuotes()
   const createQuote = useCreateMarketQuote()
   const updateQuote = useUpdateMarketQuote()
@@ -58,7 +60,7 @@ function RouteComponent() {
   const [items, setItems] = useState<MarketQuote[]>([])
   useEffect(() => { setItems(quotes ?? []) }, [quotes])
   const dragIndex = useRef<number | null>(null)
-  const canReorder = !busca
+  const canReorder = !busca && can('UPDATE_MARKET_QUOTE')
 
   const list = items.filter(q =>
     q.label.toLowerCase().includes(busca.toLowerCase()) ||
@@ -163,6 +165,16 @@ function RouteComponent() {
 
   const saving = createQuote.isPending || updateQuote.isPending
 
+  if (!permLoading && !can('READ_MARKET_QUOTE')) {
+    return (
+      <div className="p-6">
+        <div className="rounded-lg border border-border bg-muted/30 px-4 py-12 text-center text-sm text-muted-foreground">
+          Você não tem permissão para ver as cotações.
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="p-6 flex flex-col gap-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -172,9 +184,11 @@ function RouteComponent() {
             Ativos exibidos na home (dólar, soja, milho…) — cadastro manual.
           </p>
         </div>
-        <Button onClick={abrirNovo} className="shrink-0">
-          <Plus className="size-4" /> Nova Cotação
-        </Button>
+        {can('CREATE_MARKET_QUOTE') && (
+          <Button onClick={abrirNovo} className="shrink-0">
+            <Plus className="size-4" /> Nova Cotação
+          </Button>
+        )}
       </div>
 
       <div className="relative max-w-sm">
@@ -282,18 +296,25 @@ function RouteComponent() {
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex items-center justify-end gap-1">
-                      <Button size="sm" variant="ghost" className="h-8 px-2" onClick={() => abrirEditar(q)} title="Editar">
-                        <Pencil className="size-4" />
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="h-8 px-2 text-muted-foreground hover:text-destructive"
-                        onClick={() => setDeleteTarget(q)}
-                        title="Excluir"
-                      >
-                        <Trash2 className="size-4" />
-                      </Button>
+                      {can('UPDATE_MARKET_QUOTE') && (
+                        <Button size="sm" variant="ghost" className="h-8 px-2" onClick={() => abrirEditar(q)} title="Editar">
+                          <Pencil className="size-4" />
+                        </Button>
+                      )}
+                      {can('DELETE_MARKET_QUOTE') && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-8 px-2 text-muted-foreground hover:text-destructive"
+                          onClick={() => setDeleteTarget(q)}
+                          title="Excluir"
+                        >
+                          <Trash2 className="size-4" />
+                        </Button>
+                      )}
+                      {!can('UPDATE_MARKET_QUOTE') && !can('DELETE_MARKET_QUOTE') && (
+                        <span className="text-xs text-muted-foreground">—</span>
+                      )}
                     </div>
                   </TableCell>
                 </TableRow>
