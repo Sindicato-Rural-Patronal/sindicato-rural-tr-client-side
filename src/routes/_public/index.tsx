@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import Autoplay from 'embla-carousel-autoplay'
 import { StatsSection } from '@/components/home-static-section'
 import { HeroSection } from '@/components/home-hero-section'
+import { CotacoesSection } from '@/components/home-cotacoes-section'
 import { CoursesSection } from '@/components/home-courses-section'
 import { HomeNewsSection } from '@/components/home-news-section'
 import { usePartners } from '@/hooks/useAdmin'
@@ -121,6 +122,7 @@ function HomePage() {
   return (
     <div className="bg-background">
       <HeroSection />
+      <CotacoesSection />
       <StatsSection />
       <CoursesSection autoplayPlugin={autoplayPlugin} />
       <HomeNewsSection />
