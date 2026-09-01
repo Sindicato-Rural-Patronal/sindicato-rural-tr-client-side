@@ -507,7 +507,7 @@ function RegistrationsTab({
             </Button>
           )}
           {inProgress && (
-            <span className="inline-flex items-center gap-1 rounded-full border border-blue-200 bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700">
+            <span className="inline-flex items-center gap-1 rounded-full border border-blue-200 bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700 dark:border-blue-900 dark:bg-blue-950/40 dark:text-blue-400">
               <PlayCircle className="size-3" /> {t('admin.courses.form.statusInProgress')}
             </span>
           )}
@@ -549,7 +549,7 @@ function RegistrationsTab({
                 const age = calcAge(reg.userData.birthDate)
                 return age !== null && age < 18 ? (
                   <span
-                    className="inline-flex items-center rounded-full border border-red-300 bg-red-100 px-1.5 text-[10px] font-semibold text-red-700"
+                    className="inline-flex items-center rounded-full border border-red-300 bg-red-100 px-1.5 text-[10px] font-semibold text-red-700 dark:border-red-900 dark:bg-red-950/40 dark:text-red-400"
                     title="Menor de idade — precisa da assinatura do responsável na ficha"
                   >
                     Menor · {age} anos
@@ -557,10 +557,10 @@ function RegistrationsTab({
                 ) : null
               })()}
               {reg.userData.isPartner && (
-                <span className="inline-flex items-center rounded-full border border-amber-200 bg-amber-100 px-1.5 text-[10px] font-medium text-amber-700">Sócio</span>
+                <span className="inline-flex items-center rounded-full border border-amber-200 bg-amber-100 px-1.5 text-[10px] font-medium text-amber-700 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-400">Sócio</span>
               )}
               {reg.userData.boardPosition && (
-                <span className="inline-flex items-center rounded-full border border-blue-200 bg-blue-100 px-1.5 text-[10px] font-medium text-blue-700">{reg.userData.boardPosition}</span>
+                <span className="inline-flex items-center rounded-full border border-blue-200 bg-blue-100 px-1.5 text-[10px] font-medium text-blue-700 dark:border-blue-900 dark:bg-blue-950/40 dark:text-blue-400">{reg.userData.boardPosition}</span>
               )}
               {reg.userData.userAdmin?.isPublic && reg.userData.userAdmin.publicTitle && (
                 <span className="inline-flex items-center rounded-full border border-purple-200 bg-purple-100 px-1.5 text-[10px] font-medium text-purple-700">{reg.userData.userAdmin.publicTitle}</span>

@@ -36,11 +36,11 @@ function getInitials(name: string) {
 }
 
 const AVATAR_COLORS = [
-  'bg-emerald-100 text-emerald-700',
-  'bg-blue-100 text-blue-700',
-  'bg-amber-100 text-amber-700',
-  'bg-rose-100 text-rose-700',
-  'bg-purple-100 text-purple-700',
+  'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400',
+  'bg-blue-100 text-blue-700 dark:bg-blue-950/40 dark:text-blue-400',
+  'bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400',
+  'bg-rose-100 text-rose-700 dark:bg-rose-950/40 dark:text-rose-400',
+  'bg-purple-100 text-purple-700 dark:bg-purple-950/40 dark:text-purple-400',
 ]
 
 function Avatar({ name, avatar }: { name: string; avatar?: string | null }) {

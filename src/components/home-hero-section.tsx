@@ -61,7 +61,7 @@ export function HeroSection() {
                   className="absolute inset-0 h-full w-full object-cover"
                 />
               ) : (
-                <div className="absolute inset-0 bg-primary" />
+                <div className="absolute inset-0 bg-neutral-800" />
               )}
               <div className="absolute inset-0 bg-linear-to-r from-black/70 via-black/50 to-transparent" />
               <div className="container relative z-10 mx-auto flex h-full flex-col justify-center px-4">

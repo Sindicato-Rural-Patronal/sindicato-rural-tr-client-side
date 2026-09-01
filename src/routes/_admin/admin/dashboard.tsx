@@ -67,14 +67,14 @@ function StatCard({
   alert?: boolean
 }) {
   return (
-    <Card className={alert ? 'border-amber-300 bg-amber-50/50' : ''}>
+    <Card className={alert ? 'border-amber-300 bg-amber-50/50 dark:border-amber-900 dark:bg-amber-950/20' : ''}>
       <CardHeader className="flex flex-row items-center justify-between pb-2">
         <CardTitle className="text-sm font-medium text-muted-foreground">{title}</CardTitle>
-        <Icon className={`size-4 ${alert ? 'text-amber-600' : 'text-muted-foreground'}`} />
+        <Icon className={`size-4 ${alert ? 'text-amber-600 dark:text-amber-400' : 'text-muted-foreground'}`} />
       </CardHeader>
       <CardContent>
         <div className="text-2xl font-bold text-foreground">{value}</div>
-        <p className={`text-xs ${alert ? 'text-amber-600 font-medium' : 'text-muted-foreground'}`}>{description}</p>
+        <p className={`text-xs ${alert ? 'text-amber-600 dark:text-amber-400 font-medium' : 'text-muted-foreground'}`}>{description}</p>
       </CardContent>
     </Card>
   )
@@ -294,8 +294,8 @@ function RouteComponent() {
                 {cursosDoDia.map((course, i) => {
                   const colors = [
                     'bg-primary/10 text-primary border-primary/20',
-                    'bg-emerald-100 text-emerald-700 border-emerald-200',
-                    'bg-amber-100 text-amber-700 border-amber-200',
+                    'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400 border-emerald-200',
+                    'bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400 border-amber-200',
                     'bg-rose-100 text-rose-700 border-rose-200',
                     'bg-sky-100 text-sky-700 border-sky-200',
                   ]
@@ -339,8 +339,8 @@ function RouteComponent() {
                 const pct = course.maxStudents > 0 ? course.enrolled / course.maxStudents : 0
                 const badgeCls = course.enrolled >= course.maxStudents
                   ? 'bg-rose-100 text-rose-700'
-                  : pct > 0.5 ? 'bg-amber-100 text-amber-700'
-                  : 'bg-emerald-100 text-emerald-700'
+                  : pct > 0.5 ? 'bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400'
+                  : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400'
                 return (
                   <div key={course.id} className="flex items-center justify-between rounded-lg border border-border bg-card p-3">
                     <div className="min-w-0 flex-1">
@@ -386,7 +386,7 @@ function RouteComponent() {
                     <p className="text-xs text-muted-foreground">{user.email}</p>
                   </div>
                   {user.memberType && (
-                    <span className="ml-3 shrink-0 inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-amber-100 text-amber-700">
+                    <span className="ml-3 shrink-0 inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400">
                       {user.memberType}
                     </span>
                   )}
@@ -394,7 +394,7 @@ function RouteComponent() {
               ))}
               {incompletosData !== undefined && incompletosData.total === 0 && (
                 <div className="flex flex-col items-center justify-center py-8 text-center">
-                  <div className="mb-2 rounded-full bg-emerald-50 p-3">
+                  <div className="mb-2 rounded-full bg-emerald-50 p-3 dark:bg-emerald-950/30">
                     <UserX className="size-5 text-emerald-500" />
                   </div>
                   <p className="text-sm font-medium text-foreground">Nenhum cadastro incompleto</p>

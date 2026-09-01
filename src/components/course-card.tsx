@@ -33,7 +33,7 @@ export function CourseCard({ course }: { course: Course }) {
             <GraduationCap className="size-12 text-muted-foreground" />
           </div>
         )}
-        <Badge className="absolute left-2 top-2 bg-white text-foreground shadow">
+        <Badge className="absolute left-2 top-2 bg-white text-neutral-900 shadow">
           {course.price === 0 ? t('courseCard.free') : `R$ ${course.price.toFixed(2)}`}
         </Badge>
       </div>
@@ -79,7 +79,7 @@ export function CourseCardSimple({ course }: { course: SimpleCourse }) {
               <GraduationCap className="size-12 text-muted-foreground" />
             </div>
           )}
-          <Badge className="absolute right-2 top-2 bg-white text-foreground shadow">
+          <Badge className="absolute right-2 top-2 bg-white text-neutral-900 shadow">
             {formatDateFromString(course.date)}
           </Badge>
         </div>

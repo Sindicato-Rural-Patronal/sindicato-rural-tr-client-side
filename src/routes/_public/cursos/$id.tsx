@@ -360,7 +360,7 @@ function RouteComponent() {
         )}
         <div className="absolute inset-0 bg-linear-to-t from-black/60 to-transparent" />
         <div className="absolute bottom-0 left-0 p-6">
-          <Badge className="mb-2 bg-white text-foreground">
+          <Badge className="mb-2 bg-white text-neutral-900">
             {course.price === 0 ? t('courseDetail.free') : `R$ ${course.price.toFixed(2)}`}
           </Badge>
           <h1 className="text-2xl font-bold text-white md:text-3xl">{course.title}</h1>
@@ -377,7 +377,7 @@ function RouteComponent() {
           <div className="lg:col-span-2 flex flex-col gap-6">
             <div>
               <h2 className="text-lg font-semibold text-foreground">{t('courseDetail.about')}</h2>
-              <div className="mt-2 prose prose-sm max-w-none text-muted-foreground prose-headings:text-foreground prose-headings:font-semibold prose-strong:text-foreground prose-a:text-primary">
+              <div className="mt-2 prose prose-sm dark:prose-invert max-w-none text-muted-foreground prose-headings:text-foreground prose-headings:font-semibold prose-strong:text-foreground prose-a:text-primary">
                 <ReactMarkdown remarkPlugins={[remarkGfm]}>
                   {course.description ?? ''}
                 </ReactMarkdown>
@@ -517,7 +517,7 @@ function RouteComponent() {
                 )}
 
                 {course.observations && (
-                  <div className="rounded-lg border border-yellow-200 bg-yellow-50 px-3 py-2 text-xs text-yellow-800">
+                  <div className="rounded-lg border border-yellow-200 bg-yellow-50 px-3 py-2 text-xs text-yellow-800 dark:border-yellow-900/50 dark:bg-yellow-950/30 dark:text-yellow-300">
                     {course.observations}
                   </div>
                 )}
