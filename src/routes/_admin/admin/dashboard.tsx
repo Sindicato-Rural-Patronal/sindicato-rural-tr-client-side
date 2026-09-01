@@ -104,8 +104,13 @@ function RouteComponent() {
     const set = new Set<string>()
     ;(cursos ?? []).forEach(c => {
       if (!c.startDate) return
-      const start = new Date(c.startDate)
-      const end = c.endDate ? new Date(c.endDate) : start
+      // Usa a MESMA base da lista (data fatiada, sem fuso). Ancorar ao meio-dia
+      // local evita o off-by-one: antes `new Date(startDate)` (instante UTC) +
+      // getters locais deslocava a bolinha 1 dia vs a lista.
+      const startStr = c.startDate.slice(0, 10)
+      const endStr = (c.endDate ?? c.startDate).slice(0, 10)
+      const start = new Date(startStr + 'T12:00:00')
+      const end = new Date(endStr + 'T12:00:00')
       for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
         set.add(isoDate(d.getFullYear(), d.getMonth(), d.getDate()))
       }
