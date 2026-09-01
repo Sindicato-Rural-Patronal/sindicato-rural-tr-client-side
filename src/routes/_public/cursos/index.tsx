@@ -38,7 +38,7 @@ function RouteComponent() {
     <main>
       <div className="bg-background">
         {/* Hero */}
-        <section className="bg-primary py-14">
+        <section className="bg-brand py-14">
           <div className="container mx-auto px-4">
             <h1 className="text-3xl font-bold text-white md:text-4xl">{t('courses.pageTitle')}</h1>
             <p className="mt-2 max-w-2xl text-white/90 text-sm md:text-base">{t('courses.pageSubtitle')}</p>

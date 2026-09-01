@@ -56,7 +56,7 @@ function LoginPage() {
   return (
     <div className="flex min-h-screen">
       {/* Left panel — image + branding */}
-      <div className="relative hidden w-1/2 flex-col justify-between overflow-hidden bg-primary p-10 lg:flex">
+      <div className="relative hidden w-1/2 flex-col justify-between overflow-hidden bg-brand p-10 lg:flex">
         <img
           src="https://images.unsplash.com/photo-1500937386664-56d1dfef3854?w=1200&h=900&fit=crop"
           alt="Agricultural field"
@@ -97,7 +97,7 @@ function LoginPage() {
         </Link>
         {/* Mobile logo */}
         <div className="mb-8 flex items-center gap-2 lg:hidden">
-          <div className="flex size-9 items-center justify-center rounded-full bg-primary">
+          <div className="flex size-9 items-center justify-center rounded-full bg-brand">
             <Leaf className="size-4 text-white" />
           </div>
           <span className="font-bold text-foreground">Sindicato Rural de Terra Roxa</span>

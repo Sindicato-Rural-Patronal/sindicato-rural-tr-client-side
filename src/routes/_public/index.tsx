@@ -16,11 +16,14 @@ export const Route = createFileRoute('/_public/')({
 
 function PartnerItem({ partner }: { partner: { id: string; name: string; partnerLogoUrl: string | null; partnerUrl: string | null } }) {
   const inner = partner.partnerLogoUrl ? (
-    <img
-      src={partner.partnerLogoUrl}
-      alt={partner.name}
-      className="h-10 w-auto max-w-35 object-contain md:h-12 md:max-w-40"
-    />
+    // Chip branco atrás do logo — mantém logos coloridos legíveis em qualquer tema.
+    <div className="flex items-center rounded-md bg-white px-3 py-2">
+      <img
+        src={partner.partnerLogoUrl}
+        alt={partner.name}
+        className="h-10 w-auto max-w-35 object-contain md:h-12 md:max-w-40"
+      />
+    </div>
   ) : (
     <span className="text-sm font-semibold text-muted-foreground">
       {partner.name}
@@ -64,7 +67,7 @@ function PartnersSection() {
 
   if (isLoading) {
     return (
-      <section className="py-14 md:py-20 bg-white">
+      <section className="py-14 md:py-20 bg-background">
         <div className="container mx-auto px-4">
           <Skeleton className="h-5 w-44 mx-auto mb-10" />
           <div className="flex items-center justify-center gap-12">
@@ -80,7 +83,7 @@ function PartnersSection() {
   if (!partners || partners.length === 0) return null
 
   return (
-    <section className="py-14 md:py-20 bg-white overflow-hidden">
+    <section className="py-14 md:py-20 bg-background overflow-hidden">
       <style>{`
         @keyframes partners-marquee {
           from { transform: translateX(0); }
