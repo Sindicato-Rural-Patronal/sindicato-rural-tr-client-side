@@ -4,11 +4,11 @@ import { Link, useRouterState } from '@tanstack/react-router'
 import { useTranslation } from 'react-i18next'
 import { NavUser } from '@/components/nav-user'
 import { LanguageToggle } from '@/components/LanguageToggle'
-import { useMe, useAdminUser } from '@/hooks/useAdmin'
+import { useMe, useAdminUser, useContactMessages } from '@/hooks/useAdmin'
 import {
   Sidebar, SidebarContent, SidebarFooter, SidebarGroup,
   SidebarGroupContent, SidebarGroupLabel, SidebarHeader,
-  SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarSeparator,
+  SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarMenuBadge, SidebarSeparator,
 } from '@/components/ui/sidebar'
 
 export function AdminSideBar({ ...props }: React.ComponentProps<typeof Sidebar>) {
@@ -17,6 +17,10 @@ export function AdminSideBar({ ...props }: React.ComponentProps<typeof Sidebar>)
   const { data: me, isLoading: loadingMe } = useMe()
   const { data: meUser } = useAdminUser(me?.userDataId ?? '')
   const perms = me?.permissions ?? null
+
+  // Contagem global de mensagens de contato não lidas (badge na sidebar).
+  const { data: unreadData } = useContactMessages({ page: 1, limit: 1, read: false })
+  const unread = unreadData?.total ?? 0
 
   function can(perm: string) {
     if (loadingMe || !perms) return true // ainda carregando → mostra tudo
@@ -97,6 +101,11 @@ export function AdminSideBar({ ...props }: React.ComponentProps<typeof Sidebar>)
                             <span>{item.title}</span>
                           </Link>
                         </SidebarMenuButton>
+                        {item.url === '/admin/mensagens' && unread > 0 && (
+                          <SidebarMenuBadge className="bg-primary text-primary-foreground">
+                            {unread > 99 ? '99+' : unread}
+                          </SidebarMenuBadge>
+                        )}
                       </SidebarMenuItem>
                     )
                   })}

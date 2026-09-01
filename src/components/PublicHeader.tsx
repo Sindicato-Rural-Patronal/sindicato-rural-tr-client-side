@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button'
 import { Menu, X } from 'lucide-react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { ThemeToggle } from '@/components/ThemeToggle'
 
 export function PublicHeader() {
   const [menuOpen, setMenuOpen] = useState(false)
@@ -50,10 +51,14 @@ export function PublicHeader() {
               </Link>
             )
           })}
+          <div className="ml-1 border-l border-border pl-1">
+            <ThemeToggle />
+          </div>
         </nav>
 
-        {/* Mobile: menu button */}
-        <div className="flex md:hidden items-center gap-2">
+        {/* Mobile: theme + menu button */}
+        <div className="flex md:hidden items-center gap-1">
+          <ThemeToggle />
           <Button
             variant="ghost"
             size="icon"

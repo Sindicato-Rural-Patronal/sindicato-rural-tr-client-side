@@ -10,6 +10,18 @@ import { AuthProvider } from '@/context/AuthContext'
 import { Toaster } from 'sonner'
 import './index.css';
 import './i18n';
+
+// Aplica o tema salvo antes do render (evita flash claro→escuro).
+try {
+  const stored = localStorage.getItem('theme')
+  const prefersDark = window.matchMedia?.('(prefers-color-scheme: dark)').matches
+  if (stored === 'dark' || (!stored && prefersDark)) {
+    document.documentElement.classList.add('dark')
+  }
+} catch {
+  /* localStorage indisponível — mantém tema claro padrão */
+}
+
 // Cria o roteador com a árvore de rotas
 const router = createRouter({ routeTree });
 

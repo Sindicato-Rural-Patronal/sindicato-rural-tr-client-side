@@ -1,13 +1,15 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import {
   useAdminMarketQuotes, useCreateMarketQuote, useUpdateMarketQuote, useDeleteMarketQuote,
   type MarketQuote,
 } from '@/hooks/useMarketQuotes'
+import { apiFetch } from '@/lib/api'
 import { apiErrorMessage } from '@/lib/api-error-message'
 import { formatDateFromString } from '@/utils/format-data-from-string'
-import { Plus, Search, TrendingUp, TrendingDown, Minus, Pencil, Trash2, Eye, EyeOff } from 'lucide-react'
+import { Plus, Search, TrendingUp, TrendingDown, Minus, Pencil, Trash2, Eye, EyeOff, GripVertical } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -43,6 +45,7 @@ function RouteComponent() {
   const createQuote = useCreateMarketQuote()
   const updateQuote = useUpdateMarketQuote()
   const deleteQuote = useDeleteMarketQuote()
+  const qc = useQueryClient()
 
   const [busca, setBusca] = useState('')
   const [dialogOpen, setDialogOpen] = useState(false)
@@ -51,10 +54,54 @@ function RouteComponent() {
   const [error, setError] = useState<string | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<MarketQuote | null>(null)
 
-  const list = (quotes ?? []).filter(q =>
+  // Cópia local para reordenar arrastando (sincroniza quando os dados chegam).
+  const [items, setItems] = useState<MarketQuote[]>([])
+  useEffect(() => { setItems(quotes ?? []) }, [quotes])
+  const dragIndex = useRef<number | null>(null)
+  const canReorder = !busca
+
+  const list = items.filter(q =>
     q.label.toLowerCase().includes(busca.toLowerCase()) ||
     q.value.toLowerCase().includes(busca.toLowerCase())
   )
+
+  async function persistOrder(ordered: MarketQuote[]) {
+    const changed = ordered.map((q, i) => ({ q, i })).filter(({ q, i }) => q.order !== i)
+    if (changed.length === 0) return
+    try {
+      await Promise.all(
+        changed.map(({ q, i }) =>
+          apiFetch(`/market-quotes/${q.id}`, { method: 'PATCH', body: JSON.stringify({ order: i }) }),
+        ),
+      )
+    } catch (e) {
+      toast.error(apiErrorMessage(e, 'Erro ao reordenar.'))
+    } finally {
+      qc.invalidateQueries({ queryKey: ['admin', 'market-quotes'] })
+      qc.invalidateQueries({ queryKey: ['market-quotes'] })
+    }
+  }
+
+  function onDragEnter(i: number) {
+    const from = dragIndex.current
+    if (from === null || from === i) return
+    setItems(prev => {
+      const next = [...prev]
+      const [moved] = next.splice(from, 1)
+      next.splice(i, 0, moved)
+      return next
+    })
+    dragIndex.current = i
+  }
+
+  function onDragEnd() {
+    dragIndex.current = null
+    setItems(prev => {
+      const ordered = prev.map((q, i) => ({ ...q, order: i }))
+      persistOrder(ordered)
+      return ordered
+    })
+  }
 
   function abrirNovo() {
     setEditId(null)
@@ -146,6 +193,13 @@ function RouteComponent() {
         </div>
       )}
 
+      {canReorder && list.length > 1 && (
+        <p className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+          <GripVertical className="size-3.5 opacity-50" />
+          Arraste as linhas para reordenar a exibição na home.
+        </p>
+      )}
+
       <div className="rounded-lg border border-border bg-card overflow-hidden">
         <Table>
           <TableHeader>
@@ -184,11 +238,24 @@ function RouteComponent() {
                 </TableCell>
               </TableRow>
             )}
-            {list.map(q => {
+            {list.map((q, i) => {
               const trend = trendOf(q.variation)
               return (
-                <TableRow key={q.id} className={q.isActive ? '' : 'opacity-60'}>
-                  <TableCell className="text-muted-foreground tabular-nums">{q.order}</TableCell>
+                <TableRow
+                  key={q.id}
+                  className={`${q.isActive ? '' : 'opacity-60'} ${canReorder ? 'cursor-grab active:cursor-grabbing' : ''}`}
+                  draggable={canReorder}
+                  onDragStart={canReorder ? () => { dragIndex.current = i } : undefined}
+                  onDragEnter={canReorder ? () => onDragEnter(i) : undefined}
+                  onDragEnd={canReorder ? onDragEnd : undefined}
+                  onDragOver={canReorder ? e => e.preventDefault() : undefined}
+                >
+                  <TableCell className="text-muted-foreground">
+                    <span className="inline-flex items-center gap-1 tabular-nums">
+                      {canReorder && <GripVertical className="size-3.5 opacity-40" />}
+                      {q.order}
+                    </span>
+                  </TableCell>
                   <TableCell className="font-medium text-foreground">{q.label}</TableCell>
                   <TableCell className="tabular-nums">{q.value}</TableCell>
                   <TableCell>
