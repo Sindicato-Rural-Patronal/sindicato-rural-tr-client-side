@@ -2,9 +2,8 @@ import { createFileRoute } from '@tanstack/react-router'
 import { useState } from 'react'
 import { useAuditLogs } from '@/hooks/useAdmin'
 import { usePermissions } from '@/hooks/usePermissions'
-import { ScrollText, ChevronLeft, ChevronRight } from 'lucide-react'
+import { ScrollText, ChevronLeft, ChevronRight, Plus, Pencil, Trash2, Dot } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
   Table, TableHeader, TableBody, TableRow, TableHead, TableCell,
@@ -14,11 +13,42 @@ export const Route = createFileRoute('/_admin/admin/auditoria/')({
   component: RouteComponent,
 })
 
-const methodColor: Record<string, string> = {
-  POST: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400',
-  PATCH: 'bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400',
-  PUT: 'bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400',
-  DELETE: 'bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-400',
+// Transforma método+entidade em frase legível pra qualquer pessoa.
+const VERB: Record<string, string> = { POST: 'Criou', PATCH: 'Editou', PUT: 'Editou', DELETE: 'Excluiu' }
+const ENTITY: Record<string, { n: string; a: string }> = {
+  'Curso': { n: 'curso', a: 'um' },
+  'Cotação': { n: 'cotação', a: 'uma' },
+  'Sala': { n: 'sala', a: 'uma' },
+  'Usuário': { n: 'usuário', a: 'um' },
+  'Inscrição': { n: 'inscrição', a: 'uma' },
+  'Notícia': { n: 'notícia', a: 'uma' },
+  'Banner': { n: 'banner', a: 'um' },
+  'Regra': { n: 'regra', a: 'uma' },
+  'Instrutor': { n: 'instrutor', a: 'um' },
+  'Mensagem': { n: 'mensagem', a: 'uma' },
+  'Propriedade': { n: 'propriedade', a: 'uma' },
+  'Relação': { n: 'relação', a: 'uma' },
+  'Endereço': { n: 'endereço', a: 'um' },
+  'Outro': { n: 'registro', a: 'um' },
+}
+function acaoLegivel(method: string, entity: string): string {
+  const v = VERB[method] ?? method
+  const e = ENTITY[entity] ?? { n: entity.toLowerCase(), a: 'um' }
+  return `${v} ${e.a} ${e.n}`
+}
+type ActionKind = 'create' | 'edit' | 'delete' | 'other'
+function actionKind(method: string): ActionKind {
+  if (method === 'POST') return 'create'
+  if (method === 'PATCH' || method === 'PUT') return 'edit'
+  if (method === 'DELETE') return 'delete'
+  return 'other'
+}
+const KIND_ICON = { create: Plus, edit: Pencil, delete: Trash2, other: Dot }
+const KIND_COLOR: Record<ActionKind, string> = {
+  create: 'text-emerald-600 dark:text-emerald-400',
+  edit: 'text-amber-600 dark:text-amber-400',
+  delete: 'text-red-600 dark:text-red-400',
+  other: 'text-muted-foreground',
 }
 
 function RouteComponent() {
@@ -58,12 +88,10 @@ function RouteComponent() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Data / hora</TableHead>
-                <TableHead>Autor</TableHead>
-                <TableHead>Ação</TableHead>
-                <TableHead>Entidade</TableHead>
-                <TableHead className="hidden md:table-cell">Caminho</TableHead>
-                <TableHead>Status</TableHead>
+                <TableHead>Quando</TableHead>
+                <TableHead>Quem</TableHead>
+                <TableHead>O que aconteceu</TableHead>
+                <TableHead className="hidden lg:table-cell">Detalhe técnico</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -71,15 +99,13 @@ function RouteComponent() {
                 <TableRow key={i}>
                   <TableCell><Skeleton className="h-4 w-32" /></TableCell>
                   <TableCell><Skeleton className="h-4 w-24" /></TableCell>
-                  <TableCell><Skeleton className="h-5 w-14 rounded-full" /></TableCell>
-                  <TableCell><Skeleton className="h-4 w-20" /></TableCell>
-                  <TableCell className="hidden md:table-cell"><Skeleton className="h-4 w-40" /></TableCell>
-                  <TableCell><Skeleton className="h-4 w-10" /></TableCell>
+                  <TableCell><Skeleton className="h-4 w-44" /></TableCell>
+                  <TableCell className="hidden lg:table-cell"><Skeleton className="h-4 w-40" /></TableCell>
                 </TableRow>
               ))}
               {!isLoading && rows.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={6} className="py-16 text-center">
+                  <TableCell colSpan={4} className="py-16 text-center">
                     <ScrollText className="size-10 text-muted-foreground/30 mx-auto mb-3" />
                     <p className="text-sm font-medium text-foreground">Nenhum registro ainda</p>
                     <p className="text-xs text-muted-foreground mt-1">
@@ -88,24 +114,27 @@ function RouteComponent() {
                   </TableCell>
                 </TableRow>
               )}
-              {rows.map(r => (
-                <TableRow key={r.id}>
-                  <TableCell className="whitespace-nowrap text-muted-foreground tabular-nums">
-                    {new Date(r.createdAt).toLocaleString('pt-BR')}
-                  </TableCell>
-                  <TableCell className="font-medium text-foreground">{r.actorName}</TableCell>
-                  <TableCell>
-                    <Badge variant="secondary" className={`font-mono text-[10px] ${methodColor[r.method] ?? ''}`}>
-                      {r.method}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>{r.entity}</TableCell>
-                  <TableCell className="hidden md:table-cell font-mono text-xs text-muted-foreground max-w-xs truncate">
-                    {r.path}
-                  </TableCell>
-                  <TableCell className="tabular-nums text-muted-foreground">{r.statusCode}</TableCell>
-                </TableRow>
-              ))}
+              {rows.map(r => {
+                const kind = actionKind(r.method)
+                const Icon = KIND_ICON[kind]
+                return (
+                  <TableRow key={r.id}>
+                    <TableCell className="whitespace-nowrap text-muted-foreground tabular-nums text-xs">
+                      {new Date(r.createdAt).toLocaleString('pt-BR')}
+                    </TableCell>
+                    <TableCell className="font-medium text-foreground">{r.actorName}</TableCell>
+                    <TableCell>
+                      <span className="inline-flex items-center gap-2">
+                        <Icon className={`size-4 shrink-0 ${KIND_COLOR[kind]}`} />
+                        <span className="text-foreground">{acaoLegivel(r.method, r.entity)}</span>
+                      </span>
+                    </TableCell>
+                    <TableCell className="hidden lg:table-cell font-mono text-[11px] text-muted-foreground max-w-xs truncate">
+                      {r.method} {r.path} · {r.statusCode}
+                    </TableCell>
+                  </TableRow>
+                )
+              })}
             </TableBody>
           </Table>
         </div>
