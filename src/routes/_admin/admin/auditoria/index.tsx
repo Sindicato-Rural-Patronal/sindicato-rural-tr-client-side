@@ -15,26 +15,27 @@ export const Route = createFileRoute('/_admin/admin/auditoria/')({
 
 // Transforma método+entidade em frase legível pra qualquer pessoa.
 const VERB: Record<string, string> = { POST: 'Criou', PATCH: 'Editou', PUT: 'Editou', DELETE: 'Excluiu' }
-const ENTITY: Record<string, { n: string; a: string }> = {
-  'Curso': { n: 'curso', a: 'um' },
-  'Cotação': { n: 'cotação', a: 'uma' },
-  'Sala': { n: 'sala', a: 'uma' },
-  'Usuário': { n: 'usuário', a: 'um' },
-  'Inscrição': { n: 'inscrição', a: 'uma' },
-  'Notícia': { n: 'notícia', a: 'uma' },
-  'Banner': { n: 'banner', a: 'um' },
-  'Regra': { n: 'regra', a: 'uma' },
-  'Instrutor': { n: 'instrutor', a: 'um' },
-  'Mensagem': { n: 'mensagem', a: 'uma' },
-  'Propriedade': { n: 'propriedade', a: 'uma' },
-  'Relação': { n: 'relação', a: 'uma' },
-  'Endereço': { n: 'endereço', a: 'um' },
-  'Outro': { n: 'registro', a: 'um' },
+const ENTITY: Record<string, { n: string; g: 'm' | 'f' }> = {
+  'Curso': { n: 'curso', g: 'm' },
+  'Cotação': { n: 'cotação', g: 'f' },
+  'Sala': { n: 'sala', g: 'f' },
+  'Usuário': { n: 'usuário', g: 'm' },
+  'Inscrição': { n: 'inscrição', g: 'f' },
+  'Notícia': { n: 'notícia', g: 'f' },
+  'Banner': { n: 'banner', g: 'm' },
+  'Regra': { n: 'regra', g: 'f' },
+  'Instrutor': { n: 'instrutor', g: 'm' },
+  'Mensagem': { n: 'mensagem', g: 'f' },
+  'Propriedade': { n: 'propriedade', g: 'f' },
+  'Relação': { n: 'relação', g: 'f' },
+  'Endereço': { n: 'endereço', g: 'm' },
+  'Outro': { n: 'registro', g: 'm' },
 }
-function acaoLegivel(method: string, entity: string): string {
+function acaoLegivel(method: string, entity: string, label: string | null): string {
   const v = VERB[method] ?? method
-  const e = ENTITY[entity] ?? { n: entity.toLowerCase(), a: 'um' }
-  return `${v} ${e.a} ${e.n}`
+  const e = ENTITY[entity] ?? { n: entity.toLowerCase(), g: 'm' as const }
+  if (label) return `${v} ${e.g === 'f' ? 'a' : 'o'} ${e.n} "${label}"`
+  return `${v} ${e.g === 'f' ? 'uma' : 'um'} ${e.n}`
 }
 type ActionKind = 'create' | 'edit' | 'delete' | 'other'
 function actionKind(method: string): ActionKind {
@@ -126,7 +127,7 @@ function RouteComponent() {
                     <TableCell>
                       <span className="inline-flex items-center gap-2">
                         <Icon className={`size-4 shrink-0 ${KIND_COLOR[kind]}`} />
-                        <span className="text-foreground">{acaoLegivel(r.method, r.entity)}</span>
+                        <span className="text-foreground">{acaoLegivel(r.method, r.entity, r.targetLabel)}</span>
                       </span>
                     </TableCell>
                     <TableCell className="hidden lg:table-cell font-mono text-[11px] text-muted-foreground max-w-xs truncate">

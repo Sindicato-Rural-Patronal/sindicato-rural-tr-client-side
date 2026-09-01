@@ -859,6 +859,7 @@ export type AuditLog = {
   method: string
   path: string
   entity: string
+  targetLabel: string | null
   statusCode: number
   createdAt: string
 }
