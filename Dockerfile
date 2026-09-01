@@ -11,11 +11,6 @@ RUN npm ci --include=dev
 ARG VITE_API_URL=https://sindicatoruraltrbackend.nakaidev.tech
 ENV VITE_API_URL=$VITE_API_URL
 
-# Sentry (opcional): defina como build-arg no Coolify pra ligar o monitoramento
-# de erros do frontend. Vazio = inerte.
-ARG VITE_SENTRY_DSN=
-ENV VITE_SENTRY_DSN=$VITE_SENTRY_DSN
-
 COPY . .
 RUN npm run build
 
