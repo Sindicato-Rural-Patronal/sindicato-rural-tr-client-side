@@ -8,8 +8,18 @@ import { ReactQueryDevtools } from '@tanstack/react-query-devtools'; // Importa 
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { AuthProvider } from '@/context/AuthContext'
 import { Toaster } from 'sonner'
+import * as Sentry from '@sentry/react';
 import './index.css';
 import './i18n';
+
+// Monitoramento de erros (inerte sem VITE_SENTRY_DSN, embutido no build).
+if (import.meta.env.VITE_SENTRY_DSN) {
+  Sentry.init({
+    dsn: import.meta.env.VITE_SENTRY_DSN,
+    environment: import.meta.env.MODE,
+    tracesSampleRate: 0,
+  })
+}
 
 // Aplica o tema salvo antes do render (evita flash claro→escuro).
 try {
