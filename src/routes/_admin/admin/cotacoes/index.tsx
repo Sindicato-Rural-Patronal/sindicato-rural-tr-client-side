@@ -65,8 +65,11 @@ function RouteComponent() {
     q.value.toLowerCase().includes(busca.toLowerCase())
   )
 
-  async function persistOrder(ordered: MarketQuote[]) {
-    const changed = ordered.map((q, i) => ({ q, i })).filter(({ q, i }) => q.order !== i)
+  // `list` ainda carrega o `order` do servidor em cada item; a NOVA posição é o
+  // índice. Comparar os dois revela o que mudou (antes o diff era calculado
+  // depois de reatribuir order=i, então dava sempre vazio e nada salvava).
+  async function persistOrder(list: MarketQuote[]) {
+    const changed = list.map((q, i) => ({ q, i })).filter(({ q, i }) => q.order !== i)
     if (changed.length === 0) return
     try {
       await Promise.all(
@@ -96,11 +99,10 @@ function RouteComponent() {
 
   function onDragEnd() {
     dragIndex.current = null
-    setItems(prev => {
-      const ordered = prev.map((q, i) => ({ ...q, order: i }))
-      persistOrder(ordered)
-      return ordered
-    })
+    // `items` já reflete a nova posição (atualizado no onDragEnter) e ainda tem
+    // o `order` original de cada item → persistOrder detecta o que mudou.
+    persistOrder(items)
+    setItems(prev => prev.map((q, i) => ({ ...q, order: i })))
   }
 
   function abrirNovo() {

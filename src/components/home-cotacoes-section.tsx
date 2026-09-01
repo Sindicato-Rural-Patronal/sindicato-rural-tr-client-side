@@ -71,11 +71,17 @@ export function CotacoesSection() {
   const [shouldScroll, setShouldScroll] = useState(false)
 
   useEffect(() => {
-    if (!trackRef.current || !wrapperRef.current) return
-    const trackW = trackRef.current.scrollWidth / 2
-    const wrapperW = wrapperRef.current.offsetWidth
-    setShouldScroll(trackW > wrapperW)
-  }, [quotes])
+    function measure() {
+      if (!trackRef.current || !wrapperRef.current) return
+      // Quando já está em scroll, o track tem 2 cópias → largura de 1 conjunto
+      // é scrollWidth/2; senão é o próprio scrollWidth. A tolerância evita jitter.
+      const single = shouldScroll ? trackRef.current.scrollWidth / 2 : trackRef.current.scrollWidth
+      setShouldScroll(single > wrapperRef.current.offsetWidth + 4)
+    }
+    measure()
+    window.addEventListener('resize', measure)
+    return () => window.removeEventListener('resize', measure)
+  }, [quotes, shouldScroll])
 
   // Sem cotações ativas → não renderiza a faixa.
   if (quotes.length === 0) return null

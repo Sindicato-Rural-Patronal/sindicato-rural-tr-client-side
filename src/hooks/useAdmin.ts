@@ -472,6 +472,7 @@ export function useCancelRegistration(courseId: string) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin', 'courses', courseId, 'registrations'] })
       queryClient.invalidateQueries({ queryKey: ['admin', 'courses'] })
+      queryClient.invalidateQueries({ queryKey: ['courses'] }) // contagem de vagas pública
     },
   })
 }
@@ -483,6 +484,7 @@ export function useConfirmRegistration(courseId: string) {
       apiFetch(`/admin/registrations/${id}/confirm`, { method: 'PATCH', body: JSON.stringify({ confirmed }) }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin', 'courses', courseId, 'registrations'] })
+      queryClient.invalidateQueries({ queryKey: ['admin', 'courses'] })
     },
   })
 }
@@ -493,6 +495,7 @@ export function useStartCourse() {
     mutationFn: (courseId: string) => apiFetch(`/admin/courses/${courseId}/start`, { method: 'POST' }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin', 'courses'] })
+      queryClient.invalidateQueries({ queryKey: ['courses'] }) // IN_PROGRESS sai da home
     },
   })
 }
