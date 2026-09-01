@@ -13,10 +13,10 @@ export type MarketQuote = {
   updatedAt: string
 }
 
+// `variation` não entra aqui — é calculada no backend pelo histórico de valores.
 export type MarketQuoteInput = {
   label: string
   value: string
-  variation?: string | null
   referenceDate?: string | null
   isActive?: boolean
   order?: number

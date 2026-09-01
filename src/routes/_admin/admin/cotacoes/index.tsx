@@ -37,8 +37,8 @@ export function trendOf(variation: string | null | undefined): Trend {
   return v.startsWith('-') ? 'down' : 'up'
 }
 
-type Form = { label: string; value: string; variation: string; referenceDate: string; order: string; isActive: boolean }
-const emptyForm: Form = { label: '', value: '', variation: '', referenceDate: '', order: '0', isActive: true }
+type Form = { label: string; value: string; referenceDate: string; order: string; isActive: boolean }
+const emptyForm: Form = { label: '', value: '', referenceDate: '', order: '0', isActive: true }
 
 function RouteComponent() {
   const { data: quotes, isLoading, isError } = useAdminMarketQuotes()
@@ -117,7 +117,6 @@ function RouteComponent() {
     setForm({
       label: q.label,
       value: q.value,
-      variation: q.variation ?? '',
       referenceDate: q.referenceDate ? q.referenceDate.slice(0, 10) : '',
       order: String(q.order),
       isActive: q.isActive,
@@ -131,7 +130,6 @@ function RouteComponent() {
     const body = {
       label: form.label.trim(),
       value: form.value.trim(),
-      variation: form.variation.trim() || null,
       referenceDate: form.referenceDate || null,
       order: Number(form.order) || 0,
       isActive: form.isActive,
@@ -322,16 +320,12 @@ function RouteComponent() {
               <Label>Valor *</Label>
               <Input value={form.value} onChange={e => setForm(p => ({ ...p, value: e.target.value }))} placeholder="Ex: R$ 128,50 /sc 60kg" />
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="flex flex-col gap-1.5">
-                <Label>Variação</Label>
-                <Input value={form.variation} onChange={e => setForm(p => ({ ...p, variation: e.target.value }))} placeholder="+1,2% ou -0,8%" />
-                <span className="text-[11px] text-muted-foreground">Com "-" = baixa (vermelho).</span>
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <Label>Ordem</Label>
-                <Input type="number" value={form.order} onChange={e => setForm(p => ({ ...p, order: e.target.value }))} />
-              </div>
+            <div className="flex flex-col gap-1.5">
+              <Label>Ordem</Label>
+              <Input type="number" value={form.order} onChange={e => setForm(p => ({ ...p, order: e.target.value }))} />
+              <span className="text-[11px] text-muted-foreground">
+                A variação (alta/baixa) é calculada automaticamente a cada novo valor, pelo histórico.
+              </span>
             </div>
             <div className="flex flex-col gap-1.5">
               <Label>Data de referência</Label>
