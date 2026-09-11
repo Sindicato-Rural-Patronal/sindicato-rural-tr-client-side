@@ -29,6 +29,8 @@ const ENTITY: Record<string, { n: string; g: 'm' | 'f' }> = {
   'Propriedade': { n: 'propriedade', g: 'f' },
   'Relação': { n: 'relação', g: 'f' },
   'Endereço': { n: 'endereço', g: 'm' },
+  'Categoria financeira': { n: 'categoria financeira', g: 'f' },
+  'Lançamento': { n: 'lançamento', g: 'm' },
   'Outro': { n: 'registro', g: 'm' },
 }
 function acaoLegivel(method: string, entity: string, label: string | null): string {

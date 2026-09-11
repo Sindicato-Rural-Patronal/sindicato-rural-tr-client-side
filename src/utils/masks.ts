@@ -24,6 +24,20 @@ export function maskMoney(v: string) {
   return 'R$ ' + n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
 
+// Valor mascarado ("R$ 1.234,56") → centavos inteiros (123456). Sem float.
+export function moneyToCents(masked: string): number {
+  const digits = masked.replace(/\D/g, '')
+  return digits ? parseInt(digits, 10) : 0
+}
+
+// Centavos inteiros → texto BRL ("R$ 1.234,56").
+export function centsToBRL(cents: number): string {
+  return (cents / 100).toLocaleString('pt-BR', {
+    style: 'currency',
+    currency: 'BRL',
+  })
+}
+
 export function maskCNH(v: string) {
   return v.replace(/\D/g, '').slice(0, 11)
 }

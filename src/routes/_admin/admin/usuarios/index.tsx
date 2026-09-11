@@ -54,6 +54,7 @@ const PERM_GROUPS = [
   { label: 'Banners',         perms: ['CREATE_BANNER', 'READ_BANNER', 'UPDATE_BANNER', 'DELETE_BANNER'] },
   { label: 'Cotações',        perms: ['CREATE_MARKET_QUOTE', 'READ_MARKET_QUOTE', 'UPDATE_MARKET_QUOTE', 'DELETE_MARKET_QUOTE'] },
   { label: 'Auditoria',       perms: ['READ_AUDIT'] },
+  { label: 'Financeiro',      perms: ['CREATE_FINANCE', 'READ_FINANCE', 'UPDATE_FINANCE', 'DELETE_FINANCE'] },
 ]
 
 function AvatarCircle({ name, avatar, size = 'md' }: { name: string; avatar?: string | null; size?: 'sm' | 'md' }) {

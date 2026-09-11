@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { BookOpen, DoorOpen, Images, LayoutDashboard, Mail, Newspaper, ScrollText, TrendingUp, Users } from 'lucide-react'
+import { BookOpen, DoorOpen, Images, LayoutDashboard, Mail, Newspaper, ScrollText, TrendingUp, Users, Wallet } from 'lucide-react'
 import { Link, useRouterState } from '@tanstack/react-router'
 import { useTranslation } from 'react-i18next'
 import { NavUser } from '@/components/nav-user'
@@ -52,6 +52,12 @@ export function AdminSideBar({ ...props }: React.ComponentProps<typeof Sidebar>)
         { title: 'Cotações', url: '/admin/cotacoes', icon: TrendingUp, perm: 'READ_MARKET_QUOTE' },
         { title: 'Mensagens', url: '/admin/mensagens', icon: Mail, perm: 'READ_CONTACT' },
         { title: 'Auditoria', url: '/admin/auditoria', icon: ScrollText, perm: 'READ_AUDIT' },
+      ],
+    },
+    {
+      label: 'Financeiro',
+      items: [
+        { title: 'Financeiro', url: '/admin/financeiro', icon: Wallet, perm: 'READ_FINANCE' },
       ],
     },
   ]
