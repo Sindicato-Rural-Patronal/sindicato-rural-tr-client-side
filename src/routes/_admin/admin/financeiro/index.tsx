@@ -8,15 +8,17 @@ import {
   useCreateFinanceTransaction, useUpdateFinanceTransaction, useDeleteFinanceTransaction,
   useCreateFinanceCategory, useUpdateFinanceCategory, useDeleteFinanceCategory,
   useFinanceAccounts, useCreateFinanceAccount, useUpdateFinanceAccount, useDeleteFinanceAccount,
+  useCreateFinanceTransfer, fetchFinanceTransactionsForRange,
   useUploadFinanceAttachment, useDeleteFinanceAttachment, openFinanceAttachment, exportFinanceTransactions,
   type FinanceType, type FinanceCategory, type FinanceAccount, type FinanceTransaction, type TransactionFilters,
 } from '@/hooks/useFinance'
+import { downloadFinanceReportPdf } from '@/lib/finance-report-pdf'
 import { centsToBRL, maskMoney, moneyToCents } from '@/utils/masks'
 import { formatDateFromString } from '@/utils/format-data-from-string'
 import {
   Wallet, TrendingUp, TrendingDown, Scale, Plus, Pencil, Trash2, Search,
   ChevronLeft, ChevronRight, Tag, ArrowUpCircle, ArrowDownCircle, Paperclip, FileText, X,
-  Download, Landmark,
+  Download, Landmark, ArrowLeftRight, FileDown,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -113,6 +115,20 @@ function DashboardTab({ enabled }: { enabled: boolean }) {
   const [preset, setPreset] = useState<Preset>('year')
   const range = useMemo(() => presetRange(preset), [preset])
   const { data, isLoading, isError } = useFinanceSummary(range, { enabled })
+  const [pdfBusy, setPdfBusy] = useState(false)
+
+  async function handlePdf() {
+    if (!data) return
+    setPdfBusy(true)
+    try {
+      const txns = await fetchFinanceTransactionsForRange(range)
+      await downloadFinanceReportPdf(data, txns, range)
+    } catch {
+      toast.error('Erro ao gerar o PDF.')
+    } finally {
+      setPdfBusy(false)
+    }
+  }
 
   const kpis = [
     { label: 'Saldo em caixa', value: data?.balanceAllTimeCents ?? 0, icon: Scale, tone: 'neutral' as const, hint: 'Acumulado (todas as datas)' },
@@ -130,6 +146,9 @@ function DashboardTab({ enabled }: { enabled: boolean }) {
             {lbl}
           </Button>
         ))}
+        <Button size="sm" variant="outline" className="h-8 ml-auto" disabled={pdfBusy || isLoading || !data} onClick={handlePdf}>
+          <FileDown className="size-4" /> {pdfBusy ? 'Gerando...' : 'Baixar PDF'}
+        </Button>
       </div>
 
       {isError && (
@@ -292,6 +311,7 @@ function TransactionsTab({ enabled, canCreate, canUpdate, canDelete }: {
   const createTx = useCreateFinanceTransaction()
   const updateTx = useUpdateFinanceTransaction()
   const deleteTx = useDeleteFinanceTransaction()
+  const createTransfer = useCreateFinanceTransfer()
   const uploadAtt = useUploadFinanceAttachment()
   const deleteAtt = useDeleteFinanceAttachment()
 
@@ -301,6 +321,11 @@ function TransactionsTab({ enabled, canCreate, canUpdate, canDelete }: {
   const [error, setError] = useState<string | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<FinanceTransaction | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  // Transferência entre caixas.
+  const [transferOpen, setTransferOpen] = useState(false)
+  const [transfer, setTransfer] = useState({ fromAccountId: '', toAccountId: '', amount: '', date: isoDate(new Date()), description: '' })
+  const [transferError, setTransferError] = useState<string | null>(null)
 
   const rows = data?.data ?? []
   // Lançamento em edição — reflete os comprovantes atualizados após cada upload.
@@ -417,6 +442,35 @@ function TransactionsTab({ enabled, canCreate, canUpdate, canDelete }: {
     }
   }
 
+  function abrirTransferencia() {
+    setTransfer({ fromAccountId: '', toAccountId: '', amount: '', date: isoDate(new Date()), description: '' })
+    setTransferError(null)
+    setTransferOpen(true)
+  }
+
+  async function handleTransfer() {
+    setTransferError(null)
+    const amountCents = moneyToCents(transfer.amount)
+    if (!transfer.fromAccountId || !transfer.toAccountId) { setTransferError('Escolha os caixas de origem e destino.'); return }
+    if (transfer.fromAccountId === transfer.toAccountId) { setTransferError('Origem e destino devem ser diferentes.'); return }
+    if (amountCents <= 0) { setTransferError('Informe um valor maior que zero.'); return }
+    try {
+      await createTransfer.mutateAsync({
+        fromAccountId: transfer.fromAccountId,
+        toAccountId: transfer.toAccountId,
+        amountCents,
+        date: transfer.date,
+        description: transfer.description.trim() || undefined,
+      })
+      toast.success('Transferência registrada!')
+      setTransferOpen(false)
+    } catch (e) {
+      const msg = apiErrorMessage(e, 'Erro ao transferir.')
+      setTransferError(msg)
+      toast.error(msg)
+    }
+  }
+
   const saving = createTx.isPending || updateTx.isPending
 
   return (
@@ -458,6 +512,11 @@ function TransactionsTab({ enabled, canCreate, canUpdate, canDelete }: {
           <Button variant="outline" className="shrink-0" disabled={exporting || rows.length === 0} onClick={handleExport}>
             <Download className="size-4" /> {exporting ? 'Exportando...' : 'Exportar CSV'}
           </Button>
+          {canCreate && accs.length >= 2 && (
+            <Button variant="outline" onClick={abrirTransferencia} className="shrink-0">
+              <ArrowLeftRight className="size-4" /> Transferir
+            </Button>
+          )}
           {canCreate && (
             <Button onClick={abrirNovo} className="shrink-0">
               <Plus className="size-4" /> Novo lançamento
@@ -521,9 +580,11 @@ function TransactionsTab({ enabled, canCreate, canUpdate, canDelete }: {
                   </TableCell>
                   <TableCell className="font-medium text-foreground">
                     <span className="inline-flex items-center gap-2">
-                      {t.type === 'IN'
-                        ? <ArrowUpCircle className="size-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
-                        : <ArrowDownCircle className="size-4 shrink-0 text-red-600 dark:text-red-400" />}
+                      {t.transferId
+                        ? <ArrowLeftRight className="size-4 shrink-0 text-sky-600 dark:text-sky-400" />
+                        : t.type === 'IN'
+                          ? <ArrowUpCircle className="size-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
+                          : <ArrowDownCircle className="size-4 shrink-0 text-red-600 dark:text-red-400" />}
                       {t.description}
                       {t.attachments.length > 0 && (
                         <button
@@ -561,7 +622,7 @@ function TransactionsTab({ enabled, canCreate, canUpdate, canDelete }: {
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex items-center justify-end gap-1">
-                      {canUpdate && (
+                      {canUpdate && !t.transferId && (
                         <Button size="sm" variant="ghost" className="h-8 px-2" onClick={() => abrirEditar(t)} title="Editar">
                           <Pencil className="size-4" />
                         </Button>
@@ -571,7 +632,7 @@ function TransactionsTab({ enabled, canCreate, canUpdate, canDelete }: {
                           <Trash2 className="size-4" />
                         </Button>
                       )}
-                      {!canUpdate && !canDelete && <span className="text-xs text-muted-foreground">—</span>}
+                      {(!canUpdate || t.transferId) && !canDelete && <span className="text-xs text-muted-foreground">—</span>}
                     </div>
                   </TableCell>
                 </TableRow>
@@ -592,6 +653,54 @@ function TransactionsTab({ enabled, canCreate, canUpdate, canDelete }: {
           </Button>
         </div>
       )}
+
+      <Dialog open={transferOpen} onOpenChange={setTransferOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Transferir entre caixas</DialogTitle>
+            <DialogDescription>Move dinheiro de um caixa para outro. Não conta como entrada nem saída.</DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col gap-4">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="flex flex-col gap-1.5">
+                <Label>De *</Label>
+                <select className={selectClass} value={transfer.fromAccountId} onChange={e => setTransfer(p => ({ ...p, fromAccountId: e.target.value }))}>
+                  <option value="">Origem</option>
+                  {accs.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+                </select>
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <Label>Para *</Label>
+                <select className={selectClass} value={transfer.toAccountId} onChange={e => setTransfer(p => ({ ...p, toAccountId: e.target.value }))}>
+                  <option value="">Destino</option>
+                  {accs.filter(a => a.id !== transfer.fromAccountId).map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+                </select>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="flex flex-col gap-1.5">
+                <Label>Valor *</Label>
+                <Input inputMode="numeric" placeholder="R$ 0,00" value={transfer.amount} onChange={e => setTransfer(p => ({ ...p, amount: maskMoney(e.target.value) }))} />
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <Label>Data *</Label>
+                <Input type="date" value={transfer.date} onChange={e => setTransfer(p => ({ ...p, date: e.target.value }))} />
+              </div>
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <Label>Descrição</Label>
+              <Input value={transfer.description} onChange={e => setTransfer(p => ({ ...p, description: e.target.value }))} placeholder="Opcional (ex: reforço de caixa)" />
+            </div>
+            {transferError && <p className="text-sm text-destructive">{transferError}</p>}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setTransferOpen(false)}>Cancelar</Button>
+            <Button onClick={handleTransfer} disabled={createTransfer.isPending}>
+              {createTransfer.isPending ? 'Transferindo...' : 'Transferir'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="sm:max-w-md">
@@ -705,6 +814,7 @@ function TransactionsTab({ enabled, canCreate, canUpdate, canDelete }: {
             <AlertDialogTitle>Excluir lançamento</AlertDialogTitle>
             <AlertDialogDescription>
               Excluir <strong>{deleteTarget?.description}</strong> ({deleteTarget ? centsToBRL(deleteTarget.amountCents) : ''})? Esta ação não pode ser desfeita.
+              {deleteTarget?.transferId && ' Os dois lados da transferência (saída e entrada) serão removidos.'}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

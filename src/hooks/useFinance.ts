@@ -46,6 +46,7 @@ export type FinanceTransaction = {
   category: FinanceCategory | null
   accountId: string | null
   account: FinanceAccount | null
+  transferId: string | null
   attachments: FinanceAttachment[]
   createdBy: string | null
   createdAt: string
@@ -94,6 +95,15 @@ export type TransactionInput = {
   notes?: string | null
   categoryId?: string | null
   accountId?: string | null
+}
+
+export type TransferInput = {
+  fromAccountId: string
+  toAccountId: string
+  amountCents: number
+  date: string
+  description?: string
+  method?: string | null
 }
 
 export type TransactionFilters = {
@@ -263,6 +273,28 @@ export function useDeleteFinanceTransaction() {
     mutationFn: (id: string) => apiFetch(`/admin/finance/transactions/${id}`, { method: 'DELETE' }),
     onSuccess: () => invalidateFinance(qc),
   })
+}
+
+export function useCreateFinanceTransfer() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (body: TransferInput) =>
+      apiFetch('/admin/finance/transfers', { method: 'POST', body: JSON.stringify(body) }),
+    onSuccess: () => invalidateFinance(qc),
+  })
+}
+
+// Todos os lançamentos do período (limite alto) — usado no relatório PDF.
+export async function fetchFinanceTransactionsForRange(
+  range: { from?: string; to?: string },
+): Promise<FinanceTransaction[]> {
+  const p = new URLSearchParams()
+  if (range.from) p.set('from', range.from)
+  if (range.to) p.set('to', range.to)
+  p.set('limit', '1000')
+  const res = await apiFetch(`/admin/finance/transactions?${p}`)
+  const json = (await res.json()) as FinanceTransactionsPage
+  return json.data
 }
 
 // ── Comprovantes (anexos) ─────────────────────────────────────────────────────
