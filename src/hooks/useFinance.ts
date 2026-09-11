@@ -23,6 +23,17 @@ export type FinanceCategory = {
   updatedAt: string
 }
 
+export type FinanceAccount = {
+  id: string
+  name: string
+  color: string
+  active: boolean
+  order: number
+  isDeleted: boolean
+  createdAt: string
+  updatedAt: string
+}
+
 export type FinanceTransaction = {
   id: string
   type: FinanceType
@@ -33,6 +44,8 @@ export type FinanceTransaction = {
   notes: string | null
   categoryId: string | null
   category: FinanceCategory | null
+  accountId: string | null
+  account: FinanceAccount | null
   attachments: FinanceAttachment[]
   createdBy: string | null
   createdAt: string
@@ -54,11 +67,19 @@ export type FinanceSummary = {
   periodResultCents: number
   byCategory: { categoryId: string | null; name: string; color: string; type: FinanceType; totalCents: number }[]
   byMonth: { month: string; inCents: number; outCents: number }[]
+  byAccount: { accountId: string | null; name: string; color: string; balanceCents: number }[]
 }
 
 export type CategoryInput = {
   name: string
   type: FinanceType
+  color?: string
+  active?: boolean
+  order?: number
+}
+
+export type AccountInput = {
+  name: string
   color?: string
   active?: boolean
   order?: number
@@ -72,6 +93,7 @@ export type TransactionInput = {
   method?: string | null
   notes?: string | null
   categoryId?: string | null
+  accountId?: string | null
 }
 
 export type TransactionFilters = {
@@ -81,6 +103,7 @@ export type TransactionFilters = {
   to?: string
   type?: FinanceType | ''
   categoryId?: string
+  accountId?: string
   search?: string
 }
 
@@ -126,6 +149,44 @@ export function useDeleteFinanceCategory() {
   })
 }
 
+// ── Contas / caixas ───────────────────────────────────────────────────────────
+export function useFinanceAccounts(
+  opts: { includeInactive?: boolean; enabled?: boolean } = {},
+) {
+  return useQuery<FinanceAccount[]>({
+    queryKey: ['finance', 'accounts', opts.includeInactive ?? false],
+    queryFn: () =>
+      apiFetch(`/admin/finance/accounts${opts.includeInactive ? '?all=true' : ''}`).then(r => r.json()),
+    enabled: opts.enabled ?? true,
+  })
+}
+
+export function useCreateFinanceAccount() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (body: AccountInput) =>
+      apiFetch('/admin/finance/accounts', { method: 'POST', body: JSON.stringify(body) }),
+    onSuccess: () => invalidateFinance(qc),
+  })
+}
+
+export function useUpdateFinanceAccount() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, body }: { id: string; body: Partial<AccountInput> }) =>
+      apiFetch(`/admin/finance/accounts/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
+    onSuccess: () => invalidateFinance(qc),
+  })
+}
+
+export function useDeleteFinanceAccount() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) => apiFetch(`/admin/finance/accounts/${id}`, { method: 'DELETE' }),
+    onSuccess: () => invalidateFinance(qc),
+  })
+}
+
 // ── Lançamentos ──────────────────────────────────────────────────────────────
 function buildQuery(filters: TransactionFilters): string {
   const p = new URLSearchParams()
@@ -135,9 +196,36 @@ function buildQuery(filters: TransactionFilters): string {
   if (filters.to) p.set('to', filters.to)
   if (filters.type) p.set('type', filters.type)
   if (filters.categoryId) p.set('categoryId', filters.categoryId)
+  if (filters.accountId) p.set('accountId', filters.accountId)
   if (filters.search) p.set('search', filters.search)
   const s = p.toString()
   return s ? `?${s}` : ''
+}
+
+// Exporta os lançamentos filtrados como CSV (endpoint exige Bearer → download via blob).
+export async function exportFinanceTransactions(filters: TransactionFilters = {}) {
+  const p = new URLSearchParams()
+  if (filters.from) p.set('from', filters.from)
+  if (filters.to) p.set('to', filters.to)
+  if (filters.type) p.set('type', filters.type)
+  if (filters.categoryId) p.set('categoryId', filters.categoryId)
+  if (filters.accountId) p.set('accountId', filters.accountId)
+  if (filters.search) p.set('search', filters.search)
+  const qs = p.toString()
+  const token = localStorage.getItem('token')
+  const res = await fetch(`${API_BASE}/admin/finance/transactions/export${qs ? `?${qs}` : ''}`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  })
+  if (!res.ok) throw new Error('Falha ao exportar')
+  const blob = await res.blob()
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `lancamentos-${new Date().toISOString().slice(0, 10)}.csv`
+  document.body.appendChild(a)
+  a.click()
+  a.remove()
+  setTimeout(() => URL.revokeObjectURL(url), 10_000)
 }
 
 export function useFinanceTransactions(

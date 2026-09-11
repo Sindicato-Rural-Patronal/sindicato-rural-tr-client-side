@@ -7,14 +7,16 @@ import {
   useFinanceSummary, useFinanceCategories, useFinanceTransactions,
   useCreateFinanceTransaction, useUpdateFinanceTransaction, useDeleteFinanceTransaction,
   useCreateFinanceCategory, useUpdateFinanceCategory, useDeleteFinanceCategory,
-  useUploadFinanceAttachment, useDeleteFinanceAttachment, openFinanceAttachment,
-  type FinanceType, type FinanceCategory, type FinanceTransaction, type TransactionFilters,
+  useFinanceAccounts, useCreateFinanceAccount, useUpdateFinanceAccount, useDeleteFinanceAccount,
+  useUploadFinanceAttachment, useDeleteFinanceAttachment, openFinanceAttachment, exportFinanceTransactions,
+  type FinanceType, type FinanceCategory, type FinanceAccount, type FinanceTransaction, type TransactionFilters,
 } from '@/hooks/useFinance'
 import { centsToBRL, maskMoney, moneyToCents } from '@/utils/masks'
 import { formatDateFromString } from '@/utils/format-data-from-string'
 import {
   Wallet, TrendingUp, TrendingDown, Scale, Plus, Pencil, Trash2, Search,
   ChevronLeft, ChevronRight, Tag, ArrowUpCircle, ArrowDownCircle, Paperclip, FileText, X,
+  Download, Landmark,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -86,6 +88,7 @@ function RouteComponent() {
           <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
           <TabsTrigger value="lancamentos">Lançamentos</TabsTrigger>
           <TabsTrigger value="categorias">Categorias</TabsTrigger>
+          <TabsTrigger value="caixas">Caixas</TabsTrigger>
         </TabsList>
 
         <TabsContent value="dashboard" className="mt-6">
@@ -96,6 +99,9 @@ function RouteComponent() {
         </TabsContent>
         <TabsContent value="categorias" className="mt-6">
           <CategoriesTab enabled={enabled} canCreate={can('CREATE_FINANCE')} canUpdate={can('UPDATE_FINANCE')} canDelete={can('DELETE_FINANCE')} />
+        </TabsContent>
+        <TabsContent value="caixas" className="mt-6">
+          <AccountsTab enabled={enabled} canCreate={can('CREATE_FINANCE')} canUpdate={can('UPDATE_FINANCE')} canDelete={can('DELETE_FINANCE')} />
         </TabsContent>
       </Tabs>
     </div>
@@ -170,6 +176,29 @@ function DashboardTab({ enabled }: { enabled: boolean }) {
             <CategoryBreakdown items={(data?.byCategory ?? []).filter(c => c.type === 'OUT')} />
           )}
         </div>
+      </div>
+
+      <div className="rounded-xl border border-border bg-card p-4">
+        <h3 className="text-sm font-semibold text-foreground mb-4">Saldo por caixa</h3>
+        {isLoading ? (
+          <Skeleton className="h-16 w-full" />
+        ) : (data?.byAccount ?? []).length === 0 ? (
+          <p className="text-sm text-muted-foreground">Nenhum caixa com movimento.</p>
+        ) : (
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {(data?.byAccount ?? []).map(a => (
+              <div key={a.accountId ?? 'none'} className="flex items-center justify-between rounded-lg border border-border px-3 py-2.5">
+                <span className="inline-flex items-center gap-2 text-sm text-foreground">
+                  <Landmark className="size-4" style={{ color: a.color }} />
+                  {a.name}
+                </span>
+                <span className={`tabular-nums font-semibold ${a.balanceCents < 0 ? 'text-red-600 dark:text-red-400' : 'text-foreground'}`}>
+                  {centsToBRL(a.balanceCents)}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   )
@@ -246,10 +275,11 @@ type TxForm = {
   description: string
   method: string
   categoryId: string
+  accountId: string
   notes: string
 }
 const emptyTxForm = (): TxForm => ({
-  type: 'OUT', amount: '', date: isoDate(new Date()), description: '', method: '', categoryId: '', notes: '',
+  type: 'OUT', amount: '', date: isoDate(new Date()), description: '', method: '', categoryId: '', accountId: '', notes: '',
 })
 
 function TransactionsTab({ enabled, canCreate, canUpdate, canDelete }: {
@@ -258,6 +288,7 @@ function TransactionsTab({ enabled, canCreate, canUpdate, canDelete }: {
   const [filters, setFilters] = useState<TransactionFilters>({ page: 1, limit: 20 })
   const { data, isLoading, isError } = useFinanceTransactions(filters, { enabled })
   const { data: categories } = useFinanceCategories({ enabled })
+  const { data: accounts } = useFinanceAccounts({ enabled })
   const createTx = useCreateFinanceTransaction()
   const updateTx = useUpdateFinanceTransaction()
   const deleteTx = useDeleteFinanceTransaction()
@@ -276,7 +307,9 @@ function TransactionsTab({ enabled, canCreate, canUpdate, canDelete }: {
   const editingTx = editId ? rows.find(r => r.id === editId) ?? null : null
   const totalPages = data?.totalPages ?? 1
   const cats = categories ?? []
+  const accs = accounts ?? []
   const catsForType = cats.filter(c => c.type === form.type)
+  const [exporting, setExporting] = useState(false)
 
   function setF<K extends keyof TxForm>(k: K, v: TxForm[K]) {
     setForm(prev => ({ ...prev, [k]: v }))
@@ -298,6 +331,7 @@ function TransactionsTab({ enabled, canCreate, canUpdate, canDelete }: {
       description: t.description,
       method: t.method ?? '',
       categoryId: t.categoryId ?? '',
+      accountId: t.accountId ?? '',
       notes: t.notes ?? '',
     })
     setError(null)
@@ -316,6 +350,7 @@ function TransactionsTab({ enabled, canCreate, canUpdate, canDelete }: {
       description: form.description.trim(),
       method: form.method.trim() || null,
       categoryId: form.categoryId || null,
+      accountId: form.accountId || null,
       notes: form.notes.trim() || null,
     }
     try {
@@ -371,6 +406,17 @@ function TransactionsTab({ enabled, canCreate, canUpdate, canDelete }: {
     catch { toast.error('Erro ao abrir o comprovante.') }
   }
 
+  async function handleExport() {
+    setExporting(true)
+    try {
+      await exportFinanceTransactions(filters)
+    } catch {
+      toast.error('Erro ao exportar.')
+    } finally {
+      setExporting(false)
+    }
+  }
+
   const saving = createTx.isPending || updateTx.isPending
 
   return (
@@ -400,12 +446,24 @@ function TransactionsTab({ enabled, canCreate, canUpdate, canDelete }: {
               {cats.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
           </div>
+          <div className="flex flex-col gap-1">
+            <Label className="text-[11px] text-muted-foreground">Caixa</Label>
+            <select className={`${selectClass} h-9`} value={filters.accountId ?? ''} onChange={e => setFilters(f => ({ ...f, accountId: e.target.value, page: 1 }))}>
+              <option value="">Todos</option>
+              {accs.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+            </select>
+          </div>
         </div>
-        {canCreate && (
-          <Button onClick={abrirNovo} className="shrink-0">
-            <Plus className="size-4" /> Novo lançamento
+        <div className="flex items-center gap-2">
+          <Button variant="outline" className="shrink-0" disabled={exporting || rows.length === 0} onClick={handleExport}>
+            <Download className="size-4" /> {exporting ? 'Exportando...' : 'Exportar CSV'}
           </Button>
-        )}
+          {canCreate && (
+            <Button onClick={abrirNovo} className="shrink-0">
+              <Plus className="size-4" /> Novo lançamento
+            </Button>
+          )}
+        </div>
       </div>
 
       <div className="relative max-w-sm">
@@ -427,6 +485,7 @@ function TransactionsTab({ enabled, canCreate, canUpdate, canDelete }: {
                 <TableHead>Data</TableHead>
                 <TableHead>Descrição</TableHead>
                 <TableHead>Categoria</TableHead>
+                <TableHead className="hidden lg:table-cell">Caixa</TableHead>
                 <TableHead className="hidden md:table-cell">Método</TableHead>
                 <TableHead className="text-right">Valor</TableHead>
                 <TableHead className="text-right">Ações</TableHead>
@@ -438,6 +497,7 @@ function TransactionsTab({ enabled, canCreate, canUpdate, canDelete }: {
                   <TableCell><Skeleton className="h-4 w-20" /></TableCell>
                   <TableCell><Skeleton className="h-4 w-40" /></TableCell>
                   <TableCell><Skeleton className="h-4 w-24" /></TableCell>
+                  <TableCell className="hidden lg:table-cell"><Skeleton className="h-4 w-20" /></TableCell>
                   <TableCell className="hidden md:table-cell"><Skeleton className="h-4 w-16" /></TableCell>
                   <TableCell><Skeleton className="h-4 w-20 ml-auto" /></TableCell>
                   <TableCell><Skeleton className="h-7 w-16 ml-auto" /></TableCell>
@@ -445,7 +505,7 @@ function TransactionsTab({ enabled, canCreate, canUpdate, canDelete }: {
               ))}
               {!isLoading && rows.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={6} className="py-16 text-center">
+                  <TableCell colSpan={7} className="py-16 text-center">
                     <Wallet className="size-10 text-muted-foreground/30 mx-auto mb-3" />
                     <p className="text-sm font-medium text-foreground">Nenhum lançamento</p>
                     <p className="text-xs text-muted-foreground mt-1">
@@ -484,6 +544,14 @@ function TransactionsTab({ enabled, canCreate, canUpdate, canDelete }: {
                         {t.category.name}
                       </span>
                     ) : <span className="text-muted-foreground text-sm">—</span>}
+                  </TableCell>
+                  <TableCell className="hidden lg:table-cell text-muted-foreground text-sm">
+                    {t.account ? (
+                      <span className="inline-flex items-center gap-1.5 text-foreground">
+                        <Landmark className="size-3.5" style={{ color: t.account.color }} />
+                        {t.account.name}
+                      </span>
+                    ) : '—'}
                   </TableCell>
                   <TableCell className="hidden md:table-cell text-muted-foreground text-sm">{t.method || '—'}</TableCell>
                   <TableCell className={`text-right tabular-nums font-medium ${
@@ -575,9 +643,16 @@ function TransactionsTab({ enabled, canCreate, canUpdate, canDelete }: {
                 </select>
               </div>
               <div className="flex flex-col gap-1.5">
-                <Label>Método</Label>
-                <Input value={form.method} onChange={e => setF('method', e.target.value)} placeholder="Ex: PIX, Dinheiro" />
+                <Label>Caixa</Label>
+                <select className={selectClass} value={form.accountId} onChange={e => setF('accountId', e.target.value)}>
+                  <option value="">Sem caixa</option>
+                  {accs.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+                </select>
               </div>
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <Label>Método</Label>
+              <Input value={form.method} onChange={e => setF('method', e.target.value)} placeholder="Ex: PIX, Dinheiro" />
             </div>
             <div className="flex flex-col gap-1.5">
               <Label>Observações</Label>
@@ -858,6 +933,213 @@ function CategoriesTab({ enabled, canCreate, canUpdate, canDelete }: {
             <AlertDialogCancel disabled={deleteCat.isPending}>Cancelar</AlertDialogCancel>
             <AlertDialogAction onClick={e => { e.preventDefault(); handleDelete() }} disabled={deleteCat.isPending} className="bg-destructive text-white hover:bg-destructive/90">
               {deleteCat.isPending ? 'Excluindo...' : 'Excluir'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
+  )
+}
+
+// ── Caixas ──────────────────────────────────────────────────────────────────
+type AccForm = { name: string; color: string; active: boolean }
+const emptyAccForm = (): AccForm => ({ name: '', color: '#2563eb', active: true })
+
+function AccountsTab({ enabled, canCreate, canUpdate, canDelete }: {
+  enabled: boolean; canCreate: boolean; canUpdate: boolean; canDelete: boolean
+}) {
+  const { data: accounts, isLoading, isError } = useFinanceAccounts({ includeInactive: true, enabled })
+  const createAcc = useCreateFinanceAccount()
+  const updateAcc = useUpdateFinanceAccount()
+  const deleteAcc = useDeleteFinanceAccount()
+
+  const [dialogOpen, setDialogOpen] = useState(false)
+  const [editId, setEditId] = useState<string | null>(null)
+  const [form, setForm] = useState<AccForm>(emptyAccForm)
+  const [error, setError] = useState<string | null>(null)
+  const [deleteTarget, setDeleteTarget] = useState<FinanceAccount | null>(null)
+
+  const accs = accounts ?? []
+
+  function abrirNovo() {
+    setEditId(null)
+    setForm(emptyAccForm())
+    setError(null)
+    setDialogOpen(true)
+  }
+
+  function abrirEditar(a: FinanceAccount) {
+    setEditId(a.id)
+    setForm({ name: a.name, color: a.color, active: a.active })
+    setError(null)
+    setDialogOpen(true)
+  }
+
+  async function handleSubmit() {
+    setError(null)
+    if (!form.name.trim()) { setError('Informe o nome.'); return }
+    const body = { name: form.name.trim(), color: form.color, active: form.active }
+    try {
+      if (editId) {
+        await updateAcc.mutateAsync({ id: editId, body })
+        toast.success('Caixa atualizado!')
+      } else {
+        await createAcc.mutateAsync(body)
+        toast.success('Caixa criado!')
+      }
+      setDialogOpen(false)
+    } catch (e) {
+      const msg = apiErrorMessage(e, 'Erro ao salvar o caixa.')
+      setError(msg)
+      toast.error(msg)
+    }
+  }
+
+  async function handleDelete() {
+    if (!deleteTarget) return
+    try {
+      await deleteAcc.mutateAsync(deleteTarget.id)
+      toast.success('Caixa removido.')
+      setDeleteTarget(null)
+    } catch (e) {
+      toast.error(apiErrorMessage(e, 'Erro ao remover o caixa.'))
+    }
+  }
+
+  const saving = createAcc.isPending || updateAcc.isPending
+
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="flex items-center justify-between">
+        <p className="text-sm text-muted-foreground">Contas/caixas onde o dinheiro fica (Caixa geral, Banco, Poupança…).</p>
+        {canCreate && (
+          <Button onClick={abrirNovo} className="shrink-0">
+            <Plus className="size-4" /> Novo caixa
+          </Button>
+        )}
+      </div>
+
+      {isError && (
+        <div className="rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
+          Erro ao carregar os caixas.
+        </div>
+      )}
+
+      <div className="rounded-lg border border-border bg-card overflow-hidden">
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Caixa</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead className="text-right">Ações</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {isLoading && Array.from({ length: 3 }).map((_, i) => (
+                <TableRow key={i}>
+                  <TableCell><Skeleton className="h-4 w-32" /></TableCell>
+                  <TableCell><Skeleton className="h-5 w-16 rounded-full" /></TableCell>
+                  <TableCell><Skeleton className="h-7 w-16 ml-auto" /></TableCell>
+                </TableRow>
+              ))}
+              {!isLoading && accs.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={3} className="py-16 text-center">
+                    <Landmark className="size-10 text-muted-foreground/30 mx-auto mb-3" />
+                    <p className="text-sm font-medium text-foreground">Nenhum caixa</p>
+                  </TableCell>
+                </TableRow>
+              )}
+              {accs.map(a => (
+                <TableRow key={a.id} className={a.active ? '' : 'opacity-60'}>
+                  <TableCell className="font-medium text-foreground">
+                    <span className="inline-flex items-center gap-2">
+                      <Landmark className="size-4" style={{ color: a.color }} />
+                      {a.name}
+                    </span>
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant={a.active ? 'default' : 'secondary'}>{a.active ? 'Ativo' : 'Inativo'}</Badge>
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <div className="flex items-center justify-end gap-1">
+                      {canUpdate && (
+                        <Button size="sm" variant="ghost" className="h-8 px-2" onClick={() => abrirEditar(a)} title="Editar">
+                          <Pencil className="size-4" />
+                        </Button>
+                      )}
+                      {canDelete && (
+                        <Button size="sm" variant="ghost" className="h-8 px-2 text-muted-foreground hover:text-destructive" onClick={() => setDeleteTarget(a)} title="Excluir">
+                          <Trash2 className="size-4" />
+                        </Button>
+                      )}
+                      {!canUpdate && !canDelete && <span className="text-xs text-muted-foreground">—</span>}
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      </div>
+
+      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{editId ? 'Editar caixa' : 'Novo caixa'}</DialogTitle>
+          </DialogHeader>
+          <div className="flex flex-col gap-4">
+            <div className="flex flex-col gap-1.5">
+              <Label>Nome *</Label>
+              <Input value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} placeholder="Ex: Banco" />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <Label>Cor</Label>
+              <div className="flex flex-wrap gap-2">
+                {COLOR_CHOICES.map(color => (
+                  <button
+                    key={color}
+                    type="button"
+                    onClick={() => setForm(p => ({ ...p, color }))}
+                    className={`size-7 rounded-md border-2 ${form.color === color ? 'border-foreground' : 'border-transparent'}`}
+                    style={{ backgroundColor: color }}
+                    aria-label={color}
+                  />
+                ))}
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setForm(p => ({ ...p, active: !p.active }))}
+              className="flex items-center gap-2 text-sm text-foreground w-fit"
+            >
+              <span className={`inline-block size-4 rounded-sm border ${form.active ? 'bg-emerald-500 border-emerald-500' : 'border-input'}`} />
+              {form.active ? 'Ativo (aparece nos lançamentos)' : 'Inativo'}
+            </button>
+            {error && <p className="text-sm text-destructive">{error}</p>}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancelar</Button>
+            <Button onClick={handleSubmit} disabled={!form.name || saving}>
+              {saving ? 'Salvando...' : editId ? 'Salvar' : 'Cadastrar'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <AlertDialog open={!!deleteTarget} onOpenChange={open => { if (!open) setDeleteTarget(null) }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir caixa</AlertDialogTitle>
+            <AlertDialogDescription>
+              Excluir <strong>{deleteTarget?.name}</strong>? Lançamentos já feitos nele são mantidos.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleteAcc.isPending}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={e => { e.preventDefault(); handleDelete() }} disabled={deleteAcc.isPending} className="bg-destructive text-white hover:bg-destructive/90">
+              {deleteAcc.isPending ? 'Excluindo...' : 'Excluir'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
