@@ -11,6 +11,7 @@ import {
   type UserDataDetail, type UserProperty, type UserRelation,
 } from '@/hooks/useAdmin'
 import { useUnsavedGuard } from '@/hooks/use-unsaved-guard'
+import { CadproFields } from '@/components/CadproFields'
 import { Pagination } from '@/components/ui/pagination'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
@@ -114,7 +115,7 @@ type DadosForm = {
   birthDate: string; driverLicense: string; driverLicenseCategory: string
   birthPlace: string; nationality: string; gender: string; ethnicity: string
   educationLevel: string; functionalCategory: string; specialNeeds: boolean
-  memberClassification: string; cadPro: string; familyIncome: string
+  memberClassification: string; cadPro: string[]; familyIncome: string
   memberType: string; boardPosition: string; boardMember: boolean
   memberSince: string; membershipValidUntil: string; memberNotes: string; memberNotesNumber: string
   avatar: string
@@ -145,7 +146,7 @@ function dadosFromDetail(u: UserDataDetail): DadosForm {
     functionalCategory: u.functionalCategory ?? '',
     specialNeeds: u.specialNeeds ?? false,
     memberClassification: u.memberClassification ?? '',
-    cadPro: u.cadPro ?? '',
+    cadPro: u.cadPro ?? [],
     familyIncome: maskMoney(u.familyIncome ?? ''),
     memberType: u.memberType ?? '',
     boardPosition: u.boardPosition ?? '',
@@ -431,7 +432,7 @@ function DadosTab({ userId, user, completeMode, onCompleteModeEnd, hasNoProperti
       functionalCategory: f.functionalCategory || null,
       specialNeeds: f.specialNeeds,
       memberClassification: f.memberClassification || null,
-      cadPro: f.cadPro || null,
+      cadPro: f.cadPro.map(s => s.trim()).filter(Boolean),
       familyIncome: f.familyIncome.replace(/\D/g, '') || null,
       memberType: f.memberType || null,
       boardPosition: f.boardPosition || null,
@@ -484,7 +485,7 @@ function DadosTab({ userId, user, completeMode, onCompleteModeEnd, hasNoProperti
           functionalCategory: form.functionalCategory || null,
           specialNeeds: form.specialNeeds,
           memberClassification: form.memberClassification || null,
-          cadPro: form.cadPro || null,
+          cadPro: form.cadPro.map(s => s.trim()).filter(Boolean),
           familyIncome: form.familyIncome.replace(/\D/g, '') || null,
           memberType: form.memberType || null,
           boardPosition: form.boardPosition || null,
@@ -751,8 +752,8 @@ function DadosTab({ userId, user, completeMode, onCompleteModeEnd, hasNoProperti
           <FieldRow label="Categoria funcional">
             <Input className={inp} disabled={d} value={form.functionalCategory} onChange={e => set('functionalCategory', e.target.value)} />
           </FieldRow>
-          <FieldRow label="CAD-PRO">
-            <Input className={inp} disabled={d} value={form.cadPro} onChange={e => set('cadPro', e.target.value)} />
+          <FieldRow label="CAD/PRO (até 3)">
+            <CadproFields value={form.cadPro} onChange={v => setForm(p => ({ ...p, cadPro: v }))} disabled={d} />
           </FieldRow>
           <FieldRow label="Renda familiar">
             <Input className={inp} disabled={d} value={form.familyIncome} onChange={e => set('familyIncome', maskMoney(e.target.value))} placeholder="R$ 0,00" inputMode="numeric" />

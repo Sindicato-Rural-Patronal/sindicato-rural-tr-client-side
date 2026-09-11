@@ -21,7 +21,7 @@ const sampleUser = {
   ethnicity: 'MIXED',
   educationLevel: 'POSTGRADUATE',
   functionalCategory: 'Produtor Rural',
-  cadPro: '',
+  cadPro: [],
   familyIncome: '303600', // R$ 3.036,00 (~2 salários) → de 1 a 3
   specialNeeds: false,
   memberNotesNumber: '146',

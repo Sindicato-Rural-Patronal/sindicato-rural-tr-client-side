@@ -209,7 +209,7 @@ function FichaPage({ course, user }: FichaParticipant) {
       <View style={styles.fieldRow}><Field label="NATURAL DE:" value={user.birthPlace ?? ''} /></View>
       <View style={styles.fieldRow}>
         <Field label="CPF Nº:" value={user.cpf ?? ''} />
-        <Field label="CAD/PRO:" value={user.cadPro ?? ''} />
+        <Field label="CAD/PRO:" value={(user.cadPro ?? []).join(', ')} />
         <Field label="ESTADO:" value={a?.state ?? ''} flex={0.7} />
       </View>
       <View style={styles.fieldRow}><Field label="ENDEREÇO:" value={composeAddress(a)} /></View>

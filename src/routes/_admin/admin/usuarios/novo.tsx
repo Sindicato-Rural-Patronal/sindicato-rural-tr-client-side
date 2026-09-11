@@ -14,6 +14,7 @@ import { ArrowLeft, User, FileText, Globe, MapPin, Briefcase, Save } from 'lucid
 import { maskCPF, maskPhone, maskCEP, maskRG, maskCNH, maskMoney } from '@/utils/masks'
 import { AgeHint } from '@/components/AgeHint'
 import { useUnsavedGuard, confirmLeaveIfDirty } from '@/hooks/use-unsaved-guard'
+import { CadproFields } from '@/components/CadproFields'
 
 export const Route = createFileRoute('/_admin/admin/usuarios/novo')({
   component: RouteComponent,
@@ -64,7 +65,7 @@ type Form = {
   birthDate: string; birthPlace: string; nationality: string
   gender: string; ethnicity: string; maritalStatus: string
   driverLicense: string; driverLicenseCategory: string
-  educationLevel: string; functionalCategory: string; cadPro: string
+  educationLevel: string; functionalCategory: string; cadPro: string[]
   familyIncome: string; specialNeeds: boolean
   memberType: string; memberClassification: string; memberStatus: string
   memberSince: string; membershipValidUntil: string; boardMember: boolean; boardPosition: string
@@ -85,7 +86,7 @@ const emptyForm: Form = {
   birthDate: '', birthPlace: '', nationality: '',
   gender: '', ethnicity: '', maritalStatus: '',
   driverLicense: '', driverLicenseCategory: '',
-  educationLevel: '', functionalCategory: '', cadPro: '',
+  educationLevel: '', functionalCategory: '', cadPro: [],
   familyIncome: '', specialNeeds: false,
   memberType: '', memberClassification: '', memberStatus: '',
   memberSince: '', membershipValidUntil: '', boardMember: false, boardPosition: '',
@@ -120,7 +121,8 @@ function buildPatchBody(f: Form): Record<string, unknown> {
   put('driverLicenseCategory', f.driverLicenseCategory)
   put('educationLevel', f.educationLevel)
   put('functionalCategory', f.functionalCategory)
-  put('cadPro', f.cadPro)
+  const cadproClean = f.cadPro.map(s => s.trim()).filter(Boolean)
+  if (cadproClean.length) b.cadPro = cadproClean
   put('familyIncome', f.familyIncome.replace(/\D/g, ''))
   if (f.specialNeeds) b.specialNeeds = true
   put('memberType', f.memberType)
@@ -380,8 +382,8 @@ function RouteComponent() {
             <FieldRow label="Categoria funcional">
               <Input className={inp} value={form.functionalCategory} onChange={e => set('functionalCategory', e.target.value)} />
             </FieldRow>
-            <FieldRow label="CAD-PRO">
-              <Input className={inp} value={form.cadPro} onChange={e => set('cadPro', e.target.value)} />
+            <FieldRow label="CAD/PRO (até 3)">
+              <CadproFields value={form.cadPro} onChange={v => set('cadPro', v)} />
             </FieldRow>
             <FieldRow label="Renda familiar">
               <Input className={inp} value={form.familyIncome} onChange={e => set('familyIncome', maskMoney(e.target.value))} placeholder="R$ 0,00" inputMode="numeric" />

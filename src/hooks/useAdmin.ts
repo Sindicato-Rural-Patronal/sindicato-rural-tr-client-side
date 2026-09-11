@@ -126,7 +126,7 @@ export type UserData = {
   functionalCategory: string | null
   specialNeeds: boolean
   memberClassification: string | null
-  cadPro: string | null
+  cadPro: string[]
   familyIncome: string | null
   memberType: string | null
   boardPosition: string | null
@@ -392,7 +392,7 @@ export type UpdateWorkerBody = {
   functionalCategory?: string | null
   specialNeeds?: boolean
   memberClassification?: string | null
-  cadPro?: string | null
+  cadPro?: string[]
   familyIncome?: string | null
   memberType?: string | null
   boardPosition?: string | null

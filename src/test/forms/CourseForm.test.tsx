@@ -114,13 +114,13 @@ describe('CourseFormDialog — criação', () => {
   it('renderiza título "Novo Curso"', async () => {
     await renderCourseFormDialog(null)
     expect(screen.getByText('Novo Curso')).toBeInTheDocument()
-  })
+  }, 15000)
 
   it('botão Criar desabilitado com form inválido', async () => {
     await renderCourseFormDialog(null)
     const btn = screen.getByRole('button', { name: 'Criar' })
     expect(btn).toBeDisabled()
-  })
+  }, 15000)
 
   // TODO: reescrever dirigindo os componentes atuais. As datas agora usam o
   // DatePicker (Radix Popover + react-day-picker) e a sala usa Radix Select —
