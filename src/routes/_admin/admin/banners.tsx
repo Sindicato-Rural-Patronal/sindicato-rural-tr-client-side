@@ -147,8 +147,8 @@ function BannerSheet({
     if (!mode) return
     setForm(banner ? formFromBanner(banner) : emptyForm())
     setError(null)
-    setCropSrc(null)
-    setStagedImage(null)
+    setCropSrc(prev => { if (prev) URL.revokeObjectURL(prev); return null })
+    setStagedImage(prev => { if (prev) URL.revokeObjectURL(prev.url); return null })
   }, [mode?.mode, banner?.id])
 
   function set<K extends keyof BannerFormState>(k: K, v: BannerFormState[K]) {
@@ -158,13 +158,12 @@ function BannerSheet({
   const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
-    const url = URL.createObjectURL(file)
-    setCropSrc(url)
+    setCropSrc(prev => { if (prev) URL.revokeObjectURL(prev); return URL.createObjectURL(file) })
     if (imageInputRef.current) imageInputRef.current.value = ''
   }, [])
 
   const handleCropConfirm = useCallback(async (file: File) => {
-    setCropSrc(null)
+    setCropSrc(prev => { if (prev) URL.revokeObjectURL(prev); return null })
     if (!banner) {
       // criação: guarda localmente e sobe depois do create
       setStagedImage(prev => {
@@ -285,7 +284,7 @@ function BannerSheet({
             outputWidth={1440}
             outputHeight={600}
             onConfirm={handleCropConfirm}
-            onCancel={() => { setCropSrc(null); if (imageInputRef.current) imageInputRef.current.value = '' }}
+            onCancel={() => { setCropSrc(prev => { if (prev) URL.revokeObjectURL(prev); return null }); if (imageInputRef.current) imageInputRef.current.value = '' }}
           />
 
           <div className="flex flex-col gap-1.5">

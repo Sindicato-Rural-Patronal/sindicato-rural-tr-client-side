@@ -370,13 +370,12 @@ function DadosTab({ userId, user, completeMode, onCompleteModeEnd, hasNoProperti
   async function handlePartnerLogoFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file) return
-    const preview = URL.createObjectURL(file)
-    setPartnerLogoPreview(preview)
+    setPartnerLogoPreview(prev => { if (prev) URL.revokeObjectURL(prev); return URL.createObjectURL(file) })
     try {
       await uploadPartnerLogo.mutateAsync(file)
       toast.success('Logo do parceiro atualizada!')
     } catch {
-      setPartnerLogoPreview(null)
+      setPartnerLogoPreview(prev => { if (prev) URL.revokeObjectURL(prev); return null })
       toast.error('Erro ao fazer upload da logo.')
     }
     if (partnerLogoInputRef.current) partnerLogoInputRef.current.value = ''
@@ -384,7 +383,7 @@ function DadosTab({ userId, user, completeMode, onCompleteModeEnd, hasNoProperti
 
   function handleCancel() {
     setForm(saved)
-    setPartnerLogoPreview(null)
+    setPartnerLogoPreview(prev => { if (prev) URL.revokeObjectURL(prev); return null })
     setWantInstructor(false)
     setInstrBio(user.userInstructor?.bio ?? '')
     setInstrLinkedin(user.userInstructor?.linkedin ?? '')

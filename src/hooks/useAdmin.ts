@@ -864,10 +864,14 @@ export type AuditLog = {
   createdAt: string
 }
 
-export function useAuditLogs(params: { page?: number; limit?: number } = {}) {
+export function useAuditLogs(
+  params: { page?: number; limit?: number } = {},
+  opts: { enabled?: boolean } = {},
+) {
   const { page = 1, limit = 30 } = params
   return useQuery<PaginatedResponse<AuditLog>>({
     queryKey: ['admin', 'audit-logs', page, limit],
     queryFn: () => apiFetch(`/admin/audit-logs?page=${page}&limit=${limit}`).then(r => r.json()),
+    enabled: opts.enabled ?? true,
   })
 }

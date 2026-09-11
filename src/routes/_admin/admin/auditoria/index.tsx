@@ -55,7 +55,10 @@ const KIND_COLOR: Record<ActionKind, string> = {
 function RouteComponent() {
   const { can, isLoading: permLoading } = usePermissions()
   const [page, setPage] = useState(1)
-  const { data, isLoading, isError } = useAuditLogs({ page, limit: 30 })
+  const { data, isLoading, isError } = useAuditLogs(
+    { page, limit: 30 },
+    { enabled: !permLoading && can('READ_AUDIT') },
+  )
   const rows = data?.data ?? []
   const totalPages = data?.totalPages ?? 1
 

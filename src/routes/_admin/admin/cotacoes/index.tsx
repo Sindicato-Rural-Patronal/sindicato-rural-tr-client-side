@@ -43,7 +43,9 @@ const emptyForm: Form = { label: '', value: '', referenceDate: '', order: '0', i
 
 function RouteComponent() {
   const { can, isLoading: permLoading } = usePermissions()
-  const { data: quotes, isLoading, isError } = useAdminMarketQuotes()
+  const { data: quotes, isLoading, isError } = useAdminMarketQuotes({
+    enabled: !permLoading && can('READ_MARKET_QUOTE'),
+  })
   const createQuote = useCreateMarketQuote()
   const updateQuote = useUpdateMarketQuote()
   const deleteQuote = useDeleteMarketQuote()

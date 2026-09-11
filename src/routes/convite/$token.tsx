@@ -69,7 +69,7 @@ function Convite() {
         {invite && (
           <div className="rounded-xl border border-border bg-card p-6">
             <div className="mb-4 flex items-center gap-2">
-              <ShieldCheck className="size-5 text-emerald-600" />
+              <ShieldCheck className="size-5 text-emerald-600 dark:text-emerald-400" />
               <div>
                 <p className="text-sm font-semibold text-foreground">Ativar seu acesso</p>
                 <p className="text-xs text-muted-foreground">

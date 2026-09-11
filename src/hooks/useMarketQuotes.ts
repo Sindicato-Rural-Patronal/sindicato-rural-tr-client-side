@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { apiFetch } from '@/lib/api'
+import { apiFetch, API_BASE } from '@/lib/api'
 
 export type MarketQuote = {
   id: string
@@ -22,19 +22,21 @@ export type MarketQuoteInput = {
   order?: number
 }
 
-// Público (home): apenas cotações ativas, ordenadas.
+// Público (home): apenas cotações ativas, ordenadas. Usa fetch cru (sem token /
+// sem handleUnauthorized) pra não deslogar um visitante com token velho.
 export function useMarketQuotes() {
   return useQuery<MarketQuote[]>({
     queryKey: ['market-quotes'],
-    queryFn: () => apiFetch('/market-quotes').then(r => r.json()),
+    queryFn: () => fetch(`${API_BASE}/market-quotes`).then(r => r.json()),
   })
 }
 
 // Admin: todas (inclui inativas).
-export function useAdminMarketQuotes() {
+export function useAdminMarketQuotes(opts: { enabled?: boolean } = {}) {
   return useQuery<MarketQuote[]>({
     queryKey: ['admin', 'market-quotes'],
     queryFn: () => apiFetch('/admin/market-quotes').then(r => r.json()),
+    enabled: opts.enabled ?? true,
   })
 }
 

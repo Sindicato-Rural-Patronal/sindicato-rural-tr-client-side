@@ -430,10 +430,22 @@ function NovoAdminSheet() {
   const usuarios = usuariosData?.data ?? []
   const regras = regrasData?.data ?? []
   const createInvite = useCreateAdminInvite()
+  const [open, setOpen] = useState(false)
   const [form, setForm] = useState({ userDataId: '', userRole: '' })
   const [link, setLink] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  // Reabrir zera link/seleção/erro pra não vazar convite anterior.
+  function handleOpenChange(o: boolean) {
+    setOpen(o)
+    if (o) {
+      setForm({ userDataId: '', userRole: '' })
+      setLink(null)
+      setError(null)
+      setCopied(false)
+    }
+  }
 
   function handleChange(e: React.ChangeEvent<HTMLSelectElement>) {
     setForm(prev => ({ ...prev, [e.target.name]: e.target.value }))
@@ -466,7 +478,7 @@ function NovoAdminSheet() {
   }
 
   return (
-    <Sheet>
+    <Sheet open={open} onOpenChange={handleOpenChange}>
       <SheetTrigger asChild>
         <Button><Plus className="size-4" /> Novo admin</Button>
       </SheetTrigger>
