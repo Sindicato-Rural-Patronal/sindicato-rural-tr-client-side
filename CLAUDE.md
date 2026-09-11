@@ -45,7 +45,11 @@ Site institucional do **Sindicato Rural de Terra Roxa** (Paraná, Brasil). Plata
 /admin/mensagens            → _admin/admin/mensagens.tsx
 /admin/salas                → _admin/admin/salas/index.tsx
 /admin/administradores      → _admin/admin/administradores/index.tsx
-/admin/dashboard            → _admin/admin/dashboard.tsx (stub)
+/admin/cotacoes             → _admin/admin/cotacoes/index.tsx (cotações da home)
+/admin/auditoria            → _admin/admin/auditoria/index.tsx (trilha de auditoria)
+/admin/financeiro           → _admin/admin/financeiro/index.tsx (Financeiro: dashboard, lançamentos, categorias, caixas)
+/admin/dashboard            → _admin/admin/dashboard.tsx (painel: stats + calendário de cursos + cadastros incompletos)
+/convite/:token             → convite/$token.tsx (público: ativar acesso de admin por convite)
 ```
 
 Layouts pai:
@@ -282,6 +286,30 @@ mapCourses(list: ApiCourse[]): Course[]
 - `GET /api/rooms` — lista
 - `POST /api/rooms` — criar
 
+**Cotações (home)**
+- `GET /api/market-quotes` — cotações ativas (público)
+- `GET /api/admin/market-quotes` — todas (admin)
+- `POST /api/market-quotes` · `PATCH /api/market-quotes/:id` · `DELETE /api/market-quotes/:id`
+
+**Auditoria**
+- `GET /api/admin/audit-logs` — trilha de auditoria (paginado)
+
+**Convites de admin**
+- `POST /api/admin/invites` — gera convite (pessoa + regra → token)
+- `GET /api/invites/:token` — dados do convite (público)
+- `POST /api/invites/:token/accept` — ativa acesso (define username/senha)
+
+**Financeiro (admin)** — gated por `*_FINANCE`; valor sempre em centavos (Int)
+- `GET /api/admin/finance/categories` (?all=true inclui inativas) · `POST` · `PATCH /:id` · `DELETE /:id`
+- `GET /api/admin/finance/accounts` (caixas; ?all=true) · `POST` · `PATCH /:id` · `DELETE /:id`
+- `GET /api/admin/finance/transactions` — paginado + filtros (from, to, type, categoryId, accountId, search)
+- `GET /api/admin/finance/transactions/export` — CSV (respeita filtros)
+- `POST /api/admin/finance/transactions` · `PATCH /:id` · `DELETE /:id`
+- `POST /api/admin/finance/transfers` — transferência entre caixas (2 lançamentos ligados)
+- `POST /api/admin/finance/transactions/:id/attachments` — comprovante (multipart)
+- `GET /api/admin/finance/attachments/:id` (download inline) · `DELETE /api/admin/finance/attachments/:id`
+- `GET /api/admin/finance/summary?from=&to=` — KPIs + por categoria + por mês + saldo por caixa
+
 **Utilitário**
 - `GET /api/cep/:cep` — lookup CEP (Correios)
 
@@ -292,7 +320,9 @@ mapCourses(list: ApiCourse[]): Course[]
 - Usuários admin: detalhe completo com propriedades/relacionamentos paginados, upload de avatar, promoção a instrutor.
 - Banners e mensagens de contato implementados.
 - Notícias, salas, admins e parceiros implementados.
-- Dashboard admin é **stub vazio** — API retorna stats mas a página não os exibe ainda.
+- Dashboard admin **implementado** — stats + calendário de cursos + lista de cadastros incompletos (não é mais stub).
+- Cotações da home, trilha de auditoria e convites de admin implementados.
+- **Financeiro** (admin): lançamentos de caixa (valor em centavos Int), categorias, dashboard, comprovantes (anexo em Bytes no banco), export CSV, multi-caixa e transferência entre caixas, relatório PDF do período. Gated por `READ/CREATE/UPDATE/DELETE_FINANCE`. Filtros dos lançamentos vivem na URL (search params).
 - Deploy em produção via Docker (Dockerfile + docker-compose.prod.yml + nginx).
 
 ## Comandos

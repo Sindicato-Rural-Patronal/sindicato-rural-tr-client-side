@@ -299,7 +299,7 @@ function RouteComponent() {
                   <TableCell className="text-right">
                     <div className="flex items-center justify-end gap-1">
                       {can('UPDATE_MARKET_QUOTE') && (
-                        <Button size="sm" variant="ghost" className="h-8 px-2" onClick={() => abrirEditar(q)} title="Editar">
+                        <Button size="sm" variant="ghost" className="h-8 px-2" onClick={() => abrirEditar(q)} aria-label="Editar" title="Editar">
                           <Pencil className="size-4" />
                         </Button>
                       )}
@@ -309,6 +309,7 @@ function RouteComponent() {
                           variant="ghost"
                           className="h-8 px-2 text-muted-foreground hover:text-destructive"
                           onClick={() => setDeleteTarget(q)}
+                          aria-label="Excluir"
                           title="Excluir"
                         >
                           <Trash2 className="size-4" />

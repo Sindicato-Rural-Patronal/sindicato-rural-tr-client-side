@@ -1,5 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { usePermissions } from '@/hooks/usePermissions'
 import { apiErrorMessage } from '@/lib/api-error-message'
@@ -12,7 +12,6 @@ import {
   useUploadFinanceAttachment, useDeleteFinanceAttachment, openFinanceAttachment, exportFinanceTransactions,
   type FinanceType, type FinanceCategory, type FinanceAccount, type FinanceTransaction, type TransactionFilters,
 } from '@/hooks/useFinance'
-import { downloadFinanceReportPdf } from '@/lib/finance-report-pdf'
 import { centsToBRL, maskMoney, moneyToCents } from '@/utils/masks'
 import { formatDateFromString } from '@/utils/format-data-from-string'
 import {
@@ -35,7 +34,38 @@ import {
   AlertDialogTitle, AlertDialogDescription, AlertDialogAction, AlertDialogCancel,
 } from '@/components/ui/alert-dialog'
 
+type FinanceTab = 'dashboard' | 'lancamentos' | 'categorias' | 'caixas'
+type FinanceSearch = {
+  tab: FinanceTab
+  from?: string
+  to?: string
+  fType?: FinanceType
+  cat?: string
+  acc?: string
+  q?: string
+  page?: number
+}
+const TABS: FinanceTab[] = ['dashboard', 'lancamentos', 'categorias', 'caixas']
+function str(v: unknown): string | undefined {
+  return typeof v === 'string' && v.trim() ? v : undefined
+}
+
 export const Route = createFileRoute('/_admin/admin/financeiro/')({
+  // Estado da tela (aba + filtros dos lançamentos) vive na URL: sobrevive a
+  // voltar/atualizar e pode ser compartilhado por link.
+  validateSearch: (s: Record<string, unknown>): FinanceSearch => {
+    const page = Number(s.page)
+    return {
+      tab: TABS.includes(s.tab as FinanceTab) ? (s.tab as FinanceTab) : 'dashboard',
+      from: str(s.from),
+      to: str(s.to),
+      fType: s.fType === 'IN' || s.fType === 'OUT' ? s.fType : undefined,
+      cat: str(s.cat),
+      acc: str(s.acc),
+      q: str(s.q),
+      page: Number.isFinite(page) && page > 1 ? page : undefined,
+    }
+  },
   component: RouteComponent,
 })
 
@@ -65,6 +95,10 @@ function presetRange(p: Preset): { from: string; to: string } {
 function RouteComponent() {
   const { can, isLoading: permLoading } = usePermissions()
   const enabled = !permLoading && can('READ_FINANCE')
+  const search = Route.useSearch()
+  const navigate = Route.useNavigate()
+  const setSearch = (patch: Partial<FinanceSearch>) =>
+    navigate({ search: prev => ({ ...prev, ...patch }), replace: true })
 
   if (!permLoading && !can('READ_FINANCE')) {
     return (
@@ -85,7 +119,7 @@ function RouteComponent() {
         </p>
       </div>
 
-      <Tabs defaultValue="dashboard">
+      <Tabs value={search.tab} onValueChange={v => setSearch({ tab: v as FinanceTab })}>
         <TabsList>
           <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
           <TabsTrigger value="lancamentos">Lançamentos</TabsTrigger>
@@ -94,10 +128,10 @@ function RouteComponent() {
         </TabsList>
 
         <TabsContent value="dashboard" className="mt-6">
-          <DashboardTab enabled={enabled} />
+          <DashboardTab enabled={enabled} onDrill={patch => setSearch({ tab: 'lancamentos', page: undefined, ...patch })} />
         </TabsContent>
         <TabsContent value="lancamentos" className="mt-6">
-          <TransactionsTab enabled={enabled} canCreate={can('CREATE_FINANCE')} canUpdate={can('UPDATE_FINANCE')} canDelete={can('DELETE_FINANCE')} />
+          <TransactionsTab enabled={enabled} search={search} setSearch={setSearch} canCreate={can('CREATE_FINANCE')} canUpdate={can('UPDATE_FINANCE')} canDelete={can('DELETE_FINANCE')} />
         </TabsContent>
         <TabsContent value="categorias" className="mt-6">
           <CategoriesTab enabled={enabled} canCreate={can('CREATE_FINANCE')} canUpdate={can('UPDATE_FINANCE')} canDelete={can('DELETE_FINANCE')} />
@@ -111,7 +145,10 @@ function RouteComponent() {
 }
 
 // ── Dashboard ─────────────────────────────────────────────────────────────────
-function DashboardTab({ enabled }: { enabled: boolean }) {
+function DashboardTab({ enabled, onDrill }: {
+  enabled: boolean
+  onDrill: (patch: Partial<FinanceSearch>) => void
+}) {
   const [preset, setPreset] = useState<Preset>('year')
   const range = useMemo(() => presetRange(preset), [preset])
   const { data, isLoading, isError } = useFinanceSummary(range, { enabled })
@@ -121,7 +158,11 @@ function DashboardTab({ enabled }: { enabled: boolean }) {
     if (!data) return
     setPdfBusy(true)
     try {
-      const txns = await fetchFinanceTransactionsForRange(range)
+      // Carrega a lib de PDF (~1,4 MB) só no clique — fora do bundle da rota.
+      const [{ downloadFinanceReportPdf }, txns] = await Promise.all([
+        import('@/lib/finance-report-pdf'),
+        fetchFinanceTransactionsForRange(range),
+      ])
       await downloadFinanceReportPdf(data, txns, range)
     } catch {
       toast.error('Erro ao gerar o PDF.')
@@ -131,10 +172,10 @@ function DashboardTab({ enabled }: { enabled: boolean }) {
   }
 
   const kpis = [
-    { label: 'Saldo em caixa', value: data?.balanceAllTimeCents ?? 0, icon: Scale, tone: 'neutral' as const, hint: 'Acumulado (todas as datas)' },
-    { label: 'Entradas', value: data?.periodInCents ?? 0, icon: TrendingUp, tone: 'in' as const, hint: 'No período' },
-    { label: 'Saídas', value: data?.periodOutCents ?? 0, icon: TrendingDown, tone: 'out' as const, hint: 'No período' },
-    { label: 'Resultado', value: data?.periodResultCents ?? 0, icon: Wallet, tone: 'result' as const, hint: 'Entradas − Saídas' },
+    { label: 'Saldo em caixa', value: data?.balanceAllTimeCents ?? 0, icon: Scale, tone: 'neutral' as const, hint: 'Acumulado (todas as datas)', drill: undefined as Partial<FinanceSearch> | undefined },
+    { label: 'Entradas', value: data?.periodInCents ?? 0, icon: TrendingUp, tone: 'in' as const, hint: 'No período', drill: { fType: 'IN' as FinanceType, from: range.from, to: range.to } },
+    { label: 'Saídas', value: data?.periodOutCents ?? 0, icon: TrendingDown, tone: 'out' as const, hint: 'No período', drill: { fType: 'OUT' as FinanceType, from: range.from, to: range.to } },
+    { label: 'Resultado', value: data?.periodResultCents ?? 0, icon: Wallet, tone: 'result' as const, hint: 'Entradas − Saídas', drill: undefined as Partial<FinanceSearch> | undefined },
   ]
 
   return (
@@ -158,30 +199,40 @@ function DashboardTab({ enabled }: { enabled: boolean }) {
       )}
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {kpis.map(k => (
-          <div key={k.label} className="rounded-xl border border-border bg-card p-4 flex flex-col gap-2">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{k.label}</span>
-              <k.icon className={`size-4 ${
-                k.tone === 'in' ? 'text-emerald-600 dark:text-emerald-400'
-                  : k.tone === 'out' ? 'text-red-600 dark:text-red-400'
-                  : 'text-muted-foreground'
-              }`} />
-            </div>
-            {isLoading ? (
-              <Skeleton className="h-7 w-28" />
-            ) : (
-              <span className={`text-2xl font-bold tabular-nums ${
-                k.tone === 'result' && k.value < 0 ? 'text-red-600 dark:text-red-400'
-                  : k.tone === 'result' ? 'text-emerald-600 dark:text-emerald-400'
-                  : 'text-foreground'
-              }`}>
-                {centsToBRL(k.value)}
-              </span>
-            )}
-            <span className="text-[11px] text-muted-foreground">{k.hint}</span>
-          </div>
-        ))}
+        {kpis.map(k => {
+          const cls = `rounded-xl border border-border bg-card p-4 flex flex-col gap-2 text-left ${
+            k.drill ? 'transition-colors hover:bg-muted/50 cursor-pointer' : ''
+          }`
+          const inner = (
+            <>
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{k.label}</span>
+                <k.icon className={`size-4 ${
+                  k.tone === 'in' ? 'text-emerald-600 dark:text-emerald-400'
+                    : k.tone === 'out' ? 'text-red-600 dark:text-red-400'
+                    : 'text-muted-foreground'
+                }`} />
+              </div>
+              {isLoading ? (
+                <Skeleton className="h-7 w-28" />
+              ) : (
+                <span className={`text-2xl font-bold tabular-nums ${
+                  k.tone === 'result' && k.value < 0 ? 'text-red-600 dark:text-red-400'
+                    : k.tone === 'result' ? 'text-emerald-600 dark:text-emerald-400'
+                    : 'text-foreground'
+                }`}>
+                  {centsToBRL(k.value)}
+                </span>
+              )}
+              <span className="text-[11px] text-muted-foreground">{k.drill ? 'Ver lançamentos →' : k.hint}</span>
+            </>
+          )
+          return k.drill ? (
+            <button key={k.label} type="button" title="Ver lançamentos" onClick={() => onDrill(k.drill!)} className={cls}>{inner}</button>
+          ) : (
+            <div key={k.label} className={cls}>{inner}</div>
+          )
+        })}
       </div>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-5">
@@ -301,10 +352,19 @@ const emptyTxForm = (): TxForm => ({
   type: 'OUT', amount: '', date: isoDate(new Date()), description: '', method: '', categoryId: '', accountId: '', notes: '',
 })
 
-function TransactionsTab({ enabled, canCreate, canUpdate, canDelete }: {
-  enabled: boolean; canCreate: boolean; canUpdate: boolean; canDelete: boolean
+function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, canDelete }: {
+  enabled: boolean
+  search: FinanceSearch
+  setSearch: (patch: Partial<FinanceSearch>) => void
+  canCreate: boolean; canUpdate: boolean; canDelete: boolean
 }) {
-  const [filters, setFilters] = useState<TransactionFilters>({ page: 1, limit: 20 })
+  const page = search.page ?? 1
+  const filters: TransactionFilters = useMemo(() => ({
+    page, limit: 20,
+    from: search.from, to: search.to,
+    type: search.fType ?? '',
+    categoryId: search.cat, accountId: search.acc, search: search.q,
+  }), [page, search.from, search.to, search.fType, search.cat, search.acc, search.q])
   const { data, isLoading, isError } = useFinanceTransactions(filters, { enabled })
   const { data: categories } = useFinanceCategories({ enabled })
   const { data: accounts } = useFinanceAccounts({ enabled })
@@ -335,6 +395,18 @@ function TransactionsTab({ enabled, canCreate, canUpdate, canDelete }: {
   const accs = accounts ?? []
   const catsForType = cats.filter(c => c.type === form.type)
   const [exporting, setExporting] = useState(false)
+
+  // Busca: campo local com debounce → grava em `q` na URL (evita 1 request/tecla).
+  const [searchInput, setSearchInput] = useState(search.q ?? '')
+  useEffect(() => { setSearchInput(search.q ?? '') }, [search.q])
+  useEffect(() => {
+    const t = setTimeout(() => {
+      const q = searchInput.trim() || undefined
+      if (q !== (search.q ?? undefined)) setSearch({ q, page: undefined })
+    }, 300)
+    return () => clearTimeout(t)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchInput])
 
   function setF<K extends keyof TxForm>(k: K, v: TxForm[K]) {
     setForm(prev => ({ ...prev, [k]: v }))
@@ -479,15 +551,15 @@ function TransactionsTab({ enabled, canCreate, canUpdate, canDelete }: {
         <div className="flex flex-wrap items-end gap-2">
           <div className="flex flex-col gap-1">
             <Label className="text-[11px] text-muted-foreground">De</Label>
-            <Input type="date" className="h-9 w-[150px]" value={filters.from ?? ''} onChange={e => setFilters(f => ({ ...f, from: e.target.value, page: 1 }))} />
+            <Input type="date" className="h-9 w-[150px]" value={search.from ?? ''} onChange={e => setSearch({ from: e.target.value || undefined, page: undefined })} />
           </div>
           <div className="flex flex-col gap-1">
             <Label className="text-[11px] text-muted-foreground">Até</Label>
-            <Input type="date" className="h-9 w-[150px]" value={filters.to ?? ''} onChange={e => setFilters(f => ({ ...f, to: e.target.value, page: 1 }))} />
+            <Input type="date" className="h-9 w-[150px]" value={search.to ?? ''} onChange={e => setSearch({ to: e.target.value || undefined, page: undefined })} />
           </div>
           <div className="flex flex-col gap-1">
             <Label className="text-[11px] text-muted-foreground">Tipo</Label>
-            <select className={`${selectClass} h-9`} value={filters.type ?? ''} onChange={e => setFilters(f => ({ ...f, type: e.target.value as FinanceType | '', page: 1 }))}>
+            <select className={`${selectClass} h-9`} value={search.fType ?? ''} onChange={e => setSearch({ fType: (e.target.value || undefined) as FinanceType | undefined, page: undefined })}>
               <option value="">Todos</option>
               <option value="IN">Entradas</option>
               <option value="OUT">Saídas</option>
@@ -495,14 +567,14 @@ function TransactionsTab({ enabled, canCreate, canUpdate, canDelete }: {
           </div>
           <div className="flex flex-col gap-1">
             <Label className="text-[11px] text-muted-foreground">Categoria</Label>
-            <select className={`${selectClass} h-9`} value={filters.categoryId ?? ''} onChange={e => setFilters(f => ({ ...f, categoryId: e.target.value, page: 1 }))}>
+            <select className={`${selectClass} h-9`} value={search.cat ?? ''} onChange={e => setSearch({ cat: e.target.value || undefined, page: undefined })}>
               <option value="">Todas</option>
               {cats.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
           </div>
           <div className="flex flex-col gap-1">
             <Label className="text-[11px] text-muted-foreground">Caixa</Label>
-            <select className={`${selectClass} h-9`} value={filters.accountId ?? ''} onChange={e => setFilters(f => ({ ...f, accountId: e.target.value, page: 1 }))}>
+            <select className={`${selectClass} h-9`} value={search.acc ?? ''} onChange={e => setSearch({ acc: e.target.value || undefined, page: undefined })}>
               <option value="">Todos</option>
               {accs.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
             </select>
@@ -527,7 +599,7 @@ function TransactionsTab({ enabled, canCreate, canUpdate, canDelete }: {
 
       <div className="relative max-w-sm">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
-        <Input placeholder="Buscar na descrição..." className="pl-9" value={filters.search ?? ''} onChange={e => setFilters(f => ({ ...f, search: e.target.value, page: 1 }))} />
+        <Input placeholder="Buscar na descrição..." className="pl-9" value={searchInput} onChange={e => setSearchInput(e.target.value)} />
       </div>
 
       {isError && (
@@ -623,12 +695,12 @@ function TransactionsTab({ enabled, canCreate, canUpdate, canDelete }: {
                   <TableCell className="text-right">
                     <div className="flex items-center justify-end gap-1">
                       {canUpdate && !t.transferId && (
-                        <Button size="sm" variant="ghost" className="h-8 px-2" onClick={() => abrirEditar(t)} title="Editar">
+                        <Button size="sm" variant="ghost" className="h-8 px-2" onClick={() => abrirEditar(t)} aria-label="Editar" title="Editar">
                           <Pencil className="size-4" />
                         </Button>
                       )}
                       {canDelete && (
-                        <Button size="sm" variant="ghost" className="h-8 px-2 text-muted-foreground hover:text-destructive" onClick={() => setDeleteTarget(t)} title="Excluir">
+                        <Button size="sm" variant="ghost" className="h-8 px-2 text-muted-foreground hover:text-destructive" onClick={() => setDeleteTarget(t)} aria-label="Excluir" title="Excluir">
                           <Trash2 className="size-4" />
                         </Button>
                       )}
@@ -642,15 +714,24 @@ function TransactionsTab({ enabled, canCreate, canUpdate, canDelete }: {
         </div>
       </div>
 
-      {totalPages > 1 && (
-        <div className="flex items-center justify-end gap-2">
-          <Button size="sm" variant="outline" className="h-8" disabled={(filters.page ?? 1) <= 1} onClick={() => setFilters(f => ({ ...f, page: (f.page ?? 1) - 1 }))}>
-            <ChevronLeft className="size-4" />
-          </Button>
-          <span className="text-sm text-muted-foreground tabular-nums">{filters.page ?? 1} / {totalPages}</span>
-          <Button size="sm" variant="outline" className="h-8" disabled={(filters.page ?? 1) >= totalPages} onClick={() => setFilters(f => ({ ...f, page: (f.page ?? 1) + 1 }))}>
-            <ChevronRight className="size-4" />
-          </Button>
+      {(data?.total ?? 0) > 0 && (
+        <div className="flex items-center justify-between gap-2">
+          <span className="text-sm text-muted-foreground tabular-nums">
+            {(page - 1) * 20 + 1}–{Math.min(page * 20, data?.total ?? 0)} de {data?.total ?? 0}
+          </span>
+          {totalPages > 1 && (
+            <div className="flex items-center gap-2">
+              <Button size="sm" variant="outline" className="h-8" disabled={page <= 1} onClick={() => setSearch({ page: undefined })} aria-label="Primeira página">«</Button>
+              <Button size="sm" variant="outline" className="h-8" disabled={page <= 1} onClick={() => setSearch({ page: page - 1 <= 1 ? undefined : page - 1 })} aria-label="Página anterior">
+                <ChevronLeft className="size-4" />
+              </Button>
+              <span className="text-sm text-muted-foreground tabular-nums">{page} / {totalPages}</span>
+              <Button size="sm" variant="outline" className="h-8" disabled={page >= totalPages} onClick={() => setSearch({ page: page + 1 })} aria-label="Próxima página">
+                <ChevronRight className="size-4" />
+              </Button>
+              <Button size="sm" variant="outline" className="h-8" disabled={page >= totalPages} onClick={() => setSearch({ page: totalPages })} aria-label="Última página">»</Button>
+            </div>
+          )}
         </div>
       )}
 
@@ -781,7 +862,7 @@ function TransactionsTab({ enabled, canCreate, canUpdate, canDelete }: {
                       <button type="button" onClick={() => handleOpenAttachment(a.id)} className="flex-1 truncate text-left text-xs text-foreground hover:underline" title={a.filename}>
                         {a.filename}
                       </button>
-                      <button type="button" onClick={() => handleDeleteAttachment(a.id)} disabled={deleteAtt.isPending} className="text-muted-foreground hover:text-destructive" title="Remover">
+                      <button type="button" onClick={() => handleDeleteAttachment(a.id)} disabled={deleteAtt.isPending} className="text-muted-foreground hover:text-destructive" aria-label="Remover comprovante" title="Remover">
                         <X className="size-4" />
                       </button>
                     </div>
@@ -961,12 +1042,12 @@ function CategoriesTab({ enabled, canCreate, canUpdate, canDelete }: {
                   <TableCell className="text-right">
                     <div className="flex items-center justify-end gap-1">
                       {canUpdate && (
-                        <Button size="sm" variant="ghost" className="h-8 px-2" onClick={() => abrirEditar(c)} title="Editar">
+                        <Button size="sm" variant="ghost" className="h-8 px-2" onClick={() => abrirEditar(c)} aria-label="Editar" title="Editar">
                           <Pencil className="size-4" />
                         </Button>
                       )}
                       {canDelete && (
-                        <Button size="sm" variant="ghost" className="h-8 px-2 text-muted-foreground hover:text-destructive" onClick={() => setDeleteTarget(c)} title="Excluir">
+                        <Button size="sm" variant="ghost" className="h-8 px-2 text-muted-foreground hover:text-destructive" onClick={() => setDeleteTarget(c)} aria-label="Excluir" title="Excluir">
                           <Trash2 className="size-4" />
                         </Button>
                       )}
@@ -1175,12 +1256,12 @@ function AccountsTab({ enabled, canCreate, canUpdate, canDelete }: {
                   <TableCell className="text-right">
                     <div className="flex items-center justify-end gap-1">
                       {canUpdate && (
-                        <Button size="sm" variant="ghost" className="h-8 px-2" onClick={() => abrirEditar(a)} title="Editar">
+                        <Button size="sm" variant="ghost" className="h-8 px-2" onClick={() => abrirEditar(a)} aria-label="Editar" title="Editar">
                           <Pencil className="size-4" />
                         </Button>
                       )}
                       {canDelete && (
-                        <Button size="sm" variant="ghost" className="h-8 px-2 text-muted-foreground hover:text-destructive" onClick={() => setDeleteTarget(a)} title="Excluir">
+                        <Button size="sm" variant="ghost" className="h-8 px-2 text-muted-foreground hover:text-destructive" onClick={() => setDeleteTarget(a)} aria-label="Excluir" title="Excluir">
                           <Trash2 className="size-4" />
                         </Button>
                       )}
