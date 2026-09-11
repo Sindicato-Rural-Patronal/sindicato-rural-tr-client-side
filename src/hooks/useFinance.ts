@@ -11,6 +11,27 @@ export type FinanceAttachment = {
   createdAt: string
 }
 
+// Dados da Nota de Empenho (fornecedor, NF, banco/cheque, desconto).
+export type Empenho = {
+  numero?: string
+  notaFiscal?: string
+  nomeFantasia?: string
+  razaoSocial?: string
+  cnpjCpf?: string
+  inscricaoEstadual?: string
+  endereco?: string
+  bairro?: string
+  cep?: string
+  cidade?: string
+  uf?: string
+  telefone?: string
+  descontoCents?: number
+  banco?: string
+  conta?: string
+  agencia?: string
+  cheque?: string
+}
+
 export type FinanceCategory = {
   id: string
   name: string
@@ -47,6 +68,7 @@ export type FinanceTransaction = {
   accountId: string | null
   account: FinanceAccount | null
   transferId: string | null
+  empenho: Empenho | null
   attachments: FinanceAttachment[]
   createdBy: string | null
   createdAt: string
@@ -95,6 +117,7 @@ export type TransactionInput = {
   notes?: string | null
   categoryId?: string | null
   accountId?: string | null
+  empenho?: Empenho | null
 }
 
 export type TransferInput = {

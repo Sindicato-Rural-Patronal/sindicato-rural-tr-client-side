@@ -10,14 +10,14 @@ import {
   useFinanceAccounts, useCreateFinanceAccount, useUpdateFinanceAccount, useDeleteFinanceAccount,
   useCreateFinanceTransfer, fetchFinanceTransactionsForRange,
   useUploadFinanceAttachment, useDeleteFinanceAttachment, openFinanceAttachment, exportFinanceTransactions,
-  type FinanceType, type FinanceCategory, type FinanceAccount, type FinanceTransaction, type TransactionFilters,
+  type FinanceType, type FinanceCategory, type FinanceAccount, type FinanceTransaction, type TransactionFilters, type Empenho,
 } from '@/hooks/useFinance'
 import { centsToBRL, maskMoney, moneyToCents } from '@/utils/masks'
 import { formatDateFromString } from '@/utils/format-data-from-string'
 import {
   Wallet, TrendingUp, TrendingDown, Scale, Plus, Pencil, Trash2, Search,
   ChevronLeft, ChevronRight, Tag, ArrowUpCircle, ArrowDownCircle, Paperclip, FileText, X,
-  Download, Landmark, ArrowLeftRight, FileDown,
+  Download, Landmark, ArrowLeftRight, FileDown, Receipt, ChevronDown,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -72,6 +72,15 @@ export const Route = createFileRoute('/_admin/admin/financeiro/')({
 
 const selectClass =
   'rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring'
+
+function EmpInput({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
+  return (
+    <div className="flex flex-col gap-1">
+      <Label className="text-[10px] text-muted-foreground">{label}</Label>
+      <Input className="h-8 text-sm" value={value} onChange={e => onChange(e.target.value)} />
+    </div>
+  )
+}
 
 // ── Helpers de data ──────────────────────────────────────────────────────────
 const MONTHS_ABBR = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez']
@@ -350,6 +359,42 @@ function CategoryBreakdown({ items }: { items: { categoryId: string | null; name
 }
 
 // ── Lançamentos ───────────────────────────────────────────────────────────────
+// Campos da Nota de Empenho no formulário (tudo string; desconto é máscara R$).
+type EmpForm = {
+  numero: string; notaFiscal: string; nomeFantasia: string; razaoSocial: string
+  cnpjCpf: string; inscricaoEstadual: string; endereco: string; bairro: string
+  cep: string; cidade: string; uf: string; telefone: string; desconto: string
+  banco: string; conta: string; agencia: string; cheque: string
+}
+const emptyEmp = (): EmpForm => ({
+  numero: '', notaFiscal: '', nomeFantasia: '', razaoSocial: '', cnpjCpf: '', inscricaoEstadual: '',
+  endereco: '', bairro: '', cep: '', cidade: '', uf: '', telefone: '', desconto: '',
+  banco: '', conta: '', agencia: '', cheque: '',
+})
+function empFromData(e?: Empenho | null): EmpForm {
+  return {
+    ...emptyEmp(),
+    numero: e?.numero ?? '', notaFiscal: e?.notaFiscal ?? '', nomeFantasia: e?.nomeFantasia ?? '',
+    razaoSocial: e?.razaoSocial ?? '', cnpjCpf: e?.cnpjCpf ?? '', inscricaoEstadual: e?.inscricaoEstadual ?? '',
+    endereco: e?.endereco ?? '', bairro: e?.bairro ?? '', cep: e?.cep ?? '', cidade: e?.cidade ?? '',
+    uf: e?.uf ?? '', telefone: e?.telefone ?? '', desconto: e?.descontoCents ? maskMoney(String(e.descontoCents)) : '',
+    banco: e?.banco ?? '', conta: e?.conta ?? '', agencia: e?.agencia ?? '', cheque: e?.cheque ?? '',
+  }
+}
+function empToBody(f: EmpForm): Empenho | null {
+  const descontoCents = moneyToCents(f.desconto)
+  const b: Empenho = {}
+  const s = (v: string) => (v.trim() ? v.trim() : undefined)
+  b.numero = s(f.numero); b.notaFiscal = s(f.notaFiscal); b.nomeFantasia = s(f.nomeFantasia)
+  b.razaoSocial = s(f.razaoSocial); b.cnpjCpf = s(f.cnpjCpf); b.inscricaoEstadual = s(f.inscricaoEstadual)
+  b.endereco = s(f.endereco); b.bairro = s(f.bairro); b.cep = s(f.cep); b.cidade = s(f.cidade)
+  b.uf = s(f.uf); b.telefone = s(f.telefone); b.banco = s(f.banco); b.conta = s(f.conta)
+  b.agencia = s(f.agencia); b.cheque = s(f.cheque)
+  if (descontoCents > 0) b.descontoCents = descontoCents
+  const hasAny = Object.values(b).some(v => v !== undefined)
+  return hasAny ? b : null
+}
+
 type TxForm = {
   type: FinanceType
   amount: string
@@ -359,9 +404,11 @@ type TxForm = {
   categoryId: string
   accountId: string
   notes: string
+  empenho: EmpForm
 }
 const emptyTxForm = (): TxForm => ({
   type: 'OUT', amount: '', date: isoDate(new Date()), description: '', method: '', categoryId: '', accountId: '', notes: '',
+  empenho: emptyEmp(),
 })
 
 function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, canDelete }: {
@@ -428,6 +475,22 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
   function setF<K extends keyof TxForm>(k: K, v: TxForm[K]) {
     setForm(prev => ({ ...prev, [k]: v }))
   }
+  function setEmp<K extends keyof EmpForm>(k: K, v: string) {
+    setForm(prev => ({ ...prev, empenho: { ...prev.empenho, [k]: v } }))
+  }
+  const [empenhoOpen, setEmpenhoOpen] = useState(false)
+  const [notaBusy, setNotaBusy] = useState<string | null>(null)
+  async function gerarNota(t: { id?: string; amountCents: number; date: string; description: string; empenho: Empenho | null }) {
+    setNotaBusy(t.id ?? 'preview')
+    try {
+      const { downloadNotaEmpenho } = await import('@/lib/nota-empenho-pdf')
+      await downloadNotaEmpenho(t)
+    } catch {
+      toast.error('Erro ao gerar a Nota de Empenho.')
+    } finally {
+      setNotaBusy(null)
+    }
+  }
 
   function abrirNovo() {
     setEditId(null)
@@ -450,6 +513,7 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
       categoryId: t.categoryId ?? '',
       accountId: t.accountId ?? '',
       notes: t.notes ?? '',
+      empenho: empFromData(t.empenho),
     }
     setForm(f)
     setFormSnapshot(JSON.stringify(f))
@@ -478,6 +542,7 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
       categoryId: form.categoryId || null,
       accountId: form.accountId || null,
       notes: form.notes.trim() || null,
+      empenho: empToBody(form.empenho),
     }
     try {
       if (editId) {
@@ -686,6 +751,9 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
                 <button type="button" onClick={() => handleOpenAttachment(t.attachments[0].id)} className="inline-flex items-center gap-0.5 text-foreground"><Paperclip className="size-3" />{t.attachments.length}</button>
               )}
               <span className="ml-auto flex items-center gap-1">
+                {!t.transferId && (
+                  <Button size="sm" variant="ghost" className="h-7 px-2 text-muted-foreground" disabled={notaBusy === t.id} onClick={() => gerarNota(t)} aria-label="Gerar Nota de Empenho"><Receipt className="size-4" /></Button>
+                )}
                 {canUpdate && !t.transferId && (
                   <Button size="sm" variant="ghost" className="h-7 px-2" onClick={() => abrirEditar(t)} aria-label="Editar"><Pencil className="size-4" /></Button>
                 )}
@@ -784,6 +852,11 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex items-center justify-end gap-1">
+                      {!t.transferId && (
+                        <Button size="sm" variant="ghost" className="h-8 px-2 text-muted-foreground" disabled={notaBusy === t.id} onClick={() => gerarNota(t)} aria-label="Gerar Nota de Empenho" title="Gerar Nota de Empenho">
+                          <Receipt className="size-4" />
+                        </Button>
+                      )}
                       {canUpdate && !t.transferId && (
                         <Button size="sm" variant="ghost" className="h-8 px-2" onClick={() => abrirEditar(t)} aria-label="Editar" title="Editar">
                           <Pencil className="size-4" />
@@ -874,7 +947,7 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
       </Dialog>
 
       <Dialog open={dialogOpen} onOpenChange={o => { if (o) setDialogOpen(true); else requestCloseDialog() }}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{editId ? 'Editar lançamento' : 'Novo lançamento'}</DialogTitle>
             <DialogDescription>Entrada ou saída de caixa. Valor em reais.</DialogDescription>
@@ -983,6 +1056,52 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
                   </Button>
                   <span className="text-[11px] text-muted-foreground">PDF, JPG, PNG ou WEBP — até 15MB.</span>
                 </>
+              )}
+            </div>
+
+            {/* Nota de Empenho (fornecedor / NF / banco) — colapsável */}
+            <div className="rounded-lg border border-border bg-muted/20">
+              <button type="button" onClick={() => setEmpenhoOpen(o => !o)} className="flex w-full items-center justify-between px-3 py-2 text-sm font-medium text-foreground">
+                <span className="inline-flex items-center gap-2"><Receipt className="size-4" /> Nota de Empenho</span>
+                <ChevronDown className={`size-4 transition-transform ${empenhoOpen ? 'rotate-180' : ''}`} />
+              </button>
+              {empenhoOpen && (
+                <div className="flex flex-col gap-3 border-t border-border p-3">
+                  <div className="grid grid-cols-2 gap-2">
+                    <EmpInput label="Nº empenho" value={form.empenho.numero} onChange={v => setEmp('numero', v)} />
+                    <EmpInput label="Nota fiscal Nº" value={form.empenho.notaFiscal} onChange={v => setEmp('notaFiscal', v)} />
+                  </div>
+                  <EmpInput label="Nome fantasia" value={form.empenho.nomeFantasia} onChange={v => setEmp('nomeFantasia', v)} />
+                  <EmpInput label="Razão social" value={form.empenho.razaoSocial} onChange={v => setEmp('razaoSocial', v)} />
+                  <div className="grid grid-cols-2 gap-2">
+                    <EmpInput label="CNPJ / CPF" value={form.empenho.cnpjCpf} onChange={v => setEmp('cnpjCpf', v)} />
+                    <EmpInput label="Inscrição estadual" value={form.empenho.inscricaoEstadual} onChange={v => setEmp('inscricaoEstadual', v)} />
+                  </div>
+                  <EmpInput label="Endereço" value={form.empenho.endereco} onChange={v => setEmp('endereco', v)} />
+                  <div className="grid grid-cols-4 gap-2">
+                    <EmpInput label="Bairro" value={form.empenho.bairro} onChange={v => setEmp('bairro', v)} />
+                    <EmpInput label="CEP" value={form.empenho.cep} onChange={v => setEmp('cep', v)} />
+                    <EmpInput label="Cidade" value={form.empenho.cidade} onChange={v => setEmp('cidade', v)} />
+                    <EmpInput label="UF" value={form.empenho.uf} onChange={v => setEmp('uf', v)} />
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <EmpInput label="Telefone" value={form.empenho.telefone} onChange={v => setEmp('telefone', v)} />
+                    <EmpInput label="Desconto (R$)" value={form.empenho.desconto} onChange={v => setEmp('desconto', maskMoney(v))} />
+                  </div>
+                  <div className="grid grid-cols-4 gap-2">
+                    <EmpInput label="Banco" value={form.empenho.banco} onChange={v => setEmp('banco', v)} />
+                    <EmpInput label="Agência" value={form.empenho.agencia} onChange={v => setEmp('agencia', v)} />
+                    <EmpInput label="Conta" value={form.empenho.conta} onChange={v => setEmp('conta', v)} />
+                    <EmpInput label="Cheque Nº" value={form.empenho.cheque} onChange={v => setEmp('cheque', v)} />
+                  </div>
+                  <Button
+                    type="button" variant="outline" size="sm" className="w-fit"
+                    disabled={notaBusy === 'preview'}
+                    onClick={() => gerarNota({ amountCents: moneyToCents(form.amount), date: form.date, description: form.description, empenho: empToBody(form.empenho) })}
+                  >
+                    <Receipt className="size-4" /> Gerar Nota de Empenho
+                  </Button>
+                </div>
               )}
             </div>
 
