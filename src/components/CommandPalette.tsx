@@ -44,7 +44,7 @@ export function CommandPalette() {
   const term = q.trim().toLowerCase()
   const items = NAV
     .filter(n => !n.perm || can(n.perm))
-    .filter(n => !term || n.label.toLowerCase().includes(term) || (n.hint ?? '').includes(term))
+    .filter(n => !term || n.label.toLowerCase().includes(term) || (n.hint ?? '').toLowerCase().includes(term))
 
   function go(to: string) {
     setOpen(false)

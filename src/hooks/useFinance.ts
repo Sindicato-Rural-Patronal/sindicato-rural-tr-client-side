@@ -284,17 +284,24 @@ export function useCreateFinanceTransfer() {
   })
 }
 
-// Todos os lançamentos do período (limite alto) — usado no relatório PDF.
+// Todos os lançamentos do período — usado no relatório PDF. Pagina em blocos de
+// 200 (dentro de qualquer limite do backend) até acabar. Máx 50 páginas.
 export async function fetchFinanceTransactionsForRange(
   range: { from?: string; to?: string },
 ): Promise<FinanceTransaction[]> {
-  const p = new URLSearchParams()
-  if (range.from) p.set('from', range.from)
-  if (range.to) p.set('to', range.to)
-  p.set('limit', '1000')
-  const res = await apiFetch(`/admin/finance/transactions?${p}`)
-  const json = (await res.json()) as FinanceTransactionsPage
-  return json.data
+  const all: FinanceTransaction[] = []
+  for (let page = 1; page <= 50; page++) {
+    const p = new URLSearchParams()
+    if (range.from) p.set('from', range.from)
+    if (range.to) p.set('to', range.to)
+    p.set('limit', '200')
+    p.set('page', String(page))
+    const res = await apiFetch(`/admin/finance/transactions?${p}`)
+    const json = (await res.json()) as FinanceTransactionsPage
+    all.push(...json.data)
+    if (page >= (json.totalPages ?? 1)) break
+  }
+  return all
 }
 
 // ── Comprovantes (anexos) ─────────────────────────────────────────────────────

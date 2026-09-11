@@ -169,8 +169,8 @@ function DashboardTab({ enabled, onDrill }: {
         fetchFinanceTransactionsForRange(range),
       ])
       await downloadFinanceReportPdf(data, txns, range)
-    } catch {
-      toast.error('Erro ao gerar o PDF.')
+    } catch (e) {
+      toast.error(apiErrorMessage(e, 'Erro ao gerar o PDF.'))
     } finally {
       setPdfBusy(false)
     }
@@ -423,7 +423,7 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
     }, 300)
     return () => clearTimeout(t)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchInput])
+  }, [searchInput, search.q])
 
   function setF<K extends keyof TxForm>(k: K, v: TxForm[K]) {
     setForm(prev => ({ ...prev, [k]: v }))

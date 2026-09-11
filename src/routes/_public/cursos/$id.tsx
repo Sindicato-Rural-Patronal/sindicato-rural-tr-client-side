@@ -388,8 +388,8 @@ function RouteComponent() {
               <div>
                 <h2 className="mb-3 text-lg font-semibold text-foreground">{t('courseDetail.gallery')}</h2>
                 <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-                  {course.photoGallery.map((photo, i) => (
-                    <div key={i} className="overflow-hidden rounded-lg aspect-video bg-muted">
+                  {course.photoGallery.map(photo => (
+                    <div key={photo.url} className="overflow-hidden rounded-lg aspect-video bg-muted">
                       <img
                         src={photo.url}
                         alt={photo.caption}
