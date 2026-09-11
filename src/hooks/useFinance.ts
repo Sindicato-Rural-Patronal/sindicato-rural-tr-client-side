@@ -1,7 +1,15 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { apiFetch } from '@/lib/api'
+import { apiFetch, apiUpload, API_BASE } from '@/lib/api'
 
 export type FinanceType = 'IN' | 'OUT'
+
+export type FinanceAttachment = {
+  id: string
+  filename: string
+  mimeType: string
+  size: number
+  createdAt: string
+}
 
 export type FinanceCategory = {
   id: string
@@ -25,6 +33,7 @@ export type FinanceTransaction = {
   notes: string | null
   categoryId: string | null
   category: FinanceCategory | null
+  attachments: FinanceAttachment[]
   createdBy: string | null
   createdAt: string
   updatedAt: string
@@ -166,6 +175,38 @@ export function useDeleteFinanceTransaction() {
     mutationFn: (id: string) => apiFetch(`/admin/finance/transactions/${id}`, { method: 'DELETE' }),
     onSuccess: () => invalidateFinance(qc),
   })
+}
+
+// ── Comprovantes (anexos) ─────────────────────────────────────────────────────
+export function useUploadFinanceAttachment() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ transactionId, file }: { transactionId: string; file: File }) =>
+      apiUpload(`/admin/finance/transactions/${transactionId}/attachments`, file),
+    onSuccess: () => invalidateFinance(qc),
+  })
+}
+
+export function useDeleteFinanceAttachment() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (attachmentId: string) =>
+      apiFetch(`/admin/finance/attachments/${attachmentId}`, { method: 'DELETE' }),
+    onSuccess: () => invalidateFinance(qc),
+  })
+}
+
+// Abre o comprovante (endpoint exige Bearer, então não dá pra usar <a href>).
+export async function openFinanceAttachment(attachmentId: string) {
+  const token = localStorage.getItem('token')
+  const res = await fetch(`${API_BASE}/admin/finance/attachments/${attachmentId}`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  })
+  if (!res.ok) throw new Error('Falha ao abrir o comprovante')
+  const blob = await res.blob()
+  const url = URL.createObjectURL(blob)
+  window.open(url, '_blank', 'noopener')
+  setTimeout(() => URL.revokeObjectURL(url), 60_000)
 }
 
 // ── Dashboard ────────────────────────────────────────────────────────────────

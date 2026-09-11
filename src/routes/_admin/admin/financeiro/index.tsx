@@ -1,5 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { usePermissions } from '@/hooks/usePermissions'
 import { apiErrorMessage } from '@/lib/api-error-message'
@@ -7,13 +7,14 @@ import {
   useFinanceSummary, useFinanceCategories, useFinanceTransactions,
   useCreateFinanceTransaction, useUpdateFinanceTransaction, useDeleteFinanceTransaction,
   useCreateFinanceCategory, useUpdateFinanceCategory, useDeleteFinanceCategory,
+  useUploadFinanceAttachment, useDeleteFinanceAttachment, openFinanceAttachment,
   type FinanceType, type FinanceCategory, type FinanceTransaction, type TransactionFilters,
 } from '@/hooks/useFinance'
 import { centsToBRL, maskMoney, moneyToCents } from '@/utils/masks'
 import { formatDateFromString } from '@/utils/format-data-from-string'
 import {
   Wallet, TrendingUp, TrendingDown, Scale, Plus, Pencil, Trash2, Search,
-  ChevronLeft, ChevronRight, Tag, ArrowUpCircle, ArrowDownCircle,
+  ChevronLeft, ChevronRight, Tag, ArrowUpCircle, ArrowDownCircle, Paperclip, FileText, X,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -260,14 +261,19 @@ function TransactionsTab({ enabled, canCreate, canUpdate, canDelete }: {
   const createTx = useCreateFinanceTransaction()
   const updateTx = useUpdateFinanceTransaction()
   const deleteTx = useDeleteFinanceTransaction()
+  const uploadAtt = useUploadFinanceAttachment()
+  const deleteAtt = useDeleteFinanceAttachment()
 
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editId, setEditId] = useState<string | null>(null)
   const [form, setForm] = useState<TxForm>(emptyTxForm)
   const [error, setError] = useState<string | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<FinanceTransaction | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   const rows = data?.data ?? []
+  // Lançamento em edição — reflete os comprovantes atualizados após cada upload.
+  const editingTx = editId ? rows.find(r => r.id === editId) ?? null : null
   const totalPages = data?.totalPages ?? 1
   const cats = categories ?? []
   const catsForType = cats.filter(c => c.type === form.type)
@@ -337,6 +343,32 @@ function TransactionsTab({ enabled, canCreate, canUpdate, canDelete }: {
     } catch (e) {
       toast.error(apiErrorMessage(e, 'Erro ao remover o lançamento.'))
     }
+  }
+
+  async function handleUploadAttachment(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file || !editId) return
+    try {
+      await uploadAtt.mutateAsync({ transactionId: editId, file })
+      toast.success('Comprovante anexado!')
+    } catch (err) {
+      toast.error(apiErrorMessage(err, 'Erro ao anexar o comprovante.'))
+    }
+    if (fileInputRef.current) fileInputRef.current.value = ''
+  }
+
+  async function handleDeleteAttachment(id: string) {
+    try {
+      await deleteAtt.mutateAsync(id)
+      toast.success('Comprovante removido.')
+    } catch (err) {
+      toast.error(apiErrorMessage(err, 'Erro ao remover o comprovante.'))
+    }
+  }
+
+  async function handleOpenAttachment(id: string) {
+    try { await openFinanceAttachment(id) }
+    catch { toast.error('Erro ao abrir o comprovante.') }
   }
 
   const saving = createTx.isPending || updateTx.isPending
@@ -433,6 +465,16 @@ function TransactionsTab({ enabled, canCreate, canUpdate, canDelete }: {
                         ? <ArrowUpCircle className="size-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
                         : <ArrowDownCircle className="size-4 shrink-0 text-red-600 dark:text-red-400" />}
                       {t.description}
+                      {t.attachments.length > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => handleOpenAttachment(t.attachments[0].id)}
+                          title={`${t.attachments.length} comprovante(s) — abrir`}
+                          className="inline-flex items-center gap-0.5 rounded bg-muted px-1.5 py-0.5 text-[11px] text-muted-foreground hover:text-foreground"
+                        >
+                          <Paperclip className="size-3" />{t.attachments.length}
+                        </button>
+                      )}
                     </span>
                   </TableCell>
                   <TableCell>
@@ -541,6 +583,36 @@ function TransactionsTab({ enabled, canCreate, canUpdate, canDelete }: {
               <Label>Observações</Label>
               <Input value={form.notes} onChange={e => setF('notes', e.target.value)} placeholder="Opcional" />
             </div>
+
+            <div className="flex flex-col gap-2 rounded-lg border border-border bg-muted/20 p-3">
+              <Label className="text-xs">Comprovantes</Label>
+              {editId ? (
+                <>
+                  {(editingTx?.attachments ?? []).length === 0 && (
+                    <p className="text-xs text-muted-foreground">Nenhum comprovante anexado.</p>
+                  )}
+                  {(editingTx?.attachments ?? []).map(a => (
+                    <div key={a.id} className="flex items-center gap-2 rounded-md border border-border bg-background px-2 py-1.5">
+                      <FileText className="size-4 shrink-0 text-muted-foreground" />
+                      <button type="button" onClick={() => handleOpenAttachment(a.id)} className="flex-1 truncate text-left text-xs text-foreground hover:underline" title={a.filename}>
+                        {a.filename}
+                      </button>
+                      <button type="button" onClick={() => handleDeleteAttachment(a.id)} disabled={deleteAtt.isPending} className="text-muted-foreground hover:text-destructive" title="Remover">
+                        <X className="size-4" />
+                      </button>
+                    </div>
+                  ))}
+                  <input ref={fileInputRef} type="file" accept="application/pdf,image/jpeg,image/png,image/webp" className="hidden" onChange={handleUploadAttachment} />
+                  <Button type="button" variant="outline" size="sm" className="w-fit" disabled={uploadAtt.isPending} onClick={() => fileInputRef.current?.click()}>
+                    <Paperclip className="size-4" /> {uploadAtt.isPending ? 'Enviando...' : 'Anexar comprovante'}
+                  </Button>
+                  <span className="text-[11px] text-muted-foreground">PDF, JPG, PNG ou WEBP — até 15MB.</span>
+                </>
+              ) : (
+                <p className="text-xs text-muted-foreground">Salve o lançamento para anexar comprovantes.</p>
+              )}
+            </div>
+
             {error && <p className="text-sm text-destructive">{error}</p>}
           </div>
           <DialogFooter>
