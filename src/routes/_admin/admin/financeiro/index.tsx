@@ -33,6 +33,7 @@ import {
   AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogFooter,
   AlertDialogTitle, AlertDialogDescription, AlertDialogAction, AlertDialogCancel,
 } from '@/components/ui/alert-dialog'
+import { ConfirmCloseDialog } from '@/components/confirm-close-dialog'
 
 type FinanceTab = 'dashboard' | 'lancamentos' | 'categorias' | 'caixas'
 type FinanceSearch = {
@@ -149,8 +150,12 @@ function DashboardTab({ enabled, onDrill }: {
   enabled: boolean
   onDrill: (patch: Partial<FinanceSearch>) => void
 }) {
-  const [preset, setPreset] = useState<Preset>('year')
-  const range = useMemo(() => presetRange(preset), [preset])
+  const [preset, setPreset] = useState<Preset | 'custom'>('year')
+  const [custom, setCustom] = useState({ from: presetRange('month').from, to: isoDate(new Date()) })
+  const range = useMemo(
+    () => (preset === 'custom' ? custom : presetRange(preset)),
+    [preset, custom],
+  )
   const { data, isLoading, isError } = useFinanceSummary(range, { enabled })
   const [pdfBusy, setPdfBusy] = useState(false)
 
@@ -182,11 +187,18 @@ function DashboardTab({ enabled, onDrill }: {
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-center gap-2">
         <span className="text-sm text-muted-foreground">Período:</span>
-        {([['month', 'Este mês'], ['year', 'Este ano'], ['last12', 'Últimos 12 meses']] as const).map(([p, lbl]) => (
+        {([['month', 'Este mês'], ['year', 'Este ano'], ['last12', 'Últimos 12 meses'], ['custom', 'Personalizado']] as const).map(([p, lbl]) => (
           <Button key={p} size="sm" variant={preset === p ? 'default' : 'outline'} className="h-8" onClick={() => setPreset(p)}>
             {lbl}
           </Button>
         ))}
+        {preset === 'custom' && (
+          <span className="inline-flex items-center gap-2">
+            <Input type="date" className="h-8 w-[150px]" value={custom.from} max={custom.to} onChange={e => setCustom(c => ({ ...c, from: e.target.value }))} aria-label="Data inicial" />
+            <span className="text-muted-foreground text-sm">até</span>
+            <Input type="date" className="h-8 w-[150px]" value={custom.to} min={custom.from} onChange={e => setCustom(c => ({ ...c, to: e.target.value }))} aria-label="Data final" />
+          </span>
+        )}
         <Button size="sm" variant="outline" className="h-8 ml-auto" disabled={pdfBusy || isLoading || !data} onClick={handlePdf}>
           <FileDown className="size-4" /> {pdfBusy ? 'Gerando...' : 'Baixar PDF'}
         </Button>
@@ -378,9 +390,14 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editId, setEditId] = useState<string | null>(null)
   const [form, setForm] = useState<TxForm>(emptyTxForm)
+  const [formSnapshot, setFormSnapshot] = useState('')
+  const [confirmClose, setConfirmClose] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<FinanceTransaction | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const pendingInputRef = useRef<HTMLInputElement>(null)
+  // Comprovantes escolhidos antes do lançamento existir (fluxo "Novo") — sobem após o create.
+  const [pendingFiles, setPendingFiles] = useState<File[]>([])
 
   // Transferência entre caixas.
   const [transferOpen, setTransferOpen] = useState(false)
@@ -414,14 +431,17 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
 
   function abrirNovo() {
     setEditId(null)
-    setForm(emptyTxForm())
+    const f = emptyTxForm()
+    setForm(f)
+    setFormSnapshot(JSON.stringify(f))
+    setPendingFiles([])
     setError(null)
     setDialogOpen(true)
   }
 
   function abrirEditar(t: FinanceTransaction) {
     setEditId(t.id)
-    setForm({
+    const f: TxForm = {
       type: t.type,
       amount: maskMoney(String(t.amountCents)),
       date: t.date.slice(0, 10),
@@ -430,9 +450,18 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
       categoryId: t.categoryId ?? '',
       accountId: t.accountId ?? '',
       notes: t.notes ?? '',
-    })
+    }
+    setForm(f)
+    setFormSnapshot(JSON.stringify(f))
+    setPendingFiles([])
     setError(null)
     setDialogOpen(true)
+  }
+
+  const formDirty = JSON.stringify(form) !== formSnapshot || pendingFiles.length > 0
+  function requestCloseDialog() {
+    if (formDirty) setConfirmClose(true)
+    else setDialogOpen(false)
   }
 
   async function handleSubmit() {
@@ -455,7 +484,15 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
         await updateTx.mutateAsync({ id: editId, body })
         toast.success('Lançamento atualizado!')
       } else {
-        await createTx.mutateAsync(body)
+        const resp = await createTx.mutateAsync(body)
+        const created = await resp.json()
+        // Sobe os comprovantes escolhidos no fluxo "Novo" para o lançamento recém-criado.
+        if (created?.id && pendingFiles.length > 0) {
+          for (const file of pendingFiles) {
+            try { await uploadAtt.mutateAsync({ transactionId: created.id, file }) }
+            catch { toast.error(`Falha ao anexar "${file.name}".`) }
+          }
+        }
         toast.success('Lançamento registrado!')
       }
       setDialogOpen(false)
@@ -501,6 +538,12 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
   async function handleOpenAttachment(id: string) {
     try { await openFinanceAttachment(id) }
     catch { toast.error('Erro ao abrir o comprovante.') }
+  }
+
+  function handlePickPending(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (file) setPendingFiles(prev => [...prev, file])
+    if (pendingInputRef.current) pendingInputRef.current.value = ''
   }
 
   async function handleExport() {
@@ -608,7 +651,54 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
         </div>
       )}
 
-      <div className="rounded-lg border border-border bg-card overflow-hidden">
+      {/* Mobile: cada lançamento como cartão (tabela só rola de lado, ruim no celular). */}
+      <div className="flex flex-col gap-2 md:hidden">
+        {isLoading && Array.from({ length: 5 }).map((_, i) => (
+          <div key={i} className="rounded-lg border border-border bg-card p-3"><Skeleton className="h-4 w-40 mb-2" /><Skeleton className="h-4 w-24" /></div>
+        ))}
+        {!isLoading && rows.length === 0 && (
+          <div className="rounded-lg border border-border bg-card py-12 text-center">
+            <Wallet className="size-8 text-muted-foreground/30 mx-auto mb-2" />
+            <p className="text-sm font-medium text-foreground">Nenhum lançamento</p>
+            <p className="text-xs text-muted-foreground mt-1">{canCreate ? 'Toque em "Novo lançamento".' : 'Nada com esses filtros.'}</p>
+          </div>
+        )}
+        {rows.map(t => (
+          <div key={t.id} className="rounded-lg border border-border bg-card p-3 flex flex-col gap-2">
+            <div className="flex items-start justify-between gap-3">
+              <span className="inline-flex items-start gap-2 font-medium text-foreground min-w-0">
+                {t.transferId
+                  ? <ArrowLeftRight className="size-4 shrink-0 mt-0.5 text-sky-600 dark:text-sky-400" />
+                  : t.type === 'IN'
+                    ? <ArrowUpCircle className="size-4 shrink-0 mt-0.5 text-emerald-600 dark:text-emerald-400" />
+                    : <ArrowDownCircle className="size-4 shrink-0 mt-0.5 text-red-600 dark:text-red-400" />}
+                <span className="min-w-0 break-words">{t.description}</span>
+              </span>
+              <span className={`tabular-nums font-semibold whitespace-nowrap ${t.type === 'IN' ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
+                {t.type === 'IN' ? '+' : '−'} {centsToBRL(t.amountCents)}
+              </span>
+            </div>
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+              <span className="tabular-nums">{formatDateFromString(t.date.slice(0, 10))}</span>
+              {t.category && <span className="inline-flex items-center gap-1"><span className="size-2 rounded-sm" style={{ backgroundColor: t.category.color }} />{t.category.name}</span>}
+              {t.account && <span className="inline-flex items-center gap-1"><Landmark className="size-3" style={{ color: t.account.color }} />{t.account.name}</span>}
+              {t.attachments.length > 0 && (
+                <button type="button" onClick={() => handleOpenAttachment(t.attachments[0].id)} className="inline-flex items-center gap-0.5 text-foreground"><Paperclip className="size-3" />{t.attachments.length}</button>
+              )}
+              <span className="ml-auto flex items-center gap-1">
+                {canUpdate && !t.transferId && (
+                  <Button size="sm" variant="ghost" className="h-7 px-2" onClick={() => abrirEditar(t)} aria-label="Editar"><Pencil className="size-4" /></Button>
+                )}
+                {canDelete && (
+                  <Button size="sm" variant="ghost" className="h-7 px-2 text-muted-foreground hover:text-destructive" onClick={() => setDeleteTarget(t)} aria-label="Excluir"><Trash2 className="size-4" /></Button>
+                )}
+              </span>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="rounded-lg border border-border bg-card overflow-hidden hidden md:block">
         <div className="overflow-x-auto">
           <Table>
             <TableHeader>
@@ -783,7 +873,7 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
         </DialogContent>
       </Dialog>
 
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+      <Dialog open={dialogOpen} onOpenChange={o => { if (o) setDialogOpen(true); else requestCloseDialog() }}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>{editId ? 'Editar lançamento' : 'Novo lançamento'}</DialogTitle>
@@ -874,20 +964,44 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
                   <span className="text-[11px] text-muted-foreground">PDF, JPG, PNG ou WEBP — até 15MB.</span>
                 </>
               ) : (
-                <p className="text-xs text-muted-foreground">Salve o lançamento para anexar comprovantes.</p>
+                <>
+                  {pendingFiles.length === 0 && (
+                    <p className="text-xs text-muted-foreground">Anexe agora — sobem automaticamente ao registrar.</p>
+                  )}
+                  {pendingFiles.map((f, i) => (
+                    <div key={i} className="flex items-center gap-2 rounded-md border border-border bg-background px-2 py-1.5">
+                      <FileText className="size-4 shrink-0 text-muted-foreground" />
+                      <span className="flex-1 truncate text-xs text-foreground" title={f.name}>{f.name}</span>
+                      <button type="button" onClick={() => setPendingFiles(prev => prev.filter((_, idx) => idx !== i))} className="text-muted-foreground hover:text-destructive" aria-label="Remover" title="Remover">
+                        <X className="size-4" />
+                      </button>
+                    </div>
+                  ))}
+                  <input ref={pendingInputRef} type="file" accept="application/pdf,image/jpeg,image/png,image/webp" className="hidden" onChange={handlePickPending} />
+                  <Button type="button" variant="outline" size="sm" className="w-fit" onClick={() => pendingInputRef.current?.click()}>
+                    <Paperclip className="size-4" /> Anexar comprovante
+                  </Button>
+                  <span className="text-[11px] text-muted-foreground">PDF, JPG, PNG ou WEBP — até 15MB.</span>
+                </>
               )}
             </div>
 
             {error && <p className="text-sm text-destructive">{error}</p>}
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancelar</Button>
+            <Button variant="outline" onClick={requestCloseDialog}>Cancelar</Button>
             <Button onClick={handleSubmit} disabled={saving}>
               {saving ? 'Salvando...' : editId ? 'Salvar' : 'Registrar'}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <ConfirmCloseDialog
+        open={confirmClose}
+        onConfirm={() => { setConfirmClose(false); setDialogOpen(false) }}
+        onCancel={() => setConfirmClose(false)}
+      />
 
       <AlertDialog open={!!deleteTarget} onOpenChange={open => { if (!open) setDeleteTarget(null) }}>
         <AlertDialogContent>

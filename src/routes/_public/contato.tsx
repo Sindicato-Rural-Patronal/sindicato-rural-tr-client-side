@@ -148,6 +148,10 @@ function ContactForm() {
       setError('Preencha os campos obrigatórios.')
       return
     }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) {
+      setError('Informe um e-mail válido.')
+      return
+    }
     try {
       await sendMessage.mutateAsync({
         name: form.name,
