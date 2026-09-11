@@ -1,5 +1,6 @@
 // src/routes/_admin.tsx
 import { AdminSideBar } from '@/components/adminSideBar'
+import { CommandPalette } from '@/components/CommandPalette'
 import { SidebarProvider, SidebarInset, SidebarTrigger } from '@/components/ui/sidebar'
 import { createFileRoute, Outlet, redirect } from '@tanstack/react-router'
 
@@ -29,9 +30,10 @@ export const Route = createFileRoute('/_admin')({
 function AdminLayout() {
   return (
     <SidebarProvider>
+      <CommandPalette />
       <AdminSideBar />
       <SidebarInset className="overflow-y-auto">
-        <header className="flex h-12 items-center border-b px-4 md:hidden">
+        <header className="flex h-12 items-center gap-3 border-b px-4 md:hidden">
           <SidebarTrigger />
         </header>
         <Outlet />

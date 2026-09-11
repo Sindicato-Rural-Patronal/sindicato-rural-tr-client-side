@@ -26,6 +26,8 @@ export function CourseCard({ course }: { course: Course }) {
           <img
             src={course.coverImage}
             alt={course.title}
+            loading="lazy"
+            decoding="async"
             className="h-full w-full object-cover transition-transform hover:scale-105"
           />
         ) : (
@@ -72,6 +74,8 @@ export function CourseCardSimple({ course }: { course: SimpleCourse }) {
             <img
               src={course.imageUrl}
               alt={course.title}
+              loading="lazy"
+              decoding="async"
               className="h-full w-full object-cover transition-transform hover:scale-105"
             />
           ) : (

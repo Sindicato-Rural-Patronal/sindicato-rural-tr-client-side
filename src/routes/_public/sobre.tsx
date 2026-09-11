@@ -1,11 +1,13 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { Construction } from 'lucide-react';
+import { useSeo } from '@/hooks/useSeo';
 
 export const Route = createFileRoute('/_public/sobre')({
   component: AboutComponent,
 });
 
 function AboutComponent() {
+  useSeo({ title: 'Sobre' });
   return (
     <main className="container mx-auto px-4 py-20">
       <div className="flex flex-col items-center justify-center gap-4 text-center">

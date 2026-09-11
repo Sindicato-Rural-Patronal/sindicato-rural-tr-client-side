@@ -9,12 +9,14 @@ import { GraduationCap, Search } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useCourses } from '@/hooks/useCourse'
 import { CourseCard } from '@/components/course-card'
+import { useSeo } from '@/hooks/useSeo'
 
 export const Route = createFileRoute('/_public/cursos/')({
   component: RouteComponent,
 })
 
 function RouteComponent() {
+  useSeo({ title: 'Cursos', description: 'Cursos agrícolas e capacitações do Sindicato Rural de Terra Roxa.' })
   const [search, setSearch] = useState('')
   const [priceFilter, setPriceFilter] = useState('all')
   const [page, setPage] = useState(1)

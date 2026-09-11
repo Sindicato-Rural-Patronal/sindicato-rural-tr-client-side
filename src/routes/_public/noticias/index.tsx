@@ -5,6 +5,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Newspaper, Search } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useNews } from '@/hooks/useNews'
+import { useSeo } from '@/hooks/useSeo'
 import type { News } from '@/@types/news'
 
 export const Route = createFileRoute('/_public/noticias/')({
@@ -49,6 +50,7 @@ function NewsCard({ news }: { news: News }) {
 }
 
 function RouteComponent() {
+  useSeo({ title: 'Notícias', description: 'Notícias e comunicados do Sindicato Rural de Terra Roxa.' })
   const [search, setSearch] = useState('')
   const { t } = useTranslation()
   const { data: news = [], isLoading, isError } = useNews()

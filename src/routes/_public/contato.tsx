@@ -11,6 +11,7 @@ import {
   User,
 } from 'lucide-react'
 import { maskPhone } from '@/utils/masks'
+import { useSeo } from '@/hooks/useSeo'
 
 export const Route = createFileRoute('/_public/contato')({
   component: ContatoPage,
@@ -251,6 +252,7 @@ function ContactForm() {
 }
 
 function ContatoPage() {
+  useSeo({ title: 'Contato', description: 'Fale com o Sindicato Rural de Terra Roxa: endereço, telefones, e-mail e formulário.' })
   return (
     <main>
       {/* Hero */}

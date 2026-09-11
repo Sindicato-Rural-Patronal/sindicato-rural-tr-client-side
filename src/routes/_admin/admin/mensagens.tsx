@@ -10,7 +10,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
   DialogDescription, DialogFooter,
 } from '@/components/ui/dialog'
-import { Mail, MailOpen, Phone, AtSign, ChevronLeft, ChevronRight, Trash2, Search, X } from 'lucide-react'
+import { Mail, MailOpen, Phone, AtSign, ChevronLeft, ChevronRight, Trash2, Search, X, CheckCheck } from 'lucide-react'
 import { toast } from 'sonner'
 import { Input } from '@/components/ui/input'
 import { useEffect, useRef } from 'react'
@@ -88,6 +88,9 @@ function RouteComponent() {
   const [readFilter, setReadFilter] = useState<ReadFilter>('all')
   const [selected, setSelected] = useState<ContactMessage | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<ContactMessage | null>(null)
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [bulkBusy, setBulkBusy] = useState(false)
+  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false)
   const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // debounce search
@@ -133,6 +136,42 @@ function RouteComponent() {
   const messages = data?.data ?? []
   const totalPages = data?.totalPages ?? 1
   const unreadCount = unreadData?.total ?? 0
+
+  // Seleção múltipla — limpa ao trocar de página/filtro/busca.
+  useEffect(() => { setSelectedIds(new Set()) }, [page, readFilter, search])
+  const allOnPageSelected = messages.length > 0 && messages.every(m => selectedIds.has(m.id))
+  function toggleOne(id: string) {
+    setSelectedIds(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n })
+  }
+  function toggleAllOnPage() {
+    setSelectedIds(prev => {
+      const n = new Set(prev)
+      if (messages.every(m => n.has(m.id))) messages.forEach(m => n.delete(m.id))
+      else messages.forEach(m => n.add(m.id))
+      return n
+    })
+  }
+  async function bulkMarkRead() {
+    setBulkBusy(true)
+    try {
+      const targets = messages.filter(m => selectedIds.has(m.id) && !m.read)
+      await Promise.all(targets.map(m => markRead.mutateAsync({ messageId: m.id, read: true })))
+      toast.success('Marcadas como lidas.')
+      setSelectedIds(new Set())
+    } catch { toast.error('Erro ao marcar como lidas.') }
+    finally { setBulkBusy(false) }
+  }
+  async function bulkDelete() {
+    setBulkBusy(true)
+    try {
+      const ids = [...selectedIds]
+      await Promise.all(ids.map(id => deleteMsg.mutateAsync(id)))
+      toast.success(`${ids.length} mensagem(ns) excluída(s).`)
+      setSelectedIds(new Set())
+      setBulkDeleteOpen(false)
+    } catch { toast.error('Erro ao excluir as mensagens.') }
+    finally { setBulkBusy(false) }
+  }
 
   return (
     <div className="p-6">
@@ -182,6 +221,26 @@ function RouteComponent() {
         </div>
       </div>
 
+      {!isLoading && messages.length > 0 && (
+        <div className="flex items-center gap-3 mb-3 rounded-lg border border-border bg-muted/30 px-3 py-2">
+          <label className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer select-none">
+            <input type="checkbox" checked={allOnPageSelected} onChange={toggleAllOnPage} className="size-4 accent-primary" aria-label="Selecionar todas nesta página" />
+            {selectedIds.size > 0 ? `${selectedIds.size} selecionada${selectedIds.size > 1 ? 's' : ''}` : 'Selecionar tudo'}
+          </label>
+          {selectedIds.size > 0 && (
+            <div className="ml-auto flex items-center gap-2">
+              <Button size="sm" variant="outline" className="gap-1.5" disabled={bulkBusy} onClick={bulkMarkRead}>
+                <CheckCheck className="size-4" /> Marcar lidas
+              </Button>
+              <Button size="sm" variant="outline" className="gap-1.5 text-destructive hover:text-destructive" disabled={bulkBusy} onClick={() => setBulkDeleteOpen(true)}>
+                <Trash2 className="size-4" /> Excluir
+              </Button>
+              <Button size="sm" variant="ghost" onClick={() => setSelectedIds(new Set())}>Limpar</Button>
+            </div>
+          )}
+        </div>
+      )}
+
       {isLoading && (
         <div className="flex flex-col gap-2">
           {Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-16 w-full rounded-xl" />)}
@@ -201,9 +260,16 @@ function RouteComponent() {
           <div
             key={msg.id}
             className={`rounded-xl border px-4 py-3 flex items-center gap-4 transition-all hover:shadow-sm hover:border-primary/30 ${
-              msg.read ? 'bg-card' : 'bg-primary/5 border-primary/20'
-            }`}
+              selectedIds.has(msg.id) ? 'ring-1 ring-primary/40 ' : ''
+            }${msg.read ? 'bg-card' : 'bg-primary/5 border-primary/20'}`}
           >
+            <input
+              type="checkbox"
+              checked={selectedIds.has(msg.id)}
+              onChange={() => toggleOne(msg.id)}
+              className="size-4 accent-primary shrink-0"
+              aria-label={`Selecionar mensagem de ${msg.name}`}
+            />
             <div className="shrink-0 text-muted-foreground">
               {msg.read
                 ? <MailOpen className="size-4" />
@@ -266,6 +332,23 @@ function RouteComponent() {
       )}
 
       <MessageDialog message={selected} onClose={() => setSelected(null)} />
+
+      <Dialog open={bulkDeleteOpen} onOpenChange={open => !open && setBulkDeleteOpen(false)}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Excluir {selectedIds.size} mensagem(ns)</DialogTitle>
+            <DialogDescription>
+              Esta ação não pode ser desfeita. As mensagens selecionadas serão removidas permanentemente.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setBulkDeleteOpen(false)}>Cancelar</Button>
+            <Button variant="destructive" onClick={bulkDelete} disabled={bulkBusy}>
+              {bulkBusy ? 'Excluindo...' : 'Excluir todas'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={!!deleteTarget} onOpenChange={open => !open && setDeleteTarget(null)}>
         <DialogContent className="sm:max-w-sm">

@@ -76,6 +76,8 @@ export function HomeNewsSection() {
                         <img
                           src={item.bannerUrl}
                           alt={item.title}
+                          loading="lazy"
+                          decoding="async"
                           className="h-full w-full object-cover transition-transform hover:scale-105"
                         />
                       ) : (
