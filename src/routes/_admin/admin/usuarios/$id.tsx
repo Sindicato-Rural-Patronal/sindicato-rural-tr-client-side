@@ -10,6 +10,7 @@ import {
   usePromoteInstructor, useRemoveInstructor, useUpdateInstructor,
   type UserDataDetail, type UserProperty, type UserRelation,
 } from '@/hooks/useAdmin'
+import { useUnsavedGuard } from '@/hooks/use-unsaved-guard'
 import { Pagination } from '@/components/ui/pagination'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
@@ -282,6 +283,8 @@ function DadosTab({ userId, user, completeMode, onCompleteModeEnd, hasNoProperti
   const [editing, setEditing] = useState(false)
   const [form, setForm] = useState<DadosForm>(() => dadosFromDetail(user))
   const [saved, setSaved] = useState<DadosForm>(() => dadosFromDetail(user))
+  // Guard de não-salvo (avisa antes de atualizar/fechar a aba com edição pendente).
+  useUnsavedGuard(editing && JSON.stringify(form) !== JSON.stringify(saved))
 
   useEffect(() => {
     if (completeMode) setEditing(true)

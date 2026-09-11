@@ -34,8 +34,12 @@ import {
 import { Pagination } from '@/components/ui/pagination'
 
 export const Route = createFileRoute('/_admin/admin/usuarios/')({
+  // Filtros principais na URL (sobrevivem a voltar/atualizar/compartilhar).
   validateSearch: z.object({
     incomplete: z.boolean().optional(),
+    tab: z.enum(['associados', 'admins']).optional(),
+    page: z.coerce.number().int().min(1).optional(),
+    q: z.string().optional(),
   }),
   component: RouteComponent,
 })
@@ -642,14 +646,15 @@ function EditarAdminDialog({ admin, onClose }: { admin: UserAdmin | null; onClos
 const USERS_LIMIT_OPTIONS = [10, 20, 50] as const
 
 function RouteComponent() {
-  const { incomplete: incompleteParam } = Route.useSearch()
+  const urlSearch = Route.useSearch()
+  const navigate = Route.useNavigate()
   const { can } = usePermissions()
-  const [activeTab, setActiveTab] = useState<string>('associados')
-  const [usersPage, setUsersPage] = useState(1)
+  const [activeTab, setActiveTab] = useState<string>(urlSearch.tab ?? 'associados')
+  const [usersPage, setUsersPage] = useState(urlSearch.page ?? 1)
   const [adminsPage, setAdminsPage] = useState(1)
   const [limit, setLimit] = useState<typeof USERS_LIMIT_OPTIONS[number]>(10)
-  const [incompleteOnly, setIncompleteOnly] = useState(incompleteParam ?? false)
-  const [usersSearch, setUsersSearch] = useState('')
+  const [incompleteOnly, setIncompleteOnly] = useState(urlSearch.incomplete ?? false)
+  const [usersSearch, setUsersSearch] = useState(urlSearch.q ?? '')
   const [showAdvanced, setShowAdvanced] = useState(false)
   const [genderFilter, setGenderFilter] = useState<'MALE' | 'FEMALE' | 'OTHER' | ''>('')
   const [ethnicityFilter, setEthnicityFilter] = useState<'WHITE' | 'BLACK' | 'MIXED' | 'ASIAN' | 'INDIGENOUS' | ''>('')
@@ -661,6 +666,20 @@ function RouteComponent() {
   const [deleteAssociadoTarget, setDeleteAssociadoTarget] = useState<UserData | null>(null)
   const [editAdmin, setEditAdmin] = useState<UserAdmin | null>(null)
   const [deleteAdminTarget, setDeleteAdminTarget] = useState<UserAdmin | null>(null)
+
+  // Espelha os filtros principais na URL (só o estado → URL; não há loop de volta).
+  useEffect(() => {
+    navigate({
+      search: {
+        tab: activeTab === 'admins' ? 'admins' : undefined,
+        page: usersPage > 1 ? usersPage : undefined,
+        incomplete: incompleteOnly || undefined,
+        q: usersSearch || undefined,
+      },
+      replace: true,
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab, usersPage, incompleteOnly, usersSearch])
 
   const activeFiltersCount = [genderFilter, ethnicityFilter, educationFilter, memberTypeFilter, memberClassFilter].filter(Boolean).length
 

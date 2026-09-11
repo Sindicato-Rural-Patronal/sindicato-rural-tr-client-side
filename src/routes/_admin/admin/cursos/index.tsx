@@ -55,6 +55,7 @@ import type { Course } from '@/@types/course'
 import { StatusBadge } from '@/components/StatusBadge'
 import { ErrorAlert } from '@/components/ErrorAlert'
 import { EmptyState } from '@/components/EmptyState'
+import { ConfirmCloseDialog } from '@/components/confirm-close-dialog'
 import { Pagination } from '@/components/ui/pagination'
 
 function calcDaysUntil(startDate: string) {
@@ -1411,6 +1412,7 @@ export function CourseFormDialog({
   const [stagedBanner, setStagedBanner] = useState<StagedImage | null>(null)
   const [stagedPhotos, setStagedPhotos] = useState<StagedImage[]>([])
   const [uploadingStaged, setUploadingStaged] = useState(false)
+  const [confirmClose, setConfirmClose] = useState(false)
 
   const form = useForm<CourseFormData>({
     resolver: zodResolver(courseBaseSchema),
@@ -1427,6 +1429,13 @@ export function CourseFormDialog({
   }, [open]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const isPending = createCourse.isPending || updateCourse.isPending || uploadingStaged
+
+  // Guard de alterações não salvas ao fechar.
+  const formDirty = form.formState.isDirty || !!stagedBanner || stagedPhotos.length > 0
+  function requestClose() {
+    if (formDirty && !isPending) setConfirmClose(true)
+    else onClose()
+  }
 
   async function onSubmit(data: CourseFormData) {
     if (isCreating && !data.roomId) {
@@ -1485,7 +1494,8 @@ export function CourseFormDialog({
   }
 
   return (
-    <Dialog open={open} onOpenChange={isOpen => { if (!isOpen) onClose() }}>
+    <>
+    <Dialog open={open} onOpenChange={isOpen => { if (!isOpen) requestClose() }}>
       <DialogContent className="sm:max-w-3xl max-h-[90vh] overflow-hidden flex flex-col" showCloseButton={false}>
         <DialogHeader className="px-6 pt-6 pb-4 border-b shrink-0">
           <DialogTitle className="text-xl">
@@ -1667,7 +1677,7 @@ export function CourseFormDialog({
             )}
 
             <div className="px-6 py-4 border-t bg-muted/30 flex justify-end gap-2 shrink-0">
-              <Button type="button" variant="outline" onClick={onClose}>{t('common.cancel')}</Button>
+              <Button type="button" variant="outline" onClick={requestClose}>{t('common.cancel')}</Button>
               <Button type="submit" disabled={!form.formState.isValid || isPending}>
                 {isPending
                   ? (isCreating ? t('admin.courses.form.creating') : t('admin.courses.form.saving'))
@@ -1678,6 +1688,12 @@ export function CourseFormDialog({
         </Form>
       </DialogContent>
     </Dialog>
+    <ConfirmCloseDialog
+      open={confirmClose}
+      onConfirm={() => { setConfirmClose(false); onClose() }}
+      onCancel={() => setConfirmClose(false)}
+    />
+    </>
   )
 }
 

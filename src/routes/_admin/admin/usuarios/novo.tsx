@@ -13,6 +13,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { ArrowLeft, User, FileText, Globe, MapPin, Briefcase, Save } from 'lucide-react'
 import { maskCPF, maskPhone, maskCEP, maskRG, maskCNH, maskMoney } from '@/utils/masks'
 import { AgeHint } from '@/components/AgeHint'
+import { useUnsavedGuard, confirmLeaveIfDirty } from '@/hooks/use-unsaved-guard'
 
 export const Route = createFileRoute('/_admin/admin/usuarios/novo')({
   component: RouteComponent,
@@ -157,6 +158,10 @@ function RouteComponent() {
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
 
+  // Guard de não-salvo: dirty se o form mudou e não está salvando.
+  const dirty = !saving && JSON.stringify(form) !== JSON.stringify(emptyForm)
+  useUnsavedGuard(dirty)
+
   function set<K extends keyof Form>(key: K, value: Form[K]) {
     setForm(prev => ({ ...prev, [key]: value }))
   }
@@ -243,7 +248,7 @@ function RouteComponent() {
     <div className="p-6 max-w-4xl mx-auto">
       <div className="flex items-center gap-3 mb-6">
         <Button variant="ghost" size="icon" className="size-8" asChild>
-          <Link to="/admin/usuarios"><ArrowLeft className="size-4" /></Link>
+          <Link to="/admin/usuarios" onClick={e => confirmLeaveIfDirty(dirty, e)} aria-label="Voltar"><ArrowLeft className="size-4" /></Link>
         </Button>
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-foreground">Novo associado</h1>
@@ -469,7 +474,7 @@ function RouteComponent() {
 
         <div className="flex items-center justify-end gap-2 pb-4">
           <Button type="button" variant="outline" asChild>
-            <Link to="/admin/usuarios">Cancelar</Link>
+            <Link to="/admin/usuarios" onClick={e => confirmLeaveIfDirty(dirty, e)}>Cancelar</Link>
           </Button>
           <Button type="submit" disabled={saving}>
             <Save className="size-4" />

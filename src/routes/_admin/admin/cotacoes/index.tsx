@@ -28,6 +28,10 @@ import {
 } from '@/components/ui/alert-dialog'
 
 export const Route = createFileRoute('/_admin/admin/cotacoes/')({
+  // Busca na URL (sobrevive a voltar/atualizar/compartilhar).
+  validateSearch: (s: Record<string, unknown>): { q?: string } => ({
+    q: typeof s.q === 'string' && s.q.trim() ? s.q : undefined,
+  }),
   component: RouteComponent,
 })
 
@@ -51,7 +55,12 @@ function RouteComponent() {
   const deleteQuote = useDeleteMarketQuote()
   const qc = useQueryClient()
 
-  const [busca, setBusca] = useState('')
+  const navigate = Route.useNavigate()
+  const [busca, setBusca] = useState(Route.useSearch().q ?? '')
+  useEffect(() => {
+    navigate({ search: { q: busca.trim() || undefined }, replace: true })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [busca])
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editId, setEditId] = useState<string | null>(null)
   const [form, setForm] = useState<Form>(emptyForm)
