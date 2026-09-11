@@ -864,14 +864,34 @@ export type AuditLog = {
   createdAt: string
 }
 
+export type AuditFilters = {
+  page?: number
+  limit?: number
+  action?: 'create' | 'edit' | 'delete' | ''
+  entity?: string
+  actorId?: string
+  from?: string
+  to?: string
+  q?: string
+}
+
 export function useAuditLogs(
-  params: { page?: number; limit?: number } = {},
+  params: AuditFilters = {},
   opts: { enabled?: boolean } = {},
 ) {
-  const { page = 1, limit = 30 } = params
+  const { page = 1, limit = 30, action, entity, actorId, from, to, q } = params
+  const search = new URLSearchParams()
+  search.set('page', String(page))
+  search.set('limit', String(limit))
+  if (action) search.set('action', action)
+  if (entity) search.set('entity', entity)
+  if (actorId) search.set('actorId', actorId)
+  if (from) search.set('from', from)
+  if (to) search.set('to', to)
+  if (q) search.set('q', q)
   return useQuery<PaginatedResponse<AuditLog>>({
-    queryKey: ['admin', 'audit-logs', page, limit],
-    queryFn: () => apiFetch(`/admin/audit-logs?page=${page}&limit=${limit}`).then(r => r.json()),
+    queryKey: ['admin', 'audit-logs', page, limit, action, entity, actorId, from, to, q],
+    queryFn: () => apiFetch(`/admin/audit-logs?${search}`).then(r => r.json()),
     enabled: opts.enabled ?? true,
   })
 }

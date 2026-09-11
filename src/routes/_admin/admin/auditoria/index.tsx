@@ -1,15 +1,43 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { useState } from 'react'
-import { useAuditLogs } from '@/hooks/useAdmin'
+import { useEffect, useState } from 'react'
+import { useAuditLogs, useAdminAdmins } from '@/hooks/useAdmin'
 import { usePermissions } from '@/hooks/usePermissions'
-import { ScrollText, ChevronLeft, ChevronRight, Plus, Pencil, Trash2, Dot } from 'lucide-react'
+import { ScrollText, ChevronLeft, ChevronRight, Plus, Pencil, Trash2, Dot, Search, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
   Table, TableHeader, TableBody, TableRow, TableHead, TableCell,
 } from '@/components/ui/table'
 
+type AuditSearch = {
+  page?: number
+  action?: 'create' | 'edit' | 'delete'
+  entity?: string
+  actorId?: string
+  from?: string
+  to?: string
+  q?: string
+}
+const ACTIONS: AuditSearch['action'][] = ['create', 'edit', 'delete']
+function str(v: unknown): string | undefined {
+  return typeof v === 'string' && v.trim() ? v : undefined
+}
+
 export const Route = createFileRoute('/_admin/admin/auditoria/')({
+  validateSearch: (s: Record<string, unknown>): AuditSearch => {
+    const page = Number(s.page)
+    return {
+      page: Number.isFinite(page) && page > 1 ? page : undefined,
+      action: ACTIONS.includes(s.action as AuditSearch['action']) ? (s.action as AuditSearch['action']) : undefined,
+      entity: str(s.entity),
+      actorId: str(s.actorId),
+      from: str(s.from),
+      to: str(s.to),
+      q: str(s.q),
+    }
+  },
   component: RouteComponent,
 })
 
@@ -30,7 +58,10 @@ const ENTITY: Record<string, { n: string; g: 'm' | 'f' }> = {
   'Relação': { n: 'relação', g: 'f' },
   'Endereço': { n: 'endereço', g: 'm' },
   'Categoria financeira': { n: 'categoria financeira', g: 'f' },
+  'Caixa': { n: 'caixa', g: 'm' },
   'Lançamento': { n: 'lançamento', g: 'm' },
+  'Transferência': { n: 'transferência', g: 'f' },
+  'Comprovante': { n: 'comprovante', g: 'm' },
   'Outro': { n: 'registro', g: 'm' },
 }
 function acaoLegivel(method: string, entity: string, label: string | null): string {
@@ -54,15 +85,59 @@ const KIND_COLOR: Record<ActionKind, string> = {
   other: 'text-muted-foreground',
 }
 
+// Tempo relativo curto ("há 5 min", "há 2 h", "há 3 d"); título traz a data exata.
+function relativeTime(iso: string): string {
+  const diff = Date.now() - new Date(iso).getTime()
+  const min = Math.floor(diff / 60000)
+  if (min < 1) return 'agora'
+  if (min < 60) return `há ${min} min`
+  const h = Math.floor(min / 60)
+  if (h < 24) return `há ${h} h`
+  const d = Math.floor(h / 24)
+  if (d < 30) return `há ${d} d`
+  return new Date(iso).toLocaleDateString('pt-BR')
+}
+
+const selectClass =
+  'rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring h-9'
+
 function RouteComponent() {
   const { can, isLoading: permLoading } = usePermissions()
-  const [page, setPage] = useState(1)
+  const enabled = !permLoading && can('READ_AUDIT')
+  const search = Route.useSearch()
+  const navigate = Route.useNavigate()
+  const setSearch = (patch: Partial<AuditSearch>) =>
+    navigate({ search: prev => ({ ...prev, ...patch }), replace: true })
+  const page = search.page ?? 1
+
   const { data, isLoading, isError } = useAuditLogs(
-    { page, limit: 30 },
-    { enabled: !permLoading && can('READ_AUDIT') },
+    { page, limit: 30, action: search.action, entity: search.entity, actorId: search.actorId, from: search.from, to: search.to, q: search.q },
+    { enabled },
   )
+  const { data: adminsData } = useAdminAdmins({ page: 1, limit: 200 })
+  const admins = adminsData?.data ?? []
+
+  // Busca com debounce → grava `q` na URL.
+  const [searchInput, setSearchInput] = useState(search.q ?? '')
+  useEffect(() => { setSearchInput(search.q ?? '') }, [search.q])
+  useEffect(() => {
+    const t = setTimeout(() => {
+      const q = searchInput.trim() || undefined
+      if (q !== (search.q ?? undefined)) setSearch({ q, page: undefined })
+    }, 350)
+    return () => clearTimeout(t)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchInput, search.q])
+
   const rows = data?.data ?? []
+  const total = data?.total ?? 0
   const totalPages = data?.totalPages ?? 1
+  const hasFilters = !!(search.action || search.entity || search.actorId || search.from || search.to || search.q)
+
+  function clearFilters() {
+    setSearchInput('')
+    navigate({ search: {}, replace: true })
+  }
 
   if (!permLoading && !can('READ_AUDIT')) {
     return (
@@ -75,12 +150,65 @@ function RouteComponent() {
   }
 
   return (
-    <div className="p-6 flex flex-col gap-6">
+    <div className="p-6 flex flex-col gap-5">
       <div>
         <h1 className="text-2xl font-bold tracking-tight text-foreground">Auditoria</h1>
         <p className="text-sm text-muted-foreground">
           Registro de criações, edições e exclusões feitas no sistema.
         </p>
+      </div>
+
+      {/* Filtros */}
+      <div className="flex flex-col gap-3">
+        <div className="flex flex-wrap items-end gap-2">
+          <div className="flex flex-col gap-1">
+            <Label className="text-[11px] text-muted-foreground">Ação</Label>
+            <div className="flex gap-1">
+              {([['', 'Todas'], ['create', 'Criações'], ['edit', 'Edições'], ['delete', 'Exclusões']] as const).map(([a, lbl]) => (
+                <Button
+                  key={a || 'all'}
+                  size="sm"
+                  variant={(search.action ?? '') === a ? 'default' : 'outline'}
+                  className="h-9"
+                  onClick={() => setSearch({ action: (a || undefined) as AuditSearch['action'], page: undefined })}
+                >
+                  {lbl}
+                </Button>
+              ))}
+            </div>
+          </div>
+          <div className="flex flex-col gap-1">
+            <Label className="text-[11px] text-muted-foreground">Tipo</Label>
+            <select className={selectClass} value={search.entity ?? ''} onChange={e => setSearch({ entity: e.target.value || undefined, page: undefined })}>
+              <option value="">Todos</option>
+              {Object.keys(ENTITY).filter(k => k !== 'Outro').map(k => <option key={k} value={k}>{k}</option>)}
+            </select>
+          </div>
+          <div className="flex flex-col gap-1">
+            <Label className="text-[11px] text-muted-foreground">Quem</Label>
+            <select className={selectClass} value={search.actorId ?? ''} onChange={e => setSearch({ actorId: e.target.value || undefined, page: undefined })}>
+              <option value="">Todos</option>
+              {admins.map(a => <option key={a.id} value={a.id}>{a.username}</option>)}
+            </select>
+          </div>
+          <div className="flex flex-col gap-1">
+            <Label className="text-[11px] text-muted-foreground">De</Label>
+            <Input type="date" className="h-9 w-[150px]" value={search.from ?? ''} onChange={e => setSearch({ from: e.target.value || undefined, page: undefined })} />
+          </div>
+          <div className="flex flex-col gap-1">
+            <Label className="text-[11px] text-muted-foreground">Até</Label>
+            <Input type="date" className="h-9 w-[150px]" value={search.to ?? ''} onChange={e => setSearch({ to: e.target.value || undefined, page: undefined })} />
+          </div>
+          {hasFilters && (
+            <Button size="sm" variant="ghost" className="h-9 gap-1.5 text-muted-foreground" onClick={clearFilters}>
+              <X className="size-4" /> Limpar
+            </Button>
+          )}
+        </div>
+        <div className="relative max-w-sm">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+          <Input placeholder="Buscar por nome do item ou rota..." className="pl-9" value={searchInput} onChange={e => setSearchInput(e.target.value)} />
+        </div>
       </div>
 
       {isError && (
@@ -103,7 +231,7 @@ function RouteComponent() {
             <TableBody>
               {isLoading && Array.from({ length: 8 }).map((_, i) => (
                 <TableRow key={i}>
-                  <TableCell><Skeleton className="h-4 w-32" /></TableCell>
+                  <TableCell><Skeleton className="h-4 w-24" /></TableCell>
                   <TableCell><Skeleton className="h-4 w-24" /></TableCell>
                   <TableCell><Skeleton className="h-4 w-44" /></TableCell>
                   <TableCell className="hidden lg:table-cell"><Skeleton className="h-4 w-40" /></TableCell>
@@ -113,9 +241,11 @@ function RouteComponent() {
                 <TableRow>
                   <TableCell colSpan={4} className="py-16 text-center">
                     <ScrollText className="size-10 text-muted-foreground/30 mx-auto mb-3" />
-                    <p className="text-sm font-medium text-foreground">Nenhum registro ainda</p>
+                    <p className="text-sm font-medium text-foreground">
+                      {hasFilters ? 'Nenhum registro com esses filtros' : 'Nenhum registro ainda'}
+                    </p>
                     <p className="text-xs text-muted-foreground mt-1">
-                      As ações administrativas aparecem aqui conforme acontecem.
+                      {hasFilters ? 'Ajuste ou limpe os filtros.' : 'As ações administrativas aparecem aqui conforme acontecem.'}
                     </p>
                   </TableCell>
                 </TableRow>
@@ -125,8 +255,8 @@ function RouteComponent() {
                 const Icon = KIND_ICON[kind]
                 return (
                   <TableRow key={r.id}>
-                    <TableCell className="whitespace-nowrap text-muted-foreground tabular-nums text-xs">
-                      {new Date(r.createdAt).toLocaleString('pt-BR')}
+                    <TableCell className="whitespace-nowrap text-muted-foreground text-xs" title={new Date(r.createdAt).toLocaleString('pt-BR')}>
+                      {relativeTime(r.createdAt)}
                     </TableCell>
                     <TableCell className="font-medium text-foreground">{r.actorName}</TableCell>
                     <TableCell>
@@ -135,7 +265,7 @@ function RouteComponent() {
                         <span className="text-foreground">{acaoLegivel(r.method, r.entity, r.targetLabel)}</span>
                       </span>
                     </TableCell>
-                    <TableCell className="hidden lg:table-cell font-mono text-[11px] text-muted-foreground max-w-xs truncate">
+                    <TableCell className="hidden lg:table-cell font-mono text-[11px] text-muted-foreground max-w-xs truncate" title={`${r.method} ${r.path} · ${r.statusCode}`}>
                       {r.method} {r.path} · {r.statusCode}
                     </TableCell>
                   </TableRow>
@@ -146,15 +276,22 @@ function RouteComponent() {
         </div>
       </div>
 
-      {totalPages > 1 && (
-        <div className="flex items-center justify-end gap-2">
-          <Button size="sm" variant="outline" className="h-8" disabled={page <= 1} onClick={() => setPage(p => p - 1)}>
-            <ChevronLeft className="size-4" />
-          </Button>
-          <span className="text-sm text-muted-foreground tabular-nums">{page} / {totalPages}</span>
-          <Button size="sm" variant="outline" className="h-8" disabled={page >= totalPages} onClick={() => setPage(p => p + 1)}>
-            <ChevronRight className="size-4" />
-          </Button>
+      {total > 0 && (
+        <div className="flex items-center justify-between gap-2">
+          <span className="text-sm text-muted-foreground tabular-nums">
+            {(page - 1) * 30 + 1}–{Math.min(page * 30, total)} de {total}
+          </span>
+          {totalPages > 1 && (
+            <div className="flex items-center gap-2">
+              <Button size="sm" variant="outline" className="h-8" disabled={page <= 1} onClick={() => setSearch({ page: page - 1 <= 1 ? undefined : page - 1 })} aria-label="Página anterior">
+                <ChevronLeft className="size-4" />
+              </Button>
+              <span className="text-sm text-muted-foreground tabular-nums">{page} / {totalPages}</span>
+              <Button size="sm" variant="outline" className="h-8" disabled={page >= totalPages} onClick={() => setSearch({ page: page + 1 })} aria-label="Próxima página">
+                <ChevronRight className="size-4" />
+              </Button>
+            </div>
+          )}
         </div>
       )}
     </div>
