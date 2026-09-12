@@ -1,4 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router'
+import { safeUrl } from '@/utils/safe-url'
 import { useRef, useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import Autoplay from 'embla-carousel-autoplay'
@@ -33,7 +34,7 @@ function PartnerItem({ partner }: { partner: { id: string; name: string; partner
   if (partner.partnerUrl) {
     return (
       <a
-        href={partner.partnerUrl}
+        href={safeUrl(partner.partnerUrl)}
         target="_blank"
         rel="noopener noreferrer"
         title={partner.name}

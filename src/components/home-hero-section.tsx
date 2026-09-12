@@ -8,6 +8,7 @@ import {
 import Autoplay from 'embla-carousel-autoplay'
 import { useBanners } from '@/hooks/useBanner'
 import type { BannerButton } from '@/hooks/useBanner'
+import { safeUrl } from '@/utils/safe-url'
 
 function BannerBtn({ btn, index }: { btn: BannerButton; index: number }) {
   const isPrimary = index === 0
@@ -17,7 +18,7 @@ function BannerBtn({ btn, index }: { btn: BannerButton; index: number }) {
 
   if (btn.external) {
     return (
-      <a href={btn.url} target="_blank" rel="noopener noreferrer">
+      <a href={safeUrl(btn.url)} target="_blank" rel="noopener noreferrer">
         <Button size="lg" variant={isPrimary ? 'default' : 'outline'} className={cls}>
           {btn.label}
         </Button>
@@ -26,7 +27,7 @@ function BannerBtn({ btn, index }: { btn: BannerButton; index: number }) {
   }
 
   return (
-    <Link to={btn.url as never}>
+    <Link to={safeUrl(btn.url) as never}>
       <Button size="lg" variant={isPrimary ? 'default' : 'outline'} className={cls}>
         {btn.label}
       </Button>

@@ -10,6 +10,8 @@ import { useSeo } from '@/hooks/useSeo'
 import { API_BASE } from '@/lib/api'
 import { formatDateFromString } from '@/utils/format-data-from-string'
 import { maskCPF, maskPhone, maskCEP } from '@/utils/masks'
+import { escapeHtml } from '@/utils/escape-html'
+import { safeUrl } from '@/utils/safe-url'
 import { AgeHint } from '@/components/AgeHint'
 import { ErrorAlert } from '@/components/ErrorAlert'
 import { Badge } from '@/components/ui/badge'
@@ -150,7 +152,7 @@ function RegistrationDialog({
                 <CheckCircle2 className="size-8 text-emerald-600" />
               </div>
               <DialogTitle className="text-xl">{t('registration.successTitle')}</DialogTitle>
-              <p className="text-sm text-muted-foreground" dangerouslySetInnerHTML={{ __html: t('registration.successMessage', { courseName }) }} />
+              <p className="text-sm text-muted-foreground" dangerouslySetInnerHTML={{ __html: t('registration.successMessage', { courseName: escapeHtml(courseName) }) }} />
             </div>
             <DialogFooter>
               <Button className="w-full" onClick={handleClose}>{t('registration.close')}</Button>
@@ -162,7 +164,7 @@ function RegistrationDialog({
           <>
             <DialogHeader>
               <DialogTitle>{t('registration.title')}</DialogTitle>
-              <DialogDescription dangerouslySetInnerHTML={{ __html: t('registration.description', { courseName }) }} />
+              <DialogDescription dangerouslySetInnerHTML={{ __html: t('registration.description', { courseName: escapeHtml(courseName) }) }} />
             </DialogHeader>
             <div className="flex flex-col gap-4">
               <Field label="CPF">
@@ -418,17 +420,17 @@ function RouteComponent() {
                         {(instructor.linkedin || instructor.instagram || instructor.facebook) && (
                           <div className="flex items-center gap-3 mt-1.5">
                             {instructor.linkedin && (
-                              <a href={instructor.linkedin} target="_blank" rel="noreferrer" className="text-muted-foreground hover:text-primary transition-colors">
+                              <a href={safeUrl(instructor.linkedin)} target="_blank" rel="noreferrer" className="text-muted-foreground hover:text-primary transition-colors">
                                 <FaLinkedin className="size-4" />
                               </a>
                             )}
                             {instructor.instagram && (
-                              <a href={instructor.instagram} target="_blank" rel="noreferrer" className="text-muted-foreground hover:text-primary transition-colors">
+                              <a href={safeUrl(instructor.instagram)} target="_blank" rel="noreferrer" className="text-muted-foreground hover:text-primary transition-colors">
                                 <FaInstagram className="size-4" />
                               </a>
                             )}
                             {instructor.facebook && (
-                              <a href={instructor.facebook} target="_blank" rel="noreferrer" className="text-muted-foreground hover:text-primary transition-colors">
+                              <a href={safeUrl(instructor.facebook)} target="_blank" rel="noreferrer" className="text-muted-foreground hover:text-primary transition-colors">
                                 <FaFacebook className="size-4" />
                               </a>
                             )}
