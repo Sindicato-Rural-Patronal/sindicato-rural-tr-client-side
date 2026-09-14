@@ -34,7 +34,7 @@ import {
 } from 'lucide-react'
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
+  Dialog, DialogContent, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
@@ -50,10 +50,6 @@ import {
   Table, TableHeader, TableBody, TableRow, TableHead, TableCell,
 } from '@/components/ui/table'
 import {
-  AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogFooter,
-  AlertDialogTitle, AlertDialogDescription, AlertDialogAction, AlertDialogCancel,
-} from '@/components/ui/alert-dialog'
-import {
   Form, FormField, FormItem, FormLabel, FormControl, FormMessage,
 } from '@/components/ui/form'
 import type { Course } from '@/@types/course'
@@ -62,6 +58,9 @@ import { ErrorAlert } from '@/components/ErrorAlert'
 import { EmptyState } from '@/components/EmptyState'
 import { ConfirmCloseDialog } from '@/components/confirm-close-dialog'
 import { Pagination } from '@/components/ui/pagination'
+import { DeleteConfirmDialog } from '@/components/DeleteConfirmDialog'
+import { NativeSelect } from '@/components/ui/native-select'
+import { useDebouncedValue } from '@/hooks/useDebouncedValue'
 
 function calcDaysUntil(startDate: string) {
   if (!startDate) return 0
@@ -259,26 +258,16 @@ function GalleryManager({ course }: { course: Course }) {
         </div>
       )}
 
-      <AlertDialog open={!!deletePhotoId} onOpenChange={open => { if (!open) setDeletePhotoId(null) }}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Remover foto</AlertDialogTitle>
-            <AlertDialogDescription>
-              Tem certeza que deseja remover esta foto da galeria? Esta ação não pode ser desfeita.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={deletePhoto.isPending}>Cancelar</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={e => { e.preventDefault(); handleDeletePhoto() }}
-              disabled={deletePhoto.isPending}
-              className="bg-destructive text-white hover:bg-destructive/90"
-            >
-              {deletePhoto.isPending ? 'Removendo...' : 'Remover'}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <DeleteConfirmDialog
+        open={!!deletePhotoId}
+        onOpenChange={open => { if (!open) setDeletePhotoId(null) }}
+        title="Remover foto"
+        description="Tem certeza que deseja remover esta foto da galeria? Esta ação não pode ser desfeita."
+        onConfirm={handleDeletePhoto}
+        pending={deletePhoto.isPending}
+        confirmLabel="Remover"
+        pendingLabel="Removendo..."
+      />
     </div>
   )
 }
@@ -1114,10 +1103,10 @@ function ViewDialog({
                 {can('UPDATE_COURSE') && (
                   <div className="border-t pt-4 flex flex-col gap-3">
                     <p className="text-sm font-semibold">Adicionar instrutor</p>
-                    <select
+                    <NativeSelect
                       value={selInstrId}
                       onChange={e => setSelInstrId(e.target.value)}
-                      className="rounded-md border border-input px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring bg-background h-9 disabled:opacity-50"
+                      className="h-9 disabled:opacity-50"
                     >
                       <option value="">Selecione um instrutor...</option>
                       {(instructors ?? [])
@@ -1126,7 +1115,7 @@ function ViewDialog({
                           <option key={i.userData.id} value={i.userData.id}>{i.userData.name}</option>
                         ))
                       }
-                    </select>
+                    </NativeSelect>
                     <Input
                       placeholder="Título (ex: Engenheiro Agrônomo)"
                       value={instrTitle}
@@ -1185,27 +1174,16 @@ function ViewDialog({
       </DialogContent>
     </Dialog>
 
-    <AlertDialog open={!!removeInstr} onOpenChange={open => { if (!open) setRemoveInstr(null) }}>
-      <AlertDialogContent>
-        <AlertDialogHeader>
-          <AlertDialogTitle>Remover instrutor</AlertDialogTitle>
-          <AlertDialogDescription>
-            Tem certeza que deseja remover <strong>{removeInstr?.name}</strong> deste curso? Esta ação
-            não pode ser desfeita.
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel disabled={removeAssignment.isPending}>Cancelar</AlertDialogCancel>
-          <AlertDialogAction
-            onClick={e => { e.preventDefault(); handleRemoveInstructor() }}
-            disabled={removeAssignment.isPending}
-            className="bg-destructive text-white hover:bg-destructive/90"
-          >
-            {removeAssignment.isPending ? 'Removendo...' : 'Remover'}
-          </AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
+    <DeleteConfirmDialog
+      open={!!removeInstr}
+      onOpenChange={open => { if (!open) setRemoveInstr(null) }}
+      title="Remover instrutor"
+      description={<>Tem certeza que deseja remover <strong>{removeInstr?.name}</strong> deste curso? Esta ação não pode ser desfeita.</>}
+      onConfirm={handleRemoveInstructor}
+      pending={removeAssignment.isPending}
+      confirmLabel="Remover"
+      pendingLabel="Removendo..."
+    />
     </>
   )
 }
@@ -1907,12 +1885,9 @@ function RouteComponent() {
   const [page, setPage] = useState(1)
   const [limit, setLimit] = useState<typeof LIMIT_OPTIONS[number]>(8)
   const [search, setSearch] = useState('')
-  const [debouncedSearch, setDebouncedSearch] = useState('')
   // Busca é server-side (o hook aceita `search`); debounce evita 1 request por tecla.
-  useEffect(() => {
-    const t = setTimeout(() => { setDebouncedSearch(search); setPage(1) }, 350)
-    return () => clearTimeout(t)
-  }, [search])
+  const debouncedSearch = useDebouncedValue(search, 350)
+  useEffect(() => { setPage(1) }, [debouncedSearch])
   const { data, isLoading, isError } = useAdminCourses({ page, limit, search: debouncedSearch })
   const deleteCourse = useDeleteCourse()
   const [viewDialog, setViewDialog] = useState<CourseCardItem | null>(null)
@@ -2054,24 +2029,17 @@ function RouteComponent() {
         onClose={() => setFormDialog({ open: false, editing: null })}
       />
 
-      <Dialog open={!!deleteConfirm} onOpenChange={() => setDeleteConfirm(null)}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>{t('admin.courses.deleteConfirmTitle')}</DialogTitle>
-            <DialogDescription>{t('admin.courses.deleteConfirmDesc', { title: deleteConfirm?.title ?? '' })}</DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setDeleteConfirm(null)}>{t('admin.courses.deleteCancel')}</Button>
-            <Button
-              variant="destructive"
-              disabled={deleteCourse.isPending}
-              onClick={() => deleteConfirm && handleDelete(deleteConfirm.id)}
-            >
-              {deleteCourse.isPending ? t('admin.courses.deleting') : t('admin.courses.deleteConfirm')}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <DeleteConfirmDialog
+        open={!!deleteConfirm}
+        onOpenChange={open => { if (!open) setDeleteConfirm(null) }}
+        title={t('admin.courses.deleteConfirmTitle')}
+        description={t('admin.courses.deleteConfirmDesc', { title: deleteConfirm?.title ?? '' })}
+        onConfirm={() => deleteConfirm && handleDelete(deleteConfirm.id)}
+        pending={deleteCourse.isPending}
+        confirmLabel={t('admin.courses.deleteConfirm')}
+        pendingLabel={t('admin.courses.deleting')}
+        cancelLabel={t('admin.courses.deleteCancel')}
+      />
     </div>
   )
 }

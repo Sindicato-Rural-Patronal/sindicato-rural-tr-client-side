@@ -29,9 +29,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
-import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
-} from '@/components/ui/dialog'
+import { DeleteConfirmDialog } from '@/components/DeleteConfirmDialog'
 import { ConfirmCloseDialog } from '@/components/confirm-close-dialog'
 import { ImageCropDialog } from '@/components/ImageCropDialog'
 import {
@@ -965,25 +963,24 @@ function RouteComponent() {
       )}
 
       {/* Delete confirm */}
-      <Dialog open={!!deleteTarget} onOpenChange={open => !open && setDeleteTarget(null)}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Excluir notícia</DialogTitle>
-            <DialogDescription>{t('admin.news.deleteConfirm')}</DialogDescription>
-          </DialogHeader>
-          <p className="text-sm font-medium">{deleteTarget?.title}</p>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setDeleteTarget(null)}>{t('common.cancel')}</Button>
-            <Button
-              variant="destructive"
-              onClick={handleDelete}
-              disabled={deleteNews.isPending}
-            >
-              {deleteNews.isPending ? 'Excluindo...' : t('common.delete')}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <DeleteConfirmDialog
+        open={!!deleteTarget}
+        onOpenChange={open => { if (!open) setDeleteTarget(null) }}
+        title="Excluir notícia"
+        description={
+          <>
+            {t('admin.news.deleteConfirm')}
+            {deleteTarget?.title && (
+              <span className="mt-2 block font-medium text-foreground">{deleteTarget.title}</span>
+            )}
+          </>
+        }
+        onConfirm={handleDelete}
+        pending={deleteNews.isPending}
+        confirmLabel={t('common.delete')}
+        pendingLabel="Excluindo..."
+        cancelLabel={t('common.cancel')}
+      />
     </div>
   )
 }

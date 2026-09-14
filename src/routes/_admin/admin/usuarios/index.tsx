@@ -31,10 +31,9 @@ import { AlertCircle, Plus, Shield, Users, Pencil, Trash2, ExternalLink, Globe, 
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
-import {
-  AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogFooter,
-  AlertDialogTitle, AlertDialogDescription, AlertDialogAction, AlertDialogCancel,
-} from '@/components/ui/alert-dialog'
+import { DeleteConfirmDialog } from '@/components/DeleteConfirmDialog'
+import { NativeSelect } from '@/components/ui/native-select'
+import { EmptyState } from '@/components/EmptyState'
 import { Pagination } from '@/components/ui/pagination'
 
 export const Route = createFileRoute('/_admin/admin/usuarios/')({
@@ -432,27 +431,14 @@ function RegrasSheet() {
 
       <RegraDialog state={dialog} onClose={() => setDialog(null)} />
 
-      <AlertDialog open={!!deleteRuleTarget} onOpenChange={open => { if (!open) setDeleteRuleTarget(null) }}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Excluir regra</AlertDialogTitle>
-            <AlertDialogDescription>
-              Tem certeza que deseja excluir a regra <strong>{deleteRuleTarget?.name}</strong>? Esta ação
-              não pode ser desfeita.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={deleteRule.isPending}>Cancelar</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={e => { e.preventDefault(); handleDeleteRule() }}
-              disabled={deleteRule.isPending}
-              className="bg-destructive text-white hover:bg-destructive/90"
-            >
-              {deleteRule.isPending ? 'Excluindo...' : 'Excluir'}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <DeleteConfirmDialog
+        open={!!deleteRuleTarget}
+        onOpenChange={open => { if (!open) setDeleteRuleTarget(null) }}
+        title="Excluir regra"
+        description={<>Tem certeza que deseja excluir a regra <strong>{deleteRuleTarget?.name}</strong>? Esta ação não pode ser desfeita.</>}
+        onConfirm={handleDeleteRule}
+        pending={deleteRule.isPending}
+      />
     </>
   )
 }
@@ -525,21 +511,21 @@ function NovoAdminSheet() {
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="admin-user">Pessoa (associado) *</Label>
-              <select id="admin-user" name="userDataId" value={form.userDataId} onChange={handleChange} required className="rounded-md border border-input px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring bg-background">
+              <NativeSelect id="admin-user" name="userDataId" value={form.userDataId} onChange={handleChange} required>
                 <option value="">Selecione uma pessoa</option>
                 {usuarios.map(u => (
                   <option key={u.id} value={u.id}>{u.name} — {u.email}</option>
                 ))}
-              </select>
+              </NativeSelect>
             </div>
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="admin-role">Regra de permissão *</Label>
-              <select id="admin-role" name="userRole" value={form.userRole} onChange={handleChange} required className="rounded-md border border-input px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring bg-background">
+              <NativeSelect id="admin-role" name="userRole" value={form.userRole} onChange={handleChange} required>
                 <option value="">Selecione uma regra</option>
                 {regras.map(r => (
                   <option key={r.id} value={r.id}>{r.name}</option>
                 ))}
-              </select>
+              </NativeSelect>
             </div>
             {error && <p className="text-sm text-destructive">{error}</p>}
             <Button type="submit" disabled={!form.userDataId || !form.userRole || createInvite.isPending}>
@@ -625,12 +611,12 @@ function EditarAdminDialog({ admin, onClose }: { admin: UserAdmin | null; onClos
           </div>
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="edit-admin-role">Regra de permissão *</Label>
-            <select id="edit-admin-role" value={form.userRole} onChange={e => setForm(p => ({ ...p, userRole: e.target.value }))} required className="rounded-md border border-input px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring bg-background">
+            <NativeSelect id="edit-admin-role" value={form.userRole} onChange={e => setForm(p => ({ ...p, userRole: e.target.value }))} required>
               <option value="">Selecione uma regra</option>
               {regras.map(r => (
                 <option key={r.id} value={r.id}>{r.name}</option>
               ))}
-            </select>
+            </NativeSelect>
           </div>
           <div className="rounded-lg border border-border p-3 flex flex-col gap-3">
             <label className="flex items-center gap-2 cursor-pointer">
@@ -1004,10 +990,7 @@ function RouteComponent() {
             </div>
           )}
           {!loadingUsers && !errorUsers && usuarios.length === 0 && (
-            <div className="flex flex-col items-center justify-center py-16 text-center">
-              <Users className="size-10 text-muted-foreground/30 mb-3" />
-              <p className="text-sm font-medium text-foreground">Nenhum associado cadastrado</p>
-            </div>
+            <EmptyState icon={Users} title="Nenhum associado cadastrado" />
           )}
           {!loadingUsers && usuarios.length > 0 && (
             <>
@@ -1123,11 +1106,7 @@ function RouteComponent() {
             </div>
           )}
           {!loadingAdmins && !errorAdmins && admins.length === 0 && (
-            <div className="flex flex-col items-center justify-center py-16 text-center">
-              <Shield className="size-10 text-muted-foreground/30 mb-3" />
-              <p className="text-sm font-medium text-foreground">Nenhum administrador cadastrado</p>
-              <p className="text-xs text-muted-foreground mt-1">Use o botão "Novo admin" para adicionar.</p>
-            </div>
+            <EmptyState icon={Shield} title="Nenhum administrador cadastrado" description={'Use o botão "Novo admin" para adicionar.'} />
           )}
           {!loadingAdmins && admins.length > 0 && (
             <>
@@ -1208,39 +1187,29 @@ function RouteComponent() {
 
       <EditarAdminDialog admin={editAdmin} onClose={() => setEditAdmin(null)} />
 
-      <Dialog open={!!deleteAssociadoTarget} onOpenChange={open => !open && setDeleteAssociadoTarget(null)}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Excluir associado</DialogTitle>
-            <DialogDescription>Esta ação não pode ser desfeita.</DialogDescription>
-          </DialogHeader>
-          <p className="text-sm font-medium">{deleteAssociadoTarget?.name}</p>
-          <p className="text-xs text-muted-foreground">{deleteAssociadoTarget?.email}</p>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setDeleteAssociadoTarget(null)}>Cancelar</Button>
-            <Button variant="destructive" onClick={handleDeleteAssociado} disabled={deleteWorker.isPending}>
-              {deleteWorker.isPending ? 'Excluindo...' : 'Excluir'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <DeleteConfirmDialog
+        open={!!deleteAssociadoTarget}
+        onOpenChange={open => !open && setDeleteAssociadoTarget(null)}
+        title="Excluir associado"
+        description={<>
+          <span className="font-medium text-foreground">{deleteAssociadoTarget?.name}</span> — {deleteAssociadoTarget?.email}
+          <br />Esta ação não pode ser desfeita.
+        </>}
+        onConfirm={handleDeleteAssociado}
+        pending={deleteWorker.isPending}
+      />
 
-      <Dialog open={!!deleteAdminTarget} onOpenChange={open => !open && setDeleteAdminTarget(null)}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Excluir administrador</DialogTitle>
-            <DialogDescription>Esta ação não pode ser desfeita.</DialogDescription>
-          </DialogHeader>
-          <p className="text-sm font-medium">{deleteAdminTarget?.userData.name}</p>
-          <p className="text-xs text-muted-foreground font-mono">@{deleteAdminTarget?.username}</p>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setDeleteAdminTarget(null)}>Cancelar</Button>
-            <Button variant="destructive" onClick={handleDeleteAdmin} disabled={deleteAdmin.isPending}>
-              {deleteAdmin.isPending ? 'Excluindo...' : 'Excluir'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <DeleteConfirmDialog
+        open={!!deleteAdminTarget}
+        onOpenChange={open => !open && setDeleteAdminTarget(null)}
+        title="Excluir administrador"
+        description={<>
+          <span className="font-medium text-foreground">{deleteAdminTarget?.userData.name}</span> <span className="font-mono">@{deleteAdminTarget?.username}</span>
+          <br />Esta ação não pode ser desfeita.
+        </>}
+        onConfirm={handleDeleteAdmin}
+        pending={deleteAdmin.isPending}
+      />
     </div>
   )
 }

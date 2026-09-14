@@ -7,6 +7,7 @@ import { apiErrorMessage } from '@/lib/api-error-message'
 import { useCEPLookup, invalidateUserViews } from '@/hooks/useAdmin'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { NativeSelect } from '@/components/ui/native-select'
 import { Label } from '@/components/ui/label'
 import { DatePicker } from '@/components/ui/date-picker'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -40,14 +41,14 @@ function SelectField({ value, onChange, options, placeholder }: {
   placeholder?: string
 }) {
   return (
-    <select
+    <NativeSelect
       value={value}
       onChange={e => onChange(e.target.value)}
-      className="rounded-md border border-input px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring bg-background h-9"
+      className="h-9"
     >
       {placeholder && <option value="">{placeholder}</option>}
       {options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-    </select>
+    </NativeSelect>
   )
 }
 

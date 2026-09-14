@@ -2,7 +2,7 @@ import { createFileRoute } from '@tanstack/react-router'
 import { useEffect, useState } from 'react'
 import { useAuditLogs, useAdminAdmins } from '@/hooks/useAdmin'
 import { usePermissions } from '@/hooks/usePermissions'
-import { ScrollText, ChevronLeft, ChevronRight, Plus, Pencil, Trash2, Dot, Search, X } from 'lucide-react'
+import { ScrollText, Plus, Pencil, Trash2, Dot, Search, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -10,6 +10,11 @@ import { Skeleton } from '@/components/ui/skeleton'
 import {
   Table, TableHeader, TableBody, TableRow, TableHead, TableCell,
 } from '@/components/ui/table'
+import { Pagination } from '@/components/ui/pagination'
+import { NativeSelect } from '@/components/ui/native-select'
+import { LoadErrorBanner } from '@/components/LoadErrorBanner'
+import { NoPermission } from '@/components/NoPermission'
+import { useDebouncedValue } from '@/hooks/useDebouncedValue'
 
 type AuditSearch = {
   page?: number
@@ -98,9 +103,6 @@ function relativeTime(iso: string): string {
   return new Date(iso).toLocaleDateString('pt-BR')
 }
 
-const selectClass =
-  'rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring h-9'
-
 function RouteComponent() {
   const { can, isLoading: permLoading } = usePermissions()
   const enabled = !permLoading && can('READ_AUDIT')
@@ -120,14 +122,12 @@ function RouteComponent() {
   // Busca com debounce → grava `q` na URL.
   const [searchInput, setSearchInput] = useState(search.q ?? '')
   useEffect(() => { setSearchInput(search.q ?? '') }, [search.q])
+  const debouncedSearch = useDebouncedValue(searchInput, 350)
   useEffect(() => {
-    const t = setTimeout(() => {
-      const q = searchInput.trim() || undefined
-      if (q !== (search.q ?? undefined)) setSearch({ q, page: undefined })
-    }, 350)
-    return () => clearTimeout(t)
+    const q = debouncedSearch.trim() || undefined
+    if (q !== (search.q ?? undefined)) setSearch({ q, page: undefined })
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchInput, search.q])
+  }, [debouncedSearch, search.q])
 
   const rows = data?.data ?? []
   const total = data?.total ?? 0
@@ -140,13 +140,7 @@ function RouteComponent() {
   }
 
   if (!permLoading && !can('READ_AUDIT')) {
-    return (
-      <div className="p-6">
-        <div className="rounded-lg border border-border bg-muted/30 px-4 py-12 text-center text-sm text-muted-foreground">
-          Você não tem permissão para ver a auditoria.
-        </div>
-      </div>
-    )
+    return <NoPermission message="Você não tem permissão para ver a auditoria." />
   }
 
   return (
@@ -179,17 +173,17 @@ function RouteComponent() {
           </div>
           <div className="flex flex-col gap-1">
             <Label className="text-[11px] text-muted-foreground">Tipo</Label>
-            <select className={selectClass} value={search.entity ?? ''} onChange={e => setSearch({ entity: e.target.value || undefined, page: undefined })}>
+            <NativeSelect className="h-9" value={search.entity ?? ''} onChange={e => setSearch({ entity: e.target.value || undefined, page: undefined })}>
               <option value="">Todos</option>
               {Object.keys(ENTITY).filter(k => k !== 'Outro').map(k => <option key={k} value={k}>{k}</option>)}
-            </select>
+            </NativeSelect>
           </div>
           <div className="flex flex-col gap-1">
             <Label className="text-[11px] text-muted-foreground">Quem</Label>
-            <select className={selectClass} value={search.actorId ?? ''} onChange={e => setSearch({ actorId: e.target.value || undefined, page: undefined })}>
+            <NativeSelect className="h-9" value={search.actorId ?? ''} onChange={e => setSearch({ actorId: e.target.value || undefined, page: undefined })}>
               <option value="">Todos</option>
               {admins.map(a => <option key={a.id} value={a.id}>{a.username}</option>)}
-            </select>
+            </NativeSelect>
           </div>
           <div className="flex flex-col gap-1">
             <Label className="text-[11px] text-muted-foreground">De</Label>
@@ -211,11 +205,7 @@ function RouteComponent() {
         </div>
       </div>
 
-      {isError && (
-        <div className="rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
-          Erro ao carregar a auditoria.
-        </div>
-      )}
+      {isError && <LoadErrorBanner message="Erro ao carregar a auditoria." />}
 
       <div className="rounded-lg border border-border bg-card overflow-hidden">
         <div className="overflow-x-auto">
@@ -277,22 +267,14 @@ function RouteComponent() {
       </div>
 
       {total > 0 && (
-        <div className="flex items-center justify-between gap-2">
-          <span className="text-sm text-muted-foreground tabular-nums">
-            {(page - 1) * 30 + 1}–{Math.min(page * 30, total)} de {total}
-          </span>
-          {totalPages > 1 && (
-            <div className="flex items-center gap-2">
-              <Button size="sm" variant="outline" className="h-8" disabled={page <= 1} onClick={() => setSearch({ page: page - 1 <= 1 ? undefined : page - 1 })} aria-label="Página anterior">
-                <ChevronLeft className="size-4" />
-              </Button>
-              <span className="text-sm text-muted-foreground tabular-nums">{page} / {totalPages}</span>
-              <Button size="sm" variant="outline" className="h-8" disabled={page >= totalPages} onClick={() => setSearch({ page: page + 1 })} aria-label="Próxima página">
-                <ChevronRight className="size-4" />
-              </Button>
-            </div>
-          )}
-        </div>
+        <Pagination
+          page={page}
+          totalPages={totalPages}
+          total={total}
+          limit={30}
+          onPageChange={p => setSearch({ page: p <= 1 ? undefined : p })}
+          showLimitSelector={false}
+        />
       )}
     </div>
   )

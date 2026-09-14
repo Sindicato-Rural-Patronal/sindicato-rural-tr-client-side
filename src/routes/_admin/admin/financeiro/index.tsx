@@ -16,7 +16,7 @@ import { centsToBRL, maskMoney, moneyToCents } from '@/utils/masks'
 import { formatDateFromString } from '@/utils/format-data-from-string'
 import {
   Wallet, TrendingUp, TrendingDown, Scale, Plus, Pencil, Trash2, Search,
-  ChevronLeft, ChevronRight, Tag, ArrowUpCircle, ArrowDownCircle, Paperclip, FileText, X,
+  Tag, ArrowUpCircle, ArrowDownCircle, Paperclip, FileText, X,
   Download, Landmark, ArrowLeftRight, FileDown, Receipt, ChevronDown, User,
 } from 'lucide-react'
 import { apiFetch } from '@/lib/api'
@@ -31,11 +31,13 @@ import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from '@/components/ui/dialog'
-import {
-  AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogFooter,
-  AlertDialogTitle, AlertDialogDescription, AlertDialogAction, AlertDialogCancel,
-} from '@/components/ui/alert-dialog'
 import { ConfirmCloseDialog } from '@/components/confirm-close-dialog'
+import { DeleteConfirmDialog } from '@/components/DeleteConfirmDialog'
+import { LoadErrorBanner } from '@/components/LoadErrorBanner'
+import { NoPermission } from '@/components/NoPermission'
+import { NativeSelect } from '@/components/ui/native-select'
+import { Pagination } from '@/components/ui/pagination'
+import { useDebouncedValue } from '@/hooks/useDebouncedValue'
 
 type FinanceTab = 'dashboard' | 'lancamentos' | 'categorias' | 'caixas'
 type FinanceSearch = {
@@ -71,9 +73,6 @@ export const Route = createFileRoute('/_admin/admin/financeiro/')({
   },
   component: RouteComponent,
 })
-
-const selectClass =
-  'rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring'
 
 function EmpInput({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
   return (
@@ -113,13 +112,7 @@ function RouteComponent() {
     navigate({ search: prev => ({ ...prev, ...patch }), replace: true })
 
   if (!permLoading && !can('READ_FINANCE')) {
-    return (
-      <div className="p-6">
-        <div className="rounded-lg border border-border bg-muted/30 px-4 py-12 text-center text-sm text-muted-foreground">
-          Você não tem permissão para ver o Financeiro.
-        </div>
-      </div>
-    )
+    return <NoPermission message="Você não tem permissão para ver o Financeiro." />
   }
 
   return (
@@ -215,11 +208,7 @@ function DashboardTab({ enabled, onDrill }: {
         </Button>
       </div>
 
-      {isError && (
-        <div className="rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
-          Erro ao carregar o resumo financeiro.
-        </div>
-      )}
+      {isError && <LoadErrorBanner message="Erro ao carregar o resumo financeiro." />}
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {kpis.map(k => {
@@ -428,14 +417,10 @@ function VincularUsuario({ current, onPick, onClear }: {
   onClear: () => void
 }) {
   const [q, setQ] = useState('')
-  const [dq, setDq] = useState('')
   const [open, setOpen] = useState(false)
   const [loadingId, setLoadingId] = useState<string | null>(null)
 
-  useEffect(() => {
-    const t = setTimeout(() => setDq(q.trim()), 300)
-    return () => clearTimeout(t)
-  }, [q])
+  const dq = useDebouncedValue(q, 300).trim()
 
   const { data, isFetching } = useAdminUsers({ search: dq, limit: 6 })
   const results = dq.length >= 2 ? (data?.data ?? []) : []
@@ -445,7 +430,7 @@ function VincularUsuario({ current, onPick, onClear }: {
     try {
       const detail: UserDataDetail = await apiFetch(`/admin/users/${id}`).then(r => r.json())
       onPick(detail)
-      setQ(''); setDq(''); setOpen(false)
+      setQ(''); setOpen(false)
     } catch {
       toast.error('Não foi possível carregar o usuário.')
     } finally {
@@ -573,14 +558,12 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
   // Busca: campo local com debounce → grava em `q` na URL (evita 1 request/tecla).
   const [searchInput, setSearchInput] = useState(search.q ?? '')
   useEffect(() => { setSearchInput(search.q ?? '') }, [search.q])
+  const debouncedSearch = useDebouncedValue(searchInput, 300)
   useEffect(() => {
-    const t = setTimeout(() => {
-      const q = searchInput.trim() || undefined
-      if (q !== (search.q ?? undefined)) setSearch({ q, page: undefined })
-    }, 300)
-    return () => clearTimeout(t)
+    const q = debouncedSearch.trim() || undefined
+    if (q !== (search.q ?? undefined)) setSearch({ q, page: undefined })
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchInput, search.q])
+  }, [debouncedSearch, search.q])
 
   function setF<K extends keyof TxForm>(k: K, v: TxForm[K]) {
     setForm(prev => ({ ...prev, [k]: v }))
@@ -780,25 +763,25 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
           </div>
           <div className="flex flex-col gap-1">
             <Label className="text-[11px] text-muted-foreground">Tipo</Label>
-            <select className={`${selectClass} h-9`} value={search.fType ?? ''} onChange={e => setSearch({ fType: (e.target.value || undefined) as FinanceType | undefined, page: undefined })}>
+            <NativeSelect className="h-9" value={search.fType ?? ''} onChange={e => setSearch({ fType: (e.target.value || undefined) as FinanceType | undefined, page: undefined })}>
               <option value="">Todos</option>
               <option value="IN">Entradas</option>
               <option value="OUT">Saídas</option>
-            </select>
+            </NativeSelect>
           </div>
           <div className="flex flex-col gap-1">
             <Label className="text-[11px] text-muted-foreground">Categoria</Label>
-            <select className={`${selectClass} h-9`} value={search.cat ?? ''} onChange={e => setSearch({ cat: e.target.value || undefined, page: undefined })}>
+            <NativeSelect className="h-9" value={search.cat ?? ''} onChange={e => setSearch({ cat: e.target.value || undefined, page: undefined })}>
               <option value="">Todas</option>
               {cats.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-            </select>
+            </NativeSelect>
           </div>
           <div className="flex flex-col gap-1">
             <Label className="text-[11px] text-muted-foreground">Caixa</Label>
-            <select className={`${selectClass} h-9`} value={search.acc ?? ''} onChange={e => setSearch({ acc: e.target.value || undefined, page: undefined })}>
+            <NativeSelect className="h-9" value={search.acc ?? ''} onChange={e => setSearch({ acc: e.target.value || undefined, page: undefined })}>
               <option value="">Todos</option>
               {accs.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
-            </select>
+            </NativeSelect>
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -823,11 +806,7 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
         <Input placeholder="Buscar na descrição..." className="pl-9" value={searchInput} onChange={e => setSearchInput(e.target.value)} />
       </div>
 
-      {isError && (
-        <div className="rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
-          Erro ao carregar os lançamentos.
-        </div>
-      )}
+      {isError && <LoadErrorBanner message="Erro ao carregar os lançamentos." />}
 
       {/* Mobile: cada lançamento como cartão (tabela só rola de lado, ruim no celular). */}
       <div className="flex flex-col gap-2 md:hidden">
@@ -991,24 +970,14 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
       </div>
 
       {(data?.total ?? 0) > 0 && (
-        <div className="flex items-center justify-between gap-2">
-          <span className="text-sm text-muted-foreground tabular-nums">
-            {(page - 1) * 20 + 1}–{Math.min(page * 20, data?.total ?? 0)} de {data?.total ?? 0}
-          </span>
-          {totalPages > 1 && (
-            <div className="flex items-center gap-2">
-              <Button size="sm" variant="outline" className="h-8" disabled={page <= 1} onClick={() => setSearch({ page: undefined })} aria-label="Primeira página">«</Button>
-              <Button size="sm" variant="outline" className="h-8" disabled={page <= 1} onClick={() => setSearch({ page: page - 1 <= 1 ? undefined : page - 1 })} aria-label="Página anterior">
-                <ChevronLeft className="size-4" />
-              </Button>
-              <span className="text-sm text-muted-foreground tabular-nums">{page} / {totalPages}</span>
-              <Button size="sm" variant="outline" className="h-8" disabled={page >= totalPages} onClick={() => setSearch({ page: page + 1 })} aria-label="Próxima página">
-                <ChevronRight className="size-4" />
-              </Button>
-              <Button size="sm" variant="outline" className="h-8" disabled={page >= totalPages} onClick={() => setSearch({ page: totalPages })} aria-label="Última página">»</Button>
-            </div>
-          )}
-        </div>
+        <Pagination
+          page={page}
+          totalPages={totalPages}
+          total={data?.total ?? 0}
+          limit={20}
+          onPageChange={p => setSearch({ page: p <= 1 ? undefined : p })}
+          showLimitSelector={false}
+        />
       )}
 
       <Dialog open={transferOpen} onOpenChange={setTransferOpen}>
@@ -1021,17 +990,17 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
             <div className="grid grid-cols-2 gap-3">
               <div className="flex flex-col gap-1.5">
                 <Label>De *</Label>
-                <select className={selectClass} value={transfer.fromAccountId} onChange={e => setTransfer(p => ({ ...p, fromAccountId: e.target.value }))}>
+                <NativeSelect value={transfer.fromAccountId} onChange={e => setTransfer(p => ({ ...p, fromAccountId: e.target.value }))}>
                   <option value="">Origem</option>
                   {accs.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
-                </select>
+                </NativeSelect>
               </div>
               <div className="flex flex-col gap-1.5">
                 <Label>Para *</Label>
-                <select className={selectClass} value={transfer.toAccountId} onChange={e => setTransfer(p => ({ ...p, toAccountId: e.target.value }))}>
+                <NativeSelect value={transfer.toAccountId} onChange={e => setTransfer(p => ({ ...p, toAccountId: e.target.value }))}>
                   <option value="">Destino</option>
                   {accs.filter(a => a.id !== transfer.fromAccountId).map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
-                </select>
+                </NativeSelect>
               </div>
             </div>
             <div className="grid grid-cols-2 gap-3">
@@ -1103,7 +1072,7 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
             <div className="grid grid-cols-2 gap-3">
               <div className="flex flex-col gap-1.5">
                 <Label>Categoria</Label>
-                <select className={selectClass} value={form.categoryId} onChange={e => setF('categoryId', e.target.value)}>
+                <NativeSelect value={form.categoryId} onChange={e => setF('categoryId', e.target.value)}>
                   <option value="">Sem categoria</option>
                   {catsForType.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                   {/* Categoria do lançamento em edição que foi desativada depois: não
@@ -1114,14 +1083,14 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
                       {editingTx?.category && !editingTx.category.active ? ' (inativa)' : ''}
                     </option>
                   )}
-                </select>
+                </NativeSelect>
               </div>
               <div className="flex flex-col gap-1.5">
                 <Label>Caixa</Label>
-                <select className={selectClass} value={form.accountId} onChange={e => setF('accountId', e.target.value)}>
+                <NativeSelect value={form.accountId} onChange={e => setF('accountId', e.target.value)}>
                   <option value="">Sem caixa</option>
                   {accs.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
-                </select>
+                </NativeSelect>
               </div>
             </div>
             <div className="flex flex-col gap-1.5">
@@ -1248,23 +1217,19 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
         onCancel={() => setConfirmClose(false)}
       />
 
-      <AlertDialog open={!!deleteTarget} onOpenChange={open => { if (!open) setDeleteTarget(null) }}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Excluir lançamento</AlertDialogTitle>
-            <AlertDialogDescription>
-              Excluir <strong>{deleteTarget?.description}</strong> ({deleteTarget ? centsToBRL(deleteTarget.amountCents) : ''})? Esta ação não pode ser desfeita.
-              {deleteTarget?.transferId && ' Os dois lados da transferência (saída e entrada) serão removidos.'}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={deleteTx.isPending}>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={e => { e.preventDefault(); handleDelete() }} disabled={deleteTx.isPending} className="bg-destructive text-white hover:bg-destructive/90">
-              {deleteTx.isPending ? 'Excluindo...' : 'Excluir'}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <DeleteConfirmDialog
+        open={!!deleteTarget}
+        onOpenChange={open => { if (!open) setDeleteTarget(null) }}
+        title="Excluir lançamento"
+        description={
+          <>
+            Excluir <strong>{deleteTarget?.description}</strong> ({deleteTarget ? centsToBRL(deleteTarget.amountCents) : ''})? Esta ação não pode ser desfeita.
+            {deleteTarget?.transferId && ' Os dois lados da transferência (saída e entrada) serão removidos.'}
+          </>
+        }
+        onConfirm={handleDelete}
+        pending={deleteTx.isPending}
+      />
     </div>
   )
 }
@@ -1360,11 +1325,7 @@ function CategoriesTab({ enabled, canCreate, canUpdate, canDelete }: {
         )}
       </div>
 
-      {isError && (
-        <div className="rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
-          Erro ao carregar as categorias.
-        </div>
-      )}
+      {isError && <LoadErrorBanner message="Erro ao carregar as categorias." />}
 
       <div className="rounded-lg border border-border bg-card overflow-hidden">
         <div className="overflow-x-auto">
@@ -1444,10 +1405,10 @@ function CategoriesTab({ enabled, canCreate, canUpdate, canDelete }: {
             </div>
             <div className="flex flex-col gap-1.5">
               <Label>Tipo *</Label>
-              <select className={selectClass} value={form.type} onChange={e => setForm(p => ({ ...p, type: e.target.value as FinanceType }))}>
+              <NativeSelect value={form.type} onChange={e => setForm(p => ({ ...p, type: e.target.value as FinanceType }))}>
                 <option value="IN">Entrada</option>
                 <option value="OUT">Saída</option>
-              </select>
+              </NativeSelect>
             </div>
             <div className="flex flex-col gap-1.5">
               <Label>Cor</Label>
@@ -1489,22 +1450,14 @@ function CategoriesTab({ enabled, canCreate, canUpdate, canDelete }: {
         onCancel={() => setConfirmClose(false)}
       />
 
-      <AlertDialog open={!!deleteTarget} onOpenChange={open => { if (!open) setDeleteTarget(null) }}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Excluir categoria</AlertDialogTitle>
-            <AlertDialogDescription>
-              Excluir <strong>{deleteTarget?.name}</strong>? Lançamentos já feitos com ela são mantidos.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={deleteCat.isPending}>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={e => { e.preventDefault(); handleDelete() }} disabled={deleteCat.isPending} className="bg-destructive text-white hover:bg-destructive/90">
-              {deleteCat.isPending ? 'Excluindo...' : 'Excluir'}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <DeleteConfirmDialog
+        open={!!deleteTarget}
+        onOpenChange={open => { if (!open) setDeleteTarget(null) }}
+        title="Excluir categoria"
+        description={<>Excluir <strong>{deleteTarget?.name}</strong>? Lançamentos já feitos com ela são mantidos.</>}
+        onConfirm={handleDelete}
+        pending={deleteCat.isPending}
+      />
     </div>
   )
 }
@@ -1599,11 +1552,7 @@ function AccountsTab({ enabled, canCreate, canUpdate, canDelete }: {
         )}
       </div>
 
-      {isError && (
-        <div className="rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
-          Erro ao carregar os caixas.
-        </div>
-      )}
+      {isError && <LoadErrorBanner message="Erro ao carregar os caixas." />}
 
       <div className="rounded-lg border border-border bg-card overflow-hidden">
         <div className="overflow-x-auto">
@@ -1714,22 +1663,14 @@ function AccountsTab({ enabled, canCreate, canUpdate, canDelete }: {
         onCancel={() => setConfirmClose(false)}
       />
 
-      <AlertDialog open={!!deleteTarget} onOpenChange={open => { if (!open) setDeleteTarget(null) }}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Excluir caixa</AlertDialogTitle>
-            <AlertDialogDescription>
-              Excluir <strong>{deleteTarget?.name}</strong>? Lançamentos já feitos nele são mantidos.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={deleteAcc.isPending}>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={e => { e.preventDefault(); handleDelete() }} disabled={deleteAcc.isPending} className="bg-destructive text-white hover:bg-destructive/90">
-              {deleteAcc.isPending ? 'Excluindo...' : 'Excluir'}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <DeleteConfirmDialog
+        open={!!deleteTarget}
+        onOpenChange={open => { if (!open) setDeleteTarget(null) }}
+        title="Excluir caixa"
+        description={<>Excluir <strong>{deleteTarget?.name}</strong>? Lançamentos já feitos nele são mantidos.</>}
+        onConfirm={handleDelete}
+        pending={deleteAcc.isPending}
+      />
     </div>
   )
 }

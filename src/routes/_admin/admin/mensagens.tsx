@@ -8,12 +8,14 @@ import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
-  DialogDescription, DialogFooter,
 } from '@/components/ui/dialog'
-import { Mail, MailOpen, Phone, AtSign, ChevronLeft, ChevronRight, Trash2, Search, X, CheckCheck } from 'lucide-react'
+import { DeleteConfirmDialog } from '@/components/DeleteConfirmDialog'
+import { Pagination } from '@/components/ui/pagination'
+import { useDebouncedValue } from '@/hooks/useDebouncedValue'
+import { Mail, MailOpen, Phone, AtSign, Trash2, Search, X, CheckCheck } from 'lucide-react'
 import { toast } from 'sonner'
 import { Input } from '@/components/ui/input'
-import { useEffect, useRef } from 'react'
+import { useEffect } from 'react'
 
 export const Route = createFileRoute('/_admin/admin/mensagens')({
   beforeLoad: () => requirePermission('READ_CONTACT'),
@@ -83,25 +85,17 @@ type ReadFilter = 'all' | 'unread' | 'read'
 
 function RouteComponent() {
   const [page, setPage] = useState(1)
-  const [search, setSearch] = useState('')
   const [searchInput, setSearchInput] = useState('')
+  const search = useDebouncedValue(searchInput, 350)
   const [readFilter, setReadFilter] = useState<ReadFilter>('all')
   const [selected, setSelected] = useState<ContactMessage | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<ContactMessage | null>(null)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [bulkBusy, setBulkBusy] = useState(false)
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false)
-  const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  // debounce search
-  useEffect(() => {
-    if (searchTimer.current) clearTimeout(searchTimer.current)
-    searchTimer.current = setTimeout(() => {
-      setSearch(searchInput)
-      setPage(1)
-    }, 350)
-    return () => { if (searchTimer.current) clearTimeout(searchTimer.current) }
-  }, [searchInput])
+  // reset page when the debounced search changes
+  useEffect(() => { setPage(1) }, [search])
 
   // reset page on filter change
   useEffect(() => { setPage(1) }, [readFilter])
@@ -135,6 +129,7 @@ function RouteComponent() {
 
   const messages = data?.data ?? []
   const totalPages = data?.totalPages ?? 1
+  const total = data?.total ?? 0
   const unreadCount = unreadData?.total ?? 0
 
   // Seleção múltipla — limpa ao trocar de página/filtro/busca.
@@ -200,7 +195,7 @@ function RouteComponent() {
           {searchInput && (
             <button
               className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-              onClick={() => { setSearchInput(''); setSearch('') }}
+              onClick={() => setSearchInput('')}
             >
               <X className="size-3.5" />
             </button>
@@ -316,62 +311,42 @@ function RouteComponent() {
 
       {/* Paginação */}
       {totalPages > 1 && (
-        <div className="flex items-center justify-center gap-3 mt-6">
-          <Button
-            variant="outline" size="sm" className="gap-1"
-            disabled={page === 1}
-            onClick={() => setPage(p => p - 1)}
-          >
-            <ChevronLeft className="size-4" /> Anterior
-          </Button>
-          <span className="text-sm text-muted-foreground">
-            Página {page} de {totalPages}
-          </span>
-          <Button
-            variant="outline" size="sm" className="gap-1"
-            disabled={page === totalPages}
-            onClick={() => setPage(p => p + 1)}
-          >
-            Próxima <ChevronRight className="size-4" />
-          </Button>
+        <div className="mt-6">
+          <Pagination
+            page={page}
+            totalPages={totalPages}
+            total={total}
+            limit={20}
+            onPageChange={setPage}
+            showLimitSelector={false}
+            isLoading={isLoading}
+          />
         </div>
       )}
 
       <MessageDialog message={selected} onClose={() => setSelected(null)} />
 
-      <Dialog open={bulkDeleteOpen} onOpenChange={open => !open && setBulkDeleteOpen(false)}>
-        <DialogContent className="sm:max-w-sm">
-          <DialogHeader>
-            <DialogTitle>Excluir {selectedIds.size} mensagem(ns)</DialogTitle>
-            <DialogDescription>
-              Esta ação não pode ser desfeita. As mensagens selecionadas serão removidas permanentemente.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setBulkDeleteOpen(false)}>Cancelar</Button>
-            <Button variant="destructive" onClick={bulkDelete} disabled={bulkBusy}>
-              {bulkBusy ? 'Excluindo...' : 'Excluir todas'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <DeleteConfirmDialog
+        open={bulkDeleteOpen}
+        onOpenChange={open => { if (!open) setBulkDeleteOpen(false) }}
+        title={`Excluir ${selectedIds.size} mensagem(ns)`}
+        description="Esta ação não pode ser desfeita. As mensagens selecionadas serão removidas permanentemente."
+        onConfirm={bulkDelete}
+        pending={bulkBusy}
+        confirmLabel="Excluir todas"
+        pendingLabel="Excluindo..."
+      />
 
-      <Dialog open={!!deleteTarget} onOpenChange={open => !open && setDeleteTarget(null)}>
-        <DialogContent className="sm:max-w-sm">
-          <DialogHeader>
-            <DialogTitle>Excluir mensagem</DialogTitle>
-            <DialogDescription>
-              Esta ação não pode ser desfeita. A mensagem de <strong>{deleteTarget?.name}</strong> será removida permanentemente.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setDeleteTarget(null)}>Cancelar</Button>
-            <Button variant="destructive" onClick={handleDelete} disabled={deleteMsg.isPending}>
-              {deleteMsg.isPending ? 'Excluindo...' : 'Excluir'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <DeleteConfirmDialog
+        open={!!deleteTarget}
+        onOpenChange={open => { if (!open) setDeleteTarget(null) }}
+        title="Excluir mensagem"
+        description={<>Esta ação não pode ser desfeita. A mensagem de <strong>{deleteTarget?.name}</strong> será removida permanentemente.</>}
+        onConfirm={handleDelete}
+        pending={deleteMsg.isPending}
+        confirmLabel="Excluir"
+        pendingLabel="Excluindo..."
+      />
     </div>
   )
 }

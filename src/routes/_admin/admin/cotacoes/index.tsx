@@ -22,10 +22,9 @@ import {
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from '@/components/ui/dialog'
-import {
-  AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogFooter,
-  AlertDialogTitle, AlertDialogDescription, AlertDialogAction, AlertDialogCancel,
-} from '@/components/ui/alert-dialog'
+import { DeleteConfirmDialog } from '@/components/DeleteConfirmDialog'
+import { LoadErrorBanner } from '@/components/LoadErrorBanner'
+import { NoPermission } from '@/components/NoPermission'
 
 export const Route = createFileRoute('/_admin/admin/cotacoes/')({
   // Busca na URL (sobrevive a voltar/atualizar/compartilhar).
@@ -180,13 +179,7 @@ function RouteComponent() {
   const saving = createQuote.isPending || updateQuote.isPending
 
   if (!permLoading && !can('READ_MARKET_QUOTE')) {
-    return (
-      <div className="p-6">
-        <div className="rounded-lg border border-border bg-muted/30 px-4 py-12 text-center text-sm text-muted-foreground">
-          Você não tem permissão para ver as cotações.
-        </div>
-      </div>
-    )
+    return <NoPermission message="Você não tem permissão para ver as cotações." />
   }
 
   return (
@@ -215,11 +208,7 @@ function RouteComponent() {
         />
       </div>
 
-      {isError && (
-        <div className="rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
-          Erro ao carregar cotações.
-        </div>
-      )}
+      {isError && <LoadErrorBanner message="Erro ao carregar cotações." />}
 
       {canReorder && list.length > 1 && (
         <p className="inline-flex items-center gap-1 text-xs text-muted-foreground">
@@ -390,26 +379,14 @@ function RouteComponent() {
         </DialogContent>
       </Dialog>
 
-      <AlertDialog open={!!deleteTarget} onOpenChange={open => { if (!open) setDeleteTarget(null) }}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Excluir cotação</AlertDialogTitle>
-            <AlertDialogDescription>
-              Excluir <strong>{deleteTarget?.label}</strong>? Esta ação não pode ser desfeita.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={deleteQuote.isPending}>Cancelar</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={e => { e.preventDefault(); handleDelete() }}
-              disabled={deleteQuote.isPending}
-              className="bg-destructive text-white hover:bg-destructive/90"
-            >
-              {deleteQuote.isPending ? 'Excluindo...' : 'Excluir'}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <DeleteConfirmDialog
+        open={!!deleteTarget}
+        onOpenChange={open => { if (!open) setDeleteTarget(null) }}
+        title="Excluir cotação"
+        description={<>Excluir <strong>{deleteTarget?.label}</strong>? Esta ação não pode ser desfeita.</>}
+        onConfirm={handleDelete}
+        pending={deleteQuote.isPending}
+      />
     </div>
   )
 }

@@ -18,10 +18,7 @@ import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
-import {
-  Dialog, DialogContent, DialogHeader, DialogTitle,
-  DialogDescription, DialogFooter,
-} from '@/components/ui/dialog'
+import { DeleteConfirmDialog } from '@/components/DeleteConfirmDialog'
 import {
   Plus, Pencil, Trash2, ChevronUp, ChevronDown, ImageUp, X, ExternalLink,
   Image as ImageIcon,
@@ -484,21 +481,23 @@ function RouteComponent() {
 
       <BannerSheet mode={sheet} onClose={() => setSheet(null)} />
 
-      <Dialog open={!!deleteTarget} onOpenChange={open => !open && setDeleteTarget(null)}>
-        <DialogContent className="sm:max-w-sm">
-          <DialogHeader>
-            <DialogTitle>Excluir banner</DialogTitle>
-            <DialogDescription>Esta ação não pode ser desfeita.</DialogDescription>
-          </DialogHeader>
-          <p className="text-sm font-medium">{deleteTarget?.title}</p>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setDeleteTarget(null)}>Cancelar</Button>
-            <Button variant="destructive" onClick={handleDelete} disabled={deleteBanner.isPending}>
-              {deleteBanner.isPending ? 'Excluindo...' : 'Excluir'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <DeleteConfirmDialog
+        open={!!deleteTarget}
+        onOpenChange={open => { if (!open) setDeleteTarget(null) }}
+        title="Excluir banner"
+        description={
+          <>
+            Esta ação não pode ser desfeita.
+            {deleteTarget?.title && (
+              <span className="mt-2 block font-medium text-foreground">{deleteTarget.title}</span>
+            )}
+          </>
+        }
+        onConfirm={handleDelete}
+        pending={deleteBanner.isPending}
+        confirmLabel="Excluir"
+        pendingLabel="Excluindo..."
+      />
     </div>
   )
 }

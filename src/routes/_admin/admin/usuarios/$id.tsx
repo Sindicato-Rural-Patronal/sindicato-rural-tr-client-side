@@ -11,7 +11,10 @@ import {
   type UserDataDetail, type UserProperty, type UserRelation,
 } from '@/hooks/useAdmin'
 import { useUnsavedGuard } from '@/hooks/use-unsaved-guard'
+import { useDebouncedValue } from '@/hooks/useDebouncedValue'
 import { CadproFields } from '@/components/CadproFields'
+import { DeleteConfirmDialog } from '@/components/DeleteConfirmDialog'
+import { NativeSelect } from '@/components/ui/native-select'
 import { Pagination } from '@/components/ui/pagination'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
@@ -94,15 +97,15 @@ function SelectField({
   disabled?: boolean
 }) {
   return (
-    <select
+    <NativeSelect
       value={value}
       onChange={e => onChange(e.target.value)}
       disabled={disabled}
-      className="rounded-md border border-input px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring bg-background h-9 disabled:opacity-50 disabled:cursor-not-allowed"
+      className="h-9 disabled:opacity-50 disabled:cursor-not-allowed"
     >
       {placeholder && <option value="">{placeholder}</option>}
       {options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-    </select>
+    </NativeSelect>
   )
 }
 
@@ -1317,21 +1320,19 @@ function PropriedadesTab({ userId }: { userId: string }) {
       </Dialog>
 
       {/* Dialog: Confirmar remoção */}
-      <Dialog open={!!deleteTarget} onOpenChange={open => !open && setDeleteTarget(null)}>
-        <DialogContent className="sm:max-w-sm">
-          <DialogHeader>
-            <DialogTitle>Remover propriedade</DialogTitle>
-            <DialogDescription>Esta ação não pode ser desfeita.</DialogDescription>
-          </DialogHeader>
-          <p className="text-sm font-medium">{deleteTarget?.name}</p>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setDeleteTarget(null)}>Cancelar</Button>
-            <Button variant="destructive" onClick={handleDelete} disabled={deleteProp.isPending}>
-              {deleteProp.isPending ? 'Removendo...' : 'Remover'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <DeleteConfirmDialog
+        open={!!deleteTarget}
+        onOpenChange={open => !open && setDeleteTarget(null)}
+        title="Remover propriedade"
+        description={<>
+          <span className="font-medium text-foreground">{deleteTarget?.name}</span>
+          <br />Esta ação não pode ser desfeita.
+        </>}
+        onConfirm={handleDelete}
+        pending={deleteProp.isPending}
+        confirmLabel="Remover"
+        pendingLabel="Removendo..."
+      />
     </div>
   )
 }
@@ -1354,11 +1355,7 @@ function RelacoesTab({ userId }: { userId: string }) {
   const [search, setSearch] = useState('')
   // Busca server-side (o hook aceita `search`) — associados além de 1000 ficam
   // pesquisáveis; debounce evita 1 request por tecla.
-  const [debouncedSearch, setDebouncedSearch] = useState('')
-  useEffect(() => {
-    const t = setTimeout(() => setDebouncedSearch(search), 300)
-    return () => clearTimeout(t)
-  }, [search])
+  const debouncedSearch = useDebouncedValue(search, 300)
   const { data: allUsersResp } = useAdminUsers({ limit: 20, search: debouncedSearch })
   const allUsers = allUsersResp?.data ?? []
 
@@ -1482,21 +1479,19 @@ function RelacoesTab({ userId }: { userId: string }) {
         <Pagination page={page} totalPages={totalPages} total={total} limit={limit} onPageChange={setPage} showLimitSelector={false} />
       )}
 
-      <Dialog open={!!deleteTarget} onOpenChange={open => !open && setDeleteTarget(null)}>
-        <DialogContent className="sm:max-w-sm">
-          <DialogHeader>
-            <DialogTitle>Remover relação</DialogTitle>
-            <DialogDescription>Esta ação não pode ser desfeita.</DialogDescription>
-          </DialogHeader>
-          <p className="text-sm font-medium">{deleteTarget?.target.name}</p>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setDeleteTarget(null)}>Cancelar</Button>
-            <Button variant="destructive" onClick={handleDelete} disabled={deleteRel.isPending}>
-              {deleteRel.isPending ? 'Removendo...' : 'Remover'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <DeleteConfirmDialog
+        open={!!deleteTarget}
+        onOpenChange={open => !open && setDeleteTarget(null)}
+        title="Remover relação"
+        description={<>
+          <span className="font-medium text-foreground">{deleteTarget?.target.name}</span>
+          <br />Esta ação não pode ser desfeita.
+        </>}
+        onConfirm={handleDelete}
+        pending={deleteRel.isPending}
+        confirmLabel="Remover"
+        pendingLabel="Removendo..."
+      />
     </div>
   )
 }
@@ -1633,25 +1628,17 @@ function RouteComponent() {
         </TabsContent>
       </Tabs>
 
-      <Dialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
-        <DialogContent className="sm:max-w-sm">
-          <DialogHeader>
-            <DialogTitle>Excluir associado</DialogTitle>
-            <DialogDescription>
-              Esta ação é permanente e não pode ser desfeita. O associado{' '}
-              <strong>{user.name}</strong> será removido do sistema.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter className="gap-2">
-            <Button variant="outline" onClick={() => setShowDeleteConfirm(false)}>
-              Cancelar
-            </Button>
-            <Button variant="destructive" onClick={handleDelete} disabled={deleteWorker.isPending}>
-              {deleteWorker.isPending ? 'Excluindo...' : 'Excluir'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <DeleteConfirmDialog
+        open={showDeleteConfirm}
+        onOpenChange={setShowDeleteConfirm}
+        title="Excluir associado"
+        description={<>
+          Esta ação é permanente e não pode ser desfeita. O associado{' '}
+          <strong>{user.name}</strong> será removido do sistema.
+        </>}
+        onConfirm={handleDelete}
+        pending={deleteWorker.isPending}
+      />
     </div>
   )
 }

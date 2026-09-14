@@ -14,10 +14,8 @@ import {
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from '@/components/ui/dialog'
-import {
-  AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogFooter,
-  AlertDialogTitle, AlertDialogDescription, AlertDialogAction, AlertDialogCancel,
-} from '@/components/ui/alert-dialog'
+import { DeleteConfirmDialog } from '@/components/DeleteConfirmDialog'
+import { LoadErrorBanner } from '@/components/LoadErrorBanner'
 
 export const Route = createFileRoute('/_admin/admin/salas/')({
   component: RouteComponent,
@@ -118,11 +116,7 @@ function RouteComponent() {
         />
       </div>
 
-      {isError && (
-        <div className="rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
-          Erro ao carregar salas.
-        </div>
-      )}
+      {isError && <LoadErrorBanner message="Erro ao carregar salas." />}
 
       <div className="rounded-lg border border-border bg-card overflow-hidden">
         <div className="overflow-x-auto">
@@ -249,27 +243,19 @@ function RouteComponent() {
         </DialogContent>
       </Dialog>
 
-      <AlertDialog open={!!deleteTarget} onOpenChange={open => { if (!open) setDeleteTarget(null) }}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Excluir sala</AlertDialogTitle>
-            <AlertDialogDescription>
-              Tem certeza que deseja excluir a sala <strong>{deleteTarget?.name}</strong>? Esta ação
-              não pode ser desfeita. Salas vinculadas a cursos não podem ser removidas.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={deleteRoom.isPending}>Cancelar</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={e => { e.preventDefault(); handleDelete() }}
-              disabled={deleteRoom.isPending}
-              className="bg-destructive text-white hover:bg-destructive/90"
-            >
-              {deleteRoom.isPending ? 'Excluindo...' : 'Excluir'}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <DeleteConfirmDialog
+        open={!!deleteTarget}
+        onOpenChange={open => { if (!open) setDeleteTarget(null) }}
+        title="Excluir sala"
+        description={
+          <>
+            Tem certeza que deseja excluir a sala <strong>{deleteTarget?.name}</strong>? Esta ação
+            não pode ser desfeita. Salas vinculadas a cursos não podem ser removidas.
+          </>
+        }
+        onConfirm={handleDelete}
+        pending={deleteRoom.isPending}
+      />
     </div>
   )
 }
