@@ -17,8 +17,10 @@ import { formatDateFromString } from '@/utils/format-data-from-string'
 import {
   Wallet, TrendingUp, TrendingDown, Scale, Plus, Pencil, Trash2, Search,
   ChevronLeft, ChevronRight, Tag, ArrowUpCircle, ArrowDownCircle, Paperclip, FileText, X,
-  Download, Landmark, ArrowLeftRight, FileDown, Receipt, ChevronDown,
+  Download, Landmark, ArrowLeftRight, FileDown, Receipt, ChevronDown, User,
 } from 'lucide-react'
+import { apiFetch } from '@/lib/api'
+import { useAdminUsers, type UserDataDetail } from '@/hooks/useAdmin'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -365,6 +367,7 @@ type EmpForm = {
   cnpjCpf: string; inscricaoEstadual: string; endereco: string; bairro: string
   cep: string; cidade: string; uf: string; telefone: string; desconto: string
   banco: string; conta: string; agencia: string; cheque: string
+  usuarioId?: string; usuarioNome?: string
 }
 const emptyEmp = (): EmpForm => ({
   numero: '', notaFiscal: '', nomeFantasia: '', razaoSocial: '', cnpjCpf: '', inscricaoEstadual: '',
@@ -379,6 +382,7 @@ function empFromData(e?: Empenho | null): EmpForm {
     endereco: e?.endereco ?? '', bairro: e?.bairro ?? '', cep: e?.cep ?? '', cidade: e?.cidade ?? '',
     uf: e?.uf ?? '', telefone: e?.telefone ?? '', desconto: e?.descontoCents ? maskMoney(String(e.descontoCents)) : '',
     banco: e?.banco ?? '', conta: e?.conta ?? '', agencia: e?.agencia ?? '', cheque: e?.cheque ?? '',
+    usuarioId: e?.usuarioId,
   }
 }
 function empToBody(f: EmpForm): Empenho | null {
@@ -391,8 +395,114 @@ function empToBody(f: EmpForm): Empenho | null {
   b.uf = s(f.uf); b.telefone = s(f.telefone); b.banco = s(f.banco); b.conta = s(f.conta)
   b.agencia = s(f.agencia); b.cheque = s(f.cheque)
   if (descontoCents > 0) b.descontoCents = descontoCents
+  if (f.usuarioId) b.usuarioId = f.usuarioId
   const hasAny = Object.values(b).some(v => v !== undefined)
   return hasAny ? b : null
+}
+
+// Mapeia um Usuário cadastrado para os campos do fornecedor na nota. Só
+// preenche o que o cadastro de usuário tem; IE, banco/conta ficam manuais.
+function empFromUser(u: UserDataDetail): Partial<EmpForm> {
+  const addr = u.properties?.[0]?.address ?? u.address ?? null
+  const endereco = [addr?.street, addr?.number].filter(Boolean).join(', ')
+  return {
+    usuarioId: u.id,
+    usuarioNome: u.name,
+    razaoSocial: u.name ?? '',
+    nomeFantasia: u.nickname ?? u.name ?? '',
+    cnpjCpf: u.cnpj ?? u.cpf ?? '',
+    telefone: u.phone ?? '',
+    endereco,
+    bairro: addr?.neighborhood ?? '',
+    cep: addr?.zipCode ?? '',
+    cidade: addr?.city ?? '',
+    uf: addr?.state ?? '',
+  }
+}
+
+// Busca um Usuário cadastrado e preenche os dados do fornecedor na nota.
+// Quando já vinculado, mostra o vínculo com opção de desvincular.
+function VincularUsuario({ current, onPick, onClear }: {
+  current?: { id?: string; nome?: string }
+  onPick: (u: UserDataDetail) => void
+  onClear: () => void
+}) {
+  const [q, setQ] = useState('')
+  const [dq, setDq] = useState('')
+  const [open, setOpen] = useState(false)
+  const [loadingId, setLoadingId] = useState<string | null>(null)
+
+  useEffect(() => {
+    const t = setTimeout(() => setDq(q.trim()), 300)
+    return () => clearTimeout(t)
+  }, [q])
+
+  const { data, isFetching } = useAdminUsers({ search: dq, limit: 6 })
+  const results = dq.length >= 2 ? (data?.data ?? []) : []
+
+  async function pick(id: string) {
+    setLoadingId(id)
+    try {
+      const detail: UserDataDetail = await apiFetch(`/admin/users/${id}`).then(r => r.json())
+      onPick(detail)
+      setQ(''); setDq(''); setOpen(false)
+    } catch {
+      toast.error('Não foi possível carregar o usuário.')
+    } finally {
+      setLoadingId(null)
+    }
+  }
+
+  if (current?.id) {
+    return (
+      <div className="flex items-center justify-between rounded-md border border-border bg-muted/40 px-3 py-2 text-sm">
+        <span className="inline-flex items-center gap-2 text-muted-foreground">
+          <User className="size-4" /> Vinculado a{' '}
+          <strong className="text-foreground">{current.nome ?? 'usuário cadastrado'}</strong>
+        </span>
+        <Button type="button" size="sm" variant="ghost" className="h-7 gap-1 px-2" onClick={onClear}>
+          <X className="size-3.5" /> Desvincular
+        </Button>
+      </div>
+    )
+  }
+
+  return (
+    <div className="relative">
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+        <Input
+          value={q}
+          onChange={e => { setQ(e.target.value); setOpen(true) }}
+          onFocus={() => setOpen(true)}
+          onBlur={() => setTimeout(() => setOpen(false), 150)}
+          placeholder="Vincular a um usuário (nome, CPF/CNPJ)…"
+          className="pl-10 text-sm"
+        />
+      </div>
+      {open && dq.length >= 2 && (
+        <div className="absolute z-50 mt-1 w-full overflow-hidden rounded-md border border-border bg-popover shadow-md">
+          {isFetching && <div className="px-3 py-2 text-xs text-muted-foreground">Buscando…</div>}
+          {!isFetching && results.length === 0 && (
+            <div className="px-3 py-2 text-xs text-muted-foreground">Nenhum usuário encontrado.</div>
+          )}
+          {results.map(u => (
+            <button
+              key={u.id}
+              type="button"
+              disabled={loadingId !== null}
+              onMouseDown={e => e.preventDefault()}
+              onClick={() => pick(u.id)}
+              className="flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-sm hover:bg-accent disabled:opacity-50"
+            >
+              <span className="truncate">{u.name}</span>
+              <span className="shrink-0 text-xs text-muted-foreground">{u.cnpj ?? u.cpf ?? ''}</span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  )
 }
 
 type TxForm = {
@@ -1067,6 +1177,11 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
               </button>
               {empenhoOpen && (
                 <div className="flex flex-col gap-3 border-t border-border p-3">
+                  <VincularUsuario
+                    current={form.empenho.usuarioId ? { id: form.empenho.usuarioId, nome: form.empenho.usuarioNome } : undefined}
+                    onPick={u => setForm(prev => ({ ...prev, empenho: { ...prev.empenho, ...empFromUser(u) } }))}
+                    onClear={() => setForm(prev => ({ ...prev, empenho: { ...prev.empenho, usuarioId: undefined, usuarioNome: undefined } }))}
+                  />
                   <div className="grid grid-cols-2 gap-2">
                     <EmpInput label="Nº empenho" value={form.empenho.numero} onChange={v => setEmp('numero', v)} />
                     <EmpInput label="Nota fiscal Nº" value={form.empenho.notaFiscal} onChange={v => setEmp('notaFiscal', v)} />
