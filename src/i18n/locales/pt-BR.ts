@@ -48,6 +48,9 @@ const ptBR = {
   courseCard: {
     free: 'Gratuito',
     learnMore: 'Saiba mais',
+    open: 'Inscrições abertas',
+    inProgress: 'Em andamento',
+    closed: 'Encerrado',
   },
   courses: {
     pageTitle: 'Nossos Cursos',
@@ -56,10 +59,18 @@ const ptBR = {
     filterAll: 'Todos os cursos',
     filterFree: 'Gratuitos',
     filterPaid: 'Pagos',
+    filterStatusAll: 'Todas as situações',
+    filterOpen: 'Abertos',
+    filterClosed: 'Encerrados',
+    sortSoon: 'Próximos',
+    sortRecent: 'Mais recentes',
+    sortPriceAsc: 'Menor preço',
     loading: 'Carregando cursos...',
     error: 'Erro ao carregar cursos.',
     notFound: 'Nenhum curso encontrado',
     notFoundHint: 'Tente ajustar os filtros ou buscar por outro termo.',
+    resultsCount: '{{count}} curso encontrado',
+    resultsCount_other: '{{count}} cursos encontrados',
     free: 'Gratuito',
   },
   courseDetail: {

@@ -48,6 +48,9 @@ const en = {
   courseCard: {
     free: 'Free',
     learnMore: 'Learn more',
+    open: 'Enrollment open',
+    inProgress: 'In progress',
+    closed: 'Closed',
   },
   courses: {
     pageTitle: 'Our Courses',
@@ -56,10 +59,18 @@ const en = {
     filterAll: 'All courses',
     filterFree: 'Free',
     filterPaid: 'Paid',
+    filterStatusAll: 'All statuses',
+    filterOpen: 'Open',
+    filterClosed: 'Closed',
+    sortSoon: 'Upcoming',
+    sortRecent: 'Most recent',
+    sortPriceAsc: 'Lowest price',
     loading: 'Loading courses...',
     error: 'Error loading courses.',
     notFound: 'No courses found',
     notFoundHint: 'Try adjusting your filters or searching for a different term.',
+    resultsCount: '{{count}} course found',
+    resultsCount_other: '{{count}} courses found',
     free: 'Free',
   },
   courseDetail: {

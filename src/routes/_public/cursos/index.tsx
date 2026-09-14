@@ -1,5 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Input } from '@/components/ui/input'
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
@@ -9,32 +9,68 @@ import { GraduationCap, Search } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useCourses } from '@/hooks/useCourse'
 import { CourseCard } from '@/components/course-card'
+import { getCourseSituation } from '@/utils/course-status'
+import { Skeleton } from '@/components/ui/skeleton'
 import { useSeo } from '@/hooks/useSeo'
 
 export const Route = createFileRoute('/_public/cursos/')({
   component: RouteComponent,
 })
 
+const PAGE_SIZE = 12
+type SortKey = 'soon' | 'recent' | 'price'
+
 function RouteComponent() {
   useSeo({ title: 'Cursos', description: 'Cursos agrícolas e capacitações do Sindicato Rural de Terra Roxa.' })
   const [search, setSearch] = useState('')
   const [priceFilter, setPriceFilter] = useState('all')
+  const [statusFilter, setStatusFilter] = useState('all')
+  const [sortBy, setSortBy] = useState<SortKey>('soon')
   const [page, setPage] = useState(1)
   const { t } = useTranslation()
 
-  const { data: result, isLoading, isError } = useCourses({ page, limit: 12 })
+  // Puxa um lote amplo e faz busca/filtro/ordenação/paginação no cliente —
+  // o backend de cursos não expõe busca e o volume total é pequeno.
+  const { data: result, isLoading, isError } = useCourses({ limit: 100 })
   const courses = result?.data ?? []
-  const total = result?.total ?? 0
-  const totalPages = result?.totalPages ?? 1
 
-  const filtered = courses.filter((course) => {
-    const matchSearch = course.title.toLowerCase().includes(search.toLowerCase())
-    const matchPrice =
-      priceFilter === 'all' ||
-      (priceFilter === 'free' && course.price === 0) ||
-      (priceFilter === 'paid' && course.price > 0)
-    return matchSearch && matchPrice
-  })
+  // Qualquer mudança de filtro volta pra página 1.
+  function resetTo1<T>(setter: (v: T) => void) {
+    return (v: T) => { setter(v); setPage(1) }
+  }
+
+  const processed = useMemo(() => {
+    const term = search.trim().toLowerCase()
+    const filtered = courses.filter((course) => {
+      const matchSearch =
+        !term ||
+        course.title.toLowerCase().includes(term) ||
+        course.location.toLowerCase().includes(term) ||
+        course.instructorName.toLowerCase().includes(term)
+      const matchPrice =
+        priceFilter === 'all' ||
+        (priceFilter === 'free' && course.price === 0) ||
+        (priceFilter === 'paid' && course.price > 0)
+      const situation = getCourseSituation(course)
+      const matchStatus =
+        statusFilter === 'all' ||
+        (statusFilter === 'open' && situation === 'open') ||
+        (statusFilter === 'closed' && situation === 'closed')
+      return matchSearch && matchPrice && matchStatus
+    })
+
+    filtered.sort((a, b) => {
+      if (sortBy === 'price') return a.price - b.price
+      const cmp = a.startDate.localeCompare(b.startDate)
+      return sortBy === 'recent' ? -cmp : cmp
+    })
+
+    return filtered
+  }, [courses, search, priceFilter, statusFilter, sortBy])
+
+  const totalPages = Math.max(1, Math.ceil(processed.length / PAGE_SIZE))
+  const safePage = Math.min(page, totalPages)
+  const pageItems = processed.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE)
 
   return (
     <main>
@@ -50,8 +86,8 @@ function RouteComponent() {
         {/* Filters */}
         <section className="border-b bg-card py-4 sticky top-16 z-40">
           <div className="container mx-auto px-4">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <div className="relative flex-1 max-w-xs md:max-w-md">
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+              <div className="relative flex-1 lg:max-w-md">
                 <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
                   placeholder={t('courses.searchPlaceholder')}
@@ -60,16 +96,32 @@ function RouteComponent() {
                   className="pl-10 text-sm"
                 />
               </div>
-              <Select value={priceFilter} onValueChange={(v) => { setPriceFilter(v); setPage(1) }}>
-                <SelectTrigger className="w-full sm:w-45 text-sm">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">{t('courses.filterAll')}</SelectItem>
-                  <SelectItem value="free">{t('courses.filterFree')}</SelectItem>
-                  <SelectItem value="paid">{t('courses.filterPaid')}</SelectItem>
-                </SelectContent>
-              </Select>
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+                <Select value={priceFilter} onValueChange={resetTo1(setPriceFilter)}>
+                  <SelectTrigger className="w-full text-sm"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">{t('courses.filterAll')}</SelectItem>
+                    <SelectItem value="free">{t('courses.filterFree')}</SelectItem>
+                    <SelectItem value="paid">{t('courses.filterPaid')}</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Select value={statusFilter} onValueChange={resetTo1(setStatusFilter)}>
+                  <SelectTrigger className="w-full text-sm"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">{t('courses.filterStatusAll')}</SelectItem>
+                    <SelectItem value="open">{t('courses.filterOpen')}</SelectItem>
+                    <SelectItem value="closed">{t('courses.filterClosed')}</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Select value={sortBy} onValueChange={resetTo1((v: string) => setSortBy(v as SortKey))}>
+                  <SelectTrigger className="w-full text-sm"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="soon">{t('courses.sortSoon')}</SelectItem>
+                    <SelectItem value="recent">{t('courses.sortRecent')}</SelectItem>
+                    <SelectItem value="price">{t('courses.sortPriceAsc')}</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           </div>
         </section>
@@ -78,8 +130,18 @@ function RouteComponent() {
         <section className="py-10 md:py-12">
           <div className="container mx-auto px-4">
             {isLoading && (
-              <div className="flex justify-center py-16">
-                <p className="text-muted-foreground">{t('courses.loading')}</p>
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <div key={i} className="flex flex-col gap-3 rounded-xl border overflow-hidden bg-card">
+                    <Skeleton className="aspect-video w-full rounded-none" />
+                    <div className="flex flex-col gap-2 p-4">
+                      <Skeleton className="h-4 w-3/4" />
+                      <Skeleton className="h-3 w-full" />
+                      <Skeleton className="h-3 w-1/2" />
+                      <Skeleton className="mt-2 h-9 w-full" />
+                    </div>
+                  </div>
+                ))}
               </div>
             )}
             {isError && (
@@ -87,31 +149,36 @@ function RouteComponent() {
                 <p className="text-destructive">{t('courses.error')}</p>
               </div>
             )}
-            {!isLoading && !isError && filtered.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-16 text-center">
-                <GraduationCap className="size-16 text-muted-foreground/50" />
-                <h3 className="mt-4 text-lg font-semibold">{t('courses.notFound')}</h3>
-                <p className="mt-2 text-sm text-muted-foreground">{t('courses.notFoundHint')}</p>
-              </div>
-            ) : (
-              <>
-                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                  {filtered.map((course) => (
-                    <CourseCard key={course.id} course={course} />
-                  ))}
+            {!isLoading && !isError && (
+              processed.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-16 text-center">
+                  <GraduationCap className="size-16 text-muted-foreground/50" />
+                  <h3 className="mt-4 text-lg font-semibold">{t('courses.notFound')}</h3>
+                  <p className="mt-2 text-sm text-muted-foreground">{t('courses.notFoundHint')}</p>
                 </div>
-                {totalPages > 1 && (
-                  <Pagination
-                    page={page}
-                    totalPages={totalPages}
-                    total={total}
-                    limit={12}
-                    onPageChange={setPage}
-                    showLimitSelector={false}
-                    isLoading={isLoading}
-                  />
-                )}
-              </>
+              ) : (
+                <>
+                  <p className="mb-4 text-sm text-muted-foreground">
+                    {t('courses.resultsCount', { count: processed.length })}
+                  </p>
+                  <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                    {pageItems.map((course) => (
+                      <CourseCard key={course.id} course={course} />
+                    ))}
+                  </div>
+                  {totalPages > 1 && (
+                    <Pagination
+                      page={safePage}
+                      totalPages={totalPages}
+                      total={processed.length}
+                      limit={PAGE_SIZE}
+                      onPageChange={setPage}
+                      showLimitSelector={false}
+                      isLoading={isLoading}
+                    />
+                  )}
+                </>
+              )
             )}
           </div>
         </section>
