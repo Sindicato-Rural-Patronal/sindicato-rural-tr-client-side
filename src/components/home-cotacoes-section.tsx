@@ -126,7 +126,7 @@ export function CotacoesSection() {
               {quotes.map(q => <QuoteCard key={`dup-${q.id}`} q={q} />)}
             </div>
           ) : (
-            <div ref={trackRef} className="flex gap-3 overflow-x-auto pb-1">
+            <div ref={trackRef} className="flex justify-center gap-3 overflow-x-auto pb-1">
               {quotes.map(q => <QuoteCard key={q.id} q={q} />)}
             </div>
           )}
