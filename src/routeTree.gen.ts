@@ -27,6 +27,7 @@ import { Route as AdminAdminNoticiasRouteImport } from './routes/_admin/admin/no
 import { Route as AdminAdminMensagensRouteImport } from './routes/_admin/admin/mensagens'
 import { Route as AdminAdminDashboardRouteImport } from './routes/_admin/admin/dashboard'
 import { Route as AdminAdminCursosRouteImport } from './routes/_admin/admin/cursos'
+import { Route as AdminAdminConfiguracoesRouteImport } from './routes/_admin/admin/configuracoes'
 import { Route as AdminAdminBannersRouteImport } from './routes/_admin/admin/banners'
 import { Route as AdminAdminAdministradoresRouteImport } from './routes/_admin/admin/administradores'
 import { Route as AdminAdminUsuariosIndexRouteImport } from './routes/_admin/admin/usuarios/index'
@@ -129,6 +130,11 @@ const AdminAdminCursosRoute = AdminAdminCursosRouteImport.update({
   path: '/admin/cursos',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminAdminConfiguracoesRoute = AdminAdminConfiguracoesRouteImport.update({
+  id: '/admin/configuracoes',
+  path: '/admin/configuracoes',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminAdminBannersRoute = AdminAdminBannersRouteImport.update({
   id: '/admin/banners',
   path: '/admin/banners',
@@ -207,6 +213,7 @@ export interface FileRoutesByFullPath {
   '/convite/$token': typeof ConviteTokenRoute
   '/admin/administradores': typeof AdminAdminAdministradoresRouteWithChildren
   '/admin/banners': typeof AdminAdminBannersRoute
+  '/admin/configuracoes': typeof AdminAdminConfiguracoesRoute
   '/admin/cursos': typeof AdminAdminCursosRouteWithChildren
   '/admin/dashboard': typeof AdminAdminDashboardRoute
   '/admin/mensagens': typeof AdminAdminMensagensRoute
@@ -237,6 +244,7 @@ export interface FileRoutesByTo {
   '/sobre': typeof PublicSobreRoute
   '/convite/$token': typeof ConviteTokenRoute
   '/admin/banners': typeof AdminAdminBannersRoute
+  '/admin/configuracoes': typeof AdminAdminConfiguracoesRoute
   '/admin/dashboard': typeof AdminAdminDashboardRoute
   '/admin/mensagens': typeof AdminAdminMensagensRoute
   '/cursos/$id': typeof PublicCursosIdRoute
@@ -267,6 +275,7 @@ export interface FileRoutesById {
   '/_public/': typeof PublicIndexRoute
   '/_admin/admin/administradores': typeof AdminAdminAdministradoresRouteWithChildren
   '/_admin/admin/banners': typeof AdminAdminBannersRoute
+  '/_admin/admin/configuracoes': typeof AdminAdminConfiguracoesRoute
   '/_admin/admin/cursos': typeof AdminAdminCursosRouteWithChildren
   '/_admin/admin/dashboard': typeof AdminAdminDashboardRoute
   '/_admin/admin/mensagens': typeof AdminAdminMensagensRoute
@@ -300,6 +309,7 @@ export interface FileRouteTypes {
     | '/convite/$token'
     | '/admin/administradores'
     | '/admin/banners'
+    | '/admin/configuracoes'
     | '/admin/cursos'
     | '/admin/dashboard'
     | '/admin/mensagens'
@@ -330,6 +340,7 @@ export interface FileRouteTypes {
     | '/sobre'
     | '/convite/$token'
     | '/admin/banners'
+    | '/admin/configuracoes'
     | '/admin/dashboard'
     | '/admin/mensagens'
     | '/cursos/$id'
@@ -359,6 +370,7 @@ export interface FileRouteTypes {
     | '/_public/'
     | '/_admin/admin/administradores'
     | '/_admin/admin/banners'
+    | '/_admin/admin/configuracoes'
     | '/_admin/admin/cursos'
     | '/_admin/admin/dashboard'
     | '/_admin/admin/mensagens'
@@ -516,6 +528,13 @@ declare module '@tanstack/react-router' {
       path: '/admin/cursos'
       fullPath: '/admin/cursos'
       preLoaderRoute: typeof AdminAdminCursosRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/_admin/admin/configuracoes': {
+      id: '/_admin/admin/configuracoes'
+      path: '/admin/configuracoes'
+      fullPath: '/admin/configuracoes'
+      preLoaderRoute: typeof AdminAdminConfiguracoesRouteImport
       parentRoute: typeof AdminRoute
     }
     '/_admin/admin/banners': {
@@ -680,6 +699,7 @@ const AdminAdminUsuariosRouteWithChildren =
 interface AdminRouteChildren {
   AdminAdminAdministradoresRoute: typeof AdminAdminAdministradoresRouteWithChildren
   AdminAdminBannersRoute: typeof AdminAdminBannersRoute
+  AdminAdminConfiguracoesRoute: typeof AdminAdminConfiguracoesRoute
   AdminAdminCursosRoute: typeof AdminAdminCursosRouteWithChildren
   AdminAdminDashboardRoute: typeof AdminAdminDashboardRoute
   AdminAdminMensagensRoute: typeof AdminAdminMensagensRoute
@@ -695,6 +715,7 @@ interface AdminRouteChildren {
 const AdminRouteChildren: AdminRouteChildren = {
   AdminAdminAdministradoresRoute: AdminAdminAdministradoresRouteWithChildren,
   AdminAdminBannersRoute: AdminAdminBannersRoute,
+  AdminAdminConfiguracoesRoute: AdminAdminConfiguracoesRoute,
   AdminAdminCursosRoute: AdminAdminCursosRouteWithChildren,
   AdminAdminDashboardRoute: AdminAdminDashboardRoute,
   AdminAdminMensagensRoute: AdminAdminMensagensRoute,

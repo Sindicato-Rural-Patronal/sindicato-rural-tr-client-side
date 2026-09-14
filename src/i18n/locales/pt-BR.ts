@@ -162,6 +162,18 @@ const ptBR = {
       audit: 'Auditoria',
       finance: 'Financeiro',
     },
+    settings: {
+      title: 'Configurações',
+      subtitle: 'Ajustes gerais do site.',
+      socialTitle: 'Redes sociais',
+      hint: 'Cole a URL completa (com https://). Deixe em branco para ocultar do rodapé.',
+      save: 'Salvar',
+      saving: 'Salvando...',
+      saved: 'Configurações salvas!',
+      saveError: 'Erro ao salvar as configurações.',
+      loadError: 'Erro ao carregar as configurações.',
+      noPermission: 'Você não tem permissão para ver as Configurações.',
+    },
     courses: {
       title: 'Gerenciamento de Cursos',
       newCourse: 'Novo curso',

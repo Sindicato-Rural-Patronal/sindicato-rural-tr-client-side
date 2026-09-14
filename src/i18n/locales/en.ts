@@ -162,6 +162,18 @@ const en = {
       audit: 'Audit log',
       finance: 'Finance',
     },
+    settings: {
+      title: 'Settings',
+      subtitle: 'General site settings.',
+      socialTitle: 'Social media',
+      hint: 'Paste the full URL (with https://). Leave blank to hide it from the footer.',
+      save: 'Save',
+      saving: 'Saving...',
+      saved: 'Settings saved!',
+      saveError: 'Failed to save settings.',
+      loadError: 'Failed to load settings.',
+      noPermission: 'You do not have permission to view Settings.',
+    },
     courses: {
       title: 'Course Management',
       newCourse: 'New course',

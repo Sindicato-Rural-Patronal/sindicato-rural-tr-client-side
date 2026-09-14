@@ -1,13 +1,21 @@
 import { Link } from '@tanstack/react-router'
-import { Phone, Mail, MapPin, Send } from 'lucide-react'
+import { Phone, Mail, MapPin } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { FaFacebook, FaInstagram } from 'react-icons/fa'
+import { FaFacebook, FaInstagram, FaWhatsapp } from 'react-icons/fa'
 import { useTranslation } from 'react-i18next'
 import { LanguageToggle } from '@/components/LanguageToggle'
 import { ORG_CONTACT } from '@/lib/org-contact'
+import { usePublicSocial } from '@/hooks/useSiteSettings'
+import { safeUrl } from '@/utils/safe-url'
 
 export function PublicFooter() {
   const { t } = useTranslation()
+  const { data: social } = usePublicSocial()
+  const socials = [
+    { label: 'Facebook', url: social?.facebook, Icon: FaFacebook },
+    { label: 'Instagram', url: social?.instagram, Icon: FaInstagram },
+    { label: 'WhatsApp', url: social?.whatsapp, Icon: FaWhatsapp },
+  ].filter(s => !!s.url && s.url.trim() !== '')
 
   return (
     <footer className="border-t bg-brand text-brand-foreground">
@@ -49,32 +57,25 @@ export function PublicFooter() {
           </div>
 
           {/* Social media */}
-          <div>
-            <h4 className="mb-4 text-sm font-semibold">{t('footer.socialMedia')}</h4>
-            <div className="flex gap-3">
-              <a
-                href="#"
-                className="flex size-10 items-center justify-center rounded-full bg-white/20 transition-colors hover:bg-white/30"
-                aria-label="Facebook"
-              >
-                <FaFacebook className="size-5" />
-              </a>
-              <a
-                href="#"
-                className="flex size-10 items-center justify-center rounded-full bg-white/20 transition-colors hover:bg-white/30"
-                aria-label="Telegram"
-              >
-                <Send className="size-5" />
-              </a>
-              <a
-                href="#"
-                className="flex size-10 items-center justify-center rounded-full bg-white/20 transition-colors hover:bg-white/30"
-                aria-label="Instagram"
-              >
-                <FaInstagram className="size-5" />
-              </a>
+          {socials.length > 0 && (
+            <div>
+              <h4 className="mb-4 text-sm font-semibold">{t('footer.socialMedia')}</h4>
+              <div className="flex gap-3">
+                {socials.map(s => (
+                  <a
+                    key={s.label}
+                    href={safeUrl(s.url || '')}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex size-10 items-center justify-center rounded-full bg-white/20 transition-colors hover:bg-white/30"
+                    aria-label={s.label}
+                  >
+                    <s.Icon className="size-5" />
+                  </a>
+                ))}
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Quick links */}
           <div>
