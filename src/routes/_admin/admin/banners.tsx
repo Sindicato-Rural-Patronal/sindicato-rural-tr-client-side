@@ -24,6 +24,7 @@ import {
 } from '@/components/ui/dialog'
 import {
   Plus, Pencil, Trash2, ChevronUp, ChevronDown, ImageUp, X, ExternalLink,
+  Image as ImageIcon,
 } from 'lucide-react'
 
 export const Route = createFileRoute('/_admin/admin/banners')({
@@ -335,7 +336,7 @@ function BannerSheet({
 // ─── Route component ──────────────────────────────────────────────────────────
 
 function RouteComponent() {
-  const { data: banners, isLoading } = useAdminBanners()
+  const { data: banners, isLoading, isError } = useAdminBanners()
   const deleteBanner = useDeleteBanner()
   const reorder = useReorderBanners()
 
@@ -372,12 +373,12 @@ function RouteComponent() {
 
   return (
     <div className="p-6">
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Banners</h1>
           <p className="text-sm text-muted-foreground">Gerencie os banners exibidos na página inicial</p>
         </div>
-        <Button onClick={() => setSheet({ mode: 'create' })} className="gap-1.5">
+        <Button onClick={() => setSheet({ mode: 'create' })} className="gap-1.5 shrink-0">
           <Plus className="size-4" /> Novo banner
         </Button>
       </div>
@@ -388,8 +389,15 @@ function RouteComponent() {
         </div>
       )}
 
-      {!isLoading && sorted.length === 0 && (
+      {!isLoading && isError && (
+        <div className="rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
+          Erro ao carregar os banners.
+        </div>
+      )}
+
+      {!isLoading && !isError && sorted.length === 0 && (
         <div className="flex flex-col items-center justify-center py-16 border-2 border-dashed rounded-xl text-center">
+          <ImageIcon className="size-10 text-muted-foreground/30 mb-3" />
           <p className="text-sm font-medium text-foreground">Nenhum banner cadastrado</p>
           <p className="text-xs text-muted-foreground mt-1">Clique em "Novo banner" para começar.</p>
         </div>
@@ -437,6 +445,8 @@ function RouteComponent() {
                   variant="ghost" size="icon" className="size-6"
                   disabled={idx === 0 || reorder.isPending}
                   onClick={() => move(banner.id, 'up')}
+                  aria-label="Mover banner para cima"
+                  title="Mover banner para cima"
                 >
                   <ChevronUp className="size-3.5" />
                 </Button>
@@ -444,17 +454,26 @@ function RouteComponent() {
                   variant="ghost" size="icon" className="size-6"
                   disabled={idx === sorted.length - 1 || reorder.isPending}
                   onClick={() => move(banner.id, 'down')}
+                  aria-label="Mover banner para baixo"
+                  title="Mover banner para baixo"
                 >
                   <ChevronDown className="size-3.5" />
                 </Button>
               </div>
-              <Button variant="ghost" size="icon" className="size-8" onClick={() => setSheet({ mode: 'edit', banner })}>
+              <Button
+                variant="ghost" size="icon" className="size-8"
+                onClick={() => setSheet({ mode: 'edit', banner })}
+                aria-label="Editar banner"
+                title="Editar banner"
+              >
                 <Pencil className="size-3.5" />
               </Button>
               <Button
                 variant="ghost" size="icon"
                 className="size-8 text-destructive/60 hover:text-destructive"
                 onClick={() => setDeleteTarget(banner)}
+                aria-label="Excluir banner"
+                title="Excluir banner"
               >
                 <Trash2 className="size-3.5" />
               </Button>

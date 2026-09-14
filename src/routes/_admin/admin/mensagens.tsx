@@ -108,7 +108,7 @@ function RouteComponent() {
 
   const readParam = readFilter === 'unread' ? false : readFilter === 'read' ? true : null
 
-  const { data, isLoading } = useContactMessages({ page, limit: 20, read: readParam, search })
+  const { data, isLoading, isError } = useContactMessages({ page, limit: 20, read: readParam, search })
   // Contagem global de não-lidas (não só a página atual): consulta leve read:false.
   const { data: unreadData } = useContactMessages({ page: 1, limit: 1, read: false })
   const markRead = useMarkContactMessageRead()
@@ -175,7 +175,7 @@ function RouteComponent() {
 
   return (
     <div className="p-6">
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
             Mensagens de Contato
@@ -247,7 +247,13 @@ function RouteComponent() {
         </div>
       )}
 
-      {!isLoading && messages.length === 0 && (
+      {!isLoading && isError && (
+        <div className="rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
+          Erro ao carregar as mensagens.
+        </div>
+      )}
+
+      {!isLoading && !isError && messages.length === 0 && (
         <div className="flex flex-col items-center justify-center py-20 border-2 border-dashed rounded-xl text-center">
           <Mail className="size-10 text-muted-foreground/30 mb-3" />
           <p className="text-sm font-medium">Nenhuma mensagem recebida</p>

@@ -1,9 +1,9 @@
 "use client"
 
-import { BadgeCheck, Bell, ChevronsUpDown, LogOut } from 'lucide-react'
+import { ChevronsUpDown, LogOut } from 'lucide-react'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import {
-  DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem,
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem,
   DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import {
@@ -67,17 +67,6 @@ export function NavUser({ user }: { user: { name: string; email: string; avatar:
                 </div>
               </div>
             </DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            <DropdownMenuGroup>
-              <DropdownMenuItem>
-                <BadgeCheck />
-                {t('admin.navUser.account')}
-              </DropdownMenuItem>
-              <DropdownMenuItem>
-                <Bell />
-                {t('admin.navUser.notifications')}
-              </DropdownMenuItem>
-            </DropdownMenuGroup>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={handleLogout}>
               <LogOut />

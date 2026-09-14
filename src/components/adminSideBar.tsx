@@ -48,16 +48,16 @@ export function AdminSideBar({ ...props }: React.ComponentProps<typeof Sidebar>)
         { title: t('admin.sidebar.news'), url: '/admin/noticias', icon: Newspaper, perm: 'READ_COURSE' },
         { title: t('admin.sidebar.users'), url: '/admin/usuarios', icon: Users, perm: 'READ_USER' },
         { title: t('admin.sidebar.rooms'), url: '/admin/salas', icon: DoorOpen, perm: 'READ_COURSE' },
-        { title: 'Banners', url: '/admin/banners', icon: Images, perm: 'READ_BANNER' },
-        { title: 'Cotações', url: '/admin/cotacoes', icon: TrendingUp, perm: 'READ_MARKET_QUOTE' },
-        { title: 'Mensagens', url: '/admin/mensagens', icon: Mail, perm: 'READ_CONTACT' },
-        { title: 'Auditoria', url: '/admin/auditoria', icon: ScrollText, perm: 'READ_AUDIT' },
+        { title: t('admin.sidebar.banners'), url: '/admin/banners', icon: Images, perm: 'READ_BANNER' },
+        { title: t('admin.sidebar.quotes'), url: '/admin/cotacoes', icon: TrendingUp, perm: 'READ_MARKET_QUOTE' },
+        { title: t('admin.sidebar.messages'), url: '/admin/mensagens', icon: Mail, perm: 'READ_CONTACT' },
+        { title: t('admin.sidebar.audit'), url: '/admin/auditoria', icon: ScrollText, perm: 'READ_AUDIT' },
       ],
     },
     {
-      label: 'Financeiro',
+      label: t('admin.sidebar.finance'),
       items: [
-        { title: 'Financeiro', url: '/admin/financeiro', icon: Wallet, perm: 'READ_FINANCE' },
+        { title: t('admin.sidebar.finance'), url: '/admin/financeiro', icon: Wallet, perm: 'READ_FINANCE' },
       ],
     },
   ]

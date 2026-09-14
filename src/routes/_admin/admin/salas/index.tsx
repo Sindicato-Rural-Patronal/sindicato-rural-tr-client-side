@@ -125,6 +125,7 @@ function RouteComponent() {
       )}
 
       <div className="rounded-lg border border-border bg-card overflow-hidden">
+        <div className="overflow-x-auto">
         <Table>
           <TableHeader>
             <TableRow>
@@ -196,6 +197,7 @@ function RouteComponent() {
             ))}
           </TableBody>
         </Table>
+        </div>
       </div>
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>

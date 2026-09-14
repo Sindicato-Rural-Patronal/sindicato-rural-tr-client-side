@@ -31,6 +31,10 @@ import { AlertCircle, Plus, Shield, Users, Pencil, Trash2, ExternalLink, Globe, 
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
+import {
+  AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogFooter,
+  AlertDialogTitle, AlertDialogDescription, AlertDialogAction, AlertDialogCancel,
+} from '@/components/ui/alert-dialog'
 import { Pagination } from '@/components/ui/pagination'
 
 export const Route = createFileRoute('/_admin/admin/usuarios/')({
@@ -320,14 +324,16 @@ function RegrasSheet() {
   const { data: regrasResult, isLoading } = useAdminRules()
   const regras = regrasResult?.data ?? []
   const [dialog, setDialog] = useState<RegraDialogState | null>(null)
+  const [deleteRuleTarget, setDeleteRuleTarget] = useState<Rule | null>(null)
   const { can } = usePermissions()
   const deleteRule = useDeleteRule()
 
-  async function excluirRegra(r: { id: string; name: string }) {
-    if (!window.confirm(`Excluir a regra "${r.name}"? Esta ação não pode ser desfeita.`)) return
+  async function handleDeleteRule() {
+    if (!deleteRuleTarget) return
     try {
-      await deleteRule.mutateAsync(r.id)
+      await deleteRule.mutateAsync(deleteRuleTarget.id)
       toast.success('Regra excluída.')
+      setDeleteRuleTarget(null)
     } catch (e) {
       toast.error(apiErrorMessage(e, 'Erro ao excluir a regra.'))
     }
@@ -410,7 +416,7 @@ function RegrasSheet() {
                         variant="ghost" size="icon"
                         className="size-7 text-muted-foreground hover:text-destructive"
                         disabled={deleteRule.isPending}
-                        onClick={() => excluirRegra(r)}
+                        onClick={() => setDeleteRuleTarget(r)}
                         title="Excluir regra"
                       >
                         <Trash2 className="size-3.5" />
@@ -425,6 +431,28 @@ function RegrasSheet() {
       </Sheet>
 
       <RegraDialog state={dialog} onClose={() => setDialog(null)} />
+
+      <AlertDialog open={!!deleteRuleTarget} onOpenChange={open => { if (!open) setDeleteRuleTarget(null) }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir regra</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja excluir a regra <strong>{deleteRuleTarget?.name}</strong>? Esta ação
+              não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleteRule.isPending}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={e => { e.preventDefault(); handleDeleteRule() }}
+              disabled={deleteRule.isPending}
+              className="bg-destructive text-white hover:bg-destructive/90"
+            >
+              {deleteRule.isPending ? 'Excluindo...' : 'Excluir'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   )
 }
@@ -692,7 +720,7 @@ function RouteComponent() {
     setUsersPage(1)
   }
 
-  const { data: usuariosData, isLoading: loadingUsers } = useAdminUsers({
+  const { data: usuariosData, isLoading: loadingUsers, isError: errorUsers } = useAdminUsers({
     page: usersPage,
     limit,
     search: usersSearch || undefined,
@@ -704,7 +732,7 @@ function RouteComponent() {
     memberClassification: memberClassFilter || undefined,
   })
   const { data: regrasData } = useAdminRules()
-  const { data: adminsData, isLoading: loadingAdmins } = useAdminAdmins({
+  const { data: adminsData, isLoading: loadingAdmins, isError: errorAdmins } = useAdminAdmins({
     page: adminsPage,
     limit,
     rulesId: rulesFilter || undefined,
@@ -970,7 +998,12 @@ function RouteComponent() {
               ))}
             </div>
           )}
-          {!loadingUsers && usuarios.length === 0 && (
+          {!loadingUsers && errorUsers && (
+            <div className="rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
+              Erro ao carregar associados.
+            </div>
+          )}
+          {!loadingUsers && !errorUsers && usuarios.length === 0 && (
             <div className="flex flex-col items-center justify-center py-16 text-center">
               <Users className="size-10 text-muted-foreground/30 mb-3" />
               <p className="text-sm font-medium text-foreground">Nenhum associado cadastrado</p>
@@ -979,6 +1012,7 @@ function RouteComponent() {
           {!loadingUsers && usuarios.length > 0 && (
             <>
               <div className="rounded-lg border border-border bg-card overflow-hidden">
+                <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -1011,7 +1045,7 @@ function RouteComponent() {
                         <TableCell className="text-right">
                           <div className="flex items-center justify-end gap-1">
                             <Button variant="ghost" size="icon" className="size-7" asChild>
-                              <Link to="/admin/usuarios/$id" params={{ id: u.id }}>
+                              <Link to="/admin/usuarios/$id" params={{ id: u.id }} aria-label="Ver associado" title="Ver associado">
                                 <ExternalLink className="size-3.5" />
                               </Link>
                             </Button>
@@ -1021,6 +1055,7 @@ function RouteComponent() {
                               variant="ghost" size="icon"
                               className="size-7 text-destructive/60 hover:text-destructive"
                               onClick={() => setDeleteAssociadoTarget(u)}
+                              aria-label="Excluir associado"
                             >
                               <Trash2 className="size-3.5" />
                             </PermissionButton>
@@ -1030,6 +1065,7 @@ function RouteComponent() {
                     ))}
                   </TableBody>
                 </Table>
+                </div>
               </div>
               <Pagination
                 page={usersPage}
@@ -1081,7 +1117,12 @@ function RouteComponent() {
               ))}
             </div>
           )}
-          {!loadingAdmins && admins.length === 0 && (
+          {!loadingAdmins && errorAdmins && (
+            <div className="rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
+              Erro ao carregar administradores.
+            </div>
+          )}
+          {!loadingAdmins && !errorAdmins && admins.length === 0 && (
             <div className="flex flex-col items-center justify-center py-16 text-center">
               <Shield className="size-10 text-muted-foreground/30 mb-3" />
               <p className="text-sm font-medium text-foreground">Nenhum administrador cadastrado</p>

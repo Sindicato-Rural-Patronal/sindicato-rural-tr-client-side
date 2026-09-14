@@ -156,6 +156,11 @@ const ptBR = {
       rooms: 'Salas',
       admins: 'Administradores',
       rules: 'Regras',
+      banners: 'Banners',
+      quotes: 'Cotações',
+      messages: 'Mensagens',
+      audit: 'Auditoria',
+      finance: 'Financeiro',
     },
     courses: {
       title: 'Gerenciamento de Cursos',

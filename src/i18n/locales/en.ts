@@ -156,6 +156,11 @@ const en = {
       rooms: 'Rooms',
       admins: 'Administrators',
       rules: 'Rules',
+      banners: 'Banners',
+      quotes: 'Market quotes',
+      messages: 'Messages',
+      audit: 'Audit log',
+      finance: 'Finance',
     },
     courses: {
       title: 'Course Management',

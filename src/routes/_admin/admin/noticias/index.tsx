@@ -805,7 +805,7 @@ function RouteComponent() {
   const [page, setPage] = useState(1)
   const [limit, setLimit] = useState<typeof NEWS_LIMIT_OPTIONS[number]>(6)
 
-  const { data: newsData, isLoading } = useAdminNews({ page, limit })
+  const { data: newsData, isLoading, isError } = useAdminNews({ page, limit })
   const news       = newsData?.data       ?? []
   const totalNews  = newsData?.total      ?? 0
   const totalPages = newsData?.totalPages ?? 1
@@ -921,7 +921,13 @@ function RouteComponent() {
         </div>
       )}
 
-      {!isLoading && news.length === 0 && (
+      {!isLoading && isError && (
+        <div className="rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
+          Erro ao carregar as notícias.
+        </div>
+      )}
+
+      {!isLoading && !isError && news.length === 0 && (
         <EmptyState
           icon={Newspaper}
           title="Nenhuma notícia cadastrada"

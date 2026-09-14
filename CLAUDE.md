@@ -70,7 +70,6 @@ src/
 │   ├── public-footer.tsx            # Footer
 │   ├── adminSideBar.tsx             # Sidebar admin — usa logo-icon.png; link perfil via userDataId
 │   ├── nav-user.tsx                 # Dropdown do usuário (logout)
-│   ├── nav-main.tsx                 # Itens de nav da sidebar
 │   ├── home-hero-section.tsx        # Banner hero
 │   ├── home-static-section.tsx      # Stats (StatsSection)
 │   ├── home-courses-section.tsx     # Carrossel de cursos (CoursesSection)

@@ -50,6 +50,10 @@ import {
   Table, TableHeader, TableBody, TableRow, TableHead, TableCell,
 } from '@/components/ui/table'
 import {
+  AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogFooter,
+  AlertDialogTitle, AlertDialogDescription, AlertDialogAction, AlertDialogCancel,
+} from '@/components/ui/alert-dialog'
+import {
   Form, FormField, FormItem, FormLabel, FormControl, FormMessage,
 } from '@/components/ui/form'
 import type { Course } from '@/@types/course'
@@ -177,7 +181,19 @@ function GalleryManager({ course }: { course: Course }) {
   const deletePhoto = useDeleteGalleryPhoto(course.id)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [uploadError, setUploadError] = useState<string | null>(null)
+  const [deletePhotoId, setDeletePhotoId] = useState<string | null>(null)
   const { t } = useTranslation()
+
+  async function handleDeletePhoto() {
+    if (!deletePhotoId) return
+    try {
+      await deletePhoto.mutateAsync(deletePhotoId)
+      toast.success('Foto removida.')
+      setDeletePhotoId(null)
+    } catch {
+      toast.error('Erro ao remover foto.')
+    }
+  }
 
   async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
@@ -207,7 +223,7 @@ function GalleryManager({ course }: { course: Course }) {
           disabled={uploadPhoto.isPending}
         >
           <ImagePlus className="size-4" />
-          {uploadPhoto.isPending ? t('admin.courses.galleryUpload') : t('admin.courses.galleryUpload')}
+          {uploadPhoto.isPending ? 'Enviando...' : t('admin.courses.galleryUpload')}
         </Button>
         <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
       </div>
@@ -226,7 +242,7 @@ function GalleryManager({ course }: { course: Course }) {
               <img src={photo.url} alt={photo.caption || 'Photo'} className="h-full w-full object-cover" />
               <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                 <button
-                  onClick={() => deletePhoto.mutateAsync(photo.id).then(() => toast.success('Foto removida.')).catch(() => toast.error('Erro ao remover foto.'))}
+                  onClick={() => setDeletePhotoId(photo.id)}
                   disabled={deletePhoto.isPending}
                   className="size-8 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center"
                 >
@@ -242,6 +258,27 @@ function GalleryManager({ course }: { course: Course }) {
           ))}
         </div>
       )}
+
+      <AlertDialog open={!!deletePhotoId} onOpenChange={open => { if (!open) setDeletePhotoId(null) }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remover foto</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja remover esta foto da galeria? Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deletePhoto.isPending}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={e => { e.preventDefault(); handleDeletePhoto() }}
+              disabled={deletePhoto.isPending}
+              className="bg-destructive text-white hover:bg-destructive/90"
+            >
+              {deletePhoto.isPending ? 'Removendo...' : 'Remover'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }
@@ -759,6 +796,7 @@ function ViewDialog({
   const [selInstrId, setSelInstrId] = useState('')
   const [instrTitle, setInstrTitle] = useState('')
   const [instrCategory, setInstrCategory] = useState('')
+  const [removeInstr, setRemoveInstr] = useState<{ id: string; name: string } | null>(null)
   const { t } = useTranslation()
   const { can } = usePermissions()
 
@@ -793,6 +831,17 @@ function ViewDialog({
     }
   }
 
+  async function handleRemoveInstructor() {
+    if (!removeInstr) return
+    try {
+      await removeAssignment.mutateAsync(removeInstr.id)
+      toast.success('Instrutor removido.')
+      setRemoveInstr(null)
+    } catch {
+      toast.error('Erro ao remover instrutor.')
+    }
+  }
+
   const liveCourse = detail ?? null
 
   if (!course) return null
@@ -806,6 +855,7 @@ function ViewDialog({
   const daysUntil = liveCourse ? calcDaysUntil(liveCourse.startDate) : 0
 
   return (
+    <>
     <Dialog open={!!course} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-y-auto overflow-x-hidden p-0" showCloseButton={false}>
         {/* Image / Gallery */}
@@ -1052,14 +1102,7 @@ function ViewDialog({
                           variant="ghost"
                           className="size-7 p-0 text-destructive/60 hover:text-destructive hover:bg-destructive/10"
                           disabled={removeAssignment.isPending}
-                          onClick={async () => {
-                            try {
-                              await removeAssignment.mutateAsync(a.id)
-                              toast.success('Instrutor removido.')
-                            } catch {
-                              toast.error('Erro ao remover instrutor.')
-                            }
-                          }}
+                          onClick={() => setRemoveInstr({ id: a.id, name: a.name })}
                         >
                           <Trash2 className="size-3.5" />
                         </Button>
@@ -1141,6 +1184,29 @@ function ViewDialog({
         </div>
       </DialogContent>
     </Dialog>
+
+    <AlertDialog open={!!removeInstr} onOpenChange={open => { if (!open) setRemoveInstr(null) }}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Remover instrutor</AlertDialogTitle>
+          <AlertDialogDescription>
+            Tem certeza que deseja remover <strong>{removeInstr?.name}</strong> deste curso? Esta ação
+            não pode ser desfeita.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel disabled={removeAssignment.isPending}>Cancelar</AlertDialogCancel>
+          <AlertDialogAction
+            onClick={e => { e.preventDefault(); handleRemoveInstructor() }}
+            disabled={removeAssignment.isPending}
+            className="bg-destructive text-white hover:bg-destructive/90"
+          >
+            {removeAssignment.isPending ? 'Removendo...' : 'Remover'}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+    </>
   )
 }
 

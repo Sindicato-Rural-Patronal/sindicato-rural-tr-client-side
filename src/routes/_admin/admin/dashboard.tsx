@@ -109,7 +109,7 @@ function RouteComponent() {
     queryKey: ['admin', 'courses', 'all'],
     queryFn: fetchAllAdminCourses,
   })
-  const { data: stats } = useAdminStats()
+  const { data: stats, isError: statsError } = useAdminStats()
   const { data: salas } = useRooms()
   const { data: incompletosData } = useAdminUsers({ page: 1, limit: 5, incompleteRegistration: true })
 
@@ -175,8 +175,14 @@ function RouteComponent() {
     <div className="p-6 flex flex-col gap-6">
       <div>
         <h1 className="text-2xl font-bold tracking-tight text-foreground">Painel Geral</h1>
-        <p className="text-muted-foreground">Visão geral do sistema de gestão de cursos</p>
+        <p className="text-sm text-muted-foreground">Visão geral do sistema de gestão de cursos</p>
       </div>
+
+      {statsError && (
+        <div className="rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
+          Erro ao carregar as estatísticas do painel.
+        </div>
+      )}
 
       {/* Stats */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
@@ -233,7 +239,7 @@ function RouteComponent() {
                 {ptMonth(mesAtual.month)} {mesAtual.year}
               </CardTitle>
               <div className="flex items-center gap-1">
-                <Button variant="ghost" size="icon" className="size-8" onClick={prevMonth}>
+                <Button variant="ghost" size="icon" className="size-8" onClick={prevMonth} aria-label="Mês anterior">
                   <ChevronLeft className="size-4" />
                 </Button>
                 <Button
@@ -247,7 +253,7 @@ function RouteComponent() {
                 >
                   Hoje
                 </Button>
-                <Button variant="ghost" size="icon" className="size-8" onClick={nextMonth}>
+                <Button variant="ghost" size="icon" className="size-8" onClick={nextMonth} aria-label="Próximo mês">
                   <ChevronRight className="size-4" />
                 </Button>
               </div>
@@ -325,8 +331,8 @@ function RouteComponent() {
                     'bg-primary/10 text-primary border-primary/20',
                     'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400 border-emerald-200',
                     'bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400 border-amber-200',
-                    'bg-rose-100 text-rose-700 border-rose-200',
-                    'bg-sky-100 text-sky-700 border-sky-200',
+                    'bg-rose-100 text-rose-700 dark:bg-rose-950/40 dark:text-rose-400 border-rose-200',
+                    'bg-sky-100 text-sky-700 dark:bg-sky-950/40 dark:text-sky-400 border-sky-200',
                   ]
                   const cls = colors[i % colors.length]
                   return (
@@ -367,7 +373,7 @@ function RouteComponent() {
               {cursosPublicos.slice(0, 5).map(course => {
                 const pct = course.maxStudents > 0 ? course.enrolled / course.maxStudents : 0
                 const badgeCls = course.enrolled >= course.maxStudents
-                  ? 'bg-rose-100 text-rose-700'
+                  ? 'bg-rose-100 text-rose-700 dark:bg-rose-950/40 dark:text-rose-400'
                   : pct > 0.5 ? 'bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400'
                   : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400'
                 return (
