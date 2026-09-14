@@ -142,7 +142,7 @@ useCreateWorker / useUpdateWorker / useDeleteWorker
 useCourseRegistrations      → GET /api/admin/courses/:id/registrations (paginado)
 useCancelRegistration       → DELETE /api/admin/registrations/:id
 useAdminUser                → GET /api/admin/users/:id  (inclui userInstructor)
-useUpdateUserAddress        → PATCH /api/admin/users/:id/address
+useUpdateUserAddress        → PUT /api/admin/users/:id/address
 useUserProperties           → GET /api/admin/users/:id/properties (paginado)
 useCreateUserProperty / useDeleteUserProperty
 useUploadAvatar             → POST /api/admin/users/:id/avatar
@@ -153,10 +153,10 @@ useInstructors              → GET /api/admin/instructors
 usePromoteInstructor        → POST /api/admin/users/:id/promote-instructor
 useUpdateInstructor         → PATCH /api/admin/users/:id/instructor
 useRemoveInstructor         → DELETE /api/admin/users/:id/instructor
-useCEPLookup                → GET /api/cep/:cep (correios)
+useCEPLookup                → GET /api/address/cep/:cep (ViaCEP + cache)
 usePublicContacts           → GET /api/contacts (público)
-usePartners                 → GET /api/admin/partners
-useContactMessages          → GET /api/admin/messages (paginado + filtros)
+usePartners                 → GET /api/partners (público)
+useContactMessages          → GET /api/admin/contacts/messages (paginado + filtros)
 useMarkContactMessageRead / useDeleteContactMessage / useSendContactMessage
 ```
 
@@ -248,7 +248,7 @@ mapCourses(list: ApiCourse[]): Course[]
 - `GET /api/admin/users` — lista (paginado + filtros)
 - `GET /api/admin/users/:id` — detalhe (inclui `userInstructor`)
 - `GET /api/admin/users/admins` — lista admins
-- `PATCH /api/admin/users/:id/address` — atualizar endereço
+- `PUT /api/admin/users/:id/address` — atualizar endereço
 - `GET /api/admin/users/:id/properties` — propriedades rurais (paginado)
 - `POST /api/admin/users/:id/properties` — adicionar propriedade
 - `DELETE /api/admin/users/:id/properties/:propId` — remover propriedade
@@ -271,12 +271,12 @@ mapCourses(list: ApiCourse[]): Course[]
 - `GET /api/admin/rules` — regras (paginado)
 - `POST /api/rules` — criar regra
 - `PATCH /api/rules/:id` — atualizar regra
-- `GET /api/admin/partners` — parceiros/sócios
+- `GET /api/partners` — parceiros/sócios (público)
 - `POST /api/admin/users/:id/partner-logo` — upload logo parceiro (multipart)
 - `PATCH /api/admin/partners/reorder` — reordenar parceiros
-- `GET /api/admin/messages` — mensagens de contato (paginado + filtros)
-- `PATCH /api/admin/messages/:id/read` — marcar mensagem como lida
-- `DELETE /api/admin/messages/:id` — deletar mensagem
+- `GET /api/admin/contacts/messages` — mensagens de contato (paginado + filtros)
+- `PATCH /api/admin/contacts/messages/:id` — marcar mensagem como lida
+- `DELETE /api/admin/contacts/messages/:id` — deletar mensagem
 
 **Contato (público)**
 - `GET /api/contacts` — lista contatos públicos
@@ -311,7 +311,7 @@ mapCourses(list: ApiCourse[]): Course[]
 - `GET /api/admin/finance/summary?from=&to=` — KPIs + por categoria + por mês + saldo por caixa
 
 **Utilitário**
-- `GET /api/cep/:cep` — lookup CEP (Correios)
+- `GET /api/address/cep/:cep` — lookup CEP (ViaCEP + cache local)
 
 ## Estado Atual (julho/2026)
 

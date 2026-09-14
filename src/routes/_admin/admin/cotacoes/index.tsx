@@ -39,6 +39,9 @@ type Trend = 'up' | 'down' | 'neutral'
 export function trendOf(variation: string | null | undefined): Trend {
   const v = (variation ?? '').trim()
   if (!v) return 'neutral'
+  // Variação numericamente zero ("0", "0,00", "0.00", "+0") é neutra, não alta.
+  const n = parseFloat(v.replace('+', '').replace(',', '.'))
+  if (n === 0) return 'neutral'
   return v.startsWith('-') ? 'down' : 'up'
 }
 
@@ -226,6 +229,7 @@ function RouteComponent() {
       )}
 
       <div className="rounded-lg border border-border bg-card overflow-hidden">
+        <div className="overflow-x-auto">
         <Table>
           <TableHeader>
             <TableRow>
@@ -334,6 +338,7 @@ function RouteComponent() {
             })}
           </TableBody>
         </Table>
+        </div>
       </div>
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>

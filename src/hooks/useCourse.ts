@@ -124,7 +124,7 @@ export function useDeleteCourse() {
       apiFetch(`/courses/${courseId}`, { method: 'DELETE' }),
     onSuccess: (_, courseId) => {
       queryClient.removeQueries({ queryKey: ['admin', 'courses', courseId] })
-      queryClient.invalidateQueries({ queryKey: ['courses'], exact: true })
+      queryClient.invalidateQueries({ queryKey: ['courses'], exact: false })
       queryClient.invalidateQueries({ queryKey: ['admin', 'courses'], exact: false })
     },
   })
@@ -178,6 +178,7 @@ export function useAssignInstructor(courseId: string) {
     mutationFn: (body: { instructorUserDataId: string; title?: string; category?: string }) =>
       apiFetch(`/admin/courses/${courseId}/instructors`, { method: 'POST', body: JSON.stringify(body) }),
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'courses'], exact: false })
       queryClient.invalidateQueries({ queryKey: ['admin', 'courses', courseId] })
     },
   })
@@ -189,6 +190,7 @@ export function useRemoveInstructorAssignment(courseId: string) {
     mutationFn: (assignmentId: string) =>
       apiFetch(`/admin/courses/${courseId}/instructors/${assignmentId}`, { method: 'DELETE' }),
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'courses'], exact: false })
       queryClient.invalidateQueries({ queryKey: ['admin', 'courses', courseId] })
     },
   })

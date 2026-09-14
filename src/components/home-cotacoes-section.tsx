@@ -6,6 +6,9 @@ import { TrendingUp, TrendingDown, Minus } from 'lucide-react'
 function trendOf(variation: string | null): 'up' | 'down' | 'neutral' {
   const v = (variation ?? '').trim()
   if (!v) return 'neutral'
+  // Variação numericamente zero ("0", "0,00", "0.00", "+0") é neutra, não alta.
+  const n = parseFloat(v.replace('+', '').replace(',', '.'))
+  if (n === 0) return 'neutral'
   return v.startsWith('-') ? 'down' : 'up'
 }
 

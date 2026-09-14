@@ -1,6 +1,8 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
 import { useState, useMemo } from 'react'
-import { useAdminCourses } from '@/hooks/useCourse'
+import { useQuery } from '@tanstack/react-query'
+import { apiFetch } from '@/lib/api'
+import type { CourseCardItem, PaginatedCourses } from '@/hooks/useCourse'
 import { useAdminStats, useAdminUsers } from '@/hooks/useAdmin'
 import { useRooms } from '@/hooks/useRooms'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -16,10 +18,30 @@ export const Route = createFileRoute('/_admin/admin/dashboard')({
   component: RouteComponent,
 })
 
+// O calendário precisa de TODOS os cursos, não só a primeira página. Pagina em
+// blocos de 100 até acabar (teto de 50 páginas = 5000 cursos de segurança).
+async function fetchAllAdminCourses(): Promise<CourseCardItem[]> {
+  const all: CourseCardItem[] = []
+  for (let page = 1; page <= 50; page++) {
+    const qs = new URLSearchParams({ page: String(page), limit: '100' })
+    const json = (await apiFetch(`/admin/courses?${qs}`).then(r => r.json())) as PaginatedCourses
+    all.push(...json.data)
+    if (page >= (json.totalPages ?? 1)) break
+  }
+  return all
+}
+
 // ─── calendar helpers ─────────────────────────────────────────────────────────
 
 function isoDate(y: number, m: number, d: number) {
   return `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`
+}
+
+// Normaliza (ano, mês, dia) que estouram o mês — meses -1/+1 nas bordas do ano
+// viravam "00"/"13". `new Date` corrige o ano/mês automaticamente.
+function isoFromParts(y: number, m: number, d: number) {
+  const dt = new Date(y, m, d)
+  return isoDate(dt.getFullYear(), dt.getMonth(), dt.getDate())
 }
 
 function ptMonth(m: number) {
@@ -34,14 +56,14 @@ function buildCalendar(year: number, month: number) {
 
   for (let i = firstDay - 1; i >= 0; i--) {
     const d = daysInPrev - i
-    cells.push({ date: isoDate(year, month - 1, d), current: false })
+    cells.push({ date: isoFromParts(year, month - 1, d), current: false })
   }
   for (let d = 1; d <= daysInMonth; d++) {
     cells.push({ date: isoDate(year, month, d), current: true })
   }
   while (cells.length % 7 !== 0) {
     const d = cells.length - daysInMonth - firstDay + 1
-    cells.push({ date: isoDate(year, month + 1, d), current: false })
+    cells.push({ date: isoFromParts(year, month + 1, d), current: false })
   }
   return cells
 }
@@ -83,8 +105,10 @@ function StatCard({
 // ─── component ────────────────────────────────────────────────────────────────
 
 function RouteComponent() {
-  const { data: cursosPage } = useAdminCourses({ page: 1, limit: 100 })
-  const cursos = cursosPage?.data
+  const { data: cursos } = useQuery({
+    queryKey: ['admin', 'courses', 'all'],
+    queryFn: fetchAllAdminCourses,
+  })
   const { data: stats } = useAdminStats()
   const { data: salas } = useRooms()
   const { data: incompletosData } = useAdminUsers({ page: 1, limit: 5, incompleteRegistration: true })
@@ -167,7 +191,7 @@ function RouteComponent() {
           <>
             <StatCard
               title="Total de Cursos"
-              value={cursos?.length ?? 0}
+              value={stats.courses?.total ?? 0}
               description={`${stats.courses?.public ?? 0} público${(stats.courses?.public ?? 0) !== 1 ? 's' : ''}`}
               icon={BookOpen}
             />

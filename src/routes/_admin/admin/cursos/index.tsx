@@ -21,6 +21,7 @@ import { useRooms, useCreateRoom } from '@/hooks/useRooms'
 import { useCourseRegistrations, useCancelRegistration, useInstructors, useConfirmRegistration, useStartCourse, useUploadRegistrationFicha, useDeleteRegistrationFicha, openRegistrationFicha } from '@/hooks/useAdmin'
 import type { UserDataDetail, Registration } from '@/hooks/useAdmin'
 import { formatDateFromString } from '@/utils/format-data-from-string'
+import { formatBRL } from '@/utils/format-currency'
 import { calcAge } from '@/utils/age'
 import { roomSchema, courseBaseSchema } from '@/lib/schemas'
 import type { RoomFormData, CourseFormData } from '@/lib/schemas'
@@ -135,7 +136,7 @@ function AdminCourseCard({ course, onClick }: { course: CourseCardItem; onClick:
             </div>
           </div>
           <span className="text-sm font-semibold text-primary">
-            {course.price === 0 ? t('courseCard.free') : `R$ ${course.price.toFixed(2)}`}
+            {course.price === 0 ? t('courseCard.free') : formatBRL(course.price)}
           </span>
         </div>
       </CardContent>
@@ -262,6 +263,24 @@ async function fetchAllRegistrations(courseId: string): Promise<Registration[]> 
   return acc
 }
 
+// Mapeia com concorrência limitada para não inundar a API (preserva a ordem).
+async function mapWithConcurrency<T, R>(
+  items: T[],
+  concurrency: number,
+  fn: (item: T, index: number) => Promise<R>,
+): Promise<R[]> {
+  const results: R[] = new Array(items.length)
+  let cursor = 0
+  const workers = Array.from({ length: Math.min(concurrency, items.length) }, async () => {
+    while (cursor < items.length) {
+      const index = cursor++
+      results[index] = await fn(items[index], index)
+    }
+  })
+  await Promise.all(workers)
+  return results
+}
+
 function RegistrationsTab({
   courseId,
   eventNumber,
@@ -381,8 +400,8 @@ function RegistrationsTab({
         toast.error(t('admin.courses.noRegistrations'))
         return
       }
-      const users: UserDataDetail[] = await Promise.all(
-        regs.map(r => apiFetch(`/admin/users/${r.userDataId}`).then(res => res.json())),
+      const users: UserDataDetail[] = await mapWithConcurrency(regs, 5, r =>
+        apiFetch(`/admin/users/${r.userDataId}`).then(res => res.json()),
       )
       await downloadFichaPdf(
         users.map(user => ({ course, user })),
@@ -734,7 +753,7 @@ function ViewDialog({
   course: CourseCardItem | null
   onClose: () => void
   onEdit: (c: Course) => void
-  onDelete: (id: string) => void
+  onDelete: (id: string, title: string) => void
 }) {
   const [galleryIndex, setGalleryIndex] = useState(0)
   const [selInstrId, setSelInstrId] = useState('')
@@ -801,12 +820,14 @@ function ViewDialog({
               {totalImages > 1 && (
                 <>
                   <button
+                    aria-label="Imagem anterior"
                     onClick={e => { e.stopPropagation(); setGalleryIndex(i => (i - 1 + totalImages) % totalImages) }}
                     className="absolute left-2 top-1/2 -translate-y-1/2 size-10 rounded-full bg-background/80 backdrop-blur-sm flex items-center justify-center hover:bg-background transition-colors"
                   >
                     <ChevronLeft className="size-5" />
                   </button>
                   <button
+                    aria-label="Próxima imagem"
                     onClick={e => { e.stopPropagation(); setGalleryIndex(i => (i + 1) % totalImages) }}
                     className="absolute right-2 top-1/2 -translate-y-1/2 size-10 rounded-full bg-background/80 backdrop-blur-sm flex items-center justify-center hover:bg-background transition-colors"
                   >
@@ -816,6 +837,7 @@ function ViewDialog({
                     {allImages.map((_, i) => (
                       <button
                         key={i}
+                        aria-label={`Ir para imagem ${i + 1}`}
                         onClick={e => { e.stopPropagation(); setGalleryIndex(i) }}
                         className={`size-2 rounded-full transition-colors ${i === galleryIndex ? 'bg-primary' : 'bg-background/60'}`}
                       />
@@ -833,6 +855,7 @@ function ViewDialog({
             <BookOpen className="size-16 text-muted-foreground/30" />
           )}
           <button
+            aria-label="Fechar"
             onClick={onClose}
             className="absolute top-3 right-3 size-8 rounded-full bg-background/80 backdrop-blur-sm flex items-center justify-center hover:bg-background transition-colors"
           >
@@ -966,7 +989,7 @@ function ViewDialog({
                   <div>
                     <span className="text-muted-foreground">{t('admin.courses.form.price')}: </span>
                     <span className="font-semibold text-primary">
-                      {liveCourse.price === 0 ? t('courseCard.free') : `R$ ${liveCourse.price.toFixed(2)}`}
+                      {liveCourse.price === 0 ? t('courseCard.free') : formatBRL(liveCourse.price)}
                     </span>
                   </div>
                   {liveCourse.observations && (
@@ -1103,7 +1126,7 @@ function ViewDialog({
               allowed={can('DELETE_COURSE')}
               noPermissionMessage="Sem permissão para excluir cursos"
               variant="outline"
-              onClick={() => onDelete(course.id)}
+              onClick={() => onDelete(course.id, course.title)}
             >
               <Trash2 className="size-4 text-destructive" /> {t('common.delete')}
             </PermissionButton>
@@ -1479,7 +1502,10 @@ export function CourseFormDialog({
           queryClient.invalidateQueries({ queryKey: ['admin', 'courses'] })
           queryClient.invalidateQueries({ queryKey: ['courses'] })
           if (failed.length) {
+            // upload parcial: avisa e NÃO dispara o toast de sucesso
             toast.error(`Curso criado, mas falhou o upload de: ${failed.join(', ')}. Adicione pela edição.`)
+            onClose()
+            return
           }
         }
       }
@@ -1825,13 +1851,21 @@ function RouteComponent() {
   const deleteCourse = useDeleteCourse()
   const [viewDialog, setViewDialog] = useState<CourseCardItem | null>(null)
   const [formDialog, setFormDialog] = useState<{ open: boolean; editing: Course | null }>({ open: false, editing: null })
-  const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null)
+  const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; title: string } | null>(null)
   const { t } = useTranslation()
   const { can } = usePermissions()
 
   const courses = data?.data ?? []
   const totalPages = data?.totalPages ?? 1
   const total = data?.total ?? 0
+
+  // Se a página atual ficou fora do intervalo (ex.: excluir o último card de uma
+  // página > 1), volta para a última página válida em vez de mostrar tela vazia.
+  useEffect(() => {
+    if (!isLoading && total > 0 && page > totalPages) {
+      setPage(totalPages)
+    }
+  }, [isLoading, total, page, totalPages])
 
   // Filtragem feita no servidor via `search` — não filtrar de novo no cliente
   // (isso quebrava a busca entre páginas).
@@ -1945,7 +1979,7 @@ function RouteComponent() {
         course={viewDialog}
         onClose={() => setViewDialog(null)}
         onEdit={c => setFormDialog({ open: true, editing: c })}
-        onDelete={id => setDeleteConfirm(id)}
+        onDelete={(id, title) => setDeleteConfirm({ id, title })}
       />
 
       <CourseFormDialog
@@ -1958,14 +1992,14 @@ function RouteComponent() {
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>{t('admin.courses.deleteConfirmTitle')}</DialogTitle>
-            <DialogDescription>{t('admin.courses.deleteConfirmDesc', { title: '' })}</DialogDescription>
+            <DialogDescription>{t('admin.courses.deleteConfirmDesc', { title: deleteConfirm?.title ?? '' })}</DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDeleteConfirm(null)}>{t('admin.courses.deleteCancel')}</Button>
             <Button
               variant="destructive"
               disabled={deleteCourse.isPending}
-              onClick={() => deleteConfirm && handleDelete(deleteConfirm)}
+              onClick={() => deleteConfirm && handleDelete(deleteConfirm.id)}
             >
               {deleteCourse.isPending ? t('admin.courses.deleting') : t('admin.courses.deleteConfirm')}
             </Button>

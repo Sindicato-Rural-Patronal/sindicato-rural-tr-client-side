@@ -788,7 +788,7 @@ function RouteComponent() {
                 <Link to="/admin/usuarios/novo"><Plus className="size-4" /> Novo associado</Link>
               </Button>
             )}
-            {activeTab === 'administradores' && (
+            {activeTab === 'admins' && (
               <>
                 {can('READ_RULE') && <RegrasSheet />}
                 {can('CREATE_USER_ADMIN') && <NovoAdminSheet />}
@@ -807,7 +807,7 @@ function RouteComponent() {
               </span>
             )}
           </TabsTrigger>
-          <TabsTrigger value="administradores" className="flex items-center gap-1.5">
+          <TabsTrigger value="admins" className="flex items-center gap-1.5">
             <Shield className="size-3.5" />
             Administradores
             {adminTotal > 0 && (
@@ -1043,7 +1043,7 @@ function RouteComponent() {
           )}
         </TabsContent>
 
-        <TabsContent value="administradores">
+        <TabsContent value="admins">
           <div className="flex flex-col sm:flex-row gap-2 mb-4">
             <Select value={rulesFilter || 'all'} onValueChange={handleRulesFilterChange}>
               <SelectTrigger className="h-9 w-full sm:w-48">

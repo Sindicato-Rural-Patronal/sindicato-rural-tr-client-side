@@ -140,7 +140,7 @@ function RouteComponent() {
         </TabsList>
 
         <TabsContent value="dashboard" className="mt-6">
-          <DashboardTab enabled={enabled} onDrill={patch => setSearch({ tab: 'lancamentos', page: undefined, ...patch })} />
+          <DashboardTab enabled={enabled} onDrill={patch => setSearch({ tab: 'lancamentos', page: undefined, cat: undefined, acc: undefined, q: undefined, ...patch })} />
         </TabsContent>
         <TabsContent value="lancamentos" className="mt-6">
           <TransactionsTab enabled={enabled} search={search} setSearch={setSearch} canCreate={can('CREATE_FINANCE')} canUpdate={can('UPDATE_FINANCE')} canDelete={can('DELETE_FINANCE')} />
@@ -761,7 +761,10 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
     }
   }
 
-  const saving = createTx.isPending || updateTx.isPending
+  // Inclui o upload dos comprovantes: o diálogo só fecha depois que todos sobem
+  // (fluxo "Novo"), então o botão deve continuar travado até lá — senão o usuário
+  // clica de novo e cria um lançamento duplicado.
+  const saving = createTx.isPending || updateTx.isPending || uploadAtt.isPending
 
   return (
     <div className="flex flex-col gap-4">
@@ -1103,6 +1106,14 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
                 <select className={selectClass} value={form.categoryId} onChange={e => setF('categoryId', e.target.value)}>
                   <option value="">Sem categoria</option>
                   {catsForType.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  {/* Categoria do lançamento em edição que foi desativada depois: não
+                      vem na lista de ativas, então garantimos a opção pra não zerar. */}
+                  {form.categoryId && !catsForType.some(c => c.id === form.categoryId) && (
+                    <option value={form.categoryId}>
+                      {editingTx?.category?.name ?? 'Categoria atual'}
+                      {editingTx?.category && !editingTx.category.active ? ' (inativa)' : ''}
+                    </option>
+                  )}
                 </select>
               </div>
               <div className="flex flex-col gap-1.5">
@@ -1152,7 +1163,7 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
                     <p className="text-xs text-muted-foreground">Anexe agora — sobem automaticamente ao registrar.</p>
                   )}
                   {pendingFiles.map((f, i) => (
-                    <div key={i} className="flex items-center gap-2 rounded-md border border-border bg-background px-2 py-1.5">
+                    <div key={`${f.name}-${f.size}-${i}`} className="flex items-center gap-2 rounded-md border border-border bg-background px-2 py-1.5">
                       <FileText className="size-4 shrink-0 text-muted-foreground" />
                       <span className="flex-1 truncate text-xs text-foreground" title={f.name}>{f.name}</span>
                       <button type="button" onClick={() => setPendingFiles(prev => prev.filter((_, idx) => idx !== i))} className="text-muted-foreground hover:text-destructive" aria-label="Remover" title="Remover">
@@ -1274,6 +1285,8 @@ function CategoriesTab({ enabled, canCreate, canUpdate, canDelete }: {
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editId, setEditId] = useState<string | null>(null)
   const [form, setForm] = useState<CatForm>(emptyCatForm)
+  const [formSnapshot, setFormSnapshot] = useState('')
+  const [confirmClose, setConfirmClose] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<FinanceCategory | null>(null)
 
@@ -1281,16 +1294,26 @@ function CategoriesTab({ enabled, canCreate, canUpdate, canDelete }: {
 
   function abrirNovo() {
     setEditId(null)
-    setForm(emptyCatForm())
+    const f = emptyCatForm()
+    setForm(f)
+    setFormSnapshot(JSON.stringify(f))
     setError(null)
     setDialogOpen(true)
   }
 
   function abrirEditar(c: FinanceCategory) {
     setEditId(c.id)
-    setForm({ name: c.name, type: c.type, color: c.color, active: c.active })
+    const f: CatForm = { name: c.name, type: c.type, color: c.color, active: c.active }
+    setForm(f)
+    setFormSnapshot(JSON.stringify(f))
     setError(null)
     setDialogOpen(true)
+  }
+
+  const formDirty = JSON.stringify(form) !== formSnapshot
+  function requestCloseDialog() {
+    if (formDirty) setConfirmClose(true)
+    else setDialogOpen(false)
   }
 
   async function handleSubmit() {
@@ -1409,7 +1432,7 @@ function CategoriesTab({ enabled, canCreate, canUpdate, canDelete }: {
         </div>
       </div>
 
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+      <Dialog open={dialogOpen} onOpenChange={o => { if (o) setDialogOpen(true); else requestCloseDialog() }}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>{editId ? 'Editar categoria' : 'Nova categoria'}</DialogTitle>
@@ -1452,13 +1475,19 @@ function CategoriesTab({ enabled, canCreate, canUpdate, canDelete }: {
             {error && <p className="text-sm text-destructive">{error}</p>}
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancelar</Button>
+            <Button variant="outline" onClick={requestCloseDialog}>Cancelar</Button>
             <Button onClick={handleSubmit} disabled={!form.name || saving}>
               {saving ? 'Salvando...' : editId ? 'Salvar' : 'Cadastrar'}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <ConfirmCloseDialog
+        open={confirmClose}
+        onConfirm={() => { setConfirmClose(false); setDialogOpen(false) }}
+        onCancel={() => setConfirmClose(false)}
+      />
 
       <AlertDialog open={!!deleteTarget} onOpenChange={open => { if (!open) setDeleteTarget(null) }}>
         <AlertDialogContent>
@@ -1495,6 +1524,8 @@ function AccountsTab({ enabled, canCreate, canUpdate, canDelete }: {
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editId, setEditId] = useState<string | null>(null)
   const [form, setForm] = useState<AccForm>(emptyAccForm)
+  const [formSnapshot, setFormSnapshot] = useState('')
+  const [confirmClose, setConfirmClose] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<FinanceAccount | null>(null)
 
@@ -1502,16 +1533,26 @@ function AccountsTab({ enabled, canCreate, canUpdate, canDelete }: {
 
   function abrirNovo() {
     setEditId(null)
-    setForm(emptyAccForm())
+    const f = emptyAccForm()
+    setForm(f)
+    setFormSnapshot(JSON.stringify(f))
     setError(null)
     setDialogOpen(true)
   }
 
   function abrirEditar(a: FinanceAccount) {
     setEditId(a.id)
-    setForm({ name: a.name, color: a.color, active: a.active })
+    const f: AccForm = { name: a.name, color: a.color, active: a.active }
+    setForm(f)
+    setFormSnapshot(JSON.stringify(f))
     setError(null)
     setDialogOpen(true)
+  }
+
+  const formDirty = JSON.stringify(form) !== formSnapshot
+  function requestCloseDialog() {
+    if (formDirty) setConfirmClose(true)
+    else setDialogOpen(false)
   }
 
   async function handleSubmit() {
@@ -1623,7 +1664,7 @@ function AccountsTab({ enabled, canCreate, canUpdate, canDelete }: {
         </div>
       </div>
 
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+      <Dialog open={dialogOpen} onOpenChange={o => { if (o) setDialogOpen(true); else requestCloseDialog() }}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>{editId ? 'Editar caixa' : 'Novo caixa'}</DialogTitle>
@@ -1659,13 +1700,19 @@ function AccountsTab({ enabled, canCreate, canUpdate, canDelete }: {
             {error && <p className="text-sm text-destructive">{error}</p>}
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancelar</Button>
+            <Button variant="outline" onClick={requestCloseDialog}>Cancelar</Button>
             <Button onClick={handleSubmit} disabled={!form.name || saving}>
               {saving ? 'Salvando...' : editId ? 'Salvar' : 'Cadastrar'}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <ConfirmCloseDialog
+        open={confirmClose}
+        onConfirm={() => { setConfirmClose(false); setDialogOpen(false) }}
+        onCancel={() => setConfirmClose(false)}
+      />
 
       <AlertDialog open={!!deleteTarget} onOpenChange={open => { if (!open) setDeleteTarget(null) }}>
         <AlertDialogContent>

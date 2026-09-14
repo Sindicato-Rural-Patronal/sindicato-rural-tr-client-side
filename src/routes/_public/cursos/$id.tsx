@@ -9,6 +9,7 @@ import { useCourse } from '@/hooks/useCourse'
 import { useSeo } from '@/hooks/useSeo'
 import { API_BASE } from '@/lib/api'
 import { formatDateFromString } from '@/utils/format-data-from-string'
+import { formatBRL } from '@/utils/format-currency'
 import { maskCPF, maskPhone, maskCEP } from '@/utils/masks'
 import { escapeHtml } from '@/utils/escape-html'
 import { safeUrl } from '@/utils/safe-url'
@@ -363,7 +364,7 @@ function RouteComponent() {
         <div className="absolute inset-0 bg-linear-to-t from-black/60 to-transparent" />
         <div className="absolute bottom-0 left-0 p-6">
           <Badge className="mb-2 bg-white text-neutral-900">
-            {course.price === 0 ? t('courseDetail.free') : `R$ ${course.price.toFixed(2)}`}
+            {course.price === 0 ? t('courseDetail.free') : formatBRL(course.price)}
           </Badge>
           <h1 className="text-2xl font-bold text-white md:text-3xl">{course.title}</h1>
         </div>

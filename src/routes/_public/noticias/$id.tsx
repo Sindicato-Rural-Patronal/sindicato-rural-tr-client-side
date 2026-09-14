@@ -7,6 +7,7 @@ import type { ContentBlock } from '@/@types/news'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Button } from '@/components/ui/button'
 import { ArrowLeft, Newspaper } from 'lucide-react'
+import { formatDateFromString } from '@/utils/format-data-from-string'
 
 export const Route = createFileRoute('/_public/noticias/$id')({
   component: RouteComponent,
@@ -118,13 +119,7 @@ function RouteComponent() {
     )
   }
 
-  const date = news.publishedAt
-    ? new Date(news.publishedAt).toLocaleDateString('pt-BR', {
-        day: '2-digit',
-        month: 'long',
-        year: 'numeric',
-      })
-    : null
+  const date = news.publishedAt ? formatDateFromString(news.publishedAt) : null
 
   const blocks = parseBlocks(news.content)
 

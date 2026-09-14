@@ -7,6 +7,7 @@ import { useTranslation } from 'react-i18next'
 import { useNews } from '@/hooks/useNews'
 import { useSeo } from '@/hooks/useSeo'
 import type { News } from '@/@types/news'
+import { formatDateFromString } from '@/utils/format-data-from-string'
 
 export const Route = createFileRoute('/_public/noticias/')({
   component: RouteComponent,
@@ -14,9 +15,7 @@ export const Route = createFileRoute('/_public/noticias/')({
 
 function NewsCard({ news }: { news: News }) {
   const { t } = useTranslation()
-  const date = news.publishedAt
-    ? new Date(news.publishedAt).toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })
-    : null
+  const date = news.publishedAt ? formatDateFromString(news.publishedAt) : null
 
   return (
     <Link

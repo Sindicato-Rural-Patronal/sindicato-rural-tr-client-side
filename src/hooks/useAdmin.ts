@@ -604,6 +604,7 @@ export function useDeleteUserProperty(userId: string) {
       apiFetch(`/admin/users/${userId}/properties/${propertyId}`, { method: 'DELETE' }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin', 'users', userId, 'properties'] })
+      queryClient.invalidateQueries({ queryKey: ['admin', 'users', userId] })
     },
   })
 }

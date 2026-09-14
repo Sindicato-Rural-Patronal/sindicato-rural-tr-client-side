@@ -477,7 +477,10 @@ function NewsEditor({
           queryClient.invalidateQueries({ queryKey: ['news'] })
           queryClient.invalidateQueries({ queryKey: ['admin', 'news'] })
           if (failed.length) {
+            // upload parcial: avisa e NÃO dispara o toast de sucesso
             toast.error(`Notícia criada, mas falhou o upload de: ${failed.join(', ')}. Tente novamente pela edição.`)
+            setSaved(true)
+            return
           }
         }
       } else {

@@ -284,8 +284,6 @@ function DadosTab({ userId, user, completeMode, onCompleteModeEnd, hasNoProperti
   const [editing, setEditing] = useState(false)
   const [form, setForm] = useState<DadosForm>(() => dadosFromDetail(user))
   const [saved, setSaved] = useState<DadosForm>(() => dadosFromDetail(user))
-  // Guard de não-salvo (avisa antes de atualizar/fechar a aba com edição pendente).
-  useUnsavedGuard(editing && JSON.stringify(form) !== JSON.stringify(saved))
 
   useEffect(() => {
     if (completeMode) setEditing(true)
@@ -301,6 +299,20 @@ function DadosTab({ userId, user, completeMode, onCompleteModeEnd, hasNoProperti
   const [instrFacebook, setInstrFacebook] = useState(user.userInstructor?.facebook ?? '')
 
   const isInstructor = !!user.userInstructor
+  // Salvar pode disparar update de worker E/OU promoção/atualização de instrutor;
+  // desabilita o botão enquanto qualquer uma estiver em andamento.
+  const saving = updateWorker.isPending || promote.isPending || updateInstructor.isPending || demote.isPending
+
+  // Guard de não-salvo (avisa antes de atualizar/fechar a aba com edição pendente).
+  // Inclui os campos de instrutor — que vivem em estado separado — para não perder
+  // silenciosamente uma edição só da bio/redes.
+  const instrDirty =
+    wantInstructor ||
+    instrBio !== (user.userInstructor?.bio ?? '') ||
+    instrLinkedin !== (user.userInstructor?.linkedin ?? '') ||
+    instrInstagram !== (user.userInstructor?.instagram ?? '') ||
+    instrFacebook !== (user.userInstructor?.facebook ?? '')
+  useUnsavedGuard(editing && (JSON.stringify(form) !== JSON.stringify(saved) || instrDirty))
 
   useEffect(() => {
     if (editing && user.userInstructor) {
@@ -354,7 +366,12 @@ function DadosTab({ userId, user, completeMode, onCompleteModeEnd, hasNoProperti
       const resized = await resizeToSquare(file)
       const res = await uploadAvatar.mutateAsync(resized)
       const data = await res.json()
-      if (data.avatarUrl) set('avatar', data.avatarUrl)
+      if (data.avatarUrl) {
+        // Upload é persistido imediatamente no servidor: reflete o novo avatar
+        // também no baseline `saved` para o Cancelar não parecer desfazê-lo.
+        set('avatar', data.avatarUrl)
+        setSaved(prev => ({ ...prev, avatar: data.avatarUrl }))
+      }
     } catch {
       toast.error('Erro ao fazer upload do avatar.')
     }
@@ -595,9 +612,14 @@ function DadosTab({ userId, user, completeMode, onCompleteModeEnd, hasNoProperti
             <Button variant="ghost" size="sm" onClick={handleCancel} className="gap-1.5">
               <X className="size-3.5" /> Cancelar
             </Button>
-            <Button size="sm" onClick={handleSave} disabled={updateWorker.isPending} className="gap-1.5">
+            <Button
+              size="sm"
+              onClick={handleSave}
+              disabled={saving}
+              className="gap-1.5"
+            >
               <Save className="size-3.5" />
-              {updateWorker.isPending ? 'Salvando...' : 'Salvar dados'}
+              {saving ? 'Salvando...' : 'Salvar dados'}
             </Button>
           </>
         )}
@@ -1326,22 +1348,34 @@ function RelacoesTab({ userId }: { userId: string }) {
 
   const createRel = useCreateUserRelation(userId)
   const deleteRel = useDeleteUserRelation(userId)
-  const { data: allUsersResp } = useAdminUsers({ limit: 1000 })
-  const allUsers = allUsersResp?.data ?? []
   const [adding, setAdding] = useState(false)
   const [form, setForm] = useState({ targetId: '', label: '' })
   const [deleteTarget, setDeleteTarget] = useState<UserRelation | null>(null)
   const [search, setSearch] = useState('')
+  // Busca server-side (o hook aceita `search`) — associados além de 1000 ficam
+  // pesquisáveis; debounce evita 1 request por tecla.
+  const [debouncedSearch, setDebouncedSearch] = useState('')
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(search), 300)
+    return () => clearTimeout(t)
+  }, [search])
+  const { data: allUsersResp } = useAdminUsers({ limit: 20, search: debouncedSearch })
+  const allUsers = allUsersResp?.data ?? []
 
   const filtered = allUsers.filter(u =>
     u.id !== userId &&
-    !relations.some(r => r.targetId === u.id) &&
-    (u.name.toLowerCase().includes(search.toLowerCase()) || (u.cpf ?? '').includes(search))
+    !relations.some(r => r.targetId === u.id)
   )
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault()
     if (!form.targetId) return
+    // A exclusão do dropdown só enxerga a página atual de relações; guarda contra
+    // duplicar quem já é relação (o backend também valida).
+    if (relations.some(r => r.targetId === form.targetId)) {
+      toast.error('Essa pessoa já é uma relação.')
+      return
+    }
     try {
       await createRel.mutateAsync({ targetId: form.targetId, label: form.label || undefined })
       setForm({ targetId: '', label: '' })

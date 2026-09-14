@@ -69,15 +69,12 @@ function RouteComponent() {
     }
 
     try {
-      const res = await createCourse.mutateAsync(body)
-      if (!res.ok) {
-        const data = await res.json().catch(() => null)
-        setError(apiErrorMessage(data?.error ?? data?.message ?? '', 'Erro ao criar curso.'))
-        return
-      }
+      await createCourse.mutateAsync(body)
       navigate({ to: '/admin/cursos' })
-    } catch {
-      setError(t('common.error'))
+    } catch (err) {
+      // apiFetch lança ApiError em non-2xx — mostra a mensagem real do backend
+      // (ex.: conflito de sala) em vez de um erro genérico.
+      setError(apiErrorMessage(err, t('common.error')))
     }
   }
 

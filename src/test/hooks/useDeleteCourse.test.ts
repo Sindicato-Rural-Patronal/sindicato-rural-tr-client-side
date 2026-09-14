@@ -93,7 +93,7 @@ describe('useDeleteCourse', () => {
     })
 
     expect(removeSpy).toHaveBeenCalledWith({ queryKey: ['admin', 'courses', 'curso-xyz'] })
-    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['courses'], exact: true })
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['courses'], exact: false })
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['admin', 'courses'], exact: false })
   })
 })
