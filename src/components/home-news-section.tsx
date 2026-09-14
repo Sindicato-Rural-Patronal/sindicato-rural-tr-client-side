@@ -1,9 +1,6 @@
-import { useRef } from 'react'
 import { Link } from '@tanstack/react-router'
-import { MapPin, ArrowRight, Calendar, Newspaper } from 'lucide-react'
-import Autoplay from 'embla-carousel-autoplay'
+import { ArrowRight, Calendar, Newspaper } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '@/components/ui/carousel'
 import { Card, CardContent } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useTranslation } from 'react-i18next'
@@ -11,7 +8,6 @@ import { useNews } from '@/hooks/useNews'
 import { formatDateFromString } from '@/utils/format-data-from-string'
 
 export function HomeNewsSection() {
-  const autoplayPlugin = useRef(Autoplay({ delay: 4000, stopOnInteraction: true }))
   const { t } = useTranslation()
   const { data: news = [], isLoading } = useNews()
 
@@ -53,55 +49,46 @@ export function HomeNewsSection() {
         )}
 
         {!isLoading && news.length > 0 && (
-          <Carousel opts={{ align: 'start', loop: true }} plugins={[autoplayPlugin.current]} className="w-full">
-            <CarouselContent>
-              {news.map((item) => (
-                <CarouselItem key={item.id} className="md:basis-1/2 lg:basis-1/3">
-                  <Card className="h-full overflow-hidden transition-all hover:shadow-lg flex flex-col">
-                    <div className="p-3 pb-0">
-                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                        <MapPin className="size-3" />
-                        <span className="truncate">Terra Roxa</span>
-                        {item.publishedAt && (
-                          <>
-                            <span>|</span>
-                            <Calendar className="size-3" />
-                            <span>{formatDateFromString(item.publishedAt)}</span>
-                          </>
-                        )}
-                      </div>
-                    </div>
-                    <div className="relative mx-3 mt-2 aspect-4/3 overflow-hidden rounded-lg bg-muted flex items-center justify-center">
-                      {item.bannerUrl ? (
-                        <img
-                          src={item.bannerUrl}
-                          alt={item.title}
-                          loading="lazy"
-                          decoding="async"
-                          className="h-full w-full object-cover transition-transform hover:scale-105"
-                        />
-                      ) : (
-                        <Newspaper className="size-10 text-muted-foreground/30" />
-                      )}
-                    </div>
-                    <CardContent className="p-3 flex flex-col grow">
-                      <h3 className="line-clamp-2 text-sm font-semibold text-foreground">{item.title}</h3>
-                      {item.summary && (
-                        <p className="mt-1 line-clamp-2 text-xs text-muted-foreground grow">{item.summary}</p>
-                      )}
-                      <Link to="/noticias/$id" params={{ id: item.id }} className="mt-2">
-                        <Button variant="link" size="sm" className="h-auto p-0 text-xs font-semibold text-primary">
-                          {t('home.learnMore')}
-                        </Button>
-                      </Link>
-                    </CardContent>
-                  </Card>
-                </CarouselItem>
-              ))}
-            </CarouselContent>
-            <CarouselPrevious className="left-2 md:-left-4" />
-            <CarouselNext className="right-2 md:-right-4" />
-          </Carousel>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {news.slice(0, 3).map((item) => (
+              <Card key={item.id} className="h-full overflow-hidden transition-all hover:shadow-lg flex flex-col">
+                <div className="p-3 pb-0">
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    {item.publishedAt && (
+                      <>
+                        <Calendar className="size-3" />
+                        <span>{formatDateFromString(item.publishedAt)}</span>
+                      </>
+                    )}
+                  </div>
+                </div>
+                <div className="relative mx-3 mt-2 aspect-4/3 overflow-hidden rounded-lg bg-muted flex items-center justify-center">
+                  {item.bannerUrl ? (
+                    <img
+                      src={item.bannerUrl}
+                      alt={item.title}
+                      loading="lazy"
+                      decoding="async"
+                      className="h-full w-full object-cover transition-transform hover:scale-105"
+                    />
+                  ) : (
+                    <Newspaper className="size-10 text-muted-foreground/30" />
+                  )}
+                </div>
+                <CardContent className="p-3 flex flex-col grow">
+                  <h3 className="line-clamp-2 text-sm font-semibold text-foreground">{item.title}</h3>
+                  {item.summary && (
+                    <p className="mt-1 line-clamp-2 text-xs text-muted-foreground grow">{item.summary}</p>
+                  )}
+                  <Link to="/noticias/$id" params={{ id: item.id }} className="mt-2">
+                    <Button variant="link" size="sm" className="h-auto p-0 text-xs font-semibold text-primary">
+                      {t('home.learnMore')}
+                    </Button>
+                  </Link>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
         )}
       </div>
     </section>

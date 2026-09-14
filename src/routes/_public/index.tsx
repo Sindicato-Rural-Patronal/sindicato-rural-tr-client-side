@@ -96,6 +96,9 @@ function PartnersSection() {
         .partners-track-scroll:hover {
           animation-play-state: paused;
         }
+        @media (prefers-reduced-motion: reduce) {
+          .partners-track-scroll { animation: none; }
+        }
       `}</style>
 
       <div className="container mx-auto px-4 mb-10">
@@ -126,9 +129,9 @@ function HomePage() {
   return (
     <div className="bg-background">
       <HeroSection />
-      <CotacoesSection />
       <StatsSection />
       <CoursesSection autoplayPlugin={autoplayPlugin} />
+      <CotacoesSection />
       <HomeNewsSection />
       <PartnersSection />
     </div>
