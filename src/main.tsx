@@ -22,6 +22,23 @@ try {
   /* localStorage indisponível — mantém tema claro padrão */
 }
 
+// Deploy troca os hashes dos chunks; uma aba aberta pode pedir um chunk que
+// não existe mais → import dinâmico falha. Recarrega UMA vez para pegar o
+// index/chunks novos. O flag evita loop caso a falha seja real (offline etc).
+function reloadForNewChunks() {
+  try {
+    if (sessionStorage.getItem('chunk-reload') === '1') return
+    sessionStorage.setItem('chunk-reload', '1')
+  } catch {
+    /* sessionStorage indisponível — segue sem guarda */
+  }
+  window.location.reload()
+}
+window.addEventListener('vite:preloadError', (e) => {
+  e.preventDefault()
+  reloadForNewChunks()
+})
+
 // Cria o roteador com a árvore de rotas
 const router = createRouter({ routeTree });
 

@@ -102,6 +102,12 @@ app.get('/*', (req, reply) => {
   if (last.includes('.') && abs.startsWith(DIST) && existsSync(abs)) {
     return reply.sendFile(rel)
   }
+  // Asset hashado que não existe mais (deploy trocou os hashes) → 404 real.
+  // Sem isso o SPA-fallback devolveria index.html como se fosse .js e a aba
+  // velha quebraria com "Failed to fetch dynamically imported module".
+  if (rel.startsWith('assets/') && last.includes('.')) {
+    return reply.code(404).type('text/plain').send('Not Found')
+  }
   return sendHtml(reply, indexHtml)
 })
 
