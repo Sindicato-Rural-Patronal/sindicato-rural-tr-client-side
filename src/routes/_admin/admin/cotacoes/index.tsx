@@ -25,6 +25,7 @@ import {
 import { DeleteConfirmDialog } from '@/components/DeleteConfirmDialog'
 import { LoadErrorBanner } from '@/components/LoadErrorBanner'
 import { NoPermission } from '@/components/NoPermission'
+import { useCrudDialog } from '@/hooks/useCrudDialog'
 
 export const Route = createFileRoute('/_admin/admin/cotacoes/')({
   // Busca na URL (sobrevive a voltar/atualizar/compartilhar).
@@ -63,11 +64,16 @@ function RouteComponent() {
     navigate({ search: { q: busca.trim() || undefined }, replace: true })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [busca])
-  const [dialogOpen, setDialogOpen] = useState(false)
-  const [editId, setEditId] = useState<string | null>(null)
-  const [form, setForm] = useState<Form>(emptyForm)
-  const [error, setError] = useState<string | null>(null)
-  const [deleteTarget, setDeleteTarget] = useState<MarketQuote | null>(null)
+  const crud = useCrudDialog<Form, MarketQuote>({
+    empty: () => ({ ...emptyForm, order: String(quotes?.length ?? 0) }),
+    toForm: q => ({
+      label: q.label,
+      value: q.value,
+      referenceDate: q.referenceDate ? q.referenceDate.slice(0, 10) : '',
+      order: String(q.order),
+      isActive: q.isActive,
+    }),
+  })
 
   // Cópia local para reordenar arrastando (sincroniza quando os dados chegam).
   const [items, setItems] = useState<MarketQuote[]>([])
@@ -120,57 +126,37 @@ function RouteComponent() {
     setItems(prev => prev.map((q, i) => ({ ...q, order: i })))
   }
 
-  function abrirNovo() {
-    setEditId(null)
-    setForm({ ...emptyForm, order: String(quotes?.length ?? 0) })
-    setError(null)
-    setDialogOpen(true)
-  }
-
-  function abrirEditar(q: MarketQuote) {
-    setEditId(q.id)
-    setForm({
-      label: q.label,
-      value: q.value,
-      referenceDate: q.referenceDate ? q.referenceDate.slice(0, 10) : '',
-      order: String(q.order),
-      isActive: q.isActive,
-    })
-    setError(null)
-    setDialogOpen(true)
-  }
-
   async function handleSubmit() {
-    setError(null)
+    crud.setError(null)
     const body = {
-      label: form.label.trim(),
-      value: form.value.trim(),
-      referenceDate: form.referenceDate || null,
-      order: Number(form.order) || 0,
-      isActive: form.isActive,
+      label: crud.form.label.trim(),
+      value: crud.form.value.trim(),
+      referenceDate: crud.form.referenceDate || null,
+      order: Number(crud.form.order) || 0,
+      isActive: crud.form.isActive,
     }
     try {
-      if (editId) {
-        await updateQuote.mutateAsync({ id: editId, body })
+      if (crud.editing) {
+        await updateQuote.mutateAsync({ id: crud.editing.id, body })
         toast.success('Cotação atualizada!')
       } else {
         await createQuote.mutateAsync(body)
         toast.success('Cotação criada!')
       }
-      setDialogOpen(false)
+      crud.forceClose()
     } catch (e) {
       const msg = apiErrorMessage(e, 'Erro ao salvar a cotação.')
-      setError(msg)
+      crud.setError(msg)
       toast.error(msg)
     }
   }
 
   async function handleDelete() {
-    if (!deleteTarget) return
+    if (!crud.deleteTarget) return
     try {
-      await deleteQuote.mutateAsync(deleteTarget.id)
+      await deleteQuote.mutateAsync(crud.deleteTarget.id)
       toast.success('Cotação removida.')
-      setDeleteTarget(null)
+      crud.setDeleteTarget(null)
     } catch (e) {
       toast.error(apiErrorMessage(e, 'Erro ao remover a cotação.'))
     }
@@ -192,7 +178,7 @@ function RouteComponent() {
           </p>
         </div>
         {can('CREATE_MARKET_QUOTE') && (
-          <Button onClick={abrirNovo} className="shrink-0">
+          <Button onClick={crud.openCreate} className="shrink-0">
             <Plus className="size-4" /> Nova Cotação
           </Button>
         )}
@@ -301,7 +287,7 @@ function RouteComponent() {
                   <TableCell className="text-right">
                     <div className="flex items-center justify-end gap-1">
                       {can('UPDATE_MARKET_QUOTE') && (
-                        <Button size="sm" variant="ghost" className="h-8 px-2" onClick={() => abrirEditar(q)} aria-label="Editar" title="Editar">
+                        <Button size="sm" variant="ghost" className="h-8 px-2" onClick={() => crud.openEdit(q)} aria-label="Editar" title="Editar">
                           <Pencil className="size-4" />
                         </Button>
                       )}
@@ -310,7 +296,7 @@ function RouteComponent() {
                           size="sm"
                           variant="ghost"
                           className="h-8 px-2 text-muted-foreground hover:text-destructive"
-                          onClick={() => setDeleteTarget(q)}
+                          onClick={() => crud.setDeleteTarget(q)}
                           aria-label="Excluir"
                           title="Excluir"
                         >
@@ -330,10 +316,10 @@ function RouteComponent() {
         </div>
       </div>
 
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+      <Dialog open={crud.open} onOpenChange={open => { if (!open) crud.forceClose() }}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>{editId ? 'Editar Cotação' : 'Nova Cotação'}</DialogTitle>
+            <DialogTitle>{crud.editing ? 'Editar Cotação' : 'Nova Cotação'}</DialogTitle>
             <DialogDescription>
               Valor é texto livre — digite como vem (ex: "R$ 128,50 /sc 60kg").
             </DialogDescription>
@@ -341,49 +327,49 @@ function RouteComponent() {
           <div className="flex flex-col gap-4">
             <div className="flex flex-col gap-1.5">
               <Label>Rótulo *</Label>
-              <Input value={form.label} onChange={e => setForm(p => ({ ...p, label: e.target.value }))} placeholder="Ex: Soja" />
+              <Input value={crud.form.label} onChange={e => crud.setForm(p => ({ ...p, label: e.target.value }))} placeholder="Ex: Soja" />
             </div>
             <div className="flex flex-col gap-1.5">
               <Label>Valor *</Label>
-              <Input value={form.value} onChange={e => setForm(p => ({ ...p, value: e.target.value }))} placeholder="Ex: R$ 128,50 /sc 60kg" />
+              <Input value={crud.form.value} onChange={e => crud.setForm(p => ({ ...p, value: e.target.value }))} placeholder="Ex: R$ 128,50 /sc 60kg" />
             </div>
             <div className="flex flex-col gap-1.5">
               <Label>Ordem</Label>
-              <Input type="number" value={form.order} onChange={e => setForm(p => ({ ...p, order: e.target.value }))} />
+              <Input type="number" value={crud.form.order} onChange={e => crud.setForm(p => ({ ...p, order: e.target.value }))} />
               <span className="text-[11px] text-muted-foreground">
                 A variação (alta/baixa) é calculada automaticamente a cada novo valor, pelo histórico.
               </span>
             </div>
             <div className="flex flex-col gap-1.5">
               <Label>Data de referência</Label>
-              <Input type="date" value={form.referenceDate} onChange={e => setForm(p => ({ ...p, referenceDate: e.target.value }))} />
+              <Input type="date" value={crud.form.referenceDate} onChange={e => crud.setForm(p => ({ ...p, referenceDate: e.target.value }))} />
             </div>
             <button
               type="button"
-              onClick={() => setForm(p => ({ ...p, isActive: !p.isActive }))}
+              onClick={() => crud.setForm(p => ({ ...p, isActive: !p.isActive }))}
               className="flex items-center gap-2 text-sm text-foreground w-fit"
             >
-              {form.isActive
+              {crud.form.isActive
                 ? <Eye className="size-4 text-emerald-600" />
                 : <EyeOff className="size-4 text-muted-foreground" />}
-              {form.isActive ? 'Visível na home' : 'Oculta na home'}
+              {crud.form.isActive ? 'Visível na home' : 'Oculta na home'}
             </button>
-            {error && <p className="text-sm text-destructive">{error}</p>}
+            {crud.error && <p className="text-sm text-destructive">{crud.error}</p>}
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancelar</Button>
-            <Button onClick={handleSubmit} disabled={!form.label || !form.value || saving}>
-              {saving ? 'Salvando...' : editId ? 'Salvar' : 'Cadastrar'}
+            <Button variant="outline" onClick={crud.forceClose}>Cancelar</Button>
+            <Button onClick={handleSubmit} disabled={!crud.form.label || !crud.form.value || saving}>
+              {saving ? 'Salvando...' : crud.editing ? 'Salvar' : 'Cadastrar'}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
       <DeleteConfirmDialog
-        open={!!deleteTarget}
-        onOpenChange={open => { if (!open) setDeleteTarget(null) }}
+        open={!!crud.deleteTarget}
+        onOpenChange={open => { if (!open) crud.setDeleteTarget(null) }}
         title="Excluir cotação"
-        description={<>Excluir <strong>{deleteTarget?.label}</strong>? Esta ação não pode ser desfeita.</>}
+        description={<>Excluir <strong>{crud.deleteTarget?.label}</strong>? Esta ação não pode ser desfeita.</>}
         onConfirm={handleDelete}
         pending={deleteQuote.isPending}
       />

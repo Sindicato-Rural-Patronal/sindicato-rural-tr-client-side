@@ -16,6 +16,7 @@ import {
 } from '@/components/ui/dialog'
 import { DeleteConfirmDialog } from '@/components/DeleteConfirmDialog'
 import { LoadErrorBanner } from '@/components/LoadErrorBanner'
+import { useCrudDialog } from '@/hooks/useCrudDialog'
 
 export const Route = createFileRoute('/_admin/admin/salas/')({
   component: RouteComponent,
@@ -28,60 +29,45 @@ function RouteComponent() {
   const deleteRoom = useDeleteRoom()
 
   const [busca, setBusca] = useState('')
-  const [dialogOpen, setDialogOpen] = useState(false)
-  const [editId, setEditId] = useState<string | null>(null)
-  const [form, setForm] = useState({ name: '', description: '', maxCapacity: '' })
-  const [error, setError] = useState<string | null>(null)
-  const [deleteTarget, setDeleteTarget] = useState<Room | null>(null)
+  const crud = useCrudDialog<{ name: string; description: string; maxCapacity: string }, Room>({
+    empty: () => ({ name: '', description: '', maxCapacity: '' }),
+    toForm: sala => ({ name: sala.name, description: sala.description ?? '', maxCapacity: String(sala.maxCapacity) }),
+  })
 
   const salasFiltradas = (salas ?? []).filter(s =>
     s.name.toLowerCase().includes(busca.toLowerCase()) ||
     (s.description ?? '').toLowerCase().includes(busca.toLowerCase())
   )
 
-  function abrirNovo() {
-    setEditId(null)
-    setForm({ name: '', description: '', maxCapacity: '' })
-    setError(null)
-    setDialogOpen(true)
-  }
-
-  function abrirEditar(sala: Room) {
-    setEditId(sala.id)
-    setForm({ name: sala.name, description: sala.description ?? '', maxCapacity: String(sala.maxCapacity) })
-    setError(null)
-    setDialogOpen(true)
-  }
-
   async function handleSubmit() {
-    setError(null)
+    crud.setError(null)
     const body = {
-      name: form.name,
-      description: form.description,
-      maxCapacity: Number(form.maxCapacity),
+      name: crud.form.name,
+      description: crud.form.description,
+      maxCapacity: Number(crud.form.maxCapacity),
     }
     try {
-      if (editId) {
-        await updateRoom.mutateAsync({ id: editId, body })
+      if (crud.editing) {
+        await updateRoom.mutateAsync({ id: crud.editing.id, body })
         toast.success('Sala atualizada com sucesso!')
       } else {
         await createRoom.mutateAsync(body)
         toast.success('Sala criada com sucesso!')
       }
-      setDialogOpen(false)
+      crud.forceClose()
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : 'Erro ao salvar sala.'
-      setError(msg)
+      crud.setError(msg)
       toast.error(msg)
     }
   }
 
   async function handleDelete() {
-    if (!deleteTarget) return
+    if (!crud.deleteTarget) return
     try {
-      await deleteRoom.mutateAsync(deleteTarget.id)
+      await deleteRoom.mutateAsync(crud.deleteTarget.id)
       toast.success('Sala removida.')
-      setDeleteTarget(null)
+      crud.setDeleteTarget(null)
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : 'Erro ao remover sala.'
       toast.error(msg)
@@ -101,7 +87,7 @@ function RouteComponent() {
               : 'Cadastre e gerencie as salas e laboratórios'}
           </p>
         </div>
-        <Button onClick={abrirNovo} className="shrink-0">
+        <Button onClick={crud.openCreate} className="shrink-0">
           <Plus className="size-4" /> Nova Sala
         </Button>
       </div>
@@ -149,7 +135,7 @@ function RouteComponent() {
                     {busca ? 'Tente outro termo de busca.' : 'Clique em "Nova Sala" para começar.'}
                   </p>
                   {!busca && (
-                    <Button className="mt-4" onClick={abrirNovo}>
+                    <Button className="mt-4" onClick={crud.openCreate}>
                       <Plus className="size-4" /> Nova Sala
                     </Button>
                   )}
@@ -171,7 +157,7 @@ function RouteComponent() {
                       size="sm"
                       variant="ghost"
                       className="h-8 px-2"
-                      onClick={() => abrirEditar(sala)}
+                      onClick={() => crud.openEdit(sala)}
                       title="Editar sala"
                     >
                       <Pencil className="size-4" />
@@ -180,7 +166,7 @@ function RouteComponent() {
                       size="sm"
                       variant="ghost"
                       className="h-8 px-2 text-muted-foreground hover:text-destructive"
-                      onClick={() => setDeleteTarget(sala)}
+                      onClick={() => crud.setDeleteTarget(sala)}
                       title="Excluir sala"
                     >
                       <Trash2 className="size-4" />
@@ -194,28 +180,28 @@ function RouteComponent() {
         </div>
       </div>
 
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+      <Dialog open={crud.open} onOpenChange={open => { if (!open) crud.forceClose() }}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>{editId ? 'Editar Sala' : 'Nova Sala'}</DialogTitle>
+            <DialogTitle>{crud.editing ? 'Editar Sala' : 'Nova Sala'}</DialogTitle>
             <DialogDescription>
-              {editId ? 'Atualize os dados da sala' : 'Preencha os dados para cadastrar uma nova sala'}
+              {crud.editing ? 'Atualize os dados da sala' : 'Preencha os dados para cadastrar uma nova sala'}
             </DialogDescription>
           </DialogHeader>
           <div className="flex flex-col gap-4">
             <div className="flex flex-col gap-1.5">
               <Label>Nome *</Label>
               <Input
-                value={form.name}
-                onChange={e => setForm(p => ({ ...p, name: e.target.value }))}
+                value={crud.form.name}
+                onChange={e => crud.setForm(p => ({ ...p, name: e.target.value }))}
                 placeholder="Ex: Laboratório 01"
               />
             </div>
             <div className="flex flex-col gap-1.5">
               <Label>Descrição</Label>
               <Input
-                value={form.description}
-                onChange={e => setForm(p => ({ ...p, description: e.target.value }))}
+                value={crud.form.description}
+                onChange={e => crud.setForm(p => ({ ...p, description: e.target.value }))}
                 placeholder="Ex: Sala de treinamentos práticos"
               />
             </div>
@@ -224,32 +210,32 @@ function RouteComponent() {
               <Input
                 type="number"
                 min="1"
-                value={form.maxCapacity}
-                onChange={e => setForm(p => ({ ...p, maxCapacity: e.target.value }))}
+                value={crud.form.maxCapacity}
+                onChange={e => crud.setForm(p => ({ ...p, maxCapacity: e.target.value }))}
                 placeholder="30"
               />
             </div>
-            {error && <p className="text-sm text-destructive">{error}</p>}
+            {crud.error && <p className="text-sm text-destructive">{crud.error}</p>}
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancelar</Button>
+            <Button variant="outline" onClick={crud.forceClose}>Cancelar</Button>
             <Button
               onClick={handleSubmit}
-              disabled={!form.name || !form.maxCapacity || saving}
+              disabled={!crud.form.name || !crud.form.maxCapacity || saving}
             >
-              {saving ? 'Salvando...' : editId ? 'Salvar' : 'Cadastrar'}
+              {saving ? 'Salvando...' : crud.editing ? 'Salvar' : 'Cadastrar'}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
       <DeleteConfirmDialog
-        open={!!deleteTarget}
-        onOpenChange={open => { if (!open) setDeleteTarget(null) }}
+        open={!!crud.deleteTarget}
+        onOpenChange={open => { if (!open) crud.setDeleteTarget(null) }}
         title="Excluir sala"
         description={
           <>
-            Tem certeza que deseja excluir a sala <strong>{deleteTarget?.name}</strong>? Esta ação
+            Tem certeza que deseja excluir a sala <strong>{crud.deleteTarget?.name}</strong>? Esta ação
             não pode ser desfeita. Salas vinculadas a cursos não podem ser removidas.
           </>
         }

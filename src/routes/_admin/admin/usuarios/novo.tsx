@@ -16,6 +16,11 @@ import { maskCPF, maskPhone, maskCEP, maskRG, maskCNH, maskMoney } from '@/utils
 import { AgeHint } from '@/components/AgeHint'
 import { useUnsavedGuard, confirmLeaveIfDirty } from '@/hooks/use-unsaved-guard'
 import { CadproFields } from '@/components/CadproFields'
+import { toIso } from '@/utils/dates'
+import {
+  GENDER_OPTIONS, ETHNICITY_OPTIONS, EDUCATION_OPTIONS,
+  MARITAL_STATUS_OPTIONS, CNH_CATEGORY_OPTIONS,
+} from '@/lib/user-form-options'
 
 export const Route = createFileRoute('/_admin/admin/usuarios/novo')({
   component: RouteComponent,
@@ -50,11 +55,6 @@ function SelectField({ value, onChange, options, placeholder }: {
       {options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
     </NativeSelect>
   )
-}
-
-function toIso(date: string): string | null {
-  if (!date) return null
-  return new Date(date).toISOString()
 }
 
 const inp = 'h-9'
@@ -295,29 +295,13 @@ function RouteComponent() {
               <Input className={inp} value={form.nationality} onChange={e => set('nationality', e.target.value)} />
             </FieldRow>
             <FieldRow label="Gênero">
-              <SelectField value={form.gender} onChange={v => set('gender', v)} placeholder="Selecione" options={[
-                { value: 'MALE', label: 'Masculino' },
-                { value: 'FEMALE', label: 'Feminino' },
-                { value: 'OTHER', label: 'Outro' },
-              ]} />
+              <SelectField value={form.gender} onChange={v => set('gender', v)} placeholder="Selecione" options={GENDER_OPTIONS} />
             </FieldRow>
             <FieldRow label="Etnia">
-              <SelectField value={form.ethnicity} onChange={v => set('ethnicity', v)} placeholder="Selecione" options={[
-                { value: 'WHITE', label: 'Branca' },
-                { value: 'BLACK', label: 'Preta' },
-                { value: 'MIXED', label: 'Parda' },
-                { value: 'ASIAN', label: 'Amarela' },
-                { value: 'INDIGENOUS', label: 'Indígena' },
-              ]} />
+              <SelectField value={form.ethnicity} onChange={v => set('ethnicity', v)} placeholder="Selecione" options={ETHNICITY_OPTIONS} />
             </FieldRow>
             <FieldRow label="Estado civil">
-              <SelectField value={form.maritalStatus} onChange={v => set('maritalStatus', v)} placeholder="Selecione" options={[
-                { value: 'SINGLE', label: 'Solteiro(a)' },
-                { value: 'MARRIED', label: 'Casado(a)' },
-                { value: 'DIVORCED', label: 'Divorciado(a)' },
-                { value: 'WIDOWED', label: 'Viúvo(a)' },
-                { value: 'DOMESTIC_PARTNERSHIP', label: 'União estável' },
-              ]} />
+              <SelectField value={form.maritalStatus} onChange={v => set('maritalStatus', v)} placeholder="Selecione" options={MARITAL_STATUS_OPTIONS} />
             </FieldRow>
           </CardContent>
         </Card>
@@ -352,11 +336,7 @@ function RouteComponent() {
             </FieldRow>
             {form.driverLicense && (
               <FieldRow label="Categoria CNH">
-                <SelectField value={form.driverLicenseCategory} onChange={v => set('driverLicenseCategory', v)} placeholder="Selecione" options={[
-                  { value: 'A', label: 'A' }, { value: 'B', label: 'B' }, { value: 'C', label: 'C' },
-                  { value: 'D', label: 'D' }, { value: 'E', label: 'E' }, { value: 'AB', label: 'AB' },
-                  { value: 'AC', label: 'AC' }, { value: 'AD', label: 'AD' }, { value: 'AE', label: 'AE' },
-                ]} />
+                <SelectField value={form.driverLicenseCategory} onChange={v => set('driverLicenseCategory', v)} placeholder="Selecione" options={CNH_CATEGORY_OPTIONS} />
               </FieldRow>
             )}
           </CardContent>
@@ -369,16 +349,7 @@ function RouteComponent() {
           </CardHeader>
           <CardContent className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             <FieldRow label="Escolaridade">
-              <SelectField value={form.educationLevel} onChange={v => set('educationLevel', v)} placeholder="Selecione" options={[
-                { value: 'NO_FORMAL_EDUCATION', label: 'Sem escolaridade' },
-                { value: 'INCOMPLETE_PRIMARY', label: 'Fund. incompleto' },
-                { value: 'COMPLETE_PRIMARY', label: 'Fund. completo' },
-                { value: 'INCOMPLETE_SECONDARY', label: 'Médio incompleto' },
-                { value: 'COMPLETE_SECONDARY', label: 'Médio completo' },
-                { value: 'INCOMPLETE_HIGHER', label: 'Superior incompleto' },
-                { value: 'COMPLETE_HIGHER', label: 'Superior completo' },
-                { value: 'POSTGRADUATE', label: 'Pós-graduação' },
-              ]} />
+              <SelectField value={form.educationLevel} onChange={v => set('educationLevel', v)} placeholder="Selecione" options={EDUCATION_OPTIONS} />
             </FieldRow>
             <FieldRow label="Categoria funcional">
               <Input className={inp} value={form.functionalCategory} onChange={e => set('functionalCategory', e.target.value)} />

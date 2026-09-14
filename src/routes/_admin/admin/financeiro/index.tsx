@@ -38,6 +38,7 @@ import { NoPermission } from '@/components/NoPermission'
 import { NativeSelect } from '@/components/ui/native-select'
 import { Pagination } from '@/components/ui/pagination'
 import { useDebouncedValue } from '@/hooks/useDebouncedValue'
+import { useCrudDialog } from '@/hooks/useCrudDialog'
 
 type FinanceTab = 'dashboard' | 'lancamentos' | 'categorias' | 'caixas'
 type FinanceSearch = {
@@ -1247,66 +1248,39 @@ function CategoriesTab({ enabled, canCreate, canUpdate, canDelete }: {
   const updateCat = useUpdateFinanceCategory()
   const deleteCat = useDeleteFinanceCategory()
 
-  const [dialogOpen, setDialogOpen] = useState(false)
-  const [editId, setEditId] = useState<string | null>(null)
-  const [form, setForm] = useState<CatForm>(emptyCatForm)
-  const [formSnapshot, setFormSnapshot] = useState('')
-  const [confirmClose, setConfirmClose] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [deleteTarget, setDeleteTarget] = useState<FinanceCategory | null>(null)
+  const crud = useCrudDialog<CatForm, FinanceCategory>({
+    empty: emptyCatForm,
+    toForm: c => ({ name: c.name, type: c.type, color: c.color, active: c.active }),
+  })
 
   const cats = categories ?? []
 
-  function abrirNovo() {
-    setEditId(null)
-    const f = emptyCatForm()
-    setForm(f)
-    setFormSnapshot(JSON.stringify(f))
-    setError(null)
-    setDialogOpen(true)
-  }
-
-  function abrirEditar(c: FinanceCategory) {
-    setEditId(c.id)
-    const f: CatForm = { name: c.name, type: c.type, color: c.color, active: c.active }
-    setForm(f)
-    setFormSnapshot(JSON.stringify(f))
-    setError(null)
-    setDialogOpen(true)
-  }
-
-  const formDirty = JSON.stringify(form) !== formSnapshot
-  function requestCloseDialog() {
-    if (formDirty) setConfirmClose(true)
-    else setDialogOpen(false)
-  }
-
   async function handleSubmit() {
-    setError(null)
-    if (!form.name.trim()) { setError('Informe o nome.'); return }
-    const body = { name: form.name.trim(), type: form.type, color: form.color, active: form.active }
+    crud.setError(null)
+    if (!crud.form.name.trim()) { crud.setError('Informe o nome.'); return }
+    const body = { name: crud.form.name.trim(), type: crud.form.type, color: crud.form.color, active: crud.form.active }
     try {
-      if (editId) {
-        await updateCat.mutateAsync({ id: editId, body })
+      if (crud.editing) {
+        await updateCat.mutateAsync({ id: crud.editing.id, body })
         toast.success('Categoria atualizada!')
       } else {
         await createCat.mutateAsync(body)
         toast.success('Categoria criada!')
       }
-      setDialogOpen(false)
+      crud.forceClose()
     } catch (e) {
       const msg = apiErrorMessage(e, 'Erro ao salvar a categoria.')
-      setError(msg)
+      crud.setError(msg)
       toast.error(msg)
     }
   }
 
   async function handleDelete() {
-    if (!deleteTarget) return
+    if (!crud.deleteTarget) return
     try {
-      await deleteCat.mutateAsync(deleteTarget.id)
+      await deleteCat.mutateAsync(crud.deleteTarget.id)
       toast.success('Categoria removida.')
-      setDeleteTarget(null)
+      crud.setDeleteTarget(null)
     } catch (e) {
       toast.error(apiErrorMessage(e, 'Erro ao remover a categoria.'))
     }
@@ -1319,7 +1293,7 @@ function CategoriesTab({ enabled, canCreate, canUpdate, canDelete }: {
       <div className="flex items-center justify-between">
         <p className="text-sm text-muted-foreground">Categorias usadas para classificar os lançamentos.</p>
         {canCreate && (
-          <Button onClick={abrirNovo} className="shrink-0">
+          <Button onClick={crud.openCreate} className="shrink-0">
             <Plus className="size-4" /> Nova categoria
           </Button>
         )}
@@ -1374,12 +1348,12 @@ function CategoriesTab({ enabled, canCreate, canUpdate, canDelete }: {
                   <TableCell className="text-right">
                     <div className="flex items-center justify-end gap-1">
                       {canUpdate && (
-                        <Button size="sm" variant="ghost" className="h-8 px-2" onClick={() => abrirEditar(c)} aria-label="Editar" title="Editar">
+                        <Button size="sm" variant="ghost" className="h-8 px-2" onClick={() => crud.openEdit(c)} aria-label="Editar" title="Editar">
                           <Pencil className="size-4" />
                         </Button>
                       )}
                       {canDelete && (
-                        <Button size="sm" variant="ghost" className="h-8 px-2 text-muted-foreground hover:text-destructive" onClick={() => setDeleteTarget(c)} aria-label="Excluir" title="Excluir">
+                        <Button size="sm" variant="ghost" className="h-8 px-2 text-muted-foreground hover:text-destructive" onClick={() => crud.setDeleteTarget(c)} aria-label="Excluir" title="Excluir">
                           <Trash2 className="size-4" />
                         </Button>
                       )}
@@ -1393,19 +1367,19 @@ function CategoriesTab({ enabled, canCreate, canUpdate, canDelete }: {
         </div>
       </div>
 
-      <Dialog open={dialogOpen} onOpenChange={o => { if (o) setDialogOpen(true); else requestCloseDialog() }}>
+      <Dialog open={crud.open} onOpenChange={o => { if (!o) crud.requestClose() }}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>{editId ? 'Editar categoria' : 'Nova categoria'}</DialogTitle>
+            <DialogTitle>{crud.editing ? 'Editar categoria' : 'Nova categoria'}</DialogTitle>
           </DialogHeader>
           <div className="flex flex-col gap-4">
             <div className="flex flex-col gap-1.5">
               <Label>Nome *</Label>
-              <Input value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} placeholder="Ex: Aluguel" />
+              <Input value={crud.form.name} onChange={e => crud.setForm(p => ({ ...p, name: e.target.value }))} placeholder="Ex: Aluguel" />
             </div>
             <div className="flex flex-col gap-1.5">
               <Label>Tipo *</Label>
-              <NativeSelect value={form.type} onChange={e => setForm(p => ({ ...p, type: e.target.value as FinanceType }))}>
+              <NativeSelect value={crud.form.type} onChange={e => crud.setForm(p => ({ ...p, type: e.target.value as FinanceType }))}>
                 <option value="IN">Entrada</option>
                 <option value="OUT">Saída</option>
               </NativeSelect>
@@ -1417,8 +1391,8 @@ function CategoriesTab({ enabled, canCreate, canUpdate, canDelete }: {
                   <button
                     key={color}
                     type="button"
-                    onClick={() => setForm(p => ({ ...p, color }))}
-                    className={`size-7 rounded-md border-2 ${form.color === color ? 'border-foreground' : 'border-transparent'}`}
+                    onClick={() => crud.setForm(p => ({ ...p, color }))}
+                    className={`size-7 rounded-md border-2 ${crud.form.color === color ? 'border-foreground' : 'border-transparent'}`}
                     style={{ backgroundColor: color }}
                     aria-label={color}
                   />
@@ -1427,34 +1401,34 @@ function CategoriesTab({ enabled, canCreate, canUpdate, canDelete }: {
             </div>
             <button
               type="button"
-              onClick={() => setForm(p => ({ ...p, active: !p.active }))}
+              onClick={() => crud.setForm(p => ({ ...p, active: !p.active }))}
               className="flex items-center gap-2 text-sm text-foreground w-fit"
             >
-              <span className={`inline-block size-4 rounded-sm border ${form.active ? 'bg-emerald-500 border-emerald-500' : 'border-input'}`} />
-              {form.active ? 'Ativa (aparece nos lançamentos)' : 'Inativa'}
+              <span className={`inline-block size-4 rounded-sm border ${crud.form.active ? 'bg-emerald-500 border-emerald-500' : 'border-input'}`} />
+              {crud.form.active ? 'Ativa (aparece nos lançamentos)' : 'Inativa'}
             </button>
-            {error && <p className="text-sm text-destructive">{error}</p>}
+            {crud.error && <p className="text-sm text-destructive">{crud.error}</p>}
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={requestCloseDialog}>Cancelar</Button>
-            <Button onClick={handleSubmit} disabled={!form.name || saving}>
-              {saving ? 'Salvando...' : editId ? 'Salvar' : 'Cadastrar'}
+            <Button variant="outline" onClick={crud.requestClose}>Cancelar</Button>
+            <Button onClick={handleSubmit} disabled={!crud.form.name || saving}>
+              {saving ? 'Salvando...' : crud.editing ? 'Salvar' : 'Cadastrar'}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
       <ConfirmCloseDialog
-        open={confirmClose}
-        onConfirm={() => { setConfirmClose(false); setDialogOpen(false) }}
-        onCancel={() => setConfirmClose(false)}
+        open={crud.confirmCloseOpen}
+        onConfirm={crud.forceClose}
+        onCancel={() => crud.setConfirmCloseOpen(false)}
       />
 
       <DeleteConfirmDialog
-        open={!!deleteTarget}
-        onOpenChange={open => { if (!open) setDeleteTarget(null) }}
+        open={!!crud.deleteTarget}
+        onOpenChange={open => { if (!open) crud.setDeleteTarget(null) }}
         title="Excluir categoria"
-        description={<>Excluir <strong>{deleteTarget?.name}</strong>? Lançamentos já feitos com ela são mantidos.</>}
+        description={<>Excluir <strong>{crud.deleteTarget?.name}</strong>? Lançamentos já feitos com ela são mantidos.</>}
         onConfirm={handleDelete}
         pending={deleteCat.isPending}
       />
@@ -1474,66 +1448,39 @@ function AccountsTab({ enabled, canCreate, canUpdate, canDelete }: {
   const updateAcc = useUpdateFinanceAccount()
   const deleteAcc = useDeleteFinanceAccount()
 
-  const [dialogOpen, setDialogOpen] = useState(false)
-  const [editId, setEditId] = useState<string | null>(null)
-  const [form, setForm] = useState<AccForm>(emptyAccForm)
-  const [formSnapshot, setFormSnapshot] = useState('')
-  const [confirmClose, setConfirmClose] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [deleteTarget, setDeleteTarget] = useState<FinanceAccount | null>(null)
+  const crud = useCrudDialog<AccForm, FinanceAccount>({
+    empty: emptyAccForm,
+    toForm: a => ({ name: a.name, color: a.color, active: a.active }),
+  })
 
   const accs = accounts ?? []
 
-  function abrirNovo() {
-    setEditId(null)
-    const f = emptyAccForm()
-    setForm(f)
-    setFormSnapshot(JSON.stringify(f))
-    setError(null)
-    setDialogOpen(true)
-  }
-
-  function abrirEditar(a: FinanceAccount) {
-    setEditId(a.id)
-    const f: AccForm = { name: a.name, color: a.color, active: a.active }
-    setForm(f)
-    setFormSnapshot(JSON.stringify(f))
-    setError(null)
-    setDialogOpen(true)
-  }
-
-  const formDirty = JSON.stringify(form) !== formSnapshot
-  function requestCloseDialog() {
-    if (formDirty) setConfirmClose(true)
-    else setDialogOpen(false)
-  }
-
   async function handleSubmit() {
-    setError(null)
-    if (!form.name.trim()) { setError('Informe o nome.'); return }
-    const body = { name: form.name.trim(), color: form.color, active: form.active }
+    crud.setError(null)
+    if (!crud.form.name.trim()) { crud.setError('Informe o nome.'); return }
+    const body = { name: crud.form.name.trim(), color: crud.form.color, active: crud.form.active }
     try {
-      if (editId) {
-        await updateAcc.mutateAsync({ id: editId, body })
+      if (crud.editing) {
+        await updateAcc.mutateAsync({ id: crud.editing.id, body })
         toast.success('Caixa atualizado!')
       } else {
         await createAcc.mutateAsync(body)
         toast.success('Caixa criado!')
       }
-      setDialogOpen(false)
+      crud.forceClose()
     } catch (e) {
       const msg = apiErrorMessage(e, 'Erro ao salvar o caixa.')
-      setError(msg)
+      crud.setError(msg)
       toast.error(msg)
     }
   }
 
   async function handleDelete() {
-    if (!deleteTarget) return
+    if (!crud.deleteTarget) return
     try {
-      await deleteAcc.mutateAsync(deleteTarget.id)
+      await deleteAcc.mutateAsync(crud.deleteTarget.id)
       toast.success('Caixa removido.')
-      setDeleteTarget(null)
+      crud.setDeleteTarget(null)
     } catch (e) {
       toast.error(apiErrorMessage(e, 'Erro ao remover o caixa.'))
     }
@@ -1546,7 +1493,7 @@ function AccountsTab({ enabled, canCreate, canUpdate, canDelete }: {
       <div className="flex items-center justify-between">
         <p className="text-sm text-muted-foreground">Contas/caixas onde o dinheiro fica (Caixa geral, Banco, Poupança…).</p>
         {canCreate && (
-          <Button onClick={abrirNovo} className="shrink-0">
+          <Button onClick={crud.openCreate} className="shrink-0">
             <Plus className="size-4" /> Novo caixa
           </Button>
         )}
@@ -1594,12 +1541,12 @@ function AccountsTab({ enabled, canCreate, canUpdate, canDelete }: {
                   <TableCell className="text-right">
                     <div className="flex items-center justify-end gap-1">
                       {canUpdate && (
-                        <Button size="sm" variant="ghost" className="h-8 px-2" onClick={() => abrirEditar(a)} aria-label="Editar" title="Editar">
+                        <Button size="sm" variant="ghost" className="h-8 px-2" onClick={() => crud.openEdit(a)} aria-label="Editar" title="Editar">
                           <Pencil className="size-4" />
                         </Button>
                       )}
                       {canDelete && (
-                        <Button size="sm" variant="ghost" className="h-8 px-2 text-muted-foreground hover:text-destructive" onClick={() => setDeleteTarget(a)} aria-label="Excluir" title="Excluir">
+                        <Button size="sm" variant="ghost" className="h-8 px-2 text-muted-foreground hover:text-destructive" onClick={() => crud.setDeleteTarget(a)} aria-label="Excluir" title="Excluir">
                           <Trash2 className="size-4" />
                         </Button>
                       )}
@@ -1613,15 +1560,15 @@ function AccountsTab({ enabled, canCreate, canUpdate, canDelete }: {
         </div>
       </div>
 
-      <Dialog open={dialogOpen} onOpenChange={o => { if (o) setDialogOpen(true); else requestCloseDialog() }}>
+      <Dialog open={crud.open} onOpenChange={o => { if (!o) crud.requestClose() }}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>{editId ? 'Editar caixa' : 'Novo caixa'}</DialogTitle>
+            <DialogTitle>{crud.editing ? 'Editar caixa' : 'Novo caixa'}</DialogTitle>
           </DialogHeader>
           <div className="flex flex-col gap-4">
             <div className="flex flex-col gap-1.5">
               <Label>Nome *</Label>
-              <Input value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} placeholder="Ex: Banco" />
+              <Input value={crud.form.name} onChange={e => crud.setForm(p => ({ ...p, name: e.target.value }))} placeholder="Ex: Banco" />
             </div>
             <div className="flex flex-col gap-1.5">
               <Label>Cor</Label>
@@ -1630,8 +1577,8 @@ function AccountsTab({ enabled, canCreate, canUpdate, canDelete }: {
                   <button
                     key={color}
                     type="button"
-                    onClick={() => setForm(p => ({ ...p, color }))}
-                    className={`size-7 rounded-md border-2 ${form.color === color ? 'border-foreground' : 'border-transparent'}`}
+                    onClick={() => crud.setForm(p => ({ ...p, color }))}
+                    className={`size-7 rounded-md border-2 ${crud.form.color === color ? 'border-foreground' : 'border-transparent'}`}
                     style={{ backgroundColor: color }}
                     aria-label={color}
                   />
@@ -1640,34 +1587,34 @@ function AccountsTab({ enabled, canCreate, canUpdate, canDelete }: {
             </div>
             <button
               type="button"
-              onClick={() => setForm(p => ({ ...p, active: !p.active }))}
+              onClick={() => crud.setForm(p => ({ ...p, active: !p.active }))}
               className="flex items-center gap-2 text-sm text-foreground w-fit"
             >
-              <span className={`inline-block size-4 rounded-sm border ${form.active ? 'bg-emerald-500 border-emerald-500' : 'border-input'}`} />
-              {form.active ? 'Ativo (aparece nos lançamentos)' : 'Inativo'}
+              <span className={`inline-block size-4 rounded-sm border ${crud.form.active ? 'bg-emerald-500 border-emerald-500' : 'border-input'}`} />
+              {crud.form.active ? 'Ativo (aparece nos lançamentos)' : 'Inativo'}
             </button>
-            {error && <p className="text-sm text-destructive">{error}</p>}
+            {crud.error && <p className="text-sm text-destructive">{crud.error}</p>}
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={requestCloseDialog}>Cancelar</Button>
-            <Button onClick={handleSubmit} disabled={!form.name || saving}>
-              {saving ? 'Salvando...' : editId ? 'Salvar' : 'Cadastrar'}
+            <Button variant="outline" onClick={crud.requestClose}>Cancelar</Button>
+            <Button onClick={handleSubmit} disabled={!crud.form.name || saving}>
+              {saving ? 'Salvando...' : crud.editing ? 'Salvar' : 'Cadastrar'}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
       <ConfirmCloseDialog
-        open={confirmClose}
-        onConfirm={() => { setConfirmClose(false); setDialogOpen(false) }}
-        onCancel={() => setConfirmClose(false)}
+        open={crud.confirmCloseOpen}
+        onConfirm={crud.forceClose}
+        onCancel={() => crud.setConfirmCloseOpen(false)}
       />
 
       <DeleteConfirmDialog
-        open={!!deleteTarget}
-        onOpenChange={open => { if (!open) setDeleteTarget(null) }}
+        open={!!crud.deleteTarget}
+        onOpenChange={open => { if (!open) crud.setDeleteTarget(null) }}
         title="Excluir caixa"
-        description={<>Excluir <strong>{deleteTarget?.name}</strong>? Lançamentos já feitos nele são mantidos.</>}
+        description={<>Excluir <strong>{crud.deleteTarget?.name}</strong>? Lançamentos já feitos nele são mantidos.</>}
         onConfirm={handleDelete}
         pending={deleteAcc.isPending}
       />
