@@ -69,6 +69,7 @@ const ptBR = {
     error: 'Erro ao carregar cursos.',
     notFound: 'Nenhum curso encontrado',
     notFoundHint: 'Tente ajustar os filtros ou buscar por outro termo.',
+    clearFilters: 'Limpar filtros',
     resultsCount: '{{count}} curso encontrado',
     resultsCount_other: '{{count}} cursos encontrados',
     free: 'Gratuito',

@@ -1,6 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { useMemo, useState } from 'react'
+import { useMemo } from 'react'
 import { Input } from '@/components/ui/input'
+import { Button } from '@/components/ui/button'
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
@@ -13,35 +14,79 @@ import { getCourseSituation } from '@/utils/course-status'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useSeo } from '@/hooks/useSeo'
 
+const PAGE_SIZE = 12
+type SortKey = 'soon' | 'recent' | 'price'
+type PriceKey = 'all' | 'free' | 'paid'
+type StatusKey = 'all' | 'open' | 'closed'
+
+type CoursesSearch = {
+  q?: string
+  price?: PriceKey
+  status?: StatusKey
+  sort?: SortKey
+  page?: number
+}
+
+const oneOf = <T extends string>(v: unknown, opts: readonly T[]): T | undefined =>
+  typeof v === 'string' && (opts as readonly string[]).includes(v) ? (v as T) : undefined
+
 export const Route = createFileRoute('/_public/cursos/')({
+  // Filtros vivem na URL: refresh-safe, compartilhável e respeita voltar/avançar.
+  validateSearch: (s: Record<string, unknown>): CoursesSearch => {
+    const page = Number(s.page)
+    return {
+      q: typeof s.q === 'string' && s.q.trim() ? s.q : undefined,
+      price: oneOf<PriceKey>(s.price, ['all', 'free', 'paid']),
+      status: oneOf<StatusKey>(s.status, ['all', 'open', 'closed']),
+      sort: oneOf<SortKey>(s.sort, ['soon', 'recent', 'price']),
+      page: Number.isFinite(page) && page > 1 ? Math.floor(page) : undefined,
+    }
+  },
   component: RouteComponent,
 })
 
-const PAGE_SIZE = 12
-type SortKey = 'soon' | 'recent' | 'price'
-
 function RouteComponent() {
   useSeo({ title: 'Cursos', description: 'Cursos agrícolas e capacitações do Sindicato Rural de Terra Roxa.' })
-  const [search, setSearch] = useState('')
-  const [priceFilter, setPriceFilter] = useState('all')
-  const [statusFilter, setStatusFilter] = useState('all')
-  const [sortBy, setSortBy] = useState<SortKey>('soon')
-  const [page, setPage] = useState(1)
   const { t } = useTranslation()
+  const navigate = Route.useNavigate()
+  const sp = Route.useSearch()
+
+  const search = sp.q ?? ''
+  const priceFilter = sp.price ?? 'all'
+  const statusFilter = sp.status ?? 'all'
+  const sortBy = sp.sort ?? 'soon'
+  const page = sp.page ?? 1
 
   // Puxa um lote amplo e faz busca/filtro/ordenação/paginação no cliente —
   // o backend de cursos não expõe busca e o volume total é pequeno.
   const { data: result, isLoading, isError } = useCourses({ limit: 100 })
   const courses = result?.data ?? []
 
-  // Qualquer mudança de filtro volta pra página 1.
-  function resetTo1<T>(setter: (v: T) => void) {
-    return (v: T) => { setter(v); setPage(1) }
+  // Merge na URL; muda filtro → volta pra página 1; remove defaults pra URL curta.
+  function patchSearch(patch: Partial<CoursesSearch>, opts?: { replace?: boolean }) {
+    navigate({
+      search: (prev) => {
+        const next: CoursesSearch = { ...prev, ...patch }
+        if (!('page' in patch)) next.page = undefined
+        if (!next.q || next.q.trim() === '') next.q = undefined
+        if (next.price === 'all') next.price = undefined
+        if (next.status === 'all') next.status = undefined
+        if (next.sort === 'soon') next.sort = undefined
+        if (!next.page || next.page <= 1) next.page = undefined
+        return next
+      },
+      replace: opts?.replace ?? true,
+    })
   }
+
+  const hasFilters = search.trim() !== '' || priceFilter !== 'all' || statusFilter !== 'all'
+  const clearFilters = () => navigate({ search: {}, replace: true })
 
   const processed = useMemo(() => {
     const term = search.trim().toLowerCase()
-    const filtered = courses.filter((course) => {
+    const withSituation = courses.map((c) => ({ course: c, situation: getCourseSituation(c) }))
+
+    const filtered = withSituation.filter(({ course, situation }) => {
       const matchSearch =
         !term ||
         course.title.toLowerCase().includes(term) ||
@@ -51,7 +96,6 @@ function RouteComponent() {
         priceFilter === 'all' ||
         (priceFilter === 'free' && course.price === 0) ||
         (priceFilter === 'paid' && course.price > 0)
-      const situation = getCourseSituation(course)
       const matchStatus =
         statusFilter === 'all' ||
         (statusFilter === 'open' && situation === 'open') ||
@@ -60,12 +104,16 @@ function RouteComponent() {
     })
 
     filtered.sort((a, b) => {
-      if (sortBy === 'price') return a.price - b.price
-      const cmp = a.startDate.localeCompare(b.startDate)
+      // Encerrados sempre afundam pro fim.
+      const ca = a.situation === 'closed' ? 1 : 0
+      const cb = b.situation === 'closed' ? 1 : 0
+      if (ca !== cb) return ca - cb
+      if (sortBy === 'price') return a.course.price - b.course.price
+      const cmp = a.course.startDate.localeCompare(b.course.startDate)
       return sortBy === 'recent' ? -cmp : cmp
     })
 
-    return filtered
+    return filtered.map((x) => x.course)
   }, [courses, search, priceFilter, statusFilter, sortBy])
 
   const totalPages = Math.max(1, Math.ceil(processed.length / PAGE_SIZE))
@@ -92,12 +140,12 @@ function RouteComponent() {
                 <Input
                   placeholder={t('courses.searchPlaceholder')}
                   value={search}
-                  onChange={(e) => { setSearch(e.target.value); setPage(1) }}
+                  onChange={(e) => patchSearch({ q: e.target.value })}
                   className="pl-10 text-sm"
                 />
               </div>
               <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-                <Select value={priceFilter} onValueChange={resetTo1(setPriceFilter)}>
+                <Select value={priceFilter} onValueChange={(v) => patchSearch({ price: v as PriceKey })}>
                   <SelectTrigger className="w-full text-sm"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">{t('courses.filterAll')}</SelectItem>
@@ -105,7 +153,7 @@ function RouteComponent() {
                     <SelectItem value="paid">{t('courses.filterPaid')}</SelectItem>
                   </SelectContent>
                 </Select>
-                <Select value={statusFilter} onValueChange={resetTo1(setStatusFilter)}>
+                <Select value={statusFilter} onValueChange={(v) => patchSearch({ status: v as StatusKey })}>
                   <SelectTrigger className="w-full text-sm"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">{t('courses.filterStatusAll')}</SelectItem>
@@ -113,7 +161,7 @@ function RouteComponent() {
                     <SelectItem value="closed">{t('courses.filterClosed')}</SelectItem>
                   </SelectContent>
                 </Select>
-                <Select value={sortBy} onValueChange={resetTo1((v: string) => setSortBy(v as SortKey))}>
+                <Select value={sortBy} onValueChange={(v) => patchSearch({ sort: v as SortKey })}>
                   <SelectTrigger className="w-full text-sm"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="soon">{t('courses.sortSoon')}</SelectItem>
@@ -155,12 +203,24 @@ function RouteComponent() {
                   <GraduationCap className="size-16 text-muted-foreground/50" />
                   <h3 className="mt-4 text-lg font-semibold">{t('courses.notFound')}</h3>
                   <p className="mt-2 text-sm text-muted-foreground">{t('courses.notFoundHint')}</p>
+                  {hasFilters && (
+                    <Button variant="outline" className="mt-4" onClick={clearFilters}>
+                      {t('courses.clearFilters')}
+                    </Button>
+                  )}
                 </div>
               ) : (
                 <>
-                  <p className="mb-4 text-sm text-muted-foreground">
-                    {t('courses.resultsCount', { count: processed.length })}
-                  </p>
+                  <div className="mb-4 flex items-center justify-between gap-3">
+                    <p className="text-sm text-muted-foreground">
+                      {t('courses.resultsCount', { count: processed.length })}
+                    </p>
+                    {hasFilters && (
+                      <Button variant="ghost" size="sm" className="h-auto text-xs" onClick={clearFilters}>
+                        {t('courses.clearFilters')}
+                      </Button>
+                    )}
+                  </div>
                   <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                     {pageItems.map((course) => (
                       <CourseCard key={course.id} course={course} />
@@ -172,7 +232,7 @@ function RouteComponent() {
                       totalPages={totalPages}
                       total={processed.length}
                       limit={PAGE_SIZE}
-                      onPageChange={setPage}
+                      onPageChange={(p) => patchSearch({ page: p }, { replace: false })}
                       showLimitSelector={false}
                       isLoading={isLoading}
                     />

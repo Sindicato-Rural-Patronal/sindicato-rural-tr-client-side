@@ -14,18 +14,25 @@ const situationClass: Record<CourseSituation, string> = {
   closed: 'bg-neutral-500 text-white',
 }
 
-function SituationBadge({ course }: { course: Course }) {
+function SituationBadge({ situation }: { situation: CourseSituation }) {
   const { t } = useTranslation()
-  const s = getCourseSituation(course)
   const label =
-    s === 'open' ? t('courseCard.open') : s === 'in_progress' ? t('courseCard.inProgress') : t('courseCard.closed')
-  return <Badge className={`absolute right-2 top-2 shadow ${situationClass[s]}`}>{label}</Badge>
+    situation === 'open'
+      ? t('courseCard.open')
+      : situation === 'in_progress'
+        ? t('courseCard.inProgress')
+        : t('courseCard.closed')
+  return <Badge className={`absolute right-2 top-2 shadow ${situationClass[situation]}`}>{label}</Badge>
 }
 
 export function CourseCard({ course }: { course: Course }) {
   const { t } = useTranslation()
+  const situation = getCourseSituation(course)
+  // Encerrado fica esmaecido pra os cursos ativos saltarem à vista; volta ao
+  // normal no hover pra continuar legível.
+  const dim = situation === 'closed' ? 'opacity-65 transition-opacity hover:opacity-100' : ''
   return (
-    <Link to="/cursos/$id" params={{ id: course.id }} className="group block h-full">
+    <Link to="/cursos/$id" params={{ id: course.id }} className={`group block h-full ${dim}`}>
       <Card className="flex h-full flex-col overflow-hidden transition-all group-hover:shadow-lg">
         <div className="relative aspect-video overflow-hidden bg-muted">
           {course.coverImage ? (
@@ -44,7 +51,7 @@ export function CourseCard({ course }: { course: Course }) {
           <Badge className="absolute left-2 top-2 bg-white text-neutral-900 shadow">
             {course.price === 0 ? t('courseCard.free') : formatBRL(course.price)}
           </Badge>
-          <SituationBadge course={course} />
+          <SituationBadge situation={situation} />
         </div>
         <CardContent className="flex grow flex-col gap-2 p-4">
           <h3 className="line-clamp-2 font-semibold text-foreground">{course.title}</h3>

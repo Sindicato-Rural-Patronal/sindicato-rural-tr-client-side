@@ -69,6 +69,7 @@ const en = {
     error: 'Error loading courses.',
     notFound: 'No courses found',
     notFoundHint: 'Try adjusting your filters or searching for a different term.',
+    clearFilters: 'Clear filters',
     resultsCount: '{{count}} course found',
     resultsCount_other: '{{count}} courses found',
     free: 'Free',
