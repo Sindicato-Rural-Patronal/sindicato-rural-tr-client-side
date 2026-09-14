@@ -2,6 +2,7 @@ import { createFileRoute, Link } from '@tanstack/react-router'
 import { useState } from 'react'
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
+import { Pagination } from '@/components/ui/pagination'
 import { Newspaper, Search } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useNews } from '@/hooks/useNews'
@@ -12,6 +13,12 @@ import { formatDateFromString } from '@/utils/format-data-from-string'
 export const Route = createFileRoute('/_public/noticias/')({
   component: RouteComponent,
 })
+
+// useNews devolve um array plano (sem metadados de total), então buscamos um
+// lote amplo e paginamos no cliente — assim itens além dos 20 mais recentes
+// ficam acessíveis e pesquisáveis.
+const FETCH_LIMIT = 100
+const PAGE_SIZE = 9
 
 function NewsCard({ news }: { news: News }) {
   const { t } = useTranslation()
@@ -51,13 +58,18 @@ function NewsCard({ news }: { news: News }) {
 function RouteComponent() {
   useSeo({ title: 'Notícias', description: 'Notícias e comunicados do Sindicato Rural de Terra Roxa.' })
   const [search, setSearch] = useState('')
+  const [page, setPage] = useState(1)
   const { t } = useTranslation()
-  const { data: news = [], isLoading, isError } = useNews()
+  const { data: news = [], isLoading, isError } = useNews({ limit: FETCH_LIMIT })
 
   const filtered = news.filter(n =>
     n.title.toLowerCase().includes(search.toLowerCase()) ||
     (n.summary ?? '').toLowerCase().includes(search.toLowerCase()),
   )
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
+  const currentPage = Math.min(page, totalPages)
+  const paginated = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE)
 
   return (
     <main>
@@ -78,7 +90,7 @@ function RouteComponent() {
               <Input
                 placeholder={t('newsPage.searchPlaceholder')}
                 value={search}
-                onChange={(e) => setSearch(e.target.value)}
+                onChange={(e) => { setSearch(e.target.value); setPage(1) }}
                 className="pl-10 text-sm"
               />
             </div>
@@ -115,9 +127,21 @@ function RouteComponent() {
               </div>
             )}
             {!isLoading && !isError && filtered.length > 0 && (
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                {filtered.map(n => <NewsCard key={n.id} news={n} />)}
-              </div>
+              <>
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                  {paginated.map(n => <NewsCard key={n.id} news={n} />)}
+                </div>
+                {totalPages > 1 && (
+                  <Pagination
+                    page={currentPage}
+                    totalPages={totalPages}
+                    total={filtered.length}
+                    limit={PAGE_SIZE}
+                    onPageChange={setPage}
+                    showLimitSelector={false}
+                  />
+                )}
+              </>
             )}
           </div>
         </section>

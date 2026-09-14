@@ -2,12 +2,11 @@ import { createFileRoute, Link } from '@tanstack/react-router'
 import { apiErrorMessage } from '@/lib/api-error-message'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
-import { useState } from 'react'
-import { useQueryClient } from '@tanstack/react-query'
+import { useState, useId, Children, cloneElement, isValidElement } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useCourse } from '@/hooks/useCourse'
+import { useCourse, useRegisterByCpf, useRegisterFull } from '@/hooks/useCourse'
 import { useSeo } from '@/hooks/useSeo'
-import { API_BASE } from '@/lib/api'
+import { apiFetch } from '@/lib/api'
 import { formatDateFromString } from '@/utils/format-data-from-string'
 import { formatBRL } from '@/utils/format-currency'
 import { maskCPF, maskPhone, maskCEP } from '@/utils/masks'
@@ -19,6 +18,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Skeleton } from '@/components/ui/skeleton'
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from '@/components/ui/dialog'
@@ -38,23 +38,18 @@ const emptyFullForm = {
   street: '', number: '', neighborhood: '', zipCode: '', city: '', terms: false,
 }
 
-async function postJson(url: string, body: unknown): Promise<void> {
-  const r = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  })
-  if (!r.ok) {
-    const d = await r.json().catch(() => null)
-    throw new Error(d?.error ?? d?.message ?? `HTTP ${r.status}`)
-  }
-}
-
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  const id = useId()
+  const items = Children.toArray(children)
+  const control = items[0]
+  const rest = items.slice(1)
   return (
     <div className="flex flex-col gap-1.5">
-      <Label className="text-xs font-medium text-muted-foreground">{label}</Label>
-      {children}
+      <Label htmlFor={id} className="text-xs font-medium text-muted-foreground">{label}</Label>
+      {isValidElement(control)
+        ? cloneElement(control as React.ReactElement<{ id?: string }>, { id })
+        : control}
+      {rest}
     </div>
   )
 }
@@ -71,7 +66,8 @@ function RegistrationDialog({
   onClose: () => void
 }) {
   const { t } = useTranslation()
-  const queryClient = useQueryClient()
+  const registerByCpf = useRegisterByCpf(courseId)
+  const registerFull = useRegisterFull(courseId)
   const [step, setStep] = useState<Step>('cpf')
   const [cpf, setCpf] = useState('')
   const [lookupName, setLookupName] = useState('')
@@ -91,7 +87,7 @@ function RegistrationDialog({
     if (cpfDigits.length !== 11) { setError('CPF inválido.'); return }
     setLoading(true); setError(null)
     try {
-      const res = await fetch(`${API_BASE}/users/lookup-cpf/${cpfDigits}`).then(r => r.json())
+      const res = await apiFetch(`/users/lookup-cpf/${cpfDigits}`).then(r => r.json())
       if (res.found) { setLookupName(res.name ?? ''); setStep('confirm') }
       else { setF({ ...emptyFullForm }); setStep('form') }
     } catch (e) {
@@ -103,8 +99,7 @@ function RegistrationDialog({
   async function confirmExisting() {
     setLoading(true); setError(null)
     try {
-      await postJson(`${API_BASE}/courses/${courseId}/register-by-cpf`, { cpf: cpfDigits })
-      queryClient.invalidateQueries({ queryKey: ['courses', courseId] })
+      await registerByCpf.mutateAsync(cpfDigits)
       setStep('success')
     } catch (e) {
       setError(apiErrorMessage(e, t('registration.errorDefault')))
@@ -116,11 +111,12 @@ function RegistrationDialog({
     const phoneDigits = f.phone.replace(/\D/g, '')
     if (!f.name.trim()) { setError('Informe o nome.'); return }
     if (!f.email.trim()) { setError('Informe o e-mail.'); return }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(f.email.trim())) { setError('Informe um e-mail válido.'); return }
     if (![10, 11].includes(phoneDigits.length)) { setError('Telefone inválido.'); return }
     if (!f.terms) { setError('É preciso aceitar os termos.'); return }
     setLoading(true); setError(null)
     try {
-      await postJson(`${API_BASE}/courses/${courseId}/register-full`, {
+      await registerFull.mutateAsync({
         name: f.name.trim(),
         phone: phoneDigits,
         email: f.email.trim(),
@@ -136,7 +132,6 @@ function RegistrationDialog({
           city: f.city || undefined,
         },
       })
-      queryClient.invalidateQueries({ queryKey: ['courses', courseId] })
       setStep('success')
     } catch (e) {
       setError(apiErrorMessage(e, t('registration.errorDefault')))
@@ -172,7 +167,7 @@ function RegistrationDialog({
                 <Input
                   value={cpf}
                   onChange={e => { setCpf(maskCPF(e.target.value)); setError(null) }}
-                  onKeyDown={e => { if (e.key === 'Enter') handleLookup() }}
+                  onKeyDown={e => { if (e.key === 'Enter' && !loading) handleLookup() }}
                   placeholder="000.000.000-00"
                   inputMode="numeric"
                   autoFocus
@@ -308,8 +303,35 @@ function RouteComponent() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center py-32">
-        <p className="text-muted-foreground">{t('courseDetail.loading')}</p>
+      <div className="bg-background">
+        {/* Hero */}
+        <Skeleton className="h-64 w-full rounded-none md:h-80" />
+        <div className="container mx-auto px-4 py-8">
+          <Skeleton className="mb-6 h-4 w-32" />
+          <div className="grid gap-8 lg:grid-cols-3">
+            {/* Main content */}
+            <div className="lg:col-span-2 flex flex-col gap-3">
+              <Skeleton className="h-6 w-40" />
+              <Skeleton className="h-4 w-full" />
+              <Skeleton className="h-4 w-full" />
+              <Skeleton className="h-4 w-5/6" />
+              <Skeleton className="h-4 w-3/4" />
+            </div>
+            {/* Info sidebar */}
+            <div className="flex flex-col gap-4">
+              <div className="rounded-xl border bg-card p-5 flex flex-col gap-4">
+                <Skeleton className="h-5 w-32" />
+                <div className="flex flex-col gap-3">
+                  <Skeleton className="h-10 w-full" />
+                  <Skeleton className="h-10 w-full" />
+                  <Skeleton className="h-10 w-full" />
+                  <Skeleton className="h-10 w-full" />
+                </div>
+                <Skeleton className="h-11 w-full" />
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     )
   }
@@ -499,7 +521,7 @@ function RouteComponent() {
                     <div className="mt-1.5 h-1.5 w-full rounded-full bg-muted overflow-hidden">
                       <div
                         className={`h-full rounded-full transition-all ${isFull ? 'bg-destructive' : 'bg-primary'}`}
-                        style={{ width: `${Math.min(occupancyPercent, 100)}%` }}
+                        style={{ width: `${occupancyPercent}%` }}
                       />
                     </div>
                     <p className={`mt-1 text-xs ${isFull ? 'text-destructive font-medium' : 'text-muted-foreground'}`}>

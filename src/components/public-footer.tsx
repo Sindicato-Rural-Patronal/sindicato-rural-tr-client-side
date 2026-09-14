@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button'
 import { FaFacebook, FaInstagram } from 'react-icons/fa'
 import { useTranslation } from 'react-i18next'
 import { LanguageToggle } from '@/components/LanguageToggle'
+import { ORG_CONTACT } from '@/lib/org-contact'
 
 export function PublicFooter() {
   const { t } = useTranslation()
@@ -17,7 +18,7 @@ export function PublicFooter() {
             <div className="flex items-center gap-3">
               <div className="flex size-14 shrink-0 items-center justify-center rounded-full bg-white p-1">
                 <img
-                  src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/logo_rodape2%201-grg6Gf7BKrfEuICS8lvz0t5GZ7sglX.png"
+                  src="/logo-full.png"
                   alt="Logo Sindicato Rural de Terra Roxa"
                   width={52}
                   height={52}
@@ -28,20 +29,20 @@ export function PublicFooter() {
             <div className="space-y-2 text-sm text-brand-foreground/90">
               <p className="flex items-center gap-2">
                 <Phone className="size-4 shrink-0" />
-                (44) 3645-2199
+                {ORG_CONTACT.phone}
               </p>
               <p className="flex items-center gap-2">
                 <Mail className="size-4 shrink-0" />
-                sindicato@ruraltr.com.br
+                {ORG_CONTACT.email}
               </p>
               <p className="flex items-start gap-2">
                 <MapPin className="mt-0.5 size-4 shrink-0" />
                 <span>
-                  Rua Jose Tondato, 80
+                  {ORG_CONTACT.street}
                   <br />
-                  Centro - 85990-000
+                  {ORG_CONTACT.district} - {ORG_CONTACT.zip}
                   <br />
-                  Terra Roxa - PR
+                  {ORG_CONTACT.city} - {ORG_CONTACT.state}
                 </span>
               </p>
             </div>

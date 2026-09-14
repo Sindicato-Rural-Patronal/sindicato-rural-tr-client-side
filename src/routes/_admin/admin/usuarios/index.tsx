@@ -35,6 +35,7 @@ import { DeleteConfirmDialog } from '@/components/DeleteConfirmDialog'
 import { NativeSelect } from '@/components/ui/native-select'
 import { EmptyState } from '@/components/EmptyState'
 import { Pagination } from '@/components/ui/pagination'
+import { InitialsAvatar } from '@/components/InitialsAvatar'
 
 export const Route = createFileRoute('/_admin/admin/usuarios/')({
   // Filtros principais na URL (sobrevivem a voltar/atualizar/compartilhar).
@@ -46,10 +47,6 @@ export const Route = createFileRoute('/_admin/admin/usuarios/')({
   }),
   component: RouteComponent,
 })
-
-function getInitials(name: string) {
-  return name.split(' ').slice(0, 2).map(n => n[0]).join('').toUpperCase()
-}
 
 const PERM_GROUPS = [
   { label: 'Usuários',        perms: ['CREATE_USER', 'UPDATE_USER', 'DELETE_USER', 'READ_USER'] },
@@ -63,29 +60,6 @@ const PERM_GROUPS = [
   { label: 'Auditoria',       perms: ['READ_AUDIT'] },
   { label: 'Financeiro',      perms: ['CREATE_FINANCE', 'READ_FINANCE', 'UPDATE_FINANCE', 'DELETE_FINANCE'] },
 ]
-
-function AvatarCircle({ name, avatar, size = 'md' }: { name: string; avatar?: string | null; size?: 'sm' | 'md' }) {
-  const colors = [
-    'bg-blue-100 text-blue-700',
-    'bg-emerald-100 text-emerald-700',
-    'bg-amber-100 text-amber-700',
-    'bg-rose-100 text-rose-700',
-    'bg-purple-100 text-purple-700',
-    'bg-sky-100 text-sky-700',
-  ]
-  const color = colors[name.charCodeAt(0) % colors.length]
-  const cls = size === 'sm' ? 'size-8 text-xs' : 'size-10 text-sm'
-  if (avatar) {
-    return (
-      <img src={avatar} alt={name} className={`${cls} rounded-full object-cover shrink-0 border border-border`} />
-    )
-  }
-  return (
-    <div className={`${cls} ${color} rounded-full flex items-center justify-center font-semibold shrink-0`}>
-      {getInitials(name)}
-    </div>
-  )
-}
 
 function PermCheckboxes({
   permissions,
@@ -1012,7 +986,7 @@ function RouteComponent() {
                       <TableRow key={u.id}>
                         <TableCell>
                           <div className="flex items-center gap-3">
-                            <AvatarCircle name={u.name} avatar={u.avatar} size="sm" />
+                            <InitialsAvatar name={u.name} avatar={u.avatar} size="sm" />
                             <div>
                               <p className="font-medium text-sm text-foreground">{u.name}</p>
                               <p className="text-xs text-muted-foreground md:hidden">{u.email}</p>
@@ -1125,7 +1099,7 @@ function RouteComponent() {
                     <TableRow key={a.id}>
                       <TableCell>
                         <div className="flex items-center gap-3">
-                          <AvatarCircle name={a.userData.name} avatar={a.userData.avatar} size="sm" />
+                          <InitialsAvatar name={a.userData.name} avatar={a.userData.avatar} size="sm" />
                           <div>
                             <p className="font-medium text-sm text-foreground">{a.userData.name}</p>
                             <p className="text-xs text-muted-foreground font-mono">@{a.username}</p>

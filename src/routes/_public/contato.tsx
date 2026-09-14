@@ -5,24 +5,26 @@ import { usePublicContacts, useSendContactMessage } from '@/hooks/useAdmin'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
+import { InitialsAvatar } from '@/components/InitialsAvatar'
 import {
   MapPin, Phone, Clock, Mail, Send, CheckCircle2,
   User,
 } from 'lucide-react'
 import { maskPhone } from '@/utils/masks'
 import { useSeo } from '@/hooks/useSeo'
+import { ORG_CONTACT } from '@/lib/org-contact'
 
 export const Route = createFileRoute('/_public/contato')({
   component: ContatoPage,
 })
 
 const INFO = {
-  address: 'Rua Sete de Setembro, 1847, Centro',
-  city: 'Terra Roxa – PR, 85990-000',
-  phone: '(44) 3645-1200',
-  phone2: '(44) 99999-0000',
-  email: 'contato@sindicatoruraltr.com.br',
+  address: `${ORG_CONTACT.street}, ${ORG_CONTACT.district}`,
+  city: `${ORG_CONTACT.city} – ${ORG_CONTACT.state}, ${ORG_CONTACT.zip}`,
+  phone: ORG_CONTACT.phone,
+  email: ORG_CONTACT.email,
   hours: [
     { days: 'Segunda a Sexta', time: '08h às 17h' },
     { days: 'Sábado', time: '08h às 12h' },
@@ -32,32 +34,8 @@ const INFO = {
 const MAPS_SRC =
   'https://maps.google.com/maps?q=Sindicato+Rural+de+Terra+Roxa+PR+Brasil&output=embed&z=15'
 
-function getInitials(name: string) {
-  return name.split(' ').slice(0, 2).map(n => n[0]).join('').toUpperCase()
-}
-
-const AVATAR_COLORS = [
-  'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400',
-  'bg-blue-100 text-blue-700 dark:bg-blue-950/40 dark:text-blue-400',
-  'bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400',
-  'bg-rose-100 text-rose-700 dark:bg-rose-950/40 dark:text-rose-400',
-  'bg-purple-100 text-purple-700 dark:bg-purple-950/40 dark:text-purple-400',
-]
-
-function Avatar({ name, avatar }: { name: string; avatar?: string | null }) {
-  const color = AVATAR_COLORS[name.charCodeAt(0) % AVATAR_COLORS.length]
-  if (avatar) {
-    return <img src={avatar} alt={name} className="size-16 rounded-full object-cover border-2 border-border" />
-  }
-  return (
-    <div className={`size-16 rounded-full flex items-center justify-center text-lg font-bold ${color} border-2 border-border shrink-0`}>
-      {getInitials(name)}
-    </div>
-  )
-}
-
 function PublicContacts() {
-  const { data: contacts, isLoading } = usePublicContacts()
+  const { data: contacts, isLoading, isError } = usePublicContacts()
 
   if (isLoading) {
     return (
@@ -76,7 +54,8 @@ function PublicContacts() {
     )
   }
 
-  if (!contacts || contacts.length === 0) return null
+  // Erro → não renderiza (sem lançar); idem para lista vazia.
+  if (isError || !contacts || contacts.length === 0) return null
 
   return (
     <section className="py-12 md:py-16 bg-muted/30">
@@ -91,7 +70,7 @@ function PublicContacts() {
               key={c.userData.email}
               className="flex items-center gap-4 rounded-xl border bg-card p-5 shadow-sm hover:shadow-md transition-shadow"
             >
-              <Avatar name={c.userData.name} />
+              <InitialsAvatar name={c.userData.name} size="lg" className="font-bold border-2 border-border" />
               <div className="flex flex-col gap-1 min-w-0">
                 <p className="font-semibold text-foreground truncate">{c.userData.name}</p>
                 {c.publicTitle && (
@@ -232,14 +211,14 @@ function ContactForm() {
       </div>
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="ct-message">Mensagem *</Label>
-        <textarea
+        <Textarea
           id="ct-message"
           value={form.message}
           onChange={e => set('message', e.target.value)}
           placeholder="Escreva sua mensagem..."
           rows={5}
           required
-          className="rounded-md border border-input px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring bg-background w-full resize-none"
+          className="resize-none"
         />
       </div>
       {error && <p className="text-sm text-destructive">{error}</p>}
@@ -305,9 +284,6 @@ function ContatoPage() {
                     <p className="text-sm font-semibold text-foreground">Telefone</p>
                     <a href={`tel:${INFO.phone.replace(/\D/g, '')}`} className="text-sm text-muted-foreground hover:text-foreground transition-colors block mt-0.5">
                       {INFO.phone}
-                    </a>
-                    <a href={`tel:${INFO.phone2.replace(/\D/g, '')}`} className="text-sm text-muted-foreground hover:text-foreground transition-colors block">
-                      {INFO.phone2}
                     </a>
                   </div>
                 </div>

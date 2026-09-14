@@ -210,6 +210,37 @@ export function useRegisterByCpf(courseId: string) {
   })
 }
 
+export type RegisterFullBody = {
+  name: string
+  phone: string
+  email: string
+  cpf: string
+  rg?: string
+  birthDate?: string
+  address: {
+    type: string
+    zipCode?: string
+    street?: string
+    number?: string
+    neighborhood?: string
+    city?: string
+  }
+}
+
+export function useRegisterFull(courseId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (body: RegisterFullBody) =>
+      apiFetch(`/courses/${courseId}/register-full`, {
+        method: 'POST',
+        body: JSON.stringify(body),
+      }).then(r => r.json()),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['courses', courseId] })
+    },
+  })
+}
+
 export function useDeleteGalleryPhoto(courseId: string) {
   const queryClient = useQueryClient()
   return useMutation({

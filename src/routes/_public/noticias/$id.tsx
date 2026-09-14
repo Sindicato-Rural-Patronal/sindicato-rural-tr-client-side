@@ -42,10 +42,12 @@ function ImageTextBlock({
   url,
   text,
   imagePosition,
+  newsTitle,
 }: {
   url: string
   text: string
   imagePosition: 'left' | 'right'
+  newsTitle: string
 }) {
   return (
     <div
@@ -55,7 +57,7 @@ function ImageTextBlock({
     >
       <img
         src={url}
-        alt=""
+        alt={text.trim() || newsTitle}
         className="w-full md:w-2/5 rounded-xl object-cover max-h-64"
       />
       <p className="flex-1 min-w-0 text-base leading-relaxed text-foreground/90 whitespace-pre-line wrap-break-word">
@@ -65,7 +67,7 @@ function ImageTextBlock({
   )
 }
 
-function BlockRenderer({ block }: { block: ContentBlock }) {
+function BlockRenderer({ block, newsTitle }: { block: ContentBlock; newsTitle: string }) {
   if (block.type === 'paragraph') return <ParagraphBlock text={block.text} />
   if (block.type === 'image') return <ImageBlock url={block.url} caption={block.caption} />
   if (block.type === 'image-text')
@@ -74,6 +76,7 @@ function BlockRenderer({ block }: { block: ContentBlock }) {
         url={block.url}
         text={block.text}
         imagePosition={block.imagePosition}
+        newsTitle={newsTitle}
       />
     )
   return null
@@ -159,7 +162,7 @@ function RouteComponent() {
 
       <article className="space-y-6">
         {blocks.map((block, i) => (
-          <BlockRenderer key={i} block={block} />
+          <BlockRenderer key={i} block={block} newsTitle={news.title} />
         ))}
       </article>
     </main>
