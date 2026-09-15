@@ -12,15 +12,28 @@ import './index.css';
 import './i18n';
 
 // Aplica o tema salvo antes do render (evita flash claro→escuro).
-try {
-  const stored = localStorage.getItem('theme')
-  const prefersDark = window.matchMedia?.('(prefers-color-scheme: dark)').matches
-  if (stored === 'dark' || (!stored && prefersDark)) {
-    document.documentElement.classList.add('dark')
+// 'light' | 'dark' | 'system' (ou ausente = segue o SO).
+function applyTheme() {
+  try {
+    const stored = localStorage.getItem('theme')
+    const prefersDark = window.matchMedia?.('(prefers-color-scheme: dark)').matches
+    const dark = stored === 'dark' || ((stored === 'system' || !stored) && prefersDark)
+    document.documentElement.classList.toggle('dark', !!dark)
+  } catch {
+    /* localStorage indisponível — mantém tema claro padrão */
   }
-} catch {
-  /* localStorage indisponível — mantém tema claro padrão */
 }
+applyTheme()
+// No modo "sistema", acompanha mudanças do SO ao vivo.
+try {
+  window.matchMedia?.('(prefers-color-scheme: dark)').addEventListener('change', () => {
+    const stored = localStorage.getItem('theme')
+    if (stored === 'system' || !stored) {
+      applyTheme()
+      window.dispatchEvent(new Event('themechange'))
+    }
+  })
+} catch { /* ignore */ }
 
 // Deploy troca os hashes dos chunks; uma aba aberta pode pedir um chunk que
 // não existe mais → import dinâmico falha. Recarrega UMA vez para pegar o
