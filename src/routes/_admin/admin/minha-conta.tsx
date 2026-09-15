@@ -88,23 +88,23 @@ function MinhaContaPage() {
                 <Label htmlFor="mc-password">Nova senha</Label>
                 <PasswordInput id="mc-password" value={password} onChange={e => setPassword(e.target.value)} placeholder="Deixar em branco para manter" autoComplete="new-password" />
               </div>
-              {password.trim() !== '' && (
-                <div className="flex flex-col gap-1.5">
-                  <Label htmlFor="mc-confirm">Confirmar nova senha</Label>
-                  <PasswordInput
-                    id="mc-confirm"
-                    value={confirm}
-                    onChange={e => setConfirm(e.target.value)}
-                    placeholder="Repita a nova senha"
-                    autoComplete="new-password"
-                    className={passwordMismatch ? 'border-destructive focus-visible:ring-destructive' : undefined}
-                  />
-                  {passwordMismatch
-                    ? <p className="text-xs text-destructive">As senhas não coincidem.</p>
-                    : confirm.trim() !== '' && <p className="text-xs text-emerald-600 dark:text-emerald-400">As senhas coincidem.</p>}
-                  <p className="text-xs text-muted-foreground">Mínimo 8 caracteres.</p>
-                </div>
-              )}
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="mc-confirm">Confirmar nova senha</Label>
+                <PasswordInput
+                  id="mc-confirm"
+                  value={confirm}
+                  onChange={e => setConfirm(e.target.value)}
+                  placeholder="Repita a nova senha"
+                  autoComplete="new-password"
+                  disabled={password.trim() === ''}
+                  className={passwordMismatch ? 'border-destructive focus-visible:ring-destructive' : undefined}
+                />
+                {passwordMismatch
+                  ? <p className="text-xs text-destructive">As senhas não coincidem.</p>
+                  : password.trim() !== '' && confirm.trim() !== ''
+                    ? <p className="text-xs text-emerald-600 dark:text-emerald-400">As senhas coincidem.</p>
+                    : <p className="text-xs text-muted-foreground">Mínimo 8 caracteres. Repita para confirmar.</p>}
+              </div>
             </div>
 
             <div className="pt-1">
