@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next'
 import { NavUser } from '@/components/nav-user'
 import { LanguageToggle } from '@/components/LanguageToggle'
 import { ThemeToggle } from '@/components/ThemeToggle'
-import { useMe, useAdminUser, useContactMessages } from '@/hooks/useAdmin'
+import { useMe, useContactMessages } from '@/hooks/useAdmin'
 import {
   Sidebar, SidebarContent, SidebarFooter, SidebarGroup,
   SidebarGroupContent, SidebarGroupLabel, SidebarHeader,
@@ -16,7 +16,6 @@ export function AdminSideBar({ ...props }: React.ComponentProps<typeof Sidebar>)
   const { location } = useRouterState()
   const { t } = useTranslation()
   const { data: me, isLoading: loadingMe } = useMe()
-  const { data: meUser } = useAdminUser(me?.userDataId ?? '')
   const perms = me?.permissions ?? null
 
   // Contagem global de mensagens de contato não lidas (badge na sidebar).
@@ -29,9 +28,9 @@ export function AdminSideBar({ ...props }: React.ComponentProps<typeof Sidebar>)
   }
 
   const user = {
-    name: me?.username ?? 'Administrador',
-    email: meUser?.email ?? '',
-    avatar: meUser?.avatar ?? '',
+    name: me?.name ?? me?.username ?? 'Administrador',
+    email: '',
+    avatar: me?.avatar ?? '',
   }
 
   const navSections = [

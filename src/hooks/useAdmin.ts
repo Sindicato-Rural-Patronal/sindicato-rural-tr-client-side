@@ -74,6 +74,8 @@ export type AdminMe = {
   userId: string
   userDataId: string
   username: string
+  name: string
+  avatar: string | null
   rulesId: string
   ruleName: string
   permissions: string[]
@@ -84,6 +86,18 @@ export function useMe() {
     queryKey: ['admin', 'me'],
     queryFn: () => apiFetch('/admin/me').then(r => r.json()),
     staleTime: 5 * 60 * 1000,
+  })
+}
+
+// Self-service: admin logado edita os próprios dados (nome/usuário/senha).
+export function useUpdateMe() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (body: { name?: string; username?: string; password?: string }) =>
+      apiFetch('/admin/me', { method: 'PATCH', body: JSON.stringify(body) }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'me'] })
+    },
   })
 }
 

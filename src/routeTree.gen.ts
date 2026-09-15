@@ -24,6 +24,7 @@ import { Route as PublicCursosIdRouteImport } from './routes/_public/cursos/$id'
 import { Route as AdminAdminUsuariosRouteImport } from './routes/_admin/admin/usuarios'
 import { Route as AdminAdminSalasRouteImport } from './routes/_admin/admin/salas'
 import { Route as AdminAdminNoticiasRouteImport } from './routes/_admin/admin/noticias'
+import { Route as AdminAdminMinhaContaRouteImport } from './routes/_admin/admin/minha-conta'
 import { Route as AdminAdminMensagensRouteImport } from './routes/_admin/admin/mensagens'
 import { Route as AdminAdminDashboardRouteImport } from './routes/_admin/admin/dashboard'
 import { Route as AdminAdminCursosRouteImport } from './routes/_admin/admin/cursos'
@@ -113,6 +114,11 @@ const AdminAdminSalasRoute = AdminAdminSalasRouteImport.update({
 const AdminAdminNoticiasRoute = AdminAdminNoticiasRouteImport.update({
   id: '/admin/noticias',
   path: '/admin/noticias',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminAdminMinhaContaRoute = AdminAdminMinhaContaRouteImport.update({
+  id: '/admin/minha-conta',
+  path: '/admin/minha-conta',
   getParentRoute: () => AdminRoute,
 } as any)
 const AdminAdminMensagensRoute = AdminAdminMensagensRouteImport.update({
@@ -217,6 +223,7 @@ export interface FileRoutesByFullPath {
   '/admin/cursos': typeof AdminAdminCursosRouteWithChildren
   '/admin/dashboard': typeof AdminAdminDashboardRoute
   '/admin/mensagens': typeof AdminAdminMensagensRoute
+  '/admin/minha-conta': typeof AdminAdminMinhaContaRoute
   '/admin/noticias': typeof AdminAdminNoticiasRouteWithChildren
   '/admin/salas': typeof AdminAdminSalasRouteWithChildren
   '/admin/usuarios': typeof AdminAdminUsuariosRouteWithChildren
@@ -247,6 +254,7 @@ export interface FileRoutesByTo {
   '/admin/configuracoes': typeof AdminAdminConfiguracoesRoute
   '/admin/dashboard': typeof AdminAdminDashboardRoute
   '/admin/mensagens': typeof AdminAdminMensagensRoute
+  '/admin/minha-conta': typeof AdminAdminMinhaContaRoute
   '/cursos/$id': typeof PublicCursosIdRoute
   '/noticias/$id': typeof PublicNoticiasIdRoute
   '/admin': typeof AdminAdminIndexRoute
@@ -279,6 +287,7 @@ export interface FileRoutesById {
   '/_admin/admin/cursos': typeof AdminAdminCursosRouteWithChildren
   '/_admin/admin/dashboard': typeof AdminAdminDashboardRoute
   '/_admin/admin/mensagens': typeof AdminAdminMensagensRoute
+  '/_admin/admin/minha-conta': typeof AdminAdminMinhaContaRoute
   '/_admin/admin/noticias': typeof AdminAdminNoticiasRouteWithChildren
   '/_admin/admin/salas': typeof AdminAdminSalasRouteWithChildren
   '/_admin/admin/usuarios': typeof AdminAdminUsuariosRouteWithChildren
@@ -313,6 +322,7 @@ export interface FileRouteTypes {
     | '/admin/cursos'
     | '/admin/dashboard'
     | '/admin/mensagens'
+    | '/admin/minha-conta'
     | '/admin/noticias'
     | '/admin/salas'
     | '/admin/usuarios'
@@ -343,6 +353,7 @@ export interface FileRouteTypes {
     | '/admin/configuracoes'
     | '/admin/dashboard'
     | '/admin/mensagens'
+    | '/admin/minha-conta'
     | '/cursos/$id'
     | '/noticias/$id'
     | '/admin'
@@ -374,6 +385,7 @@ export interface FileRouteTypes {
     | '/_admin/admin/cursos'
     | '/_admin/admin/dashboard'
     | '/_admin/admin/mensagens'
+    | '/_admin/admin/minha-conta'
     | '/_admin/admin/noticias'
     | '/_admin/admin/salas'
     | '/_admin/admin/usuarios'
@@ -507,6 +519,13 @@ declare module '@tanstack/react-router' {
       path: '/admin/noticias'
       fullPath: '/admin/noticias'
       preLoaderRoute: typeof AdminAdminNoticiasRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/_admin/admin/minha-conta': {
+      id: '/_admin/admin/minha-conta'
+      path: '/admin/minha-conta'
+      fullPath: '/admin/minha-conta'
+      preLoaderRoute: typeof AdminAdminMinhaContaRouteImport
       parentRoute: typeof AdminRoute
     }
     '/_admin/admin/mensagens': {
@@ -703,6 +722,7 @@ interface AdminRouteChildren {
   AdminAdminCursosRoute: typeof AdminAdminCursosRouteWithChildren
   AdminAdminDashboardRoute: typeof AdminAdminDashboardRoute
   AdminAdminMensagensRoute: typeof AdminAdminMensagensRoute
+  AdminAdminMinhaContaRoute: typeof AdminAdminMinhaContaRoute
   AdminAdminNoticiasRoute: typeof AdminAdminNoticiasRouteWithChildren
   AdminAdminSalasRoute: typeof AdminAdminSalasRouteWithChildren
   AdminAdminUsuariosRoute: typeof AdminAdminUsuariosRouteWithChildren
@@ -719,6 +739,7 @@ const AdminRouteChildren: AdminRouteChildren = {
   AdminAdminCursosRoute: AdminAdminCursosRouteWithChildren,
   AdminAdminDashboardRoute: AdminAdminDashboardRoute,
   AdminAdminMensagensRoute: AdminAdminMensagensRoute,
+  AdminAdminMinhaContaRoute: AdminAdminMinhaContaRoute,
   AdminAdminNoticiasRoute: AdminAdminNoticiasRouteWithChildren,
   AdminAdminSalasRoute: AdminAdminSalasRouteWithChildren,
   AdminAdminUsuariosRoute: AdminAdminUsuariosRouteWithChildren,
