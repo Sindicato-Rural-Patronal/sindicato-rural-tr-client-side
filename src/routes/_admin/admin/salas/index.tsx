@@ -18,6 +18,7 @@ import { DeleteConfirmDialog } from '@/components/DeleteConfirmDialog'
 import { LoadErrorBanner } from '@/components/LoadErrorBanner'
 import { useCrudDialog } from '@/hooks/useCrudDialog'
 import { upperNoAccents } from '@/utils/text-format'
+import { STICKY_ACTIONS_CELL, STICKY_ACTIONS_ROW } from '@/lib/table-sticky-actions'
 
 export const Route = createFileRoute('/_admin/admin/salas/')({
   component: RouteComponent,
@@ -113,7 +114,7 @@ function RouteComponent() {
               <TableHead>Nome</TableHead>
               <TableHead className="hidden md:table-cell">Descrição</TableHead>
               <TableHead>Capacidade</TableHead>
-              <TableHead className="text-right">Ações</TableHead>
+              <TableHead className={`text-right ${STICKY_ACTIONS_CELL}`}>Ações</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -144,7 +145,7 @@ function RouteComponent() {
               </TableRow>
             )}
             {salasFiltradas.map(sala => (
-              <TableRow key={sala.id}>
+              <TableRow key={sala.id} className={STICKY_ACTIONS_ROW}>
                 <TableCell className="font-medium text-foreground">{sala.name}</TableCell>
                 <TableCell className="text-muted-foreground hidden md:table-cell">
                   {sala.description || '—'}
@@ -152,7 +153,7 @@ function RouteComponent() {
                 <TableCell>
                   <Badge variant="secondary">{sala.maxCapacity} lugares</Badge>
                 </TableCell>
-                <TableCell className="text-right">
+                <TableCell className={`text-right ${STICKY_ACTIONS_CELL}`}>
                   <div className="flex items-center justify-end gap-1">
                     <Button
                       size="sm"

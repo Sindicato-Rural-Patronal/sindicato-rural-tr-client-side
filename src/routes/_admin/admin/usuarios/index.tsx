@@ -38,6 +38,7 @@ import { EmptyState } from '@/components/EmptyState'
 import { Pagination } from '@/components/ui/pagination'
 import { InitialsAvatar } from '@/components/InitialsAvatar'
 import { PasswordInput } from '@/components/PasswordInput'
+import { STICKY_ACTIONS_CELL, STICKY_ACTIONS_ROW } from '@/lib/table-sticky-actions'
 
 export const Route = createFileRoute('/_admin/admin/usuarios/')({
   // Filtros principais na URL (sobrevivem a voltar/atualizar/compartilhar).
@@ -1065,12 +1066,12 @@ function RouteComponent() {
                       <TableHead className="hidden lg:table-cell">Telefone</TableHead>
                       <TableHead className="hidden lg:table-cell">CPF</TableHead>
                       <TableHead className="hidden md:table-cell">Cadastro</TableHead>
-                      <TableHead className="w-28 text-right">Ações</TableHead>
+                      <TableHead className={`w-28 text-right ${STICKY_ACTIONS_CELL}`}>Ações</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {usuarios.map(u => (
-                      <TableRow key={u.id}>
+                      <TableRow key={u.id} className={STICKY_ACTIONS_ROW}>
                         <TableCell>
                           <div className="flex items-center gap-3">
                             <InitialsAvatar name={u.name} avatar={u.avatar} size="sm" />
@@ -1086,7 +1087,7 @@ function RouteComponent() {
                         <TableCell className="text-muted-foreground text-sm hidden md:table-cell">
                           {new Date(u.createdAt).toLocaleDateString('pt-BR')}
                         </TableCell>
-                        <TableCell className="text-right">
+                        <TableCell className={`text-right ${STICKY_ACTIONS_CELL}`}>
                           <div className="flex items-center justify-end gap-1">
                             <Button variant="ghost" size="icon" className="size-7" asChild>
                               <Link to="/admin/usuarios/$id" params={{ id: u.id }} aria-label="Ver associado" title="Ver associado">
@@ -1179,12 +1180,12 @@ function RouteComponent() {
                     <TableHead>Administrador</TableHead>
                     <TableHead className="hidden md:table-cell">Email</TableHead>
                     <TableHead>Regra</TableHead>
-                    <TableHead className="w-20 text-right">Ações</TableHead>
+                    <TableHead className={`w-20 text-right ${STICKY_ACTIONS_CELL}`}>Ações</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {admins.map(a => (
-                    <TableRow key={a.id}>
+                    <TableRow key={a.id} className={STICKY_ACTIONS_ROW}>
                       <TableCell>
                         <div className="flex items-center gap-3">
                           <InitialsAvatar name={a.userData.name} avatar={a.userData.avatar} size="sm" />
@@ -1207,7 +1208,7 @@ function RouteComponent() {
                           )}
                         </div>
                       </TableCell>
-                      <TableCell className="text-right">
+                      <TableCell className={`text-right ${STICKY_ACTIONS_CELL}`}>
                         <div className="flex items-center justify-end gap-1">
                           <PermissionButton
                             allowed={can('UPDATE_USER_ADMIN')}

@@ -27,6 +27,7 @@ import { DeleteConfirmDialog } from '@/components/DeleteConfirmDialog'
 import { LoadErrorBanner } from '@/components/LoadErrorBanner'
 import { NoPermission } from '@/components/NoPermission'
 import { useCrudDialog } from '@/hooks/useCrudDialog'
+import { STICKY_ACTIONS_CELL, STICKY_ACTIONS_ROW } from '@/lib/table-sticky-actions'
 
 export const Route = createFileRoute('/_admin/admin/cotacoes/')({
   // Busca na URL (sobrevive a voltar/atualizar/compartilhar).
@@ -215,7 +216,7 @@ function RouteComponent() {
               <TableHead>Variação</TableHead>
               <TableHead className="hidden md:table-cell">Referência</TableHead>
               <TableHead>Status</TableHead>
-              <TableHead className="text-right">Ações</TableHead>
+              <TableHead className={`text-right ${STICKY_ACTIONS_CELL}`}>Ações</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -248,7 +249,7 @@ function RouteComponent() {
               return (
                 <TableRow
                   key={q.id}
-                  className={`${q.isActive ? '' : 'opacity-60'} ${canReorder ? 'cursor-grab active:cursor-grabbing' : ''}`}
+                  className={`${STICKY_ACTIONS_ROW} ${q.isActive ? '' : 'opacity-60'} ${canReorder ? 'cursor-grab active:cursor-grabbing' : ''}`}
                   draggable={canReorder}
                   onDragStart={canReorder ? () => { dragIndex.current = i } : undefined}
                   onDragEnter={canReorder ? () => onDragEnter(i) : undefined}
@@ -285,7 +286,7 @@ function RouteComponent() {
                       {q.isActive ? 'Ativa' : 'Inativa'}
                     </Badge>
                   </TableCell>
-                  <TableCell className="text-right">
+                  <TableCell className={`text-right ${STICKY_ACTIONS_CELL}`}>
                     <div className="flex items-center justify-end gap-1">
                       {can('UPDATE_MARKET_QUOTE') && (
                         <Button size="sm" variant="ghost" className="h-8 px-2" onClick={() => crud.openEdit(q)} aria-label="Editar" title="Editar">
