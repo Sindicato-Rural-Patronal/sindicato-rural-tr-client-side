@@ -43,6 +43,14 @@ export const Route = createFileRoute('/_admin/admin/unimed')({
 // Usuário selecionado (beneficiário ou titular) — só o essencial pra exibir/vincular.
 type PickedUser = { id: string; name: string; cpf: string | null }
 
+// Coluna de Ações presa à direita do scroll horizontal: em telas estreitas o
+// conteúdo passa por baixo dela em vez de empurrar os botões pra fora da tela.
+// Precisa de fundo opaco pra não deixar o texto aparecer atrás — e, no hover da
+// linha, do mesmo tom que o `hover:bg-muted/50` do TableRow produz sobre o card,
+// senão a célula fica destoando do resto da linha.
+const ACOES_STICKY =
+  'sticky right-0 z-10 bg-card group-hover/row:bg-[color-mix(in_srgb,var(--muted)_50%,var(--card))]'
+
 // ── Busca/vínculo de usuário (padrão VincularUsuario do Financeiro) ─────────────
 function UserPicker({ onPick, placeholder }: {
   onPick: (u: PickedUser) => void
@@ -487,16 +495,18 @@ function RouteComponent() {
           <Table>
             <TableHeader>
               <TableRow>
-                {/* Com a sidebar ocupando ~273px, as 7 colunas só cabem em telas
-                    bem largas — as menos essenciais somem antes da tabela
-                    transbordar e cortar a coluna de Ações. */}
+                {/* Com a sidebar ocupando ~256px, as 7 colunas só cabem em telas
+                    bem largas — as menos essenciais somem por breakpoint. E, se
+                    ainda assim sobrar conteúdo (nomes longos em telas estreitas),
+                    a coluna de Ações fica presa à direita (ACOES_STICKY) para
+                    nunca sair da área visível. */}
                 <TableHead>Nome</TableHead>
                 <TableHead className="hidden sm:table-cell">CPF</TableHead>
                 <TableHead className="hidden 2xl:table-cell">Plano</TableHead>
                 <TableHead className="hidden xl:table-cell">Matrícula</TableHead>
                 <TableHead className="hidden xl:table-cell">Tipo dependente</TableHead>
                 <TableHead className="hidden lg:table-cell">Data adesão</TableHead>
-                <TableHead className="text-right">Ações</TableHead>
+                <TableHead className={`text-right ${ACOES_STICKY}`}>Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -508,7 +518,7 @@ function RouteComponent() {
                   <TableCell className="hidden xl:table-cell"><Skeleton className="h-4 w-24" /></TableCell>
                   <TableCell className="hidden xl:table-cell"><Skeleton className="h-4 w-24" /></TableCell>
                   <TableCell className="hidden lg:table-cell"><Skeleton className="h-4 w-20" /></TableCell>
-                  <TableCell><Skeleton className="h-7 w-16 ml-auto" /></TableCell>
+                  <TableCell className={ACOES_STICKY}><Skeleton className="h-7 w-16 ml-auto" /></TableCell>
                 </TableRow>
               ))}
               {!isLoading && rows.length === 0 && (
@@ -523,7 +533,7 @@ function RouteComponent() {
                 </TableRow>
               )}
               {rows.map(r => (
-                <TableRow key={r.id}>
+                <TableRow key={r.id} className="group/row">
                   <TableCell className="font-medium text-foreground">{r.userData.name}</TableCell>
                   <TableCell className="hidden sm:table-cell tabular-nums text-muted-foreground">{r.userData.cpf ? maskCPF(r.userData.cpf) : '—'}</TableCell>
                   <TableCell className="hidden 2xl:table-cell text-muted-foreground">{r.plano ?? '—'}</TableCell>
@@ -532,7 +542,7 @@ function RouteComponent() {
                   <TableCell className="hidden lg:table-cell tabular-nums text-muted-foreground">
                     {r.dataAdesao ? formatDateFromString(r.dataAdesao) : '—'}
                   </TableCell>
-                  <TableCell className="text-right">
+                  <TableCell className={`text-right ${ACOES_STICKY}`}>
                     <div className="flex items-center justify-end gap-1">
                       <Button
                         size="sm"
