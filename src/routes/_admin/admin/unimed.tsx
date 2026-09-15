@@ -2,10 +2,12 @@ import { createFileRoute } from '@tanstack/react-router'
 import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import {
-  HeartPulse, Plus, Pencil, Trash2, Search, User, X,
+  HeartPulse, Plus, Pencil, Trash2, Search, User, X, Receipt, Loader2,
 } from 'lucide-react'
 import { requirePermission } from '@/lib/auth-guard'
+import { apiFetch } from '@/lib/api'
 import { apiErrorMessage } from '@/lib/api-error-message'
+import { downloadFichaUnimed } from '@/lib/unimed-ficha-pdf'
 import { upperNoAccents } from '@/utils/text-format'
 import { formatDateFromString } from '@/utils/format-data-from-string'
 import { useDebouncedValue } from '@/hooks/useDebouncedValue'
@@ -398,6 +400,7 @@ function RouteComponent() {
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editId, setEditId] = useState<string | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<UnimedRow | null>(null)
+  const [fichaBusyId, setFichaBusyId] = useState<string | null>(null)
 
   const rows = data?.data ?? []
   const total = data?.total ?? 0
@@ -414,6 +417,25 @@ function RouteComponent() {
       setDeleteTarget(null)
     } catch (e) {
       toast.error(apiErrorMessage(e, 'Erro ao remover o beneficiário.'))
+    }
+  }
+
+  // Busca o beneficiário completo + a pessoa (e o titular, se houver) e baixa a Ficha PDF.
+  async function gerarFicha(row: UnimedRow) {
+    setFichaBusyId(row.id)
+    try {
+      const unimed = await apiFetch(`/admin/unimed/${row.id}`).then(r => r.json()) as UnimedDetail
+      const user = await apiFetch(`/admin/users/${unimed.userDataId}`).then(r => r.json())
+      let titularName: string | undefined
+      if (unimed.titularId) {
+        const titular = await apiFetch(`/admin/users/${unimed.titularId}`).then(r => r.json())
+        titularName = titular?.name ?? undefined
+      }
+      await downloadFichaUnimed({ unimed, user, titularName })
+    } catch (e) {
+      toast.error(apiErrorMessage(e, 'Erro ao gerar a ficha.'))
+    } finally {
+      setFichaBusyId(null)
     }
   }
 
@@ -492,6 +514,19 @@ function RouteComponent() {
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex items-center justify-end gap-1">
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-8 px-2"
+                        onClick={() => gerarFicha(r)}
+                        disabled={fichaBusyId === r.id}
+                        aria-label="Gerar Ficha"
+                        title="Gerar Ficha"
+                      >
+                        {fichaBusyId === r.id
+                          ? <Loader2 className="size-4 animate-spin" />
+                          : <Receipt className="size-4" />}
+                      </Button>
                       <Button size="sm" variant="ghost" className="h-8 px-2" onClick={() => openEdit(r.id)} aria-label="Editar" title="Editar">
                         <Pencil className="size-4" />
                       </Button>
