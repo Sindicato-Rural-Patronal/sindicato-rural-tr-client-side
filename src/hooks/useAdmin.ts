@@ -665,6 +665,17 @@ export function useUploadAvatar(userId: string) {
   })
 }
 
+// Self-service: o admin logado troca a própria foto.
+export function useUploadMyAvatar() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (file: File) => apiUpload('/admin/me/avatar', file),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'me'] })
+    },
+  })
+}
+
 export function useUploadPartnerLogo(userId: string) {
   const queryClient = useQueryClient()
   return useMutation({

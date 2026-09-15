@@ -1,9 +1,10 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
-import { UserCog, Shield, Languages, Palette } from 'lucide-react'
-import { useMe, useUpdateMe } from '@/hooks/useAdmin'
+import { UserCog, Shield, Languages, Palette, Camera } from 'lucide-react'
+import { useMe, useUpdateMe, useUploadMyAvatar } from '@/hooks/useAdmin'
 import { apiErrorMessage } from '@/lib/api-error-message'
+import { resizeToSquare } from '@/utils/resize-image'
 import { InitialsAvatar } from '@/components/InitialsAvatar'
 import { PasswordInput } from '@/components/PasswordInput'
 import { LanguageToggle } from '@/components/LanguageToggle'
@@ -22,11 +23,26 @@ export const Route = createFileRoute('/_admin/admin/minha-conta')({
 function PerfilTab() {
   const { data: me, isLoading } = useMe()
   const update = useUpdateMe()
+  const uploadAvatar = useUploadMyAvatar()
+  const avatarInputRef = useRef<HTMLInputElement>(null)
 
   const [name, setName] = useState('')
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
+
+  async function handleAvatarFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file) return
+    try {
+      const resized = await resizeToSquare(file)
+      await uploadAvatar.mutateAsync(resized)
+      toast.success('Foto atualizada!')
+    } catch (err) {
+      toast.error(apiErrorMessage(err, 'Erro ao enviar a foto.'))
+    }
+  }
 
   useEffect(() => {
     if (me) { setName(me.name); setUsername(me.username) }
@@ -61,12 +77,33 @@ function PerfilTab() {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center gap-3">
-        <InitialsAvatar name={me.name} avatar={me.avatar ?? undefined} size="lg" />
+        <button
+          type="button"
+          onClick={() => avatarInputRef.current?.click()}
+          disabled={uploadAvatar.isPending}
+          className="group relative rounded-full disabled:opacity-60"
+          aria-label="Alterar foto"
+          title="Alterar foto"
+        >
+          <InitialsAvatar name={me.name} avatar={me.avatar ?? undefined} size="lg" />
+          <span className="absolute inset-0 flex items-center justify-center rounded-full bg-black/40 text-white opacity-0 transition-opacity group-hover:opacity-100">
+            <Camera className="size-4" />
+          </span>
+        </button>
+        <input ref={avatarInputRef} type="file" accept="image/*" className="hidden" onChange={handleAvatarFile} />
         <div>
           <p className="font-medium text-foreground">{me.name}</p>
           <Badge variant="outline" className="mt-1 gap-1 text-muted-foreground">
             <Shield className="size-3" /> {me.ruleName}
           </Badge>
+          <button
+            type="button"
+            onClick={() => avatarInputRef.current?.click()}
+            disabled={uploadAvatar.isPending}
+            className="mt-1 block text-xs text-primary hover:underline disabled:opacity-60"
+          >
+            {uploadAvatar.isPending ? 'Enviando...' : 'Alterar foto'}
+          </button>
         </div>
       </div>
 
