@@ -60,7 +60,8 @@ export type FinanceAccount = {
 
 export type FinanceTransaction = {
   id: string
-  type: FinanceType
+  // null = "só nota" (sem lançamento no caixa; fora de saldo/KPIs).
+  type: FinanceType | null
   amountCents: number
   date: string
   description: string
@@ -112,7 +113,7 @@ export type AccountInput = {
 }
 
 export type TransactionInput = {
-  type: FinanceType
+  type: FinanceType | null
   amountCents: number
   date: string
   description: string

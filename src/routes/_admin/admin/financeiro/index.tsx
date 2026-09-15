@@ -492,7 +492,7 @@ function VincularUsuario({ current, onPick, onClear }: {
 }
 
 type TxForm = {
-  type: FinanceType
+  type: FinanceType | null
   amount: string
   date: string
   description: string
@@ -553,7 +553,7 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
   const totalPages = data?.totalPages ?? 1
   const cats = categories ?? []
   const accs = accounts ?? []
-  const catsForType = cats.filter(c => c.type === form.type)
+  const catsForType = form.type ? cats.filter(c => c.type === form.type) : []
   const [exporting, setExporting] = useState(false)
 
   // Busca: campo local com debounce → grava em `q` na URL (evita 1 request/tecla).
@@ -829,14 +829,17 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
                   ? <ArrowLeftRight className="size-4 shrink-0 mt-0.5 text-sky-600 dark:text-sky-400" />
                   : t.type === 'IN'
                     ? <ArrowUpCircle className="size-4 shrink-0 mt-0.5 text-emerald-600 dark:text-emerald-400" />
-                    : <ArrowDownCircle className="size-4 shrink-0 mt-0.5 text-red-600 dark:text-red-400" />}
+                    : t.type === 'OUT'
+                      ? <ArrowDownCircle className="size-4 shrink-0 mt-0.5 text-red-600 dark:text-red-400" />
+                      : <Receipt className="size-4 shrink-0 mt-0.5 text-muted-foreground" />}
                 <span className="min-w-0 break-words">{t.description}</span>
               </span>
-              <span className={`tabular-nums font-semibold whitespace-nowrap ${t.type === 'IN' ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
-                {t.type === 'IN' ? '+' : '−'} {centsToBRL(t.amountCents)}
+              <span className={`tabular-nums font-semibold whitespace-nowrap ${t.type === 'IN' ? 'text-emerald-600 dark:text-emerald-400' : t.type === 'OUT' ? 'text-red-600 dark:text-red-400' : 'text-muted-foreground'}`}>
+                {t.type === 'IN' ? '+ ' : t.type === 'OUT' ? '− ' : ''}{centsToBRL(t.amountCents)}
               </span>
             </div>
             <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+              {!t.type && !t.transferId && <Badge variant="outline" className="text-muted-foreground">Nota</Badge>}
               <span className="tabular-nums">{formatDateFromString(t.date.slice(0, 10))}</span>
               {t.category && <span className="inline-flex items-center gap-1"><span className="size-2 rounded-sm" style={{ backgroundColor: t.category.color }} />{t.category.name}</span>}
               {t.account && <span className="inline-flex items-center gap-1"><Landmark className="size-3" style={{ color: t.account.color }} />{t.account.name}</span>}
@@ -907,8 +910,11 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
                         ? <ArrowLeftRight className="size-4 shrink-0 text-sky-600 dark:text-sky-400" />
                         : t.type === 'IN'
                           ? <ArrowUpCircle className="size-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
-                          : <ArrowDownCircle className="size-4 shrink-0 text-red-600 dark:text-red-400" />}
+                          : t.type === 'OUT'
+                            ? <ArrowDownCircle className="size-4 shrink-0 text-red-600 dark:text-red-400" />
+                            : <Receipt className="size-4 shrink-0 text-muted-foreground" />}
                       {t.description}
+                      {!t.type && !t.transferId && <Badge variant="outline" className="text-muted-foreground">Nota</Badge>}
                       {t.attachments.length > 0 && (
                         <button
                           type="button"
@@ -939,9 +945,9 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
                   </TableCell>
                   <TableCell className="hidden md:table-cell text-muted-foreground text-sm">{t.method || '—'}</TableCell>
                   <TableCell className={`text-right tabular-nums font-medium ${
-                    t.type === 'IN' ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'
+                    t.type === 'IN' ? 'text-emerald-600 dark:text-emerald-400' : t.type === 'OUT' ? 'text-red-600 dark:text-red-400' : 'text-muted-foreground'
                   }`}>
-                    {t.type === 'IN' ? '+' : '−'} {centsToBRL(t.amountCents)}
+                    {t.type === 'IN' ? '+ ' : t.type === 'OUT' ? '− ' : ''}{centsToBRL(t.amountCents)}
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex items-center justify-end gap-1">
@@ -1036,7 +1042,7 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
             <DialogDescription>Entrada ou saída de caixa. Valor em reais.</DialogDescription>
           </DialogHeader>
           <div className="flex flex-col gap-4">
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-3 gap-2">
               <button
                 type="button"
                 onClick={() => setForm(p => ({ ...p, type: 'IN', categoryId: '' }))}
@@ -1055,7 +1061,22 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
               >
                 <ArrowDownCircle className="size-4" /> Saída
               </button>
+              <button
+                type="button"
+                onClick={() => setForm(p => ({ ...p, type: null, categoryId: '' }))}
+                title="Não lança no caixa — só gera a Nota de Empenho"
+                className={`flex items-center justify-center gap-2 rounded-md border px-3 py-2 text-sm font-medium ${
+                  form.type === null ? 'border-slate-500 bg-slate-500/10 text-slate-700 dark:text-slate-300' : 'border-input text-muted-foreground'
+                }`}
+              >
+                <Receipt className="size-4" /> Só nota
+              </button>
             </div>
+            {form.type === null && (
+              <p className="-mt-2 text-xs text-muted-foreground">
+                Sem lançamento no caixa: não entra em saldo nem nos totais. Você pode editar depois para Entrada/Saída.
+              </p>
+            )}
             <div className="grid grid-cols-2 gap-3">
               <div className="flex flex-col gap-1.5">
                 <Label>Valor *</Label>
@@ -1073,8 +1094,13 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
             <div className="grid grid-cols-2 gap-3">
               <div className="flex flex-col gap-1.5">
                 <Label>Categoria</Label>
-                <NativeSelect value={form.categoryId} onChange={e => setF('categoryId', e.target.value)}>
-                  <option value="">Sem categoria</option>
+                <NativeSelect
+                  value={form.categoryId}
+                  disabled={form.type === null}
+                  title={form.type === null ? 'Categoria só para Entrada/Saída' : undefined}
+                  onChange={e => setF('categoryId', e.target.value)}
+                >
+                  <option value="">{form.type === null ? '—' : 'Sem categoria'}</option>
                   {catsForType.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                   {/* Categoria do lançamento em edição que foi desativada depois: não
                       vem na lista de ativas, então garantimos a opção pra não zerar. */}
