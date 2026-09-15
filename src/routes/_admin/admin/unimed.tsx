@@ -2,16 +2,18 @@ import { createFileRoute } from '@tanstack/react-router'
 import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import {
-  HeartPulse, Plus, Pencil, Trash2, Search, User, X, Receipt, ScrollText, Loader2,
+  HeartPulse, Plus, Pencil, Trash2, Search, User, X, Receipt, ScrollText, FileSignature, Loader2,
 } from 'lucide-react'
 import { requirePermission } from '@/lib/auth-guard'
 import { apiFetch } from '@/lib/api'
 import { apiErrorMessage } from '@/lib/api-error-message'
 import { downloadFichaUnimed } from '@/lib/unimed-ficha-pdf'
 import { downloadTermoUnimed } from '@/lib/unimed-termo-pdf'
+import { downloadContratoUnimed } from '@/lib/unimed-contrato-pdf'
 import { upperNoAccents } from '@/utils/text-format'
 import { formatDateFromString } from '@/utils/format-data-from-string'
 import { maskCPF } from '@/utils/masks'
+import { STICKY_ACTIONS_CELL, STICKY_ACTIONS_ROW } from '@/lib/table-sticky-actions'
 import { useDebouncedValue } from '@/hooks/useDebouncedValue'
 import { useAdminUsers } from '@/hooks/useAdmin'
 import {
@@ -43,13 +45,6 @@ export const Route = createFileRoute('/_admin/admin/unimed')({
 // Usuário selecionado (beneficiário ou titular) — só o essencial pra exibir/vincular.
 type PickedUser = { id: string; name: string; cpf: string | null }
 
-// Coluna de Ações presa à direita do scroll horizontal: em telas estreitas o
-// conteúdo passa por baixo dela em vez de empurrar os botões pra fora da tela.
-// Precisa de fundo opaco pra não deixar o texto aparecer atrás — e, no hover da
-// linha, do mesmo tom que o `hover:bg-muted/50` do TableRow produz sobre o card,
-// senão a célula fica destoando do resto da linha.
-const ACOES_STICKY =
-  'sticky right-0 z-10 bg-card group-hover/row:bg-[color-mix(in_srgb,var(--muted)_50%,var(--card))]'
 
 // ── Busca/vínculo de usuário (padrão VincularUsuario do Financeiro) ─────────────
 function UserPicker({ onPick, placeholder }: {
@@ -412,6 +407,7 @@ function RouteComponent() {
   const [deleteTarget, setDeleteTarget] = useState<UnimedRow | null>(null)
   const [fichaBusyId, setFichaBusyId] = useState<string | null>(null)
   const [termoBusyId, setTermoBusyId] = useState<string | null>(null)
+  const [contratoBusyId, setContratoBusyId] = useState<string | null>(null)
 
   const rows = data?.data ?? []
   const total = data?.total ?? 0
@@ -464,6 +460,21 @@ function RouteComponent() {
     }
   }
 
+  // Busca o beneficiário completo + a pessoa e baixa o Termo de Ciência e
+  // Consentimento (o "Contrato" do sistema antigo) em PDF.
+  async function gerarContrato(row: UnimedRow) {
+    setContratoBusyId(row.id)
+    try {
+      const unimed = await apiFetch(`/admin/unimed/${row.id}`).then(r => r.json()) as UnimedDetail
+      const user = await apiFetch(`/admin/users/${unimed.userDataId}`).then(r => r.json())
+      await downloadContratoUnimed({ unimed, user })
+    } catch (e) {
+      toast.error(apiErrorMessage(e, 'Erro ao gerar o contrato.'))
+    } finally {
+      setContratoBusyId(null)
+    }
+  }
+
   return (
     <div className="p-6 flex flex-col gap-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
@@ -498,7 +509,7 @@ function RouteComponent() {
                 {/* Com a sidebar ocupando ~256px, as 7 colunas só cabem em telas
                     bem largas — as menos essenciais somem por breakpoint. E, se
                     ainda assim sobrar conteúdo (nomes longos em telas estreitas),
-                    a coluna de Ações fica presa à direita (ACOES_STICKY) para
+                    a coluna de Ações fica presa à direita (STICKY_ACTIONS_CELL) para
                     nunca sair da área visível. */}
                 <TableHead>Nome</TableHead>
                 <TableHead className="hidden sm:table-cell">CPF</TableHead>
@@ -506,7 +517,7 @@ function RouteComponent() {
                 <TableHead className="hidden xl:table-cell">Matrícula</TableHead>
                 <TableHead className="hidden xl:table-cell">Tipo dependente</TableHead>
                 <TableHead className="hidden lg:table-cell">Data adesão</TableHead>
-                <TableHead className={`text-right ${ACOES_STICKY}`}>Ações</TableHead>
+                <TableHead className={`text-right ${STICKY_ACTIONS_CELL}`}>Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -518,7 +529,7 @@ function RouteComponent() {
                   <TableCell className="hidden xl:table-cell"><Skeleton className="h-4 w-24" /></TableCell>
                   <TableCell className="hidden xl:table-cell"><Skeleton className="h-4 w-24" /></TableCell>
                   <TableCell className="hidden lg:table-cell"><Skeleton className="h-4 w-20" /></TableCell>
-                  <TableCell className={ACOES_STICKY}><Skeleton className="h-7 w-16 ml-auto" /></TableCell>
+                  <TableCell className={STICKY_ACTIONS_CELL}><Skeleton className="h-7 w-16 ml-auto" /></TableCell>
                 </TableRow>
               ))}
               {!isLoading && rows.length === 0 && (
@@ -533,7 +544,7 @@ function RouteComponent() {
                 </TableRow>
               )}
               {rows.map(r => (
-                <TableRow key={r.id} className="group/row">
+                <TableRow key={r.id} className={STICKY_ACTIONS_ROW}>
                   <TableCell className="font-medium text-foreground">{r.userData.name}</TableCell>
                   <TableCell className="hidden sm:table-cell tabular-nums text-muted-foreground">{r.userData.cpf ? maskCPF(r.userData.cpf) : '—'}</TableCell>
                   <TableCell className="hidden 2xl:table-cell text-muted-foreground">{r.plano ?? '—'}</TableCell>
@@ -542,7 +553,7 @@ function RouteComponent() {
                   <TableCell className="hidden lg:table-cell tabular-nums text-muted-foreground">
                     {r.dataAdesao ? formatDateFromString(r.dataAdesao) : '—'}
                   </TableCell>
-                  <TableCell className={`text-right ${ACOES_STICKY}`}>
+                  <TableCell className={`text-right ${STICKY_ACTIONS_CELL}`}>
                     <div className="flex items-center justify-end gap-1">
                       <Button
                         size="sm"
@@ -569,6 +580,19 @@ function RouteComponent() {
                         {termoBusyId === r.id
                           ? <Loader2 className="size-4 animate-spin" />
                           : <ScrollText className="size-4" />}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-8 px-2"
+                        onClick={() => gerarContrato(r)}
+                        disabled={contratoBusyId === r.id}
+                        aria-label="Gerar Contrato"
+                        title="Gerar Contrato (Termo de Ciência e Consentimento)"
+                      >
+                        {contratoBusyId === r.id
+                          ? <Loader2 className="size-4 animate-spin" />
+                          : <FileSignature className="size-4" />}
                       </Button>
                       <Button size="sm" variant="ghost" className="h-8 px-2" onClick={() => openEdit(r.id)} aria-label="Editar" title="Editar">
                         <Pencil className="size-4" />

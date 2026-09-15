@@ -3,6 +3,7 @@ import { describe, it, expect } from 'vitest'
 import { renderToBuffer, renderToFile } from '@react-pdf/renderer'
 import { FichaUnimedDocument } from '@/lib/unimed-ficha-pdf'
 import { TermoUnimedDocument } from '@/lib/unimed-termo-pdf'
+import { ContratoUnimedDocument } from '@/lib/unimed-contrato-pdf'
 import type { UnimedDetail } from '@/hooks/useUnimed'
 import type { UserDataDetail } from '@/hooks/useAdmin'
 
@@ -114,5 +115,13 @@ describe('unimed pdfs', () => {
     const buf2 = await renderToBuffer(doc2)
     await save('termo-dependente.pdf', doc2)
     expect(pageCount(buf2)).toBe('2')
+  })
+
+  it('contrato (termo de ciencia e consentimento) renders 5 pages', async () => {
+    const doc = <ContratoUnimedDocument data={{ unimed: base, user: titular }} />
+    const buf = await renderToBuffer(doc)
+    await save('contrato-titular.pdf', doc)
+    expect(new TextDecoder().decode(buf.subarray(0, 4))).toBe('%PDF')
+    expect(pageCount(buf)).toBe('5')
   })
 })
