@@ -23,6 +23,7 @@ import type { UserDataDetail, Registration } from '@/hooks/useAdmin'
 import { formatDateFromString } from '@/utils/format-data-from-string'
 import { formatBRL } from '@/utils/format-currency'
 import { calcAge } from '@/utils/age'
+import { upperNoAccents } from '@/utils/text-format'
 import { roomSchema, courseBaseSchema } from '@/lib/schemas'
 import type { RoomFormData, CourseFormData } from '@/lib/schemas'
 import { Label } from '@/components/ui/label'
@@ -1119,13 +1120,13 @@ function ViewDialog({
                     <Input
                       placeholder="Título (ex: Engenheiro Agrônomo)"
                       value={instrTitle}
-                      onChange={e => setInstrTitle(e.target.value)}
+                      onChange={e => setInstrTitle(upperNoAccents(e.target.value))}
                       className="h-9"
                     />
                     <Input
                       placeholder="Categoria (ex: Palestrante)"
                       value={instrCategory}
-                      onChange={e => setInstrCategory(e.target.value)}
+                      onChange={e => setInstrCategory(upperNoAccents(e.target.value))}
                       className="h-9"
                     />
                     <Button
@@ -1613,7 +1614,7 @@ export function CourseFormDialog({
                 <FormField control={form.control} name="name" render={({ field }) => (
                   <FormItem>
                     <FormLabel>{t('admin.courses.form.title')}</FormLabel>
-                    <FormControl><Input {...field} placeholder="Ex: Manejo Integrado de Pragas no Milho" /></FormControl>
+                    <FormControl><Input {...field} onChange={e => field.onChange(upperNoAccents(e.target.value))} placeholder="Ex: Manejo Integrado de Pragas no Milho" /></FormControl>
                     <FormMessage />
                   </FormItem>
                 )} />
@@ -1703,7 +1704,7 @@ export function CourseFormDialog({
                 <FormField control={form.control} name="observations" render={({ field }) => (
                   <FormItem>
                     <FormLabel>{t('admin.courses.form.observations')}</FormLabel>
-                    <FormControl><Input {...field} placeholder="Ex: Maiores de 18 anos" /></FormControl>
+                    <FormControl><Input {...field} onChange={e => field.onChange(upperNoAccents(e.target.value))} placeholder="Ex: Maiores de 18 anos" /></FormControl>
                     <FormMessage />
                   </FormItem>
                 )} />
@@ -1840,14 +1841,14 @@ function RoomsSheet() {
                 <FormField control={form.control} name="name" render={({ field }) => (
                   <FormItem>
                     <FormLabel>{t('admin.rooms.name')}</FormLabel>
-                    <FormControl><Input {...field} /></FormControl>
+                    <FormControl><Input {...field} onChange={e => field.onChange(upperNoAccents(e.target.value))} /></FormControl>
                     <FormMessage />
                   </FormItem>
                 )} />
                 <FormField control={form.control} name="description" render={({ field }) => (
                   <FormItem>
                     <FormLabel>{t('admin.rooms.description')}</FormLabel>
-                    <FormControl><Input {...field} /></FormControl>
+                    <FormControl><Input {...field} onChange={e => field.onChange(upperNoAccents(e.target.value))} /></FormControl>
                     <FormMessage />
                   </FormItem>
                 )} />

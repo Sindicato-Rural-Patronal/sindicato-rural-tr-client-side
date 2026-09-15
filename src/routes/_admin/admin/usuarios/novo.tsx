@@ -17,6 +17,7 @@ import { AgeHint } from '@/components/AgeHint'
 import { useUnsavedGuard, confirmLeaveIfDirty } from '@/hooks/use-unsaved-guard'
 import { CadproFields } from '@/components/CadproFields'
 import { toIso } from '@/utils/dates'
+import { upperNoAccents } from '@/utils/text-format'
 import {
   GENDER_OPTIONS, ETHNICITY_OPTIONS, EDUCATION_OPTIONS,
   MARITAL_STATUS_OPTIONS, CNH_CATEGORY_OPTIONS,
@@ -267,10 +268,10 @@ function RouteComponent() {
           </CardHeader>
           <CardContent className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             <FieldRow label="Nome" required>
-              <Input className={inp} value={form.name} onChange={e => set('name', e.target.value)} />
+              <Input className={inp} value={form.name} onChange={e => set('name', upperNoAccents(e.target.value))} />
             </FieldRow>
             <FieldRow label="Apelido">
-              <Input className={inp} value={form.nickname} onChange={e => set('nickname', e.target.value)} />
+              <Input className={inp} value={form.nickname} onChange={e => set('nickname', upperNoAccents(e.target.value))} />
             </FieldRow>
             <FieldRow label="E-mail" required>
               <Input className={inp} type="email" value={form.email} onChange={e => set('email', e.target.value)} />
@@ -289,10 +290,10 @@ function RouteComponent() {
               <AgeHint birthDate={form.birthDate} />
             </FieldRow>
             <FieldRow label="Naturalidade">
-              <Input className={inp} value={form.birthPlace} onChange={e => set('birthPlace', e.target.value)} />
+              <Input className={inp} value={form.birthPlace} onChange={e => set('birthPlace', upperNoAccents(e.target.value))} />
             </FieldRow>
             <FieldRow label="Nacionalidade">
-              <Input className={inp} value={form.nationality} onChange={e => set('nationality', e.target.value)} />
+              <Input className={inp} value={form.nationality} onChange={e => set('nationality', upperNoAccents(e.target.value))} />
             </FieldRow>
             <FieldRow label="Gênero">
               <SelectField value={form.gender} onChange={v => set('gender', v)} placeholder="Selecione" options={GENDER_OPTIONS} />
@@ -322,7 +323,7 @@ function RouteComponent() {
               <Input className={inp} value={form.rg} onChange={e => set('rg', maskRG(e.target.value))} placeholder="00.000.000-0" maxLength={12} />
             </FieldRow>
             <FieldRow label="Órgão emissor RG">
-              <Input className={inp} value={form.rgIssuer} onChange={e => set('rgIssuer', e.target.value)} />
+              <Input className={inp} value={form.rgIssuer} onChange={e => set('rgIssuer', upperNoAccents(e.target.value))} />
             </FieldRow>
             <FieldRow label="Data emissão RG">
               <DatePicker value={form.rgIssuedAt} onChange={v => set('rgIssuedAt', v)} />
@@ -352,7 +353,7 @@ function RouteComponent() {
               <SelectField value={form.educationLevel} onChange={v => set('educationLevel', v)} placeholder="Selecione" options={EDUCATION_OPTIONS} />
             </FieldRow>
             <FieldRow label="Categoria funcional">
-              <Input className={inp} value={form.functionalCategory} onChange={e => set('functionalCategory', e.target.value)} />
+              <Input className={inp} value={form.functionalCategory} onChange={e => set('functionalCategory', upperNoAccents(e.target.value))} />
             </FieldRow>
             <FieldRow label="CAD/PRO (até 3)">
               <CadproFields value={form.cadPro} onChange={v => set('cadPro', v)} />
@@ -375,7 +376,7 @@ function RouteComponent() {
           </CardHeader>
           <CardContent className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             <FieldRow label="Nome da propriedade">
-              <Input className={inp} value={form.propertyName} onChange={e => set('propertyName', e.target.value)} placeholder="Principal" />
+              <Input className={inp} value={form.propertyName} onChange={e => set('propertyName', upperNoAccents(e.target.value))} placeholder="Principal" />
             </FieldRow>
             <FieldRow label="Tipo">
               <SelectField value={form.address.type} onChange={v => setAddr('type', v)} options={[
@@ -393,24 +394,24 @@ function RouteComponent() {
                     </Button>
                   </div>
                 </FieldRow>
-                <FieldRow label="Logradouro"><Input className={inp} value={form.address.street} onChange={e => setAddr('street', e.target.value)} /></FieldRow>
+                <FieldRow label="Logradouro"><Input className={inp} value={form.address.street} onChange={e => setAddr('street', upperNoAccents(e.target.value))} /></FieldRow>
                 <FieldRow label="Número"><Input className={inp} value={form.address.number} onChange={e => setAddr('number', e.target.value)} /></FieldRow>
-                <FieldRow label="Bairro"><Input className={inp} value={form.address.neighborhood} onChange={e => setAddr('neighborhood', e.target.value)} /></FieldRow>
-                <FieldRow label="Cidade"><Input className={inp} value={form.address.city} onChange={e => setAddr('city', e.target.value)} /></FieldRow>
-                <FieldRow label="Estado"><Input className={inp} value={form.address.state} onChange={e => setAddr('state', e.target.value)} maxLength={2} placeholder="PR" /></FieldRow>
-                <FieldRow label="Complemento"><Input className={inp} value={form.address.complement} onChange={e => setAddr('complement', e.target.value)} /></FieldRow>
-                <FieldRow label="Observações"><Input className={inp} value={form.address.notes} onChange={e => setAddr('notes', e.target.value)} /></FieldRow>
+                <FieldRow label="Bairro"><Input className={inp} value={form.address.neighborhood} onChange={e => setAddr('neighborhood', upperNoAccents(e.target.value))} /></FieldRow>
+                <FieldRow label="Cidade"><Input className={inp} value={form.address.city} onChange={e => setAddr('city', upperNoAccents(e.target.value))} /></FieldRow>
+                <FieldRow label="Estado"><Input className={inp} value={form.address.state} onChange={e => setAddr('state', upperNoAccents(e.target.value))} maxLength={2} placeholder="PR" /></FieldRow>
+                <FieldRow label="Complemento"><Input className={inp} value={form.address.complement} onChange={e => setAddr('complement', upperNoAccents(e.target.value))} /></FieldRow>
+                <FieldRow label="Observações"><Input className={inp} value={form.address.notes} onChange={e => setAddr('notes', upperNoAccents(e.target.value))} /></FieldRow>
               </>
             ) : (
               <>
-                <FieldRow label="Nome da localidade"><Input className={inp} value={form.address.localityName} onChange={e => setAddr('localityName', e.target.value)} /></FieldRow>
-                <FieldRow label="Estrada / Via"><Input className={inp} value={form.address.road} onChange={e => setAddr('road', e.target.value)} /></FieldRow>
+                <FieldRow label="Nome da localidade"><Input className={inp} value={form.address.localityName} onChange={e => setAddr('localityName', upperNoAccents(e.target.value))} /></FieldRow>
+                <FieldRow label="Estrada / Via"><Input className={inp} value={form.address.road} onChange={e => setAddr('road', upperNoAccents(e.target.value))} /></FieldRow>
                 <FieldRow label="KM"><Input className={inp} value={form.address.km} onChange={e => setAddr('km', e.target.value)} /></FieldRow>
                 <FieldRow label="Lote"><Input className={inp} value={form.address.lot} onChange={e => setAddr('lot', e.target.value)} /></FieldRow>
                 <FieldRow label="Seção"><Input className={inp} value={form.address.section} onChange={e => setAddr('section', e.target.value)} /></FieldRow>
-                <FieldRow label="Cidade"><Input className={inp} value={form.address.city} onChange={e => setAddr('city', e.target.value)} /></FieldRow>
-                <FieldRow label="Estado"><Input className={inp} value={form.address.state} onChange={e => setAddr('state', e.target.value)} maxLength={2} placeholder="PR" /></FieldRow>
-                <FieldRow label="Observações"><Input className={inp} value={form.address.notes} onChange={e => setAddr('notes', e.target.value)} /></FieldRow>
+                <FieldRow label="Cidade"><Input className={inp} value={form.address.city} onChange={e => setAddr('city', upperNoAccents(e.target.value))} /></FieldRow>
+                <FieldRow label="Estado"><Input className={inp} value={form.address.state} onChange={e => setAddr('state', upperNoAccents(e.target.value))} maxLength={2} placeholder="PR" /></FieldRow>
+                <FieldRow label="Observações"><Input className={inp} value={form.address.notes} onChange={e => setAddr('notes', upperNoAccents(e.target.value))} /></FieldRow>
               </>
             )}
           </CardContent>
@@ -422,8 +423,8 @@ function RouteComponent() {
             <CardTitle className="text-sm flex items-center gap-2"><Briefcase className="size-4" /> Associação</CardTitle>
           </CardHeader>
           <CardContent className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            <FieldRow label="Tipo de membro"><Input className={inp} value={form.memberType} onChange={e => set('memberType', e.target.value)} /></FieldRow>
-            <FieldRow label="Classificação"><Input className={inp} value={form.memberClassification} onChange={e => set('memberClassification', e.target.value)} /></FieldRow>
+            <FieldRow label="Tipo de membro"><Input className={inp} value={form.memberType} onChange={e => set('memberType', upperNoAccents(e.target.value))} /></FieldRow>
+            <FieldRow label="Classificação"><Input className={inp} value={form.memberClassification} onChange={e => set('memberClassification', upperNoAccents(e.target.value))} /></FieldRow>
             <FieldRow label="Situação">
               <SelectField value={form.memberStatus} onChange={v => set('memberStatus', v)} placeholder="Selecione" options={[
                 { value: 'ACTIVE', label: 'Ativo' },
@@ -433,13 +434,13 @@ function RouteComponent() {
             <FieldRow label="Associado desde"><DatePicker value={form.memberSince} onChange={v => set('memberSince', v)} /></FieldRow>
             <FieldRow label="Validade da associação"><DatePicker value={form.membershipValidUntil} onChange={v => set('membershipValidUntil', v)} /></FieldRow>
             <FieldRow label="Nº cooperado"><Input className={inp} value={form.memberNotesNumber} onChange={e => set('memberNotesNumber', e.target.value)} /></FieldRow>
-            <FieldRow label="Observações"><Input className={inp} value={form.memberNotes} onChange={e => set('memberNotes', e.target.value)} /></FieldRow>
+            <FieldRow label="Observações"><Input className={inp} value={form.memberNotes} onChange={e => set('memberNotes', upperNoAccents(e.target.value))} /></FieldRow>
             <div className="flex items-center gap-2 pt-5">
               <input type="checkbox" id="boardMember" checked={form.boardMember} onChange={e => set('boardMember', e.target.checked)} className="accent-primary" />
               <Label htmlFor="boardMember" className="text-sm cursor-pointer">Membro da diretoria</Label>
             </div>
             {form.boardMember && (
-              <FieldRow label="Cargo na diretoria"><Input className={inp} value={form.boardPosition} onChange={e => set('boardPosition', e.target.value)} /></FieldRow>
+              <FieldRow label="Cargo na diretoria"><Input className={inp} value={form.boardPosition} onChange={e => set('boardPosition', upperNoAccents(e.target.value))} /></FieldRow>
             )}
           </CardContent>
         </Card>

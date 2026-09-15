@@ -17,6 +17,7 @@ import {
 import { DeleteConfirmDialog } from '@/components/DeleteConfirmDialog'
 import { LoadErrorBanner } from '@/components/LoadErrorBanner'
 import { useCrudDialog } from '@/hooks/useCrudDialog'
+import { upperNoAccents } from '@/utils/text-format'
 
 export const Route = createFileRoute('/_admin/admin/salas/')({
   component: RouteComponent,
@@ -193,7 +194,7 @@ function RouteComponent() {
               <Label>Nome *</Label>
               <Input
                 value={crud.form.name}
-                onChange={e => crud.setForm(p => ({ ...p, name: e.target.value }))}
+                onChange={e => crud.setForm(p => ({ ...p, name: upperNoAccents(e.target.value) }))}
                 placeholder="Ex: Laboratório 01"
               />
             </div>
@@ -201,7 +202,7 @@ function RouteComponent() {
               <Label>Descrição</Label>
               <Input
                 value={crud.form.description}
-                onChange={e => crud.setForm(p => ({ ...p, description: e.target.value }))}
+                onChange={e => crud.setForm(p => ({ ...p, description: upperNoAccents(e.target.value) }))}
                 placeholder="Ex: Sala de treinamentos práticos"
               />
             </div>

@@ -38,6 +38,7 @@ import { maskCPF, maskPhone, maskCEP, maskRG, maskCNH, maskMoney } from '@/utils
 import { AgeHint } from '@/components/AgeHint'
 import { apiErrorMessage } from '@/lib/api-error-message'
 import { toIso } from '@/utils/dates'
+import { upperNoAccents } from '@/utils/text-format'
 import {
   GENDER_OPTIONS, ETHNICITY_OPTIONS, EDUCATION_OPTIONS,
   MARITAL_STATUS_OPTIONS, CNH_CATEGORY_OPTIONS,
@@ -634,13 +635,13 @@ function DadosTab({ userId, user, completeMode, onCompleteModeEnd, hasNoProperti
         </CardHeader>
         <CardContent className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           <FieldRow label="Nome *">
-            <Input className={inp} disabled={d} value={form.name} onChange={e => set('name', e.target.value)} />
+            <Input className={inp} disabled={d} value={form.name} onChange={e => set('name', upperNoAccents(e.target.value))} />
           </FieldRow>
           <FieldRow label="E-mail *">
             <Input className={inp} disabled={d} type="email" value={form.email} onChange={e => set('email', e.target.value)} />
           </FieldRow>
           <FieldRow label="Apelido">
-            <Input className={inp} disabled={d} value={form.nickname} onChange={e => set('nickname', e.target.value)} />
+            <Input className={inp} disabled={d} value={form.nickname} onChange={e => set('nickname', upperNoAccents(e.target.value))} />
           </FieldRow>
           <FieldRow label="Foto de perfil" highlight={hi('avatar')}>
             <div className="flex items-center gap-3">
@@ -694,7 +695,7 @@ function DadosTab({ userId, user, completeMode, onCompleteModeEnd, hasNoProperti
             <Input className={inp} disabled={d} value={form.rg} onChange={e => set('rg', maskRG(e.target.value))} placeholder="00.000.000-0" maxLength={12} />
           </FieldRow>
           <FieldRow label="Órgão emissor RG">
-            <Input className={inp} disabled={d} value={form.rgIssuer} onChange={e => set('rgIssuer', e.target.value)} />
+            <Input className={inp} disabled={d} value={form.rgIssuer} onChange={e => set('rgIssuer', upperNoAccents(e.target.value))} />
           </FieldRow>
           <FieldRow label="Data emissão RG">
             <DatePicker disabled={d} value={form.rgIssuedAt} onChange={v => set('rgIssuedAt', v)} />
@@ -725,10 +726,10 @@ function DadosTab({ userId, user, completeMode, onCompleteModeEnd, hasNoProperti
         </CardHeader>
         <CardContent className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           <FieldRow label="Naturalidade">
-            <Input className={inp} disabled={d} value={form.birthPlace} onChange={e => set('birthPlace', e.target.value)} />
+            <Input className={inp} disabled={d} value={form.birthPlace} onChange={e => set('birthPlace', upperNoAccents(e.target.value))} />
           </FieldRow>
           <FieldRow label="Nacionalidade">
-            <Input className={inp} disabled={d} value={form.nationality} onChange={e => set('nationality', e.target.value)} />
+            <Input className={inp} disabled={d} value={form.nationality} onChange={e => set('nationality', upperNoAccents(e.target.value))} />
           </FieldRow>
           <FieldRow label="Gênero" highlight={hi('gender')}>
             <SelectField disabled={d} value={form.gender} onChange={v => set('gender', v)} placeholder="Selecione" options={GENDER_OPTIONS} />
@@ -740,7 +741,7 @@ function DadosTab({ userId, user, completeMode, onCompleteModeEnd, hasNoProperti
             <SelectField disabled={d} value={form.educationLevel} onChange={v => set('educationLevel', v)} placeholder="Selecione" options={EDUCATION_OPTIONS} />
           </FieldRow>
           <FieldRow label="Categoria funcional">
-            <Input className={inp} disabled={d} value={form.functionalCategory} onChange={e => set('functionalCategory', e.target.value)} />
+            <Input className={inp} disabled={d} value={form.functionalCategory} onChange={e => set('functionalCategory', upperNoAccents(e.target.value))} />
           </FieldRow>
           <FieldRow label="CAD/PRO (até 3)">
             <CadproFields value={form.cadPro} onChange={v => setForm(p => ({ ...p, cadPro: v }))} disabled={d} />
@@ -762,10 +763,10 @@ function DadosTab({ userId, user, completeMode, onCompleteModeEnd, hasNoProperti
         </CardHeader>
         <CardContent className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           <FieldRow label="Classificação">
-            <Input className={inp} disabled={d} value={form.memberClassification} onChange={e => set('memberClassification', e.target.value)} />
+            <Input className={inp} disabled={d} value={form.memberClassification} onChange={e => set('memberClassification', upperNoAccents(e.target.value))} />
           </FieldRow>
           <FieldRow label="Tipo de membro">
-            <Input className={inp} disabled={d} value={form.memberType} onChange={e => set('memberType', e.target.value)} />
+            <Input className={inp} disabled={d} value={form.memberType} onChange={e => set('memberType', upperNoAccents(e.target.value))} />
           </FieldRow>
           <FieldRow label="Associado desde">
             <DatePicker disabled={d} value={form.memberSince} onChange={v => set('memberSince', v)} />
@@ -782,7 +783,7 @@ function DadosTab({ userId, user, completeMode, onCompleteModeEnd, hasNoProperti
           </div>
           {form.boardMember && (
             <FieldRow label="Cargo na diretoria">
-              <Input className={inp} disabled={d} value={form.boardPosition} onChange={e => set('boardPosition', e.target.value)} />
+              <Input className={inp} disabled={d} value={form.boardPosition} onChange={e => set('boardPosition', upperNoAccents(e.target.value))} />
             </FieldRow>
           )}
           <div className="sm:col-span-2 lg:col-span-3">
@@ -790,7 +791,7 @@ function DadosTab({ userId, user, completeMode, onCompleteModeEnd, hasNoProperti
               <textarea
                 disabled={d}
                 value={form.memberNotes}
-                onChange={e => set('memberNotes', e.target.value)}
+                onChange={e => set('memberNotes', upperNoAccents(e.target.value))}
                 rows={3}
                 className="rounded-md border border-input px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring bg-background w-full resize-none disabled:opacity-50 disabled:cursor-not-allowed"
               />
@@ -1115,7 +1116,7 @@ function PropriedadesTab({ userId }: { userId: string }) {
             <form onSubmit={handleCreate} className="flex flex-col gap-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <FieldRow label="Nome da propriedade *">
-                  <Input value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} className={inp} autoFocus />
+                  <Input value={form.name} onChange={e => setForm(p => ({ ...p, name: upperNoAccents(e.target.value) }))} className={inp} autoFocus />
                 </FieldRow>
                 <FieldRow label="Matrícula">
                   <Input value={form.registration} onChange={e => setForm(p => ({ ...p, registration: e.target.value }))} className={inp} />
@@ -1146,26 +1147,26 @@ function PropriedadesTab({ userId }: { userId: string }) {
                   </FieldRow>
                   <div className="sm:col-span-2">
                     <FieldRow label="Logradouro">
-                      <Input className={inp} value={form.address.street} onChange={e => setAddr('street', e.target.value)} />
+                      <Input className={inp} value={form.address.street} onChange={e => setAddr('street', upperNoAccents(e.target.value))} />
                     </FieldRow>
                   </div>
                   <FieldRow label="Número"><Input className={inp} value={form.address.number} onChange={e => setAddr('number', e.target.value)} /></FieldRow>
-                  <FieldRow label="Bairro"><Input className={inp} value={form.address.neighborhood} onChange={e => setAddr('neighborhood', e.target.value)} /></FieldRow>
-                  <FieldRow label="Cidade"><Input className={inp} value={form.address.city} onChange={e => setAddr('city', e.target.value)} /></FieldRow>
-                  <FieldRow label="Estado"><Input className={inp} value={form.address.state} onChange={e => setAddr('state', e.target.value)} maxLength={2} placeholder="PR" /></FieldRow>
-                  <FieldRow label="Complemento"><Input className={inp} value={form.address.complement} onChange={e => setAddr('complement', e.target.value)} /></FieldRow>
-                  <FieldRow label="Observações"><Input className={inp} value={form.address.notes} onChange={e => setAddr('notes', e.target.value)} /></FieldRow>
+                  <FieldRow label="Bairro"><Input className={inp} value={form.address.neighborhood} onChange={e => setAddr('neighborhood', upperNoAccents(e.target.value))} /></FieldRow>
+                  <FieldRow label="Cidade"><Input className={inp} value={form.address.city} onChange={e => setAddr('city', upperNoAccents(e.target.value))} /></FieldRow>
+                  <FieldRow label="Estado"><Input className={inp} value={form.address.state} onChange={e => setAddr('state', upperNoAccents(e.target.value))} maxLength={2} placeholder="PR" /></FieldRow>
+                  <FieldRow label="Complemento"><Input className={inp} value={form.address.complement} onChange={e => setAddr('complement', upperNoAccents(e.target.value))} /></FieldRow>
+                  <FieldRow label="Observações"><Input className={inp} value={form.address.notes} onChange={e => setAddr('notes', upperNoAccents(e.target.value))} /></FieldRow>
                 </div>
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                  <FieldRow label="Nome da localidade"><Input className={inp} value={form.address.localityName} onChange={e => setAddr('localityName', e.target.value)} /></FieldRow>
-                  <FieldRow label="Estrada / Via"><Input className={inp} value={form.address.road} onChange={e => setAddr('road', e.target.value)} /></FieldRow>
+                  <FieldRow label="Nome da localidade"><Input className={inp} value={form.address.localityName} onChange={e => setAddr('localityName', upperNoAccents(e.target.value))} /></FieldRow>
+                  <FieldRow label="Estrada / Via"><Input className={inp} value={form.address.road} onChange={e => setAddr('road', upperNoAccents(e.target.value))} /></FieldRow>
                   <FieldRow label="KM"><Input className={inp} value={form.address.km} onChange={e => setAddr('km', e.target.value)} /></FieldRow>
                   <FieldRow label="Lote"><Input className={inp} value={form.address.lot} onChange={e => setAddr('lot', e.target.value)} /></FieldRow>
                   <FieldRow label="Seção"><Input className={inp} value={form.address.section} onChange={e => setAddr('section', e.target.value)} /></FieldRow>
-                  <FieldRow label="Cidade"><Input className={inp} value={form.address.city} onChange={e => setAddr('city', e.target.value)} /></FieldRow>
-                  <FieldRow label="Estado"><Input className={inp} value={form.address.state} onChange={e => setAddr('state', e.target.value)} maxLength={2} placeholder="PR" /></FieldRow>
-                  <FieldRow label="Observações"><Input className={inp} value={form.address.notes} onChange={e => setAddr('notes', e.target.value)} /></FieldRow>
+                  <FieldRow label="Cidade"><Input className={inp} value={form.address.city} onChange={e => setAddr('city', upperNoAccents(e.target.value))} /></FieldRow>
+                  <FieldRow label="Estado"><Input className={inp} value={form.address.state} onChange={e => setAddr('state', upperNoAccents(e.target.value))} maxLength={2} placeholder="PR" /></FieldRow>
+                  <FieldRow label="Observações"><Input className={inp} value={form.address.notes} onChange={e => setAddr('notes', upperNoAccents(e.target.value))} /></FieldRow>
                 </div>
               )}
 
@@ -1400,7 +1401,7 @@ function RelacoesTab({ userId }: { userId: string }) {
                 </div>
               )}
               <FieldRow label="Tipo de relação">
-                <Input value={form.label} onChange={e => setForm(p => ({ ...p, label: e.target.value }))} placeholder="cônjuge, filho, irmão..." className="h-9" />
+                <Input value={form.label} onChange={e => setForm(p => ({ ...p, label: upperNoAccents(e.target.value) }))} placeholder="cônjuge, filho, irmão..." className="h-9" />
               </FieldRow>
               <div className="flex gap-2 justify-end">
                 <Button type="button" variant="outline" size="sm" onClick={() => { setAdding(false); setSearch(''); setForm({ targetId: '', label: '' }) }}>Cancelar</Button>

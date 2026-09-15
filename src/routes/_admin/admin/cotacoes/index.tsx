@@ -10,6 +10,7 @@ import { apiFetch } from '@/lib/api'
 import { apiErrorMessage } from '@/lib/api-error-message'
 import { usePermissions } from '@/hooks/usePermissions'
 import { formatDateFromString } from '@/utils/format-data-from-string'
+import { upperNoAccents } from '@/utils/text-format'
 import { Plus, Search, TrendingUp, TrendingDown, Minus, Pencil, Trash2, Eye, EyeOff, GripVertical } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -327,7 +328,7 @@ function RouteComponent() {
           <div className="flex flex-col gap-4">
             <div className="flex flex-col gap-1.5">
               <Label>Rótulo *</Label>
-              <Input value={crud.form.label} onChange={e => crud.setForm(p => ({ ...p, label: e.target.value }))} placeholder="Ex: Soja" />
+              <Input value={crud.form.label} onChange={e => crud.setForm(p => ({ ...p, label: upperNoAccents(e.target.value) }))} placeholder="Ex: Soja" />
             </div>
             <div className="flex flex-col gap-1.5">
               <Label>Valor *</Label>

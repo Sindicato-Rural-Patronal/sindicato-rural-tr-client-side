@@ -40,6 +40,7 @@ import { ErrorAlert } from '@/components/ErrorAlert'
 import { Pagination } from '@/components/ui/pagination'
 import type { News, ContentBlock, ParagraphBlock, ImageBlock, ImageTextBlock } from '@/@types/news'
 import { parseBlocks, serializeBlocks } from '@/@types/news'
+import { upperNoAccents } from '@/utils/text-format'
 
 // Revoga um object URL de blob (evita vazamento de memória em sessões longas).
 function revokeBlobUrl(url: string | null) {
@@ -615,7 +616,7 @@ function NewsEditor({
         <header className="mb-8">
           <input
             value={form.title}
-            onChange={e => { setForm(p => ({ ...p, title: e.target.value })); setSaved(false) }}
+            onChange={e => { setForm(p => ({ ...p, title: upperNoAccents(e.target.value) })); setSaved(false) }}
             placeholder="Título da notícia..."
             className="w-full bg-transparent border-none outline-none text-2xl font-bold leading-tight md:text-3xl placeholder:text-muted-foreground/30 border-b-2 border-transparent hover:border-border/40 focus:border-primary/50 transition-colors pb-1"
           />
@@ -625,7 +626,7 @@ function NewsEditor({
           </p>
           <textarea
             value={form.summary}
-            onChange={e => { setForm(p => ({ ...p, summary: e.target.value })); setSaved(false) }}
+            onChange={e => { setForm(p => ({ ...p, summary: upperNoAccents(e.target.value) })); setSaved(false) }}
             placeholder="Resumo da notícia (exibido nos cards e acima do conteúdo)..."
             rows={2}
             className="mt-4 w-full bg-transparent border-l-4 border-transparent pl-4 italic text-base text-muted-foreground leading-relaxed resize-none outline-none placeholder:text-muted-foreground/30 border-b hover:border-border/30 focus:border-primary/30 transition-colors pb-1"

@@ -5,6 +5,7 @@ import { UserCog, Shield, Languages, Palette, Camera } from 'lucide-react'
 import { useMe, useUpdateMe, useUploadMyAvatar } from '@/hooks/useAdmin'
 import { apiErrorMessage } from '@/lib/api-error-message'
 import { resizeToSquare } from '@/utils/resize-image'
+import { upperNoAccents } from '@/utils/text-format'
 import { InitialsAvatar } from '@/components/InitialsAvatar'
 import { PasswordInput } from '@/components/PasswordInput'
 import { LanguageToggle } from '@/components/LanguageToggle'
@@ -109,7 +110,7 @@ function PerfilTab() {
 
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="mc-name">Nome</Label>
-        <Input id="mc-name" value={name} onChange={e => setName(e.target.value)} />
+        <Input id="mc-name" value={name} onChange={e => setName(upperNoAccents(e.target.value))} />
       </div>
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="mc-username">Usuário</Label>

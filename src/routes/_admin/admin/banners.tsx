@@ -6,6 +6,7 @@ import { useState, useRef, useEffect, useCallback } from 'react'
 import { toast } from 'sonner'
 import { ImageCropDialog } from '@/components/ImageCropDialog'
 import { requirePermission } from '@/lib/auth-guard'
+import { upperNoAccents } from '@/utils/text-format'
 import {
   useAdminBanners, useCreateBanner, useUpdateBanner,
   useDeleteBanner, useUploadBannerImage, useReorderBanners,
@@ -56,7 +57,7 @@ function BtnsEditor({ value, onChange }: { value: BtnDraft[]; onChange: (v: BtnD
           <div className="grid grid-cols-2 gap-2">
             <div className="flex flex-col gap-1">
               <Label className="text-xs">Texto *</Label>
-              <Input value={btn.label} onChange={e => update(i, 'label', e.target.value)} className="h-8 text-sm" placeholder="Ex: Saiba mais" />
+              <Input value={btn.label} onChange={e => update(i, 'label', upperNoAccents(e.target.value))} className="h-8 text-sm" placeholder="Ex: Saiba mais" />
             </div>
             <div className="flex flex-col gap-1">
               <Label className="text-xs">URL *</Label>
@@ -287,12 +288,12 @@ function BannerSheet({
 
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="bn-title">Título *</Label>
-            <Input id="bn-title" value={form.title} onChange={e => set('title', e.target.value)} required />
+            <Input id="bn-title" value={form.title} onChange={e => set('title', upperNoAccents(e.target.value))} required />
           </div>
 
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="bn-subtitle">Subtítulo</Label>
-            <Input id="bn-subtitle" value={form.subtitle} onChange={e => set('subtitle', e.target.value)} placeholder="Texto de apoio abaixo do título" />
+            <Input id="bn-subtitle" value={form.subtitle} onChange={e => set('subtitle', upperNoAccents(e.target.value))} placeholder="Texto de apoio abaixo do título" />
           </div>
 
           <div className="grid grid-cols-2 gap-3">

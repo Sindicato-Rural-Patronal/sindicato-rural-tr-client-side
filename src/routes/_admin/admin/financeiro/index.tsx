@@ -13,6 +13,7 @@ import {
   type FinanceType, type FinanceCategory, type FinanceAccount, type FinanceTransaction, type TransactionFilters, type Empenho,
 } from '@/hooks/useFinance'
 import { centsToBRL, maskMoney, moneyToCents } from '@/utils/masks'
+import { upperNoAccents } from '@/utils/text-format'
 import { formatDateFromString } from '@/utils/format-data-from-string'
 import {
   Wallet, TrendingUp, TrendingDown, Scale, Plus, Pencil, Trash2, Search,
@@ -1089,7 +1090,7 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
             </div>
             <div className="flex flex-col gap-1.5">
               <Label>Descrição *</Label>
-              <Input value={form.description} onChange={e => setF('description', e.target.value)} placeholder="Ex: Compra de material de escritório" />
+              <Input value={form.description} onChange={e => setF('description', upperNoAccents(e.target.value))} placeholder="Ex: Compra de material de escritório" />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="flex flex-col gap-1.5">
@@ -1126,7 +1127,7 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
             </div>
             <div className="flex flex-col gap-1.5">
               <Label>Observações</Label>
-              <Input value={form.notes} onChange={e => setF('notes', e.target.value)} placeholder="Opcional" />
+              <Input value={form.notes} onChange={e => setF('notes', upperNoAccents(e.target.value))} placeholder="Opcional" />
             </div>
 
             <div className="flex flex-col gap-2 rounded-lg border border-border bg-muted/20 p-3">
@@ -1193,25 +1194,25 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
                     <EmpInput label="Nº empenho" value={form.empenho.numero} onChange={v => setEmp('numero', v)} />
                     <EmpInput label="Nota fiscal Nº" value={form.empenho.notaFiscal} onChange={v => setEmp('notaFiscal', v)} />
                   </div>
-                  <EmpInput label="Nome fantasia" value={form.empenho.nomeFantasia} onChange={v => setEmp('nomeFantasia', v)} />
-                  <EmpInput label="Razão social" value={form.empenho.razaoSocial} onChange={v => setEmp('razaoSocial', v)} />
+                  <EmpInput label="Nome fantasia" value={form.empenho.nomeFantasia} onChange={v => setEmp('nomeFantasia', upperNoAccents(v))} />
+                  <EmpInput label="Razão social" value={form.empenho.razaoSocial} onChange={v => setEmp('razaoSocial', upperNoAccents(v))} />
                   <div className="grid grid-cols-2 gap-2">
                     <EmpInput label="CNPJ / CPF" value={form.empenho.cnpjCpf} onChange={v => setEmp('cnpjCpf', v)} />
                     <EmpInput label="Inscrição estadual" value={form.empenho.inscricaoEstadual} onChange={v => setEmp('inscricaoEstadual', v)} />
                   </div>
-                  <EmpInput label="Endereço" value={form.empenho.endereco} onChange={v => setEmp('endereco', v)} />
+                  <EmpInput label="Endereço" value={form.empenho.endereco} onChange={v => setEmp('endereco', upperNoAccents(v))} />
                   <div className="grid grid-cols-4 gap-2">
-                    <EmpInput label="Bairro" value={form.empenho.bairro} onChange={v => setEmp('bairro', v)} />
+                    <EmpInput label="Bairro" value={form.empenho.bairro} onChange={v => setEmp('bairro', upperNoAccents(v))} />
                     <EmpInput label="CEP" value={form.empenho.cep} onChange={v => setEmp('cep', v)} />
-                    <EmpInput label="Cidade" value={form.empenho.cidade} onChange={v => setEmp('cidade', v)} />
-                    <EmpInput label="UF" value={form.empenho.uf} onChange={v => setEmp('uf', v)} />
+                    <EmpInput label="Cidade" value={form.empenho.cidade} onChange={v => setEmp('cidade', upperNoAccents(v))} />
+                    <EmpInput label="UF" value={form.empenho.uf} onChange={v => setEmp('uf', upperNoAccents(v))} />
                   </div>
                   <div className="grid grid-cols-2 gap-2">
                     <EmpInput label="Telefone" value={form.empenho.telefone} onChange={v => setEmp('telefone', v)} />
                     <EmpInput label="Desconto (R$)" value={form.empenho.desconto} onChange={v => setEmp('desconto', maskMoney(v))} />
                   </div>
                   <div className="grid grid-cols-4 gap-2">
-                    <EmpInput label="Banco" value={form.empenho.banco} onChange={v => setEmp('banco', v)} />
+                    <EmpInput label="Banco" value={form.empenho.banco} onChange={v => setEmp('banco', upperNoAccents(v))} />
                     <EmpInput label="Agência" value={form.empenho.agencia} onChange={v => setEmp('agencia', v)} />
                     <EmpInput label="Conta" value={form.empenho.conta} onChange={v => setEmp('conta', v)} />
                     <EmpInput label="Cheque Nº" value={form.empenho.cheque} onChange={v => setEmp('cheque', v)} />
@@ -1401,7 +1402,7 @@ function CategoriesTab({ enabled, canCreate, canUpdate, canDelete }: {
           <div className="flex flex-col gap-4">
             <div className="flex flex-col gap-1.5">
               <Label>Nome *</Label>
-              <Input value={crud.form.name} onChange={e => crud.setForm(p => ({ ...p, name: e.target.value }))} placeholder="Ex: Aluguel" />
+              <Input value={crud.form.name} onChange={e => crud.setForm(p => ({ ...p, name: upperNoAccents(e.target.value) }))} placeholder="Ex: Aluguel" />
             </div>
             <div className="flex flex-col gap-1.5">
               <Label>Tipo *</Label>
@@ -1594,7 +1595,7 @@ function AccountsTab({ enabled, canCreate, canUpdate, canDelete }: {
           <div className="flex flex-col gap-4">
             <div className="flex flex-col gap-1.5">
               <Label>Nome *</Label>
-              <Input value={crud.form.name} onChange={e => crud.setForm(p => ({ ...p, name: e.target.value }))} placeholder="Ex: Banco" />
+              <Input value={crud.form.name} onChange={e => crud.setForm(p => ({ ...p, name: upperNoAccents(e.target.value) }))} placeholder="Ex: Banco" />
             </div>
             <div className="flex flex-col gap-1.5">
               <Label>Cor</Label>

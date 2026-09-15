@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useCreateCourse } from '@/hooks/useCourse'
 import { useRooms } from '@/hooks/useRooms'
+import { upperNoAccents } from '@/utils/text-format'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -90,12 +91,12 @@ function RouteComponent() {
           <form onSubmit={handleSubmit} className="flex flex-col gap-5">
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="curso-nome">{t('admin.courses.form.title')}</Label>
-              <Input id="curso-nome" name="name" value={form.name} onChange={handleChange} required />
+              <Input id="curso-nome" name="name" value={form.name} onChange={e => setForm(prev => ({ ...prev, name: upperNoAccents(e.target.value) }))} required />
             </div>
 
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="curso-desc">{t('admin.courses.form.shortDescription')}</Label>
-              <Textarea id="curso-desc" name="description" value={form.description} onChange={handleChange} required rows={4} className="resize-none" />
+              <Textarea id="curso-desc" name="description" value={form.description} onChange={e => setForm(prev => ({ ...prev, description: upperNoAccents(e.target.value) }))} required rows={4} className="resize-none" />
             </div>
 
             <div className="flex flex-col gap-1.5">
@@ -153,7 +154,7 @@ function RouteComponent() {
 
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="curso-obs">{t('admin.courses.form.observations')}</Label>
-              <Input id="curso-obs" name="observations" value={form.observations} onChange={handleChange} />
+              <Input id="curso-obs" name="observations" value={form.observations} onChange={e => setForm(prev => ({ ...prev, observations: upperNoAccents(e.target.value) }))} />
             </div>
 
             {error && <p className="text-sm text-destructive">{error}</p>}
