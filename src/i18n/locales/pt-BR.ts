@@ -153,6 +153,7 @@ const ptBR = {
       courses: 'Cursos',
       news: 'Notícias',
       users: 'Usuários',
+      unimed: 'Unimed',
       rooms: 'Salas',
       admins: 'Administradores',
       rules: 'Regras',

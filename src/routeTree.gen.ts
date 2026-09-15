@@ -22,6 +22,7 @@ import { Route as AdminAdminIndexRouteImport } from './routes/_admin/admin/index
 import { Route as PublicNoticiasIdRouteImport } from './routes/_public/noticias/$id'
 import { Route as PublicCursosIdRouteImport } from './routes/_public/cursos/$id'
 import { Route as AdminAdminUsuariosRouteImport } from './routes/_admin/admin/usuarios'
+import { Route as AdminAdminUnimedRouteImport } from './routes/_admin/admin/unimed'
 import { Route as AdminAdminSalasRouteImport } from './routes/_admin/admin/salas'
 import { Route as AdminAdminNoticiasRouteImport } from './routes/_admin/admin/noticias'
 import { Route as AdminAdminMinhaContaRouteImport } from './routes/_admin/admin/minha-conta'
@@ -104,6 +105,11 @@ const PublicCursosIdRoute = PublicCursosIdRouteImport.update({
 const AdminAdminUsuariosRoute = AdminAdminUsuariosRouteImport.update({
   id: '/admin/usuarios',
   path: '/admin/usuarios',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminAdminUnimedRoute = AdminAdminUnimedRouteImport.update({
+  id: '/admin/unimed',
+  path: '/admin/unimed',
   getParentRoute: () => AdminRoute,
 } as any)
 const AdminAdminSalasRoute = AdminAdminSalasRouteImport.update({
@@ -226,6 +232,7 @@ export interface FileRoutesByFullPath {
   '/admin/minha-conta': typeof AdminAdminMinhaContaRoute
   '/admin/noticias': typeof AdminAdminNoticiasRouteWithChildren
   '/admin/salas': typeof AdminAdminSalasRouteWithChildren
+  '/admin/unimed': typeof AdminAdminUnimedRoute
   '/admin/usuarios': typeof AdminAdminUsuariosRouteWithChildren
   '/cursos/$id': typeof PublicCursosIdRoute
   '/noticias/$id': typeof PublicNoticiasIdRoute
@@ -255,6 +262,7 @@ export interface FileRoutesByTo {
   '/admin/dashboard': typeof AdminAdminDashboardRoute
   '/admin/mensagens': typeof AdminAdminMensagensRoute
   '/admin/minha-conta': typeof AdminAdminMinhaContaRoute
+  '/admin/unimed': typeof AdminAdminUnimedRoute
   '/cursos/$id': typeof PublicCursosIdRoute
   '/noticias/$id': typeof PublicNoticiasIdRoute
   '/admin': typeof AdminAdminIndexRoute
@@ -290,6 +298,7 @@ export interface FileRoutesById {
   '/_admin/admin/minha-conta': typeof AdminAdminMinhaContaRoute
   '/_admin/admin/noticias': typeof AdminAdminNoticiasRouteWithChildren
   '/_admin/admin/salas': typeof AdminAdminSalasRouteWithChildren
+  '/_admin/admin/unimed': typeof AdminAdminUnimedRoute
   '/_admin/admin/usuarios': typeof AdminAdminUsuariosRouteWithChildren
   '/_public/cursos/$id': typeof PublicCursosIdRoute
   '/_public/noticias/$id': typeof PublicNoticiasIdRoute
@@ -325,6 +334,7 @@ export interface FileRouteTypes {
     | '/admin/minha-conta'
     | '/admin/noticias'
     | '/admin/salas'
+    | '/admin/unimed'
     | '/admin/usuarios'
     | '/cursos/$id'
     | '/noticias/$id'
@@ -354,6 +364,7 @@ export interface FileRouteTypes {
     | '/admin/dashboard'
     | '/admin/mensagens'
     | '/admin/minha-conta'
+    | '/admin/unimed'
     | '/cursos/$id'
     | '/noticias/$id'
     | '/admin'
@@ -388,6 +399,7 @@ export interface FileRouteTypes {
     | '/_admin/admin/minha-conta'
     | '/_admin/admin/noticias'
     | '/_admin/admin/salas'
+    | '/_admin/admin/unimed'
     | '/_admin/admin/usuarios'
     | '/_public/cursos/$id'
     | '/_public/noticias/$id'
@@ -505,6 +517,13 @@ declare module '@tanstack/react-router' {
       path: '/admin/usuarios'
       fullPath: '/admin/usuarios'
       preLoaderRoute: typeof AdminAdminUsuariosRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/_admin/admin/unimed': {
+      id: '/_admin/admin/unimed'
+      path: '/admin/unimed'
+      fullPath: '/admin/unimed'
+      preLoaderRoute: typeof AdminAdminUnimedRouteImport
       parentRoute: typeof AdminRoute
     }
     '/_admin/admin/salas': {
@@ -725,6 +744,7 @@ interface AdminRouteChildren {
   AdminAdminMinhaContaRoute: typeof AdminAdminMinhaContaRoute
   AdminAdminNoticiasRoute: typeof AdminAdminNoticiasRouteWithChildren
   AdminAdminSalasRoute: typeof AdminAdminSalasRouteWithChildren
+  AdminAdminUnimedRoute: typeof AdminAdminUnimedRoute
   AdminAdminUsuariosRoute: typeof AdminAdminUsuariosRouteWithChildren
   AdminAdminIndexRoute: typeof AdminAdminIndexRoute
   AdminAdminAuditoriaIndexRoute: typeof AdminAdminAuditoriaIndexRoute
@@ -742,6 +762,7 @@ const AdminRouteChildren: AdminRouteChildren = {
   AdminAdminMinhaContaRoute: AdminAdminMinhaContaRoute,
   AdminAdminNoticiasRoute: AdminAdminNoticiasRouteWithChildren,
   AdminAdminSalasRoute: AdminAdminSalasRouteWithChildren,
+  AdminAdminUnimedRoute: AdminAdminUnimedRoute,
   AdminAdminUsuariosRoute: AdminAdminUsuariosRouteWithChildren,
   AdminAdminIndexRoute: AdminAdminIndexRoute,
   AdminAdminAuditoriaIndexRoute: AdminAdminAuditoriaIndexRoute,

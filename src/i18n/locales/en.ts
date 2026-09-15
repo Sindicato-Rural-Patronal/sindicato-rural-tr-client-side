@@ -153,6 +153,7 @@ const en = {
       courses: 'Courses',
       news: 'News',
       users: 'Users',
+      unimed: 'Unimed',
       rooms: 'Rooms',
       admins: 'Administrators',
       rules: 'Rules',

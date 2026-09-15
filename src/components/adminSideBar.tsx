@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { BookOpen, DoorOpen, Images, LayoutDashboard, Mail, Newspaper, ScrollText, Settings, TrendingUp, Users, Wallet } from 'lucide-react'
+import { BookOpen, DoorOpen, HeartPulse, Images, LayoutDashboard, Mail, Newspaper, ScrollText, Settings, TrendingUp, Users, Wallet } from 'lucide-react'
 import { Link, useRouterState } from '@tanstack/react-router'
 import { useTranslation } from 'react-i18next'
 import { NavUser } from '@/components/nav-user'
@@ -44,6 +44,7 @@ export function AdminSideBar({ ...props }: React.ComponentProps<typeof Sidebar>)
         { title: t('admin.sidebar.courses'), url: '/admin/cursos', icon: BookOpen, perm: 'READ_COURSE' },
         { title: t('admin.sidebar.news'), url: '/admin/noticias', icon: Newspaper, perm: 'READ_COURSE' },
         { title: t('admin.sidebar.users'), url: '/admin/usuarios', icon: Users, perm: 'READ_USER' },
+        { title: t('admin.sidebar.unimed'), url: '/admin/unimed', icon: HeartPulse, perm: 'READ_USER' },
         { title: t('admin.sidebar.rooms'), url: '/admin/salas', icon: DoorOpen, perm: 'READ_COURSE' },
         { title: t('admin.sidebar.banners'), url: '/admin/banners', icon: Images, perm: 'READ_BANNER' },
         { title: t('admin.sidebar.quotes'), url: '/admin/cotacoes', icon: TrendingUp, perm: 'READ_MARKET_QUOTE' },
