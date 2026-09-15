@@ -2,12 +2,13 @@ import { createFileRoute } from '@tanstack/react-router'
 import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import {
-  HeartPulse, Plus, Pencil, Trash2, Search, User, X, Receipt, Loader2,
+  HeartPulse, Plus, Pencil, Trash2, Search, User, X, Receipt, ScrollText, Loader2,
 } from 'lucide-react'
 import { requirePermission } from '@/lib/auth-guard'
 import { apiFetch } from '@/lib/api'
 import { apiErrorMessage } from '@/lib/api-error-message'
 import { downloadFichaUnimed } from '@/lib/unimed-ficha-pdf'
+import { downloadTermoUnimed } from '@/lib/unimed-termo-pdf'
 import { upperNoAccents } from '@/utils/text-format'
 import { formatDateFromString } from '@/utils/format-data-from-string'
 import { useDebouncedValue } from '@/hooks/useDebouncedValue'
@@ -401,6 +402,7 @@ function RouteComponent() {
   const [editId, setEditId] = useState<string | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<UnimedRow | null>(null)
   const [fichaBusyId, setFichaBusyId] = useState<string | null>(null)
+  const [termoBusyId, setTermoBusyId] = useState<string | null>(null)
 
   const rows = data?.data ?? []
   const total = data?.total ?? 0
@@ -436,6 +438,20 @@ function RouteComponent() {
       toast.error(apiErrorMessage(e, 'Erro ao gerar a ficha.'))
     } finally {
       setFichaBusyId(null)
+    }
+  }
+
+  // Busca o beneficiário completo + a pessoa e baixa o Termo de adesão PDF.
+  async function gerarTermo(row: UnimedRow) {
+    setTermoBusyId(row.id)
+    try {
+      const unimed = await apiFetch(`/admin/unimed/${row.id}`).then(r => r.json()) as UnimedDetail
+      const user = await apiFetch(`/admin/users/${unimed.userDataId}`).then(r => r.json())
+      await downloadTermoUnimed({ unimed, user })
+    } catch (e) {
+      toast.error(apiErrorMessage(e, 'Erro ao gerar o termo.'))
+    } finally {
+      setTermoBusyId(null)
     }
   }
 
@@ -526,6 +542,19 @@ function RouteComponent() {
                         {fichaBusyId === r.id
                           ? <Loader2 className="size-4 animate-spin" />
                           : <Receipt className="size-4" />}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-8 px-2"
+                        onClick={() => gerarTermo(r)}
+                        disabled={termoBusyId === r.id}
+                        aria-label="Gerar Termo"
+                        title="Gerar Termo"
+                      >
+                        {termoBusyId === r.id
+                          ? <Loader2 className="size-4 animate-spin" />
+                          : <ScrollText className="size-4" />}
                       </Button>
                       <Button size="sm" variant="ghost" className="h-8 px-2" onClick={() => openEdit(r.id)} aria-label="Editar" title="Editar">
                         <Pencil className="size-4" />
