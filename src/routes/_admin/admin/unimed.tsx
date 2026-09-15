@@ -11,6 +11,7 @@ import { downloadFichaUnimed } from '@/lib/unimed-ficha-pdf'
 import { downloadTermoUnimed } from '@/lib/unimed-termo-pdf'
 import { upperNoAccents } from '@/utils/text-format'
 import { formatDateFromString } from '@/utils/format-data-from-string'
+import { maskCPF } from '@/utils/masks'
 import { useDebouncedValue } from '@/hooks/useDebouncedValue'
 import { useAdminUsers } from '@/hooks/useAdmin'
 import {
@@ -486,12 +487,15 @@ function RouteComponent() {
           <Table>
             <TableHeader>
               <TableRow>
+                {/* Com a sidebar ocupando ~273px, as 7 colunas só cabem em telas
+                    bem largas — as menos essenciais somem antes da tabela
+                    transbordar e cortar a coluna de Ações. */}
                 <TableHead>Nome</TableHead>
-                <TableHead>CPF</TableHead>
-                <TableHead>Plano</TableHead>
-                <TableHead>Matrícula</TableHead>
-                <TableHead>Tipo dependente</TableHead>
-                <TableHead>Data adesão</TableHead>
+                <TableHead className="hidden sm:table-cell">CPF</TableHead>
+                <TableHead className="hidden 2xl:table-cell">Plano</TableHead>
+                <TableHead className="hidden xl:table-cell">Matrícula</TableHead>
+                <TableHead className="hidden xl:table-cell">Tipo dependente</TableHead>
+                <TableHead className="hidden lg:table-cell">Data adesão</TableHead>
                 <TableHead className="text-right">Ações</TableHead>
               </TableRow>
             </TableHeader>
@@ -499,11 +503,11 @@ function RouteComponent() {
               {isLoading && Array.from({ length: 6 }).map((_, i) => (
                 <TableRow key={i}>
                   <TableCell><Skeleton className="h-4 w-40" /></TableCell>
-                  <TableCell><Skeleton className="h-4 w-28" /></TableCell>
-                  <TableCell><Skeleton className="h-4 w-24" /></TableCell>
-                  <TableCell><Skeleton className="h-4 w-24" /></TableCell>
-                  <TableCell><Skeleton className="h-4 w-24" /></TableCell>
-                  <TableCell><Skeleton className="h-4 w-20" /></TableCell>
+                  <TableCell className="hidden sm:table-cell"><Skeleton className="h-4 w-28" /></TableCell>
+                  <TableCell className="hidden 2xl:table-cell"><Skeleton className="h-4 w-24" /></TableCell>
+                  <TableCell className="hidden xl:table-cell"><Skeleton className="h-4 w-24" /></TableCell>
+                  <TableCell className="hidden xl:table-cell"><Skeleton className="h-4 w-24" /></TableCell>
+                  <TableCell className="hidden lg:table-cell"><Skeleton className="h-4 w-20" /></TableCell>
                   <TableCell><Skeleton className="h-7 w-16 ml-auto" /></TableCell>
                 </TableRow>
               ))}
@@ -521,11 +525,11 @@ function RouteComponent() {
               {rows.map(r => (
                 <TableRow key={r.id}>
                   <TableCell className="font-medium text-foreground">{r.userData.name}</TableCell>
-                  <TableCell className="tabular-nums text-muted-foreground">{r.userData.cpf ?? '—'}</TableCell>
-                  <TableCell className="text-muted-foreground">{r.plano ?? '—'}</TableCell>
-                  <TableCell className="tabular-nums text-muted-foreground">{r.matricula ?? '—'}</TableCell>
-                  <TableCell className="text-muted-foreground">{r.tipoDependente ?? '—'}</TableCell>
-                  <TableCell className="tabular-nums text-muted-foreground">
+                  <TableCell className="hidden sm:table-cell tabular-nums text-muted-foreground">{r.userData.cpf ? maskCPF(r.userData.cpf) : '—'}</TableCell>
+                  <TableCell className="hidden 2xl:table-cell text-muted-foreground">{r.plano ?? '—'}</TableCell>
+                  <TableCell className="hidden xl:table-cell tabular-nums text-muted-foreground">{r.matricula ?? '—'}</TableCell>
+                  <TableCell className="hidden xl:table-cell text-muted-foreground">{r.tipoDependente ?? '—'}</TableCell>
+                  <TableCell className="hidden lg:table-cell tabular-nums text-muted-foreground">
                     {r.dataAdesao ? formatDateFromString(r.dataAdesao) : '—'}
                   </TableCell>
                   <TableCell className="text-right">
