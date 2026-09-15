@@ -36,6 +36,7 @@ import { NativeSelect } from '@/components/ui/native-select'
 import { EmptyState } from '@/components/EmptyState'
 import { Pagination } from '@/components/ui/pagination'
 import { InitialsAvatar } from '@/components/InitialsAvatar'
+import { PasswordInput } from '@/components/PasswordInput'
 
 export const Route = createFileRoute('/_admin/admin/usuarios/')({
   // Filtros principais na URL (sobrevivem a voltar/atualizar/compartilhar).
@@ -530,7 +531,7 @@ function EditarAdminDialog({ admin, onClose }: { admin: UserAdmin | null; onClos
   const { data: regrasData } = useAdminRules()
   const regras = regrasData?.data ?? []
   const updateAdmin = useUpdateAdmin(admin?.id ?? '')
-  const [form, setForm] = useState({ username: '', password: '', userRole: '', isPublic: false, publicTitle: '' })
+  const [form, setForm] = useState({ username: '', password: '', confirm: '', userRole: '', isPublic: false, publicTitle: '' })
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
@@ -538,6 +539,7 @@ function EditarAdminDialog({ admin, onClose }: { admin: UserAdmin | null; onClos
       setForm({
         username: admin.username,
         password: '',
+        confirm: '',
         userRole: admin.rulesId,
         isPublic: admin.isPublic,
         publicTitle: admin.publicTitle ?? '',
@@ -546,9 +548,15 @@ function EditarAdminDialog({ admin, onClose }: { admin: UserAdmin | null; onClos
     }
   }, [admin?.id])
 
+  const passwordMismatch = form.password.trim() !== '' && form.password !== form.confirm
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError(null)
+    if (passwordMismatch) {
+      setError('As senhas não coincidem.')
+      return
+    }
     const body: { username?: string; password?: string; rulesId?: string; isPublic?: boolean; publicTitle?: string | null } = {}
     if (form.username !== admin?.username) body.username = form.username
     if (form.password.trim()) body.password = form.password
@@ -581,8 +589,24 @@ function EditarAdminDialog({ admin, onClose }: { admin: UserAdmin | null; onClos
           </div>
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="edit-admin-password">Nova senha</Label>
-            <Input id="edit-admin-password" type="password" value={form.password} onChange={e => setForm(p => ({ ...p, password: e.target.value }))} placeholder="Deixar em branco para manter" />
+            <PasswordInput id="edit-admin-password" value={form.password} onChange={e => setForm(p => ({ ...p, password: e.target.value }))} placeholder="Deixar em branco para manter" autoComplete="new-password" />
           </div>
+          {form.password.trim() !== '' && (
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="edit-admin-confirm">Confirmar nova senha</Label>
+              <PasswordInput
+                id="edit-admin-confirm"
+                value={form.confirm}
+                onChange={e => setForm(p => ({ ...p, confirm: e.target.value }))}
+                placeholder="Repita a nova senha"
+                autoComplete="new-password"
+                className={passwordMismatch ? 'border-destructive focus-visible:ring-destructive' : undefined}
+              />
+              {passwordMismatch
+                ? <p className="text-xs text-destructive">As senhas não coincidem.</p>
+                : form.confirm.trim() !== '' && <p className="text-xs text-emerald-600 dark:text-emerald-400">As senhas coincidem.</p>}
+            </div>
+          )}
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="edit-admin-role">Regra de permissão *</Label>
             <NativeSelect id="edit-admin-role" value={form.userRole} onChange={e => setForm(p => ({ ...p, userRole: e.target.value }))} required>
@@ -621,7 +645,7 @@ function EditarAdminDialog({ admin, onClose }: { admin: UserAdmin | null; onClos
           {error && <p className="text-sm text-destructive">{error}</p>}
           <DialogFooter>
             <Button type="button" variant="outline" onClick={onClose}>Cancelar</Button>
-            <Button type="submit" disabled={updateAdmin.isPending}>
+            <Button type="submit" disabled={updateAdmin.isPending || passwordMismatch}>
               {updateAdmin.isPending ? 'Salvando...' : 'Salvar alterações'}
             </Button>
           </DialogFooter>
