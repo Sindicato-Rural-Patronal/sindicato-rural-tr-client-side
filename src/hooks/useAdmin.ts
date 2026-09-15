@@ -338,11 +338,42 @@ export function useDeleteRule() {
 
 // Convite de admin: gestor escolhe pessoa + regra → gera token/link.
 export function useCreateAdminInvite() {
+  const queryClient = useQueryClient()
   return useMutation({
     mutationFn: (body: { userDataId: string; rulesId: string }) =>
       apiFetch('/admin/invites', { method: 'POST', body: JSON.stringify(body) }).then(
         r => r.json() as Promise<{ token: string; expiresAt: string }>,
       ),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'invites'] })
+    },
+  })
+}
+
+export type PendingInvite = {
+  id: string
+  userName: string
+  ruleName: string
+  expiresAt: string
+  createdAt: string
+  expired: boolean
+}
+
+/** Convites pendentes (sem expor token). */
+export function useAdminInvites() {
+  return useQuery<PendingInvite[]>({
+    queryKey: ['admin', 'invites'],
+    queryFn: () => apiFetch('/admin/invites').then(r => r.json()),
+  })
+}
+
+export function useRevokeAdminInvite() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) => apiFetch(`/admin/invites/${id}`, { method: 'DELETE' }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'invites'] })
+    },
   })
 }
 

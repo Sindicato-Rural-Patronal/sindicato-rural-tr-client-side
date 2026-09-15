@@ -7,11 +7,12 @@ import { usePermissions } from '@/hooks/usePermissions'
 import { PermissionButton } from '@/components/PermissionButton'
 import {
   useAdminUsers, useAdminAdmins, useAdminRules,
-  useCreateAdminInvite, useCreateRule, useUpdateRule, useDeleteRule,
+  useCreateAdminInvite, useAdminInvites, useRevokeAdminInvite, useCreateRule, useUpdateRule, useDeleteRule,
   useDeleteWorker,
   useUpdateAdmin, useDeleteAdmin,
-  type UserData, type UserAdmin, type Rule,
+  type UserData, type UserAdmin, type Rule, type PendingInvite,
 } from '@/hooks/useAdmin'
+import { formatDateFromString } from '@/utils/format-data-from-string'
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
@@ -526,6 +527,68 @@ function NovoAdminSheet() {
   )
 }
 
+
+function ConvitesPendentes({ canRevoke }: { canRevoke: boolean }) {
+  const { data: invites, isLoading } = useAdminInvites()
+  const revoke = useRevokeAdminInvite()
+  const [target, setTarget] = useState<PendingInvite | null>(null)
+
+  if (isLoading || !invites || invites.length === 0) return null
+
+  async function handleRevoke() {
+    if (!target) return
+    try {
+      await revoke.mutateAsync(target.id)
+      toast.success('Convite revogado.')
+      setTarget(null)
+    } catch (e) {
+      toast.error(apiErrorMessage(e, 'Erro ao revogar convite.'))
+    }
+  }
+
+  return (
+    <div className="mb-4 rounded-lg border border-border bg-muted/30 p-3">
+      <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+        Convites pendentes ({invites.length})
+      </p>
+      <div className="flex flex-col gap-2">
+        {invites.map(inv => (
+          <div key={inv.id} className="flex items-center justify-between gap-3 rounded-md border border-border bg-card px-3 py-2 text-sm">
+            <div className="min-w-0">
+              <span className="font-medium text-foreground">{inv.userName}</span>
+              <span className="text-muted-foreground"> · {inv.ruleName}</span>
+              <div className="text-xs">
+                {inv.expired
+                  ? <span className="text-destructive">Expirado</span>
+                  : <span className="text-muted-foreground">Expira em {formatDateFromString(inv.expiresAt.slice(0, 10))}</span>}
+              </div>
+            </div>
+            {canRevoke && (
+              <Button
+                size="sm" variant="ghost"
+                className="h-8 px-2 text-muted-foreground hover:text-destructive shrink-0"
+                onClick={() => setTarget(inv)}
+                aria-label="Revogar convite" title="Revogar convite"
+              >
+                <Trash2 className="size-4" />
+              </Button>
+            )}
+          </div>
+        ))}
+      </div>
+      <DeleteConfirmDialog
+        open={!!target}
+        onOpenChange={o => { if (!o) setTarget(null) }}
+        title="Revogar convite"
+        description={<>Revogar o convite de <strong>{target?.userName}</strong>? O link deixa de funcionar.</>}
+        onConfirm={handleRevoke}
+        pending={revoke.isPending}
+        confirmLabel="Revogar"
+        pendingLabel="Revogando..."
+      />
+    </div>
+  )
+}
 
 function EditarAdminDialog({ admin, onClose }: { admin: UserAdmin | null; onClose: () => void }) {
   const { data: regrasData } = useAdminRules()
@@ -1061,6 +1124,7 @@ function RouteComponent() {
         </TabsContent>
 
         <TabsContent value="admins">
+          {can('READ_USER_ADMIN') && <ConvitesPendentes canRevoke={can('CREATE_USER_ADMIN')} />}
           <div className="flex flex-col sm:flex-row gap-2 mb-4">
             <Select value={rulesFilter || 'all'} onValueChange={handleRulesFilterChange}>
               <SelectTrigger className="h-9 w-full sm:w-48">
