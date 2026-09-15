@@ -51,6 +51,9 @@ export function FinanceReportDocument({ summary, transactions, range }: {
     ? `Período: ${formatDateFromString(range.from)} a ${formatDateFromString(range.to)}`
     : 'Todo o período'
   const outCats = summary.byCategory.filter(c => c.type === 'OUT')
+  // "Só nota" (type null) não é movimento de caixa — fora do relatório do período
+  // (assim a tabela bate com os totais, que também as excluem).
+  const lancamentos = transactions.filter(t => t.type !== null)
 
   return (
     <Document>
@@ -107,7 +110,7 @@ export function FinanceReportDocument({ summary, transactions, range }: {
           </View>
         </View>
 
-        <Text style={styles.section}>Lançamentos ({transactions.length})</Text>
+        <Text style={styles.section}>Lançamentos ({lancamentos.length})</Text>
         <View style={styles.th}>
           <Text style={[styles.thText, styles.cData]}>Data</Text>
           <Text style={[styles.thText, styles.cDesc]}>Descrição</Text>
@@ -115,7 +118,7 @@ export function FinanceReportDocument({ summary, transactions, range }: {
           <Text style={[styles.thText, styles.cAcc]}>Caixa</Text>
           <Text style={[styles.thText, styles.cVal]}>Valor</Text>
         </View>
-        {transactions.map(t => (
+        {lancamentos.map(t => (
           <View key={t.id} style={styles.tr} wrap={false}>
             <Text style={styles.cData}>{formatDateFromString(t.date.slice(0, 10))}</Text>
             <Text style={styles.cDesc}>{t.description}</Text>
