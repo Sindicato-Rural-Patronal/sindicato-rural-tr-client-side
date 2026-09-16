@@ -28,7 +28,7 @@ import {
   Table, TableHeader, TableBody,
   TableRow, TableHead, TableCell,
 } from '@/components/ui/table'
-import { AlertCircle, Plus, Shield, Users, Pencil, Trash2, ExternalLink, Globe, ChevronDown, X, SlidersHorizontal } from 'lucide-react'
+import { AlertCircle, Plus, Shield, Users, Pencil, Trash2, ExternalLink, Globe, ChevronDown, X, SlidersHorizontal, Building2 } from 'lucide-react'
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
@@ -39,12 +39,14 @@ import { Pagination } from '@/components/ui/pagination'
 import { InitialsAvatar } from '@/components/InitialsAvatar'
 import { PasswordInput } from '@/components/PasswordInput'
 import { STICKY_ACTIONS_CELL, STICKY_ACTIONS_ROW } from '@/lib/table-sticky-actions'
+import { CompaniesList } from '@/components/cadastro/CompaniesList'
+import { useAdminCompanies } from '@/hooks/useCompanies'
 
 export const Route = createFileRoute('/_admin/admin/usuarios/')({
   // Filtros principais na URL (sobrevivem a voltar/atualizar/compartilhar).
   validateSearch: z.object({
     incomplete: z.boolean().optional(),
-    tab: z.enum(['associados', 'admins']).optional(),
+    tab: z.enum(['associados', 'empresas', 'admins']).optional(),
     page: z.coerce.number().int().min(1).optional(),
     q: z.string().optional(),
   }),
@@ -748,7 +750,7 @@ function RouteComponent() {
   useEffect(() => {
     navigate({
       search: {
-        tab: activeTab === 'admins' ? 'admins' : undefined,
+        tab: activeTab === 'admins' || activeTab === 'empresas' ? activeTab : undefined,
         page: usersPage > 1 ? usersPage : undefined,
         incomplete: incompleteOnly || undefined,
         q: usersSearch || undefined,
@@ -795,6 +797,9 @@ function RouteComponent() {
   const userTotal  = usuariosData?.total      ?? 0
   const userPages  = usuariosData?.totalPages ?? 1
   const adminTotal = adminsData?.total        ?? 0
+  // Só pro contador da aba (a lista busca com os próprios filtros).
+  const { data: companiesCount } = useAdminCompanies({ page: 1, limit: 1 })
+  const companyTotal = companiesCount?.total ?? 0
   const adminPages = adminsData?.totalPages   ?? 1
 
   function handleTabChange(tab: string) {
@@ -841,7 +846,7 @@ function RouteComponent() {
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-6">
           <div>
             <h1 className="text-2xl font-bold tracking-tight text-foreground">Usuários</h1>
-            <p className="text-sm text-muted-foreground">Associados e administradores do sistema</p>
+            <p className="text-sm text-muted-foreground">Associados, empresas e administradores do sistema</p>
           </div>
           <div className="flex items-center gap-2">
             {activeTab === 'associados' && (
@@ -865,6 +870,11 @@ function RouteComponent() {
                 <Link to="/admin/usuarios/novo"><Plus className="size-4" /> Novo associado</Link>
               </Button>
             )}
+            {activeTab === 'empresas' && can('CREATE_USER') && (
+              <Button asChild>
+                <Link to="/admin/empresas/novo"><Plus className="size-4" /> Nova empresa</Link>
+              </Button>
+            )}
             {activeTab === 'admins' && (
               <>
                 {can('READ_RULE') && <RegrasSheet />}
@@ -881,6 +891,15 @@ function RouteComponent() {
             {userTotal > 0 && (
               <span className="ml-1 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
                 {userTotal}
+              </span>
+            )}
+          </TabsTrigger>
+          <TabsTrigger value="empresas" className="flex items-center gap-1.5">
+            <Building2 className="size-3.5" />
+            Empresas
+            {companyTotal > 0 && (
+              <span className="ml-1 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
+                {companyTotal}
               </span>
             )}
           </TabsTrigger>
@@ -1123,6 +1142,10 @@ function RouteComponent() {
               />
             </>
           )}
+        </TabsContent>
+
+        <TabsContent value="empresas">
+          <CompaniesList />
         </TabsContent>
 
         <TabsContent value="admins">

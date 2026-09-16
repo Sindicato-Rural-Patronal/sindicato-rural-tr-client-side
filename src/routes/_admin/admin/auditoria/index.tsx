@@ -67,6 +67,8 @@ const ENTITY: Record<string, { n: string; g: 'm' | 'f' }> = {
   'Lançamento': { n: 'lançamento', g: 'm' },
   'Transferência': { n: 'transferência', g: 'f' },
   'Comprovante': { n: 'comprovante', g: 'm' },
+  'Empresa': { n: 'empresa', g: 'f' },
+  'Convênio': { n: 'convênio', g: 'm' },
   'Outro': { n: 'registro', g: 'm' },
 }
 function acaoLegivel(method: string, entity: string, label: string | null): string {

@@ -4,13 +4,14 @@ import { Search, CornerDownLeft } from 'lucide-react'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { usePermissions } from '@/hooks/usePermissions'
 
-type NavItem = { label: string; to: string; perm: string | null; hint?: string }
+type NavItem = { label: string; to: string; perm: string | null; hint?: string; search?: Record<string, string> }
 
 const NAV: NavItem[] = [
   { label: 'Painel', to: '/admin/dashboard', perm: null },
   { label: 'Cursos', to: '/admin/cursos', perm: 'READ_COURSE' },
   { label: 'Notícias', to: '/admin/noticias', perm: 'READ_COURSE' },
   { label: 'Usuários', to: '/admin/usuarios', perm: 'READ_USER', hint: 'associados' },
+  { label: 'Empresas', to: '/admin/usuarios', search: { tab: 'empresas' }, perm: 'READ_USER', hint: 'cnpj parceiros cadastro' },
   { label: 'Salas', to: '/admin/salas', perm: 'READ_COURSE' },
   { label: 'Banners', to: '/admin/banners', perm: 'READ_BANNER' },
   { label: 'Cotações', to: '/admin/cotacoes', perm: 'READ_MARKET_QUOTE' },
@@ -47,15 +48,15 @@ export function CommandPalette() {
     .filter(n => !n.perm || can(n.perm))
     .filter(n => !term || n.label.toLowerCase().includes(term) || (n.hint ?? '').toLowerCase().includes(term))
 
-  function go(to: string) {
+  function go(item: NavItem) {
     setOpen(false)
-    navigate({ to: to as string })
+    navigate({ to: item.to as string, search: item.search as never })
   }
 
   function onInputKey(e: React.KeyboardEvent) {
     if (e.key === 'ArrowDown') { e.preventDefault(); setIdx(i => Math.min(i + 1, items.length - 1)) }
     else if (e.key === 'ArrowUp') { e.preventDefault(); setIdx(i => Math.max(i - 1, 0)) }
-    else if (e.key === 'Enter') { e.preventDefault(); if (items[idx]) go(items[idx].to) }
+    else if (e.key === 'Enter') { e.preventDefault(); if (items[idx]) go(items[idx]) }
   }
 
   return (
@@ -82,7 +83,7 @@ export function CommandPalette() {
             <li key={n.to}>
               <button
                 type="button"
-                onClick={() => go(n.to)}
+                onClick={() => go(n)}
                 onMouseEnter={() => setIdx(i)}
                 className={`flex w-full items-center justify-between rounded-md px-3 py-2 text-sm text-left ${
                   i === idx ? 'bg-muted text-foreground' : 'text-muted-foreground'

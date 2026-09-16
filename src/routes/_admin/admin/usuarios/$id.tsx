@@ -3,16 +3,18 @@ import { useQueryClient } from '@tanstack/react-query'
 import { useState, useEffect, useRef } from 'react'
 import { toast } from 'sonner'
 import {
-  useAdminUser, useUpdateWorker, useDeleteWorker, useUploadAvatar, useUploadPartnerLogo,
+  useAdminUser, useUpdateWorker, useDeleteWorker, useUploadAvatar,
   useUserProperties, useCreateUserProperty, useDeleteUserProperty,
   useUserRelations, useCreateUserRelation, useDeleteUserRelation,
-  useAdminUsers, useCEPLookup,
+  useAdminUsers,
   usePromoteInstructor, useRemoveInstructor, useUpdateInstructor,
-  type UserDataDetail, type UserProperty, type UserRelation,
+  type UserDataDetail, type UserRelation,
 } from '@/hooks/useAdmin'
 import { useUnsavedGuard } from '@/hooks/use-unsaved-guard'
 import { useDebouncedValue } from '@/hooks/useDebouncedValue'
 import { CadproFields } from '@/components/CadproFields'
+import { PropertiesManager } from '@/components/cadastro/PropertiesManager'
+import { PersonCompanies } from '@/components/cadastro/PersonCompanies'
 import { DeleteConfirmDialog } from '@/components/DeleteConfirmDialog'
 import { NativeSelect } from '@/components/ui/native-select'
 import { Pagination } from '@/components/ui/pagination'
@@ -23,18 +25,14 @@ import { DatePicker } from '@/components/ui/date-picker'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Separator } from '@/components/ui/separator'
-import {
-  Dialog, DialogContent, DialogHeader, DialogTitle,
-  DialogDescription, DialogFooter,
-} from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
   AlertCircle, ArrowLeft, Camera, CheckCircle2, Save, Plus, Trash2, Building2, Eye,
   User, FileText, Globe, Briefcase, Heart, TreePine,
-  Pencil, X, GraduationCap, Handshake, ImageUp, Star,
+  Pencil, X, GraduationCap, ImageUp,
 } from 'lucide-react'
-import { maskCPF, maskPhone, maskCEP, maskRG, maskCNH, maskMoney } from '@/utils/masks'
+import { maskCPF, maskPhone, maskRG, maskCNH, maskMoney } from '@/utils/masks'
 import { AgeHint } from '@/components/AgeHint'
 import { apiErrorMessage } from '@/lib/api-error-message'
 import { toIso } from '@/utils/dates'
@@ -79,15 +77,6 @@ function getMissingFields(user: UserDataDetail, hasNoProperties: boolean): Missi
   return missing
 }
 
-function InfoRow({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex flex-col gap-0.5">
-      <span className="text-xs text-muted-foreground">{label}</span>
-      <span className="text-sm font-medium">{value}</span>
-    </div>
-  )
-}
-
 function SelectField({
   value, onChange, options, placeholder, disabled,
 }: {
@@ -123,7 +112,6 @@ type DadosForm = {
   memberType: string; boardPosition: string; boardMember: boolean
   memberSince: string; membershipValidUntil: string; memberNotes: string; memberNotesNumber: string
   avatar: string
-  isPartner: boolean; partnerUrl: string; partnerOrder: string
 }
 
 function dadosFromDetail(u: UserDataDetail): DadosForm {
@@ -160,9 +148,6 @@ function dadosFromDetail(u: UserDataDetail): DadosForm {
     memberNotes: u.memberNotes ?? '',
     memberNotesNumber: u.memberNotesNumber ?? '',
     avatar: u.avatar ?? '',
-    isPartner: u.isPartner ?? false,
-    partnerUrl: u.partnerUrl ?? '',
-    partnerOrder: u.partnerOrder != null ? String(u.partnerOrder) : '',
   }
 }
 
@@ -280,10 +265,7 @@ function DadosTab({ userId, user, completeMode, onCompleteModeEnd, hasNoProperti
   const queryClient = useQueryClient()
   const updateWorker = useUpdateWorker(userId)
   const uploadAvatar = useUploadAvatar(userId)
-  const uploadPartnerLogo = useUploadPartnerLogo(userId)
   const avatarInputRef = useRef<HTMLInputElement>(null)
-  const partnerLogoInputRef = useRef<HTMLInputElement>(null)
-  const [partnerLogoPreview, setPartnerLogoPreview] = useState<string | null>(null)
   const [showCamera, setShowCamera] = useState(false)
   const [editing, setEditing] = useState(false)
   const [form, setForm] = useState<DadosForm>(() => dadosFromDetail(user))
@@ -392,23 +374,8 @@ function DadosTab({ userId, user, completeMode, onCompleteModeEnd, hasNoProperti
     await uploadAvatarFile(file)
   }
 
-  async function handlePartnerLogoFile(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0]
-    if (!file) return
-    setPartnerLogoPreview(prev => { if (prev) URL.revokeObjectURL(prev); return URL.createObjectURL(file) })
-    try {
-      await uploadPartnerLogo.mutateAsync(file)
-      toast.success('Logo do parceiro atualizada!')
-    } catch {
-      setPartnerLogoPreview(prev => { if (prev) URL.revokeObjectURL(prev); return null })
-      toast.error('Erro ao fazer upload da logo.')
-    }
-    if (partnerLogoInputRef.current) partnerLogoInputRef.current.value = ''
-  }
-
   function handleCancel() {
     setForm(saved)
-    setPartnerLogoPreview(prev => { if (prev) URL.revokeObjectURL(prev); return null })
     setWantInstructor(false)
     setInstrBio(user.userInstructor?.bio ?? '')
     setInstrLinkedin(user.userInstructor?.linkedin ?? '')
@@ -463,9 +430,6 @@ function DadosTab({ userId, user, completeMode, onCompleteModeEnd, hasNoProperti
       memberNotes: f.memberNotes || null,
       memberNotesNumber: f.memberNotesNumber || null,
       avatar: f.avatar || null,
-      isPartner: f.isPartner,
-      partnerUrl: f.partnerUrl || null,
-      partnerOrder: f.partnerOrder ? parseInt(f.partnerOrder, 10) : null,
     })
     try {
       // Envia SÓ o que mudou: um campo legado inválido (ex: CPF antigo fora do
@@ -515,9 +479,6 @@ function DadosTab({ userId, user, completeMode, onCompleteModeEnd, hasNoProperti
           membershipValidUntil: form.membershipValidUntil ? toIso(form.membershipValidUntil) : null,
           memberNotes: form.memberNotes || null,
           memberNotesNumber: form.memberNotesNumber || null,
-          isPartner: form.isPartner,
-          partnerUrl: form.partnerUrl || null,
-          partnerOrder: form.partnerOrder ? parseInt(form.partnerOrder, 10) : null,
         }
       })
       if (isInstructor) {
@@ -800,96 +761,6 @@ function DadosTab({ userId, user, completeMode, onCompleteModeEnd, hasNoProperti
         </CardContent>
       </Card>
 
-      {/* Parceiro */}
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-sm flex items-center gap-2"><Handshake className="size-4" /> Parceiro</CardTitle>
-        </CardHeader>
-        <CardContent className="flex flex-col gap-4">
-          <div className="flex items-center gap-2">
-            <input
-              type="checkbox"
-              id="isPartner"
-              disabled={d}
-              checked={form.isPartner}
-              onChange={e => set('isPartner', e.target.checked)}
-              className="accent-primary disabled:opacity-50 disabled:cursor-not-allowed"
-            />
-            <Label htmlFor="isPartner" className={`text-sm ${d ? 'opacity-50' : 'cursor-pointer'}`}>
-              Exibir como parceiro na página inicial
-            </Label>
-          </div>
-          {form.isPartner && (
-            <div className="flex flex-col gap-4 pl-5">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <FieldRow label="Link do parceiro (URL)">
-                  <Input
-                    className={inp}
-                    disabled={d}
-                    value={form.partnerUrl}
-                    onChange={e => set('partnerUrl', e.target.value)}
-                    placeholder="https://site-do-parceiro.com.br"
-                  />
-                </FieldRow>
-                <FieldRow label="Ordem de exibição">
-                  <Input
-                    className={inp}
-                    disabled={d}
-                    type="number"
-                    min="0"
-                    value={form.partnerOrder}
-                    onChange={e => set('partnerOrder', e.target.value)}
-                    placeholder="0"
-                  />
-                </FieldRow>
-              </div>
-              <FieldRow label="Logo do parceiro (300×150px)">
-                <div className="flex items-center gap-3">
-                  {partnerLogoPreview ? (
-                    <img src={partnerLogoPreview} alt="Logo" className="h-10 w-20 object-contain rounded border bg-muted shrink-0" />
-                  ) : user.partnerLogo ? (
-                    <img src={user.partnerLogo} alt="Logo atual" className="h-10 w-20 object-contain rounded border bg-muted shrink-0" />
-                  ) : (
-                    <div className="h-10 w-20 rounded border bg-muted flex items-center justify-center shrink-0">
-                      <Handshake className="size-4 text-muted-foreground/50" />
-                    </div>
-                  )}
-                  {editing && (
-                    <>
-                      <input
-                        ref={partnerLogoInputRef}
-                        type="file"
-                        accept="image/*"
-                        className="hidden"
-                        onChange={handlePartnerLogoFile}
-                      />
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="outline"
-                        className="shrink-0"
-                        disabled={uploadPartnerLogo.isPending}
-                        onClick={() => partnerLogoInputRef.current?.click()}
-                      >
-                        {uploadPartnerLogo.isPending ? '...' : 'Upload logo'}
-                      </Button>
-                    </>
-                  )}
-                </div>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Será redimensionada para 300×150px. Se não enviada, apenas o nome será exibido.
-                </p>
-              </FieldRow>
-            </div>
-          )}
-          {!form.isPartner && (
-            <p className="text-sm text-muted-foreground pl-5">
-              Marque para exibir este associado como parceiro na página inicial.
-            </p>
-          )}
-        </CardContent>
-      </Card>
-
       {/* Instrutor */}
       <Card>
         <CardHeader className="pb-3">
@@ -988,318 +859,33 @@ function DadosTab({ userId, user, completeMode, onCompleteModeEnd, hasNoProperti
 
 // ─── Seção Propriedades ───────────────────────────────────────────────────────
 
-type PropForm = {
-  name: string
-  registration: string
-  address: {
-    type: 'URBAN' | 'RURAL'
-    street: string; number: string; neighborhood: string
-    city: string; state: string; zipCode: string
-    complement: string; notes: string
-    localityName: string; road: string; km: string; lot: string; section: string
-  }
-}
-
-const emptyPropForm = (): PropForm => ({
-  name: '',
-  registration: '',
-  address: {
-    type: 'URBAN',
-    street: '', number: '', neighborhood: '',
-    city: '', state: '', zipCode: '',
-    complement: '', notes: '',
-    localityName: '', road: '', km: '', lot: '', section: '',
-  },
-})
-
 function PropriedadesTab({ userId }: { userId: string }) {
   const [page, setPage] = useState(1)
   const limit = 10
-  const { data: resp, isLoading: loadingProps } = useUserProperties(userId, { page, limit })
-  const properties = resp?.data ?? []
+  const { data: resp, isLoading } = useUserProperties(userId, { page, limit })
   const total = resp?.total ?? 0
   const totalPages = resp ? Math.ceil(total / limit) : 1
-
   const createProp = useCreateUserProperty(userId)
   const deleteProp = useDeleteUserProperty(userId)
-  const cepLookup = useCEPLookup()
   const { data: user } = useAdminUser(userId)
   const updateWorker = useUpdateWorker(userId)
-  const primaryId = user?.primaryPropertyId ?? null
-  const [adding, setAdding] = useState(false)
-  const [form, setForm] = useState<PropForm>(emptyPropForm)
-  const [deleteTarget, setDeleteTarget] = useState<UserProperty | null>(null)
-  const [detailProp, setDetailProp] = useState<UserProperty | null>(null)
-
-  async function setPrimary(propId: string) {
-    try {
-      await updateWorker.mutateAsync({ primaryPropertyId: propId })
-      toast.success('Propriedade principal definida.')
-    } catch (e) {
-      toast.error(apiErrorMessage(e, 'Erro ao definir propriedade principal.'))
-    }
-  }
-
-  function setAddr(k: keyof PropForm['address'], v: string) {
-    setForm(prev => ({ ...prev, address: { ...prev.address, [k]: v } }))
-  }
-
-  async function handleCEP() {
-    if (!form.address.zipCode) return
-    try {
-      const result = await cepLookup.mutateAsync(form.address.zipCode)
-      setForm(prev => ({
-        ...prev,
-        address: {
-          ...prev.address,
-          street: result.street ?? prev.address.street,
-          neighborhood: result.neighborhood ?? prev.address.neighborhood,
-          city: result.city ?? prev.address.city,
-          state: result.state ?? prev.address.state,
-        },
-      }))
-    } catch {
-      toast.error('CEP não encontrado.')
-    }
-  }
-
-  async function handleCreate(e: React.FormEvent) {
-    e.preventDefault()
-    if (!form.name.trim()) return
-    try {
-      await createProp.mutateAsync({
-        name: form.name,
-        registration: form.registration || undefined,
-        address: form.address,
-      })
-      setForm(emptyPropForm())
-      setAdding(false)
-      toast.success('Propriedade adicionada!')
-    } catch (e) {
-      toast.error(apiErrorMessage(e, 'Erro ao adicionar propriedade.'))
-    }
-  }
-
-  async function handleDelete() {
-    if (!deleteTarget) return
-    try {
-      await deleteProp.mutateAsync(deleteTarget.id)
-      setDeleteTarget(null)
-      toast.success('Propriedade removida.')
-    } catch (e) {
-      toast.error(apiErrorMessage(e, 'Erro ao remover propriedade.'))
-    }
-  }
-
-  const inp = 'h-9'
-  const isUrban = form.address.type === 'URBAN'
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between">
-        <p className="text-sm text-muted-foreground">{total} propriedade(s) cadastrada(s)</p>
-        <Button size="sm" onClick={() => setAdding(true)}>
-          <Plus className="size-4" /> Adicionar
-        </Button>
-      </div>
-
-      {!loadingProps && total === 0 && !adding && (
-        <div className="flex flex-col items-center justify-center py-12 border-2 border-dashed rounded-lg text-center">
-          <TreePine className="size-10 text-muted-foreground/30 mb-3" />
-          <p className="text-sm font-medium">Nenhuma propriedade cadastrada</p>
-        </div>
-      )}
-
-      {adding && (
-        <Card>
-          <CardContent className="pt-4">
-            <form onSubmit={handleCreate} className="flex flex-col gap-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <FieldRow label="Nome da propriedade *">
-                  <Input value={form.name} onChange={e => setForm(p => ({ ...p, name: upperNoAccents(e.target.value) }))} className={inp} autoFocus />
-                </FieldRow>
-                <FieldRow label="Matrícula">
-                  <Input value={form.registration} onChange={e => setForm(p => ({ ...p, registration: e.target.value }))} className={inp} />
-                </FieldRow>
-              </div>
-
-              <Separator />
-
-              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Endereço da propriedade</p>
-              <div className="flex gap-2">
-                <Button type="button" variant={isUrban ? 'default' : 'outline'} size="sm" onClick={() => setAddr('type', 'URBAN')}>
-                  <Building2 className="size-3.5 mr-1.5" /> Urbano
-                </Button>
-                <Button type="button" variant={!isUrban ? 'default' : 'outline'} size="sm" onClick={() => setAddr('type', 'RURAL')}>
-                  <TreePine className="size-3.5 mr-1.5" /> Rural
-                </Button>
-              </div>
-
-              {isUrban ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                  <FieldRow label="CEP">
-                    <div className="flex gap-2">
-                      <Input className={inp} value={form.address.zipCode} onChange={e => setAddr('zipCode', maskCEP(e.target.value))} placeholder="00000-000" />
-                      <Button type="button" size="sm" variant="outline" disabled={!form.address.zipCode || cepLookup.isPending} onClick={handleCEP} className="shrink-0">
-                        {cepLookup.isPending ? '...' : 'Buscar'}
-                      </Button>
-                    </div>
-                  </FieldRow>
-                  <div className="sm:col-span-2">
-                    <FieldRow label="Logradouro">
-                      <Input className={inp} value={form.address.street} onChange={e => setAddr('street', upperNoAccents(e.target.value))} />
-                    </FieldRow>
-                  </div>
-                  <FieldRow label="Número"><Input className={inp} value={form.address.number} onChange={e => setAddr('number', e.target.value)} /></FieldRow>
-                  <FieldRow label="Bairro"><Input className={inp} value={form.address.neighborhood} onChange={e => setAddr('neighborhood', upperNoAccents(e.target.value))} /></FieldRow>
-                  <FieldRow label="Cidade"><Input className={inp} value={form.address.city} onChange={e => setAddr('city', upperNoAccents(e.target.value))} /></FieldRow>
-                  <FieldRow label="Estado"><Input className={inp} value={form.address.state} onChange={e => setAddr('state', upperNoAccents(e.target.value))} maxLength={2} placeholder="PR" /></FieldRow>
-                  <FieldRow label="Complemento"><Input className={inp} value={form.address.complement} onChange={e => setAddr('complement', upperNoAccents(e.target.value))} /></FieldRow>
-                  <FieldRow label="Observações"><Input className={inp} value={form.address.notes} onChange={e => setAddr('notes', upperNoAccents(e.target.value))} /></FieldRow>
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                  <FieldRow label="Nome da localidade"><Input className={inp} value={form.address.localityName} onChange={e => setAddr('localityName', upperNoAccents(e.target.value))} /></FieldRow>
-                  <FieldRow label="Estrada / Via"><Input className={inp} value={form.address.road} onChange={e => setAddr('road', upperNoAccents(e.target.value))} /></FieldRow>
-                  <FieldRow label="KM"><Input className={inp} value={form.address.km} onChange={e => setAddr('km', e.target.value)} /></FieldRow>
-                  <FieldRow label="Lote"><Input className={inp} value={form.address.lot} onChange={e => setAddr('lot', e.target.value)} /></FieldRow>
-                  <FieldRow label="Seção"><Input className={inp} value={form.address.section} onChange={e => setAddr('section', e.target.value)} /></FieldRow>
-                  <FieldRow label="Cidade"><Input className={inp} value={form.address.city} onChange={e => setAddr('city', upperNoAccents(e.target.value))} /></FieldRow>
-                  <FieldRow label="Estado"><Input className={inp} value={form.address.state} onChange={e => setAddr('state', upperNoAccents(e.target.value))} maxLength={2} placeholder="PR" /></FieldRow>
-                  <FieldRow label="Observações"><Input className={inp} value={form.address.notes} onChange={e => setAddr('notes', upperNoAccents(e.target.value))} /></FieldRow>
-                </div>
-              )}
-
-              <div className="flex gap-2 justify-end">
-                <Button type="button" variant="outline" size="sm" onClick={() => { setAdding(false); setForm(emptyPropForm()) }}>Cancelar</Button>
-                <Button type="submit" size="sm" disabled={createProp.isPending}>
-                  {createProp.isPending ? 'Salvando...' : 'Salvar'}
-                </Button>
-              </div>
-            </form>
-          </CardContent>
-        </Card>
-      )}
-
-      <div className="flex flex-col gap-2">
-        {loadingProps && properties.length === 0 && (
-          <div className="flex items-center justify-center py-8 text-sm text-muted-foreground">Carregando...</div>
-        )}
-        {properties.map(prop => {
-          const isPrimary = prop.id === primaryId
-          return (
-          <div key={prop.id} className={`flex items-center justify-between rounded-lg border p-3 bg-card ${isPrimary ? 'border-primary/50 ring-1 ring-primary/20' : ''}`}>
-            <div>
-              <div className="flex items-center gap-2">
-                <p className="font-medium text-sm">{prop.name}</p>
-                {isPrimary && (
-                  <Badge variant="secondary" className="gap-1 text-[10px]"><Star className="size-2.5 fill-current" /> Principal</Badge>
-                )}
-              </div>
-              {prop.registration && <p className="text-xs text-muted-foreground">Matrícula: {prop.registration}</p>}
-              {prop.address && (
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  {prop.address.type === 'URBAN'
-                    ? [prop.address.street, prop.address.city, prop.address.state].filter(Boolean).join(', ')
-                    : [prop.address.localityName, prop.address.road, prop.address.city].filter(Boolean).join(' — ')}
-                </p>
-              )}
-            </div>
-            <div className="flex items-center gap-1">
-              {!isPrimary && (
-                <Button
-                  variant="ghost" size="sm"
-                  className="h-7 gap-1 px-2 text-xs text-muted-foreground"
-                  disabled={updateWorker.isPending}
-                  onClick={() => setPrimary(prop.id)}
-                >
-                  <Star className="size-3.5" />
-                  <span className="hidden sm:inline">Definir principal</span>
-                </Button>
-              )}
-              <Button variant="ghost" size="icon" className="size-7" onClick={() => setDetailProp(prop)}>
-                <Eye className="size-3.5" />
-              </Button>
-              <Button variant="ghost" size="icon" className="size-7 text-destructive/60 hover:text-destructive" onClick={() => setDeleteTarget(prop)}>
-                <Trash2 className="size-3.5" />
-              </Button>
-            </div>
-          </div>
-          )
-        })}
-      </div>
-
-      {totalPages > 1 && (
+    <PropertiesManager
+      properties={resp?.data ?? []}
+      total={total}
+      loading={isLoading}
+      primaryId={user?.primaryPropertyId ?? null}
+      onCreate={body => createProp.mutateAsync(body)}
+      creating={createProp.isPending}
+      onDelete={id => deleteProp.mutateAsync(id)}
+      deleting={deleteProp.isPending}
+      onSetPrimary={id => updateWorker.mutateAsync({ primaryPropertyId: id })}
+      settingPrimary={updateWorker.isPending}
+      footer={totalPages > 1 && (
         <Pagination page={page} totalPages={totalPages} total={total} limit={limit} onPageChange={setPage} showLimitSelector={false} />
       )}
-
-      {/* Dialog: Detalhes da Propriedade */}
-      <Dialog open={!!detailProp} onOpenChange={open => !open && setDetailProp(null)}>
-        <DialogContent className="sm:max-w-lg">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <TreePine className="size-4" /> {detailProp?.name}
-            </DialogTitle>
-            {detailProp?.registration && (
-              <DialogDescription>Matrícula: {detailProp.registration}</DialogDescription>
-            )}
-          </DialogHeader>
-          {detailProp?.address ? (
-            <div className="flex flex-col gap-3">
-              <div className="flex items-center gap-2">
-                {detailProp.address.type === 'URBAN'
-                  ? <Badge variant="secondary" className="gap-1"><Building2 className="size-3" /> Urbano</Badge>
-                  : <Badge variant="secondary" className="gap-1"><TreePine className="size-3" /> Rural</Badge>}
-              </div>
-              <Separator />
-              <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
-                {detailProp.address.type === 'URBAN' ? (
-                  <>
-                    {detailProp.address.zipCode && <InfoRow label="CEP" value={detailProp.address.zipCode} />}
-                    {detailProp.address.street && <InfoRow label="Logradouro" value={`${detailProp.address.street}${detailProp.address.number ? `, ${detailProp.address.number}` : ''}`} />}
-                    {detailProp.address.neighborhood && <InfoRow label="Bairro" value={detailProp.address.neighborhood} />}
-                    {detailProp.address.city && <InfoRow label="Cidade" value={detailProp.address.city} />}
-                    {detailProp.address.state && <InfoRow label="Estado" value={detailProp.address.state} />}
-                    {detailProp.address.complement && <InfoRow label="Complemento" value={detailProp.address.complement} />}
-                  </>
-                ) : (
-                  <>
-                    {detailProp.address.localityName && <InfoRow label="Localidade" value={detailProp.address.localityName} />}
-                    {detailProp.address.road && <InfoRow label="Estrada / Via" value={detailProp.address.road} />}
-                    {detailProp.address.km && <InfoRow label="KM" value={detailProp.address.km} />}
-                    {detailProp.address.lot && <InfoRow label="Lote" value={detailProp.address.lot} />}
-                    {detailProp.address.section && <InfoRow label="Seção" value={detailProp.address.section} />}
-                    {detailProp.address.city && <InfoRow label="Cidade" value={detailProp.address.city} />}
-                    {detailProp.address.state && <InfoRow label="Estado" value={detailProp.address.state} />}
-                  </>
-                )}
-                {detailProp.address.notes && <InfoRow label="Observações" value={detailProp.address.notes} />}
-              </div>
-            </div>
-          ) : (
-            <p className="text-sm text-muted-foreground">Nenhum endereço cadastrado.</p>
-          )}
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setDetailProp(null)}>Fechar</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Dialog: Confirmar remoção */}
-      <DeleteConfirmDialog
-        open={!!deleteTarget}
-        onOpenChange={open => !open && setDeleteTarget(null)}
-        title="Remover propriedade"
-        description={<>
-          <span className="font-medium text-foreground">{deleteTarget?.name}</span>
-          <br />Esta ação não pode ser desfeita.
-        </>}
-        onConfirm={handleDelete}
-        pending={deleteProp.isPending}
-        confirmLabel="Remover"
-        pendingLabel="Removendo..."
-      />
-    </div>
+    />
   )
 }
 
@@ -1569,6 +1155,12 @@ function RouteComponent() {
               <span className="ml-1 rounded-full bg-muted px-1.5 text-[10px]">{propertiesTotal}</span>
             )}
           </TabsTrigger>
+          <TabsTrigger value="empresas">
+            <Building2 className="size-3.5 mr-1.5" /> Empresas
+            {(user.companyMemberships?.length ?? 0) > 0 && (
+              <span className="ml-1 rounded-full bg-muted px-1.5 text-[10px]">{user.companyMemberships!.length}</span>
+            )}
+          </TabsTrigger>
           <TabsTrigger value="relacoes">
             <Heart className="size-3.5 mr-1.5" /> Relações
             {relationsTotal > 0 && (
@@ -1588,6 +1180,9 @@ function RouteComponent() {
         </TabsContent>
         <TabsContent value="propriedades">
           <PropriedadesTab userId={id} />
+        </TabsContent>
+        <TabsContent value="empresas">
+          <PersonCompanies memberships={user.companyMemberships ?? []} />
         </TabsContent>
         <TabsContent value="relacoes">
           <RelacoesTab userId={id} />

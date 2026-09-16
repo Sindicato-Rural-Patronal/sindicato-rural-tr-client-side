@@ -63,7 +63,7 @@ const inp = 'h-9'
 type Form = {
   name: string; nickname: string; email: string
   phone: string; phone2: string; phone3: string
-  cpf: string; cnpj: string; rg: string; rgIssuer: string; rgIssuedAt: string
+  cpf: string; rg: string; rgIssuer: string; rgIssuedAt: string
   birthDate: string; birthPlace: string; nationality: string
   gender: string; ethnicity: string; maritalStatus: string
   driverLicense: string; driverLicenseCategory: string
@@ -84,7 +84,7 @@ type Form = {
 const emptyForm: Form = {
   name: '', nickname: '', email: '',
   phone: '', phone2: '', phone3: '',
-  cpf: '', cnpj: '', rg: '', rgIssuer: '', rgIssuedAt: '',
+  cpf: '', rg: '', rgIssuer: '', rgIssuedAt: '',
   birthDate: '', birthPlace: '', nationality: '',
   gender: '', ethnicity: '', maritalStatus: '',
   driverLicense: '', driverLicenseCategory: '',
@@ -107,7 +107,6 @@ function buildPatchBody(f: Form): Record<string, unknown> {
   const b: Record<string, unknown> = {}
   const put = (k: string, v: unknown) => { if (v !== '' && v !== null && v !== undefined) b[k] = v }
   put('nickname', f.nickname)
-  put('cnpj', f.cnpj)
   put('phone2', f.phone2)
   put('phone3', f.phone3)
   put('rg', f.rg)
@@ -315,9 +314,6 @@ function RouteComponent() {
           <CardContent className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             <FieldRow label="CPF" required>
               <Input className={inp} value={form.cpf} onChange={e => set('cpf', maskCPF(e.target.value))} placeholder="000.000.000-00" />
-            </FieldRow>
-            <FieldRow label="CNPJ">
-              <Input className={inp} value={form.cnpj} onChange={e => set('cnpj', e.target.value)} />
             </FieldRow>
             <FieldRow label="RG">
               <Input className={inp} value={form.rg} onChange={e => set('rg', maskRG(e.target.value))} placeholder="00.000.000-0" maxLength={12} />

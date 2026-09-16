@@ -45,6 +45,8 @@ import { Route as AdminAdminAuditoriaIndexRouteImport } from './routes/_admin/ad
 import { Route as AdminAdminAdministradoresIndexRouteImport } from './routes/_admin/admin/administradores/index'
 import { Route as AdminAdminUsuariosNovoRouteImport } from './routes/_admin/admin/usuarios/novo'
 import { Route as AdminAdminUsuariosIdRouteImport } from './routes/_admin/admin/usuarios/$id'
+import { Route as AdminAdminEmpresasNovoRouteImport } from './routes/_admin/admin/empresas/novo'
+import { Route as AdminAdminEmpresasIdRouteImport } from './routes/_admin/admin/empresas/$id'
 import { Route as AdminAdminCursosNovoRouteImport } from './routes/_admin/admin/cursos/novo'
 import { Route as AdminAdminConveniosNovoRouteImport } from './routes/_admin/admin/convenios/novo'
 import { Route as AdminAdminConveniosIdRouteImport } from './routes/_admin/admin/convenios/$id'
@@ -232,6 +234,16 @@ const AdminAdminUsuariosIdRoute = AdminAdminUsuariosIdRouteImport.update({
   path: '/$id',
   getParentRoute: () => AdminAdminUsuariosRoute,
 } as any)
+const AdminAdminEmpresasNovoRoute = AdminAdminEmpresasNovoRouteImport.update({
+  id: '/admin/empresas/novo',
+  path: '/admin/empresas/novo',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminAdminEmpresasIdRoute = AdminAdminEmpresasIdRouteImport.update({
+  id: '/admin/empresas/$id',
+  path: '/admin/empresas/$id',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminAdminCursosNovoRoute = AdminAdminCursosNovoRouteImport.update({
   id: '/novo',
   path: '/novo',
@@ -275,6 +287,8 @@ export interface FileRoutesByFullPath {
   '/admin/convenios/$id': typeof AdminAdminConveniosIdRoute
   '/admin/convenios/novo': typeof AdminAdminConveniosNovoRoute
   '/admin/cursos/novo': typeof AdminAdminCursosNovoRoute
+  '/admin/empresas/$id': typeof AdminAdminEmpresasIdRoute
+  '/admin/empresas/novo': typeof AdminAdminEmpresasNovoRoute
   '/admin/usuarios/$id': typeof AdminAdminUsuariosIdRoute
   '/admin/usuarios/novo': typeof AdminAdminUsuariosNovoRoute
   '/admin/administradores/': typeof AdminAdminAdministradoresIndexRoute
@@ -309,6 +323,8 @@ export interface FileRoutesByTo {
   '/admin/convenios/$id': typeof AdminAdminConveniosIdRoute
   '/admin/convenios/novo': typeof AdminAdminConveniosNovoRoute
   '/admin/cursos/novo': typeof AdminAdminCursosNovoRoute
+  '/admin/empresas/$id': typeof AdminAdminEmpresasIdRoute
+  '/admin/empresas/novo': typeof AdminAdminEmpresasNovoRoute
   '/admin/usuarios/$id': typeof AdminAdminUsuariosIdRoute
   '/admin/usuarios/novo': typeof AdminAdminUsuariosNovoRoute
   '/admin/administradores': typeof AdminAdminAdministradoresIndexRoute
@@ -351,6 +367,8 @@ export interface FileRoutesById {
   '/_admin/admin/convenios/$id': typeof AdminAdminConveniosIdRoute
   '/_admin/admin/convenios/novo': typeof AdminAdminConveniosNovoRoute
   '/_admin/admin/cursos/novo': typeof AdminAdminCursosNovoRoute
+  '/_admin/admin/empresas/$id': typeof AdminAdminEmpresasIdRoute
+  '/_admin/admin/empresas/novo': typeof AdminAdminEmpresasNovoRoute
   '/_admin/admin/usuarios/$id': typeof AdminAdminUsuariosIdRoute
   '/_admin/admin/usuarios/novo': typeof AdminAdminUsuariosNovoRoute
   '/_admin/admin/administradores/': typeof AdminAdminAdministradoresIndexRoute
@@ -392,6 +410,8 @@ export interface FileRouteTypes {
     | '/admin/convenios/$id'
     | '/admin/convenios/novo'
     | '/admin/cursos/novo'
+    | '/admin/empresas/$id'
+    | '/admin/empresas/novo'
     | '/admin/usuarios/$id'
     | '/admin/usuarios/novo'
     | '/admin/administradores/'
@@ -426,6 +446,8 @@ export interface FileRouteTypes {
     | '/admin/convenios/$id'
     | '/admin/convenios/novo'
     | '/admin/cursos/novo'
+    | '/admin/empresas/$id'
+    | '/admin/empresas/novo'
     | '/admin/usuarios/$id'
     | '/admin/usuarios/novo'
     | '/admin/administradores'
@@ -467,6 +489,8 @@ export interface FileRouteTypes {
     | '/_admin/admin/convenios/$id'
     | '/_admin/admin/convenios/novo'
     | '/_admin/admin/cursos/novo'
+    | '/_admin/admin/empresas/$id'
+    | '/_admin/admin/empresas/novo'
     | '/_admin/admin/usuarios/$id'
     | '/_admin/admin/usuarios/novo'
     | '/_admin/admin/administradores/'
@@ -741,6 +765,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminAdminUsuariosIdRouteImport
       parentRoute: typeof AdminAdminUsuariosRoute
     }
+    '/_admin/admin/empresas/novo': {
+      id: '/_admin/admin/empresas/novo'
+      path: '/admin/empresas/novo'
+      fullPath: '/admin/empresas/novo'
+      preLoaderRoute: typeof AdminAdminEmpresasNovoRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/_admin/admin/empresas/$id': {
+      id: '/_admin/admin/empresas/$id'
+      path: '/admin/empresas/$id'
+      fullPath: '/admin/empresas/$id'
+      preLoaderRoute: typeof AdminAdminEmpresasIdRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/_admin/admin/cursos/novo': {
       id: '/_admin/admin/cursos/novo'
       path: '/novo'
@@ -845,6 +883,8 @@ interface AdminRouteChildren {
   AdminAdminIndexRoute: typeof AdminAdminIndexRoute
   AdminAdminConveniosIdRoute: typeof AdminAdminConveniosIdRoute
   AdminAdminConveniosNovoRoute: typeof AdminAdminConveniosNovoRoute
+  AdminAdminEmpresasIdRoute: typeof AdminAdminEmpresasIdRoute
+  AdminAdminEmpresasNovoRoute: typeof AdminAdminEmpresasNovoRoute
   AdminAdminAuditoriaIndexRoute: typeof AdminAdminAuditoriaIndexRoute
   AdminAdminConveniosIndexRoute: typeof AdminAdminConveniosIndexRoute
   AdminAdminCotacoesIndexRoute: typeof AdminAdminCotacoesIndexRoute
@@ -866,6 +906,8 @@ const AdminRouteChildren: AdminRouteChildren = {
   AdminAdminIndexRoute: AdminAdminIndexRoute,
   AdminAdminConveniosIdRoute: AdminAdminConveniosIdRoute,
   AdminAdminConveniosNovoRoute: AdminAdminConveniosNovoRoute,
+  AdminAdminEmpresasIdRoute: AdminAdminEmpresasIdRoute,
+  AdminAdminEmpresasNovoRoute: AdminAdminEmpresasNovoRoute,
   AdminAdminAuditoriaIndexRoute: AdminAdminAuditoriaIndexRoute,
   AdminAdminConveniosIndexRoute: AdminAdminConveniosIndexRoute,
   AdminAdminCotacoesIndexRoute: AdminAdminCotacoesIndexRoute,

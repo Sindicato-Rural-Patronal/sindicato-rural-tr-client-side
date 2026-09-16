@@ -119,10 +119,6 @@ export type UserData = {
   createdAt: string
   updatedAt: string
   nickname: string | null
-  isPartner: boolean
-  partnerUrl: string | null
-  partnerOrder: number | null
-  partnerLogo: string | null
   maritalStatus: 'SINGLE' | 'MARRIED' | 'DIVORCED' | 'WIDOWED' | 'DOMESTIC_PARTNERSHIP' | null
   phone2: string | null
   phone3: string | null
@@ -200,6 +196,14 @@ export type UserDataDetail = UserData & {
   address: UserAddress | null
   userInstructor: UserInstructor | null
   properties?: UserProperty[]
+  /** Empresas às quais a pessoa está vinculada (título = cargo dela na empresa). */
+  companyMemberships?: PersonCompanyMembership[]
+}
+
+export type PersonCompanyMembership = {
+  id: string
+  title: string
+  company: { id: string; name: string; cnpj: string | null; type: 'PRIVATE' | 'PUBLIC'; isPartner: boolean }
 }
 
 export type UpdateUserAddressBody = {
@@ -449,9 +453,6 @@ export type UpdateWorkerBody = {
   memberNotesNumber?: string | null
   primaryPropertyId?: string | null
   avatar?: string | null
-  isPartner?: boolean
-  partnerUrl?: string | null
-  partnerOrder?: number | null
 }
 
 export function useUpdateWorker(userId: string) {
@@ -605,17 +606,6 @@ export function useAdminUser(userId: string) {
   })
 }
 
-export function useUpdateUserAddress(userId: string) {
-  const queryClient = useQueryClient()
-  return useMutation({
-    mutationFn: (body: UpdateUserAddressBody) =>
-      apiFetch(`/admin/users/${userId}/address`, { method: 'PUT', body: JSON.stringify(body) }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['admin', 'users', userId] })
-    },
-  })
-}
-
 export type CreatePropertyBody = {
   name: string
   registration?: string
@@ -672,28 +662,6 @@ export function useUploadMyAvatar() {
     mutationFn: (file: File) => apiUpload('/admin/me/avatar', file),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin', 'me'] })
-    },
-  })
-}
-
-export function useUploadPartnerLogo(userId: string) {
-  const queryClient = useQueryClient()
-  return useMutation({
-    mutationFn: (file: File) => apiUpload(`/admin/users/${userId}/partner-logo`, file),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['admin', 'users', userId] })
-      queryClient.invalidateQueries({ queryKey: ['partners'] })
-    },
-  })
-}
-
-export function useReorderPartners() {
-  const queryClient = useQueryClient()
-  return useMutation({
-    mutationFn: (order: string[]) =>
-      apiFetch('/admin/partners/reorder', { method: 'PATCH', body: JSON.stringify({ order }) }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['partners'] })
     },
   })
 }

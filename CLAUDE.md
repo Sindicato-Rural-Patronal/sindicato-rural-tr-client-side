@@ -41,8 +41,10 @@ Site institucional do **Sindicato Rural de Terra Roxa** (Paraná, Brasil). Plata
 /admin/cursos               → _admin/admin/cursos/index.tsx (CRUD completo)
 /admin/cursos/novo          → _admin/admin/cursos/novo.tsx (form criação)
 /admin/noticias             → _admin/admin/noticias/index.tsx
-/admin/usuarios             → _admin/admin/usuarios/index.tsx
-/admin/usuarios/$id         → _admin/admin/usuarios/$id.tsx (detalhe completo)
+/admin/usuarios             → _admin/admin/usuarios/index.tsx (abas ?tab=associados|empresas|admins)
+/admin/usuarios/$id         → _admin/admin/usuarios/$id.tsx (detalhe completo; aba "Empresas" = vínculos)
+/admin/empresas/novo        → _admin/admin/empresas/novo.tsx (criar empresa)
+/admin/empresas/$id         → _admin/admin/empresas/$id.tsx (abas Dados / Pessoas / Propriedades / Parceria)
 /admin/banners              → _admin/admin/banners.tsx
 /admin/mensagens            → _admin/admin/mensagens.tsx
 /admin/salas                → _admin/admin/salas/index.tsx
@@ -71,6 +73,9 @@ src/
 │   └── course.ts                    # Tipos Course, ApiCourse, CourseInstructor + mapCourse()
 ├── components/
 │   ├── ui/                          # shadcn/ui + pagination.tsx (PaginatedResponse)
+│   ├── cadastro/                    # Empresas: CompaniesList, CompanyForm, CompanyMembersPanel,
+│   │                                #   CompanyPartnerPanel, PersonCompanies; PropertiesManager
+│   │                                #   (propriedades/endereços, compartilhado por pessoa e empresa)
 │   ├── PublicHeader.tsx             # Nav pública responsiva (sticky, mobile menu) — usa logo-full.png
 │   ├── public-footer.tsx            # Footer
 │   ├── adminSideBar.tsx             # Sidebar admin — usa logo-icon.png; link perfil via userDataId
@@ -94,6 +99,8 @@ src/
 │   │                                #   useUpdateCourse, useDeleteCourse, useUploadBanner,
 │   │                                #   useUploadGalleryPhoto, useRegisterCourse, useDeleteGalleryPhoto
 │   ├── useAdmin.ts                  # Ver seção "Hooks — useAdmin.ts" abaixo
+│   ├── useCompanies.ts              # Empresas: useAdminCompanies, useAdminCompany, CRUD, vínculos
+│   │                                #   (members), propriedades, logo de parceira, títulos usados
 │   ├── useNews.ts                   # Hooks de notícias (admin + público)
 │   ├── useBanner.ts                 # Hooks de banners
 │   ├── useRooms.ts                  # useRooms, useCreateRoom
@@ -110,7 +117,8 @@ src/
 ├── routes/                          # File-based routing
 ├── utils/
 │   ├── format-data-from-string.ts   # formatDateFromString (YYYY-MM-DD → DD/MM/YYYY)
-│   └── masks.ts                     # maskCPF, maskPhone
+│   ├── cnpj.ts                      # isValidCnpj
+│   └── masks.ts                     # maskCPF, maskCNPJ, maskPhone
 └── main.tsx                         # Entry: QueryClientProvider → AuthProvider → RouterProvider
 ```
 
@@ -127,7 +135,7 @@ UserAddress             // endereço do usuário
 UserProperty            // propriedade rural vinculada
 UserRelation            // relacionamento (dependente/cônjuge)
 UserInstructor          // { id, bio, linkedin, instagram, facebook }
-UserDataDetail          // UserData & { address, userInstructor }
+UserDataDetail          // UserData & { address, userInstructor, companyMemberships }
 InstructorItem          // { id, bio, linkedin, instagram, facebook, userData: { id, name } }
 PublicContactItem       // { publicTitle, userData: { name, email, phone } }
 ContactMessage          // mensagem de contato recebida
@@ -150,7 +158,6 @@ useUpdateUserAddress        → PUT /api/admin/users/:id/address
 useUserProperties           → GET /api/admin/users/:id/properties (paginado)
 useCreateUserProperty / useDeleteUserProperty
 useUploadAvatar             → POST /api/admin/users/:id/avatar
-useUploadPartnerLogo / useReorderPartners
 useUserRelations            → GET /api/admin/users/:id/relations (paginado)
 useCreateUserRelation / useDeleteUserRelation
 useInstructors              → GET /api/admin/instructors
@@ -159,7 +166,7 @@ useUpdateInstructor         → PATCH /api/admin/users/:id/instructor
 useRemoveInstructor         → DELETE /api/admin/users/:id/instructor
 useCEPLookup                → GET /api/address/cep/:cep (ViaCEP + cache)
 usePublicContacts           → GET /api/contacts (público)
-usePartners                 → GET /api/partners (público)
+usePartners                 → GET /api/partners (público; empresas parceiras)
 useContactMessages          → GET /api/admin/contacts/messages (paginado + filtros)
 useMarkContactMessageRead / useDeleteContactMessage / useSendContactMessage
 ```
@@ -263,6 +270,15 @@ mapCourses(list: ApiCourse[]): Course[]
 - `POST /api/admin/users` — criar admin/funcionário
 - `PATCH /api/admin/users/:id` — atualizar admin/funcionário
 
+**Empresas (admin)** — reusa as permissões `*_USER`; CNPJ guardado só com dígitos, único entre empresas ativas
+- `GET /api/admin/companies` — lista paginada (search nome/e-mail/CNPJ, type PRIVATE|PUBLIC, isPartner)
+- `GET /api/admin/companies/titles` — títulos já usados nos vínculos (sugestões)
+- `GET /api/admin/companies/:id` — detalhe (members com a pessoa + properties)
+- `POST /api/admin/companies` · `PATCH /api/admin/companies/:id` (inclui parceria e `primaryPropertyId`) · `DELETE /api/admin/companies/:id` (soft)
+- `POST /api/admin/companies/:id/members` `{ userDataId, title }` · `PATCH /members/:memberId` `{ title }` · `DELETE /members/:memberId`
+- `POST /api/admin/companies/:id/properties` · `DELETE /api/admin/companies/:id/properties/:propertyId`
+- `POST /api/admin/companies/:id/partner-logo` — multipart (300×150, PNG); `PATCH` com `partnerLogo: null` remove
+
 **Instrutores (admin)**
 - `GET /api/admin/instructors` — lista instrutores
 - `POST /api/admin/users/:id/promote-instructor` — promover a instrutor
@@ -275,9 +291,8 @@ mapCourses(list: ApiCourse[]): Course[]
 - `GET /api/admin/rules` — regras (paginado)
 - `POST /api/rules` — criar regra
 - `PATCH /api/rules/:id` — atualizar regra
-- `GET /api/partners` — parceiros/sócios (público)
-- `POST /api/admin/users/:id/partner-logo` — upload logo parceiro (multipart)
-- `PATCH /api/admin/partners/reorder` — reordenar parceiros
+- `GET /api/partners` — empresas parceiras (público; ordem por partnerOrder)
+- `PATCH /api/admin/partners/reorder` — reordenar empresas parceiras `{ order: id[] }`
 - `GET /api/admin/contacts/messages` — mensagens de contato (paginado + filtros)
 - `PATCH /api/admin/contacts/messages/:id` — marcar mensagem como lida
 - `DELETE /api/admin/contacts/messages/:id` — deletar mensagem
@@ -331,6 +346,7 @@ mapCourses(list: ApiCourse[]): Course[]
 - Usuários admin: detalhe completo com propriedades/relacionamentos paginados, upload de avatar, promoção a instrutor.
 - Banners e mensagens de contato implementados.
 - Notícias, salas, admins e parceiros implementados.
+- **Empresas separadas de pessoas** (set/2026): `Company` tem vínculos N:N com pessoas (`CompanyMember`, cada um com título livre, ex.: SOCIO, CONTADOR), propriedades próprias (endereços; `Property` pertence a uma pessoa OU a uma empresa) e a parceria (antes flags em `UserData`). Lista na aba "Empresas" de `/admin/usuarios`. O CNPJ saiu do formulário de pessoa; as colunas `cnpj`/`isPartner`/`partner*` de `UserData` continuam no banco mas não são mais usadas. A migration criou uma empresa para cada pessoa ativa que era parceira ou tinha CNPJ, com a pessoa como RESPONSAVEL.
 - Dashboard admin **implementado** — stats + calendário de cursos + lista de cadastros incompletos (não é mais stub).
 - Cotações da home, trilha de auditoria e convites de admin implementados.
 - **Convênios**: dropdown "Convênios" no header público lista os convênios ativos; cada um tem página em `/convenios/$slug` (tabela de valores por faixa, documentos para adesão, destaques e texto). Conteúdo 100% editável em `/admin/convenios` (`ConvenioEditor` + `ConvenioPageView` compartilhado com a pré-visualização). Hooks em `useConvenios.ts`. Unimed semeado com os dados da página antiga (`ruraltr.com.br/pgs/print_unimed.php`). Regras com `UPDATE_BANNER` receberam as permissões `*_CONVENIO` na migration.
