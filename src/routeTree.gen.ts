@@ -37,6 +37,7 @@ import { Route as AdminAdminAdministradoresRouteImport } from './routes/_admin/a
 import { Route as AdminAdminUsuariosIndexRouteImport } from './routes/_admin/admin/usuarios/index'
 import { Route as AdminAdminSalasIndexRouteImport } from './routes/_admin/admin/salas/index'
 import { Route as AdminAdminNoticiasIndexRouteImport } from './routes/_admin/admin/noticias/index'
+import { Route as AdminAdminGaleriasIndexRouteImport } from './routes/_admin/admin/galerias/index'
 import { Route as AdminAdminFinanceiroIndexRouteImport } from './routes/_admin/admin/financeiro/index'
 import { Route as AdminAdminCursosIndexRouteImport } from './routes/_admin/admin/cursos/index'
 import { Route as AdminAdminCotacoesIndexRouteImport } from './routes/_admin/admin/cotacoes/index'
@@ -190,6 +191,11 @@ const AdminAdminNoticiasIndexRoute = AdminAdminNoticiasIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AdminAdminNoticiasRoute,
 } as any)
+const AdminAdminGaleriasIndexRoute = AdminAdminGaleriasIndexRouteImport.update({
+  id: '/admin/galerias/',
+  path: '/admin/galerias/',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminAdminFinanceiroIndexRoute =
   AdminAdminFinanceiroIndexRouteImport.update({
     id: '/admin/financeiro/',
@@ -297,6 +303,7 @@ export interface FileRoutesByFullPath {
   '/admin/cotacoes/': typeof AdminAdminCotacoesIndexRoute
   '/admin/cursos/': typeof AdminAdminCursosIndexRoute
   '/admin/financeiro/': typeof AdminAdminFinanceiroIndexRoute
+  '/admin/galerias/': typeof AdminAdminGaleriasIndexRoute
   '/admin/noticias/': typeof AdminAdminNoticiasIndexRoute
   '/admin/salas/': typeof AdminAdminSalasIndexRoute
   '/admin/usuarios/': typeof AdminAdminUsuariosIndexRoute
@@ -333,6 +340,7 @@ export interface FileRoutesByTo {
   '/admin/cotacoes': typeof AdminAdminCotacoesIndexRoute
   '/admin/cursos': typeof AdminAdminCursosIndexRoute
   '/admin/financeiro': typeof AdminAdminFinanceiroIndexRoute
+  '/admin/galerias': typeof AdminAdminGaleriasIndexRoute
   '/admin/noticias': typeof AdminAdminNoticiasIndexRoute
   '/admin/salas': typeof AdminAdminSalasIndexRoute
   '/admin/usuarios': typeof AdminAdminUsuariosIndexRoute
@@ -377,6 +385,7 @@ export interface FileRoutesById {
   '/_admin/admin/cotacoes/': typeof AdminAdminCotacoesIndexRoute
   '/_admin/admin/cursos/': typeof AdminAdminCursosIndexRoute
   '/_admin/admin/financeiro/': typeof AdminAdminFinanceiroIndexRoute
+  '/_admin/admin/galerias/': typeof AdminAdminGaleriasIndexRoute
   '/_admin/admin/noticias/': typeof AdminAdminNoticiasIndexRoute
   '/_admin/admin/salas/': typeof AdminAdminSalasIndexRoute
   '/_admin/admin/usuarios/': typeof AdminAdminUsuariosIndexRoute
@@ -420,6 +429,7 @@ export interface FileRouteTypes {
     | '/admin/cotacoes/'
     | '/admin/cursos/'
     | '/admin/financeiro/'
+    | '/admin/galerias/'
     | '/admin/noticias/'
     | '/admin/salas/'
     | '/admin/usuarios/'
@@ -456,6 +466,7 @@ export interface FileRouteTypes {
     | '/admin/cotacoes'
     | '/admin/cursos'
     | '/admin/financeiro'
+    | '/admin/galerias'
     | '/admin/noticias'
     | '/admin/salas'
     | '/admin/usuarios'
@@ -499,6 +510,7 @@ export interface FileRouteTypes {
     | '/_admin/admin/cotacoes/'
     | '/_admin/admin/cursos/'
     | '/_admin/admin/financeiro/'
+    | '/_admin/admin/galerias/'
     | '/_admin/admin/noticias/'
     | '/_admin/admin/salas/'
     | '/_admin/admin/usuarios/'
@@ -709,6 +721,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminAdminNoticiasIndexRouteImport
       parentRoute: typeof AdminAdminNoticiasRoute
     }
+    '/_admin/admin/galerias/': {
+      id: '/_admin/admin/galerias/'
+      path: '/admin/galerias'
+      fullPath: '/admin/galerias/'
+      preLoaderRoute: typeof AdminAdminGaleriasIndexRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/_admin/admin/financeiro/': {
       id: '/_admin/admin/financeiro/'
       path: '/admin/financeiro'
@@ -889,6 +908,7 @@ interface AdminRouteChildren {
   AdminAdminConveniosIndexRoute: typeof AdminAdminConveniosIndexRoute
   AdminAdminCotacoesIndexRoute: typeof AdminAdminCotacoesIndexRoute
   AdminAdminFinanceiroIndexRoute: typeof AdminAdminFinanceiroIndexRoute
+  AdminAdminGaleriasIndexRoute: typeof AdminAdminGaleriasIndexRoute
 }
 
 const AdminRouteChildren: AdminRouteChildren = {
@@ -912,6 +932,7 @@ const AdminRouteChildren: AdminRouteChildren = {
   AdminAdminConveniosIndexRoute: AdminAdminConveniosIndexRoute,
   AdminAdminCotacoesIndexRoute: AdminAdminCotacoesIndexRoute,
   AdminAdminFinanceiroIndexRoute: AdminAdminFinanceiroIndexRoute,
+  AdminAdminGaleriasIndexRoute: AdminAdminGaleriasIndexRoute,
 }
 
 const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)

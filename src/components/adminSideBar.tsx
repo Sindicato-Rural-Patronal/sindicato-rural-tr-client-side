@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { BookOpen, DoorOpen, HeartHandshake, HeartPulse, Images, LayoutDashboard, Mail, Newspaper, ScrollText, Settings, TrendingUp, Users, Wallet } from 'lucide-react'
+import { BookOpen, DoorOpen, GalleryHorizontalEnd, HeartHandshake, HeartPulse, Images, LayoutDashboard, Mail, Newspaper, ScrollText, Settings, TrendingUp, Users, Wallet } from 'lucide-react'
 import { Link, useRouterState } from '@tanstack/react-router'
 import { useTranslation } from 'react-i18next'
 import { NavUser } from '@/components/nav-user'
@@ -47,6 +47,7 @@ export function AdminSideBar({ ...props }: React.ComponentProps<typeof Sidebar>)
         { title: t('admin.sidebar.unimed'), url: '/admin/unimed', icon: HeartPulse, perm: 'READ_USER' },
         { title: t('admin.sidebar.rooms'), url: '/admin/salas', icon: DoorOpen, perm: 'READ_COURSE' },
         { title: t('admin.sidebar.banners'), url: '/admin/banners', icon: Images, perm: 'READ_BANNER' },
+        { title: t('admin.sidebar.galleries'), url: '/admin/galerias', icon: GalleryHorizontalEnd, perm: 'READ_BANNER' },
         { title: t('admin.sidebar.quotes'), url: '/admin/cotacoes', icon: TrendingUp, perm: 'READ_MARKET_QUOTE' },
         { title: t('admin.sidebar.convenios'), url: '/admin/convenios', icon: HeartHandshake, perm: 'READ_CONVENIO' },
         { title: t('admin.sidebar.messages'), url: '/admin/mensagens', icon: Mail, perm: 'READ_CONTACT' },

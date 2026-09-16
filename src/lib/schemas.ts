@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { ROOM_NAMES } from '@/lib/room-names'
 
 const cpfSchema = z.string().min(1, 'CPF obrigatório')
   .refine(v => v.replace(/\D/g, '').length === 11, 'CPF inválido')
@@ -14,7 +15,7 @@ export const pessoaSchema = z.object({
 })
 
 export const roomSchema = z.object({
-  name:        z.string().min(1, 'Nome obrigatório'),
+  name:        z.string().refine(v => (ROOM_NAMES as readonly string[]).includes(v), 'Escolha a sala'),
   description: z.string().min(1, 'Descrição obrigatória'),
   maxCapacity: z.number().int().min(1, 'Mínimo 1'),
 })

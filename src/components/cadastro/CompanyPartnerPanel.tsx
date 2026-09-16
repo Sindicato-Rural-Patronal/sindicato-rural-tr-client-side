@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { useUpdateCompany, useUploadCompanyPartnerLogo, type Company } from '@/hooks/useCompanies'
+import { useUpdateCompany, useUploadCompanyPartnerLogo, companyDisplayName, type Company } from '@/hooks/useCompanies'
 import { apiErrorMessage } from '@/lib/api-error-message'
 
 // Parceria pública: empresa marcada aparece em "Parcerias com" na home, com logo
@@ -94,7 +94,7 @@ export function CompanyPartnerPanel({ company, readOnly = false }: { company: Co
               <div className="flex flex-wrap items-center gap-3">
                 <div className="flex h-12 w-24 items-center justify-center rounded border bg-muted">
                   {company.partnerLogo
-                    ? <img src={company.partnerLogo} alt={`Logo ${company.name}`} className="max-h-full max-w-full object-contain" />
+                    ? <img src={company.partnerLogo} alt={`Logo ${companyDisplayName(company)}`} className="max-h-full max-w-full object-contain" />
                     : <Handshake className="size-4 text-muted-foreground/50" />}
                 </div>
                 {!readOnly && (

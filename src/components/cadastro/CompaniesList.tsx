@@ -15,7 +15,7 @@ import { DeleteConfirmDialog } from '@/components/DeleteConfirmDialog'
 import { usePermissions } from '@/hooks/usePermissions'
 import { useDebouncedValue } from '@/hooks/useDebouncedValue'
 import {
-  useAdminCompanies, useDeleteCompany, COMPANY_TYPE_LABEL,
+  useAdminCompanies, useDeleteCompany, COMPANY_TYPE_LABEL, companyDisplayName,
   type CompanyListItem, type CompanyType,
 } from '@/hooks/useCompanies'
 import { apiErrorMessage } from '@/lib/api-error-message'
@@ -50,7 +50,7 @@ export function CompaniesList() {
     if (!deleteTarget) return
     try {
       await deleteM.mutateAsync(deleteTarget.id)
-      toast.success(`Empresa "${deleteTarget.name}" excluída.`)
+      toast.success(`Empresa "${companyDisplayName(deleteTarget)}" excluída.`)
       setDeleteTarget(null)
     } catch (e) {
       toast.error(apiErrorMessage(e, 'Erro ao excluir empresa.'))
@@ -64,7 +64,7 @@ export function CompaniesList() {
           <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             aria-label="Buscar empresas"
-            placeholder="Buscar por nome, e-mail ou CNPJ..."
+            placeholder="Buscar por razão social, nome fantasia, e-mail ou CNPJ..."
             value={searchInput}
             onChange={e => setSearchInput(e.target.value)}
             className="h-9 pl-9"
@@ -126,13 +126,17 @@ export function CompaniesList() {
                   <TableCell>
                     <div className="flex min-w-0 items-center gap-2">
                       <Link to="/admin/empresas/$id" params={{ id: c.id }} className="truncate font-medium text-foreground hover:underline">
-                        {c.name}
+                        {companyDisplayName(c)}
                       </Link>
                       {c.isPartner && (
                         <Badge variant="outline" className="shrink-0 gap-1 text-[10px]"><Handshake className="size-3" /> Parceira</Badge>
                       )}
                     </div>
-                    {c.email && <p className="truncate text-xs text-muted-foreground">{c.email}</p>}
+                    {(c.tradeName || c.email || c.address?.city) && (
+                      <p className="truncate text-xs text-muted-foreground">
+                        {[c.tradeName ? c.name : null, c.address?.city, c.email].filter(Boolean).join(' · ')}
+                      </p>
+                    )}
                   </TableCell>
                   <TableCell className="hidden md:table-cell tabular-nums text-muted-foreground">
                     {c.cnpj ? maskCNPJ(c.cnpj) : '—'}
@@ -147,13 +151,13 @@ export function CompaniesList() {
                   <TableCell className={`text-right ${STICKY_ACTIONS_CELL}`}>
                     <div className="flex items-center justify-end gap-1">
                       <Button size="sm" variant="ghost" className="h-8 px-2" asChild>
-                        <Link to="/admin/empresas/$id" params={{ id: c.id }} aria-label={`Abrir ${c.name}`} title="Abrir empresa">
+                        <Link to="/admin/empresas/$id" params={{ id: c.id }} aria-label={`Abrir ${companyDisplayName(c)}`} title="Abrir empresa">
                           <Eye className="size-4" />
                         </Link>
                       </Button>
                       {can('DELETE_USER') && (
                         <Button size="sm" variant="ghost" className="h-8 px-2 text-muted-foreground hover:text-destructive"
-                          onClick={() => setDeleteTarget(c)} aria-label={`Excluir ${c.name}`} title="Excluir empresa">
+                          onClick={() => setDeleteTarget(c)} aria-label={`Excluir ${companyDisplayName(c)}`} title="Excluir empresa">
                           <Trash2 className="size-4" />
                         </Button>
                       )}
@@ -175,7 +179,7 @@ export function CompaniesList() {
         onOpenChange={open => { if (!open) setDeleteTarget(null) }}
         title="Excluir empresa"
         description={<>
-          Excluir <strong>{deleteTarget?.name}</strong>? A empresa some da lista e, se for parceira, da página inicial.
+          Excluir <strong>{deleteTarget ? companyDisplayName(deleteTarget) : ''}</strong>? A empresa some da lista e, se for parceira, da página inicial.
           As pessoas vinculadas não são apagadas.
         </>}
         onConfirm={handleDelete}

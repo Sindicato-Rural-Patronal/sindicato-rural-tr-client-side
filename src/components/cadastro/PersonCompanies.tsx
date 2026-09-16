@@ -3,6 +3,7 @@ import { Building2, ChevronRight, Handshake } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import type { PersonCompanyMembership } from '@/hooks/useAdmin'
 import { maskCNPJ } from '@/utils/masks'
+import { companyDisplayName } from '@/hooks/useCompanies'
 
 // Empresas às quais a pessoa está vinculada. O vínculo (e o título) é criado e
 // editado na própria empresa; aqui só lista e leva até ela.
@@ -34,7 +35,7 @@ export function PersonCompanies({ memberships }: { memberships: PersonCompanyMem
               <Building2 className="size-4 text-muted-foreground" />
             </div>
             <div className="min-w-0">
-              <p className="truncate text-sm font-medium">{m.company.name}</p>
+              <p className="truncate text-sm font-medium">{companyDisplayName(m.company)}</p>
               <p className="text-xs text-muted-foreground">
                 {m.company.cnpj ? maskCNPJ(m.company.cnpj) : 'Sem CNPJ'}
                 {m.company.type === 'PUBLIC' ? ' · Pública' : ''}

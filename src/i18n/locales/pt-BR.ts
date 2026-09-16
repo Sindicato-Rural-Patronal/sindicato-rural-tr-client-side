@@ -32,11 +32,15 @@ const ptBR = {
     banner3Subtitle: 'Tecnologias modernas para aumentar sua produtividade',
     banner3Cta: 'Saiba mais',
   },
-  stats: {
-    members: 'Associados',
-    courses: 'Cursos realizados',
-    years: 'Anos de história',
-    graduates: 'Alunos formados',
+  gallery: {
+    title: 'O Sindicato em imagens',
+    subtitle: 'Momentos e parcerias que fazem parte da nossa história',
+    photos_one: '{{count}} foto',
+    photos_other: '{{count}} fotos',
+    photo: 'Foto',
+    previous: 'Foto anterior',
+    next: 'Próxima foto',
+    learnMore: 'Saiba mais',
   },
   home: {
     coursesTitle: 'Nossos cursos',
@@ -161,6 +165,7 @@ const ptBR = {
       admins: 'Administradores',
       rules: 'Regras',
       banners: 'Banners',
+      galleries: 'Galerias',
       quotes: 'Cotações',
       convenios: 'Convênios',
       messages: 'Mensagens',

@@ -18,6 +18,8 @@ import { DeleteConfirmDialog } from '@/components/DeleteConfirmDialog'
 import { LoadErrorBanner } from '@/components/LoadErrorBanner'
 import { useCrudDialog } from '@/hooks/useCrudDialog'
 import { upperNoAccents } from '@/utils/text-format'
+import { roomNameOptions } from '@/lib/room-names'
+import { NativeSelect } from '@/components/ui/native-select'
 import { STICKY_ACTIONS_CELL, STICKY_ACTIONS_ROW } from '@/lib/table-sticky-actions'
 
 export const Route = createFileRoute('/_admin/admin/salas/')({
@@ -192,12 +194,21 @@ function RouteComponent() {
           </DialogHeader>
           <div className="flex flex-col gap-4">
             <div className="flex flex-col gap-1.5">
-              <Label>Nome *</Label>
-              <Input
+              <Label htmlFor="sala-nome">Sala *</Label>
+              <NativeSelect
+                id="sala-nome"
+                className="h-9"
                 value={crud.form.name}
-                onChange={e => crud.setForm(p => ({ ...p, name: upperNoAccents(e.target.value) }))}
-                placeholder="Ex: Laboratório 01"
-              />
+                onChange={e => crud.setForm(p => ({ ...p, name: e.target.value }))}
+              >
+                <option value="">Selecione a sala</option>
+                {roomNameOptions(
+                  (salas ?? []).map(s => s.name),
+                  crud.editing?.name,
+                ).map(o => (
+                  <option key={o.value} value={o.value} disabled={o.disabled}>{o.label}</option>
+                ))}
+              </NativeSelect>
             </div>
             <div className="flex flex-col gap-1.5">
               <Label>Descrição</Label>

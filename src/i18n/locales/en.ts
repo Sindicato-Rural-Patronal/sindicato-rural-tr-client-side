@@ -32,11 +32,15 @@ const en = {
     banner3Subtitle: 'Modern technologies to increase your productivity',
     banner3Cta: 'Learn more',
   },
-  stats: {
-    members: 'Members',
-    courses: 'Courses held',
-    years: 'Years of history',
-    graduates: 'Graduates',
+  gallery: {
+    title: 'The union in pictures',
+    subtitle: 'Moments and partnerships that are part of our history',
+    photos_one: '{{count}} photo',
+    photos_other: '{{count}} photos',
+    photo: 'Photo',
+    previous: 'Previous photo',
+    next: 'Next photo',
+    learnMore: 'Learn more',
   },
   home: {
     coursesTitle: 'Our courses',
@@ -161,6 +165,7 @@ const en = {
       admins: 'Administrators',
       rules: 'Rules',
       banners: 'Banners',
+      galleries: 'Galleries',
       quotes: 'Market quotes',
       convenios: 'Agreements',
       messages: 'Messages',

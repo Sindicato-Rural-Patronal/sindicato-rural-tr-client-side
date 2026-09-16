@@ -203,7 +203,7 @@ export type UserDataDetail = UserData & {
 export type PersonCompanyMembership = {
   id: string
   title: string
-  company: { id: string; name: string; cnpj: string | null; type: 'PRIVATE' | 'PUBLIC'; isPartner: boolean }
+  company: { id: string; name: string; tradeName: string | null; cnpj: string | null; type: 'PRIVATE' | 'PUBLIC'; isPartner: boolean }
 }
 
 export type UpdateUserAddressBody = {

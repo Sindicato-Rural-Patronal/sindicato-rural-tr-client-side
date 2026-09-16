@@ -47,9 +47,10 @@ Site institucional do **Sindicato Rural de Terra Roxa** (Paraná, Brasil). Plata
 /admin/empresas/$id         → _admin/admin/empresas/$id.tsx (abas Dados / Pessoas / Propriedades / Parceria)
 /admin/banners              → _admin/admin/banners.tsx
 /admin/mensagens            → _admin/admin/mensagens.tsx
-/admin/salas                → _admin/admin/salas/index.tsx
+/admin/salas                → _admin/admin/salas/index.tsx (nome = lista fixa de salas)
 /admin/administradores      → _admin/admin/administradores/index.tsx
-/admin/cotacoes             → _admin/admin/cotacoes/index.tsx (cotações da home)
+/admin/cotacoes             → _admin/admin/cotacoes/index.tsx (lançamento do dia: produtos fixos, preço + manhã/tarde)
+/admin/galerias             → _admin/admin/galerias/index.tsx (galerias de fotos da home)
 /admin/convenios            → _admin/admin/convenios/index.tsx (lista de convênios)
 /admin/convenios/novo       → _admin/admin/convenios/novo.tsx (editor, criação)
 /admin/convenios/$id        → _admin/admin/convenios/$id.tsx (editor com pré-visualização)
@@ -81,7 +82,9 @@ src/
 │   ├── adminSideBar.tsx             # Sidebar admin — usa logo-icon.png; link perfil via userDataId
 │   ├── nav-user.tsx                 # Dropdown do usuário (logout)
 │   ├── home-hero-section.tsx        # Banner hero
-│   ├── home-static-section.tsx      # Stats (StatsSection)
+│   ├── home-gallery-section.tsx     # Galerias de fotos (no lugar dos números) + lightbox
+│   ├── home-cotacoes-section.tsx    # Faixa de cotações (preço, unidade, dia/período)
+│   ├── galerias/                    # Admin: GalleryAlbumCard (fotos, legenda, ordem), GalleryAlbumDialog
 │   ├── home-courses-section.tsx     # Carrossel de cursos (CoursesSection)
 │   ├── home-news-section.tsx        # Seção de notícias na home
 │   ├── course-card.tsx              # CourseCard + CourseCardSimple (carousel-aware)
@@ -101,6 +104,8 @@ src/
 │   ├── useAdmin.ts                  # Ver seção "Hooks — useAdmin.ts" abaixo
 │   ├── useCompanies.ts              # Empresas: useAdminCompanies, useAdminCompany, CRUD, vínculos
 │   │                                #   (members), propriedades, logo de parceira, títulos usados
+│   ├── useGalleries.ts              # Galerias: pública, admin, CRUD, upload/legenda/ordem das fotos
+│   ├── useMarketQuotes.ts           # Cotações: pública, admin, useSaveDailyQuotes (PUT daily)
 │   ├── useNews.ts                   # Hooks de notícias (admin + público)
 │   ├── useBanner.ts                 # Hooks de banners
 │   ├── useRooms.ts                  # useRooms, useCreateRoom
@@ -113,6 +118,9 @@ src/
 │   ├── query-client.ts              # QueryClient: staleTime 60s, gcTime 5min, retry false, refetchOnWindowFocus false
 │   ├── auth-guard.ts                # Guard de rota admin
 │   ├── schemas.ts                   # Schemas Zod: pessoaSchema, roomSchema, adminSchema, courseBaseSchema
+│   ├── member-types.ts              # Tipo de membro (lista fixa) + opção "valor antigo"
+│   ├── room-names.ts                # Nomes fixos das salas + opções do select
+│   ├── quote-utils.ts               # Cotações: período (manhã/tarde), rótulo dos produtos, trendOf
 │   └── utils.ts                     # cn() helper (clsx + tailwind-merge)
 ├── routes/                          # File-based routing
 ├── utils/
@@ -274,7 +282,7 @@ mapCourses(list: ApiCourse[]): Course[]
 - `GET /api/admin/companies` — lista paginada (search nome/e-mail/CNPJ, type PRIVATE|PUBLIC, isPartner)
 - `GET /api/admin/companies/titles` — títulos já usados nos vínculos (sugestões)
 - `GET /api/admin/companies/:id` — detalhe (members com a pessoa + properties)
-- `POST /api/admin/companies` · `PATCH /api/admin/companies/:id` (inclui parceria e `primaryPropertyId`) · `DELETE /api/admin/companies/:id` (soft)
+- `POST /api/admin/companies` · `PATCH /api/admin/companies/:id` (inclui `tradeName`, `address` da sede — null/vazio remove —, parceria e `primaryPropertyId`) · `DELETE /api/admin/companies/:id` (soft)
 - `POST /api/admin/companies/:id/members` `{ userDataId, title }` · `PATCH /members/:memberId` `{ title }` · `DELETE /members/:memberId`
 - `POST /api/admin/companies/:id/properties` · `DELETE /api/admin/companies/:id/properties/:propertyId`
 - `POST /api/admin/companies/:id/partner-logo` — multipart (300×150, PNG); `PATCH` com `partnerLogo: null` remove
@@ -301,9 +309,9 @@ mapCourses(list: ApiCourse[]): Course[]
 - `GET /api/contacts` — lista contatos públicos
 - `POST /api/contact` — enviar mensagem de contato
 
-**Salas**
+**Salas** — nome precisa ser da lista fixa (AUDITORIO, COZINHA, SALA DE VIDEO CONFERENCIA, SALA 1, SALA 2, SALA APL); repetido → 409
 - `GET /api/rooms` — lista
-- `POST /api/rooms` — criar
+- `POST /api/rooms` — criar · `PATCH /api/rooms/:id` · `DELETE /api/rooms/:id`
 
 **Convênios** — gated por `*_CONVENIO`; preço em centavos (Int); listas em JSON
 - `GET /api/convenios` — menu público (ativos: id, slug, name, subtitle, logoUrl, order)
@@ -312,10 +320,16 @@ mapCourses(list: ApiCourse[]): Course[]
 - `POST /api/admin/convenios` · `PATCH /api/admin/convenios/:id` (`logoUrl: null` remove o logo) · `DELETE /api/admin/convenios/:id`
 - `POST /api/admin/convenios/:id/logo` — multipart (reduzido para caber em 480×240, PNG)
 
-**Cotações (home)**
-- `GET /api/market-quotes` — cotações ativas (público)
-- `GET /api/admin/market-quotes` — todas (admin)
-- `POST /api/market-quotes` · `PATCH /api/market-quotes/:id` · `DELETE /api/market-quotes/:id`
+**Cotações (home)** — produtos fixos: SOJA, MILHO, TRIGO, MANDIOCA, DOLAR (não se cria/exclui)
+- `GET /api/market-quotes` — produtos com preço lançado (público; `priceCents`, `unit`, `period`, `referenceDate`, `variation`)
+- `GET /api/admin/market-quotes` — os 5 produtos
+- `PUT /api/admin/market-quotes/daily` — `{ period: MORNING|AFTERNOON, prices: [{ id, priceCents }] }`; data = hoje (definida no backend)
+
+**Galerias da home** — permissões `*_BANNER`
+- `GET /api/galleries` — ativas com pelo menos uma foto (público)
+- `GET /api/admin/galleries` · `POST /api/admin/galleries` · `PATCH /api/admin/galleries/:id` · `DELETE /api/admin/galleries/:id`
+- `PATCH /api/admin/galleries/reorder` `{ order: id[] }`
+- `POST /api/admin/galleries/:id/photos` (multipart; reduzida p/ 1600px JPEG) · `PATCH /photos/:photoId` `{ caption }` · `DELETE /photos/:photoId` · `PATCH /photos/reorder`
 
 **Auditoria**
 - `GET /api/admin/audit-logs` — trilha de auditoria (paginado)
@@ -348,7 +362,10 @@ mapCourses(list: ApiCourse[]): Course[]
 - Notícias, salas, admins e parceiros implementados.
 - **Empresas separadas de pessoas** (set/2026): `Company` tem vínculos N:N com pessoas (`CompanyMember`, cada um com título livre, ex.: SOCIO, CONTADOR), propriedades próprias (endereços; `Property` pertence a uma pessoa OU a uma empresa) e a parceria (antes flags em `UserData`). Lista na aba "Empresas" de `/admin/usuarios`. O CNPJ saiu do formulário de pessoa; as colunas `cnpj`/`isPartner`/`partner*` de `UserData` continuam no banco mas não são mais usadas. A migration criou uma empresa para cada pessoa ativa que era parceira ou tinha CNPJ, com a pessoa como RESPONSAVEL.
 - Dashboard admin **implementado** — stats + calendário de cursos + lista de cadastros incompletos (não é mais stub).
-- Cotações da home, trilha de auditoria e convites de admin implementados.
+- Trilha de auditoria e convites de admin implementados.
+- **Ajustes de cadastro (set/2026)**: tipo de membro é select (Aluno, Produtor rural, Trabalhador rural assalariado/autônomo; valor antigo fora da lista aparece marcado); CAD/PRO até 5; salas com nome de lista fixa; empresa com razão social (`name`), nome fantasia (`tradeName`, exibido quando houver — `companyDisplayName`) e endereço da sede no próprio cadastro (CEP com busca).
+- **Cotações**: produtos fixos; o admin só lança preço (centavos) e período manhã/tarde; a data é a do dia. Home mostra preço + unidade + dia/período.
+- **Home**: os números (associados, cursos realizados, anos, alunos) saíram; no lugar, galerias de fotos editáveis em `/admin/galerias` (História do Sindicato, FAEP, Patrulha Rural já criadas, vazias até receber fotos).
 - **Convênios**: dropdown "Convênios" no header público lista os convênios ativos; cada um tem página em `/convenios/$slug` (tabela de valores por faixa, documentos para adesão, destaques e texto). Conteúdo 100% editável em `/admin/convenios` (`ConvenioEditor` + `ConvenioPageView` compartilhado com a pré-visualização). Hooks em `useConvenios.ts`. Unimed semeado com os dados da página antiga (`ruraltr.com.br/pgs/print_unimed.php`). Regras com `UPDATE_BANNER` receberam as permissões `*_CONVENIO` na migration.
 - **Financeiro** (admin): lançamentos de caixa (valor em centavos Int), categorias, dashboard, comprovantes (anexo em Bytes no banco), export CSV, multi-caixa e transferência entre caixas, relatório PDF do período. Gated por `READ/CREATE/UPDATE/DELETE_FINANCE`. Filtros dos lançamentos vivem na URL (search params).
 - Deploy em produção via Docker (Dockerfile + docker-compose.prod.yml + nginx).

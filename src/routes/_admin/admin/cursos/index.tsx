@@ -26,6 +26,7 @@ import { calcAge } from '@/utils/age'
 import { upperNoAccents } from '@/utils/text-format'
 import { roomSchema, courseBaseSchema } from '@/lib/schemas'
 import type { RoomFormData, CourseFormData } from '@/lib/schemas'
+import { roomNameOptions } from '@/lib/room-names'
 import { Label } from '@/components/ui/label'
 import {
   Plus, Building2, GraduationCap, Calendar, Search,
@@ -1841,7 +1842,14 @@ function RoomsSheet() {
                 <FormField control={form.control} name="name" render={({ field }) => (
                   <FormItem>
                     <FormLabel>{t('admin.rooms.name')}</FormLabel>
-                    <FormControl><Input {...field} onChange={e => field.onChange(upperNoAccents(e.target.value))} /></FormControl>
+                    <FormControl>
+                      <NativeSelect {...field} className="h-9">
+                        <option value="">Selecione a sala</option>
+                        {roomNameOptions((rooms ?? []).map(r => r.name)).map(o => (
+                          <option key={o.value} value={o.value} disabled={o.disabled}>{o.label}</option>
+                        ))}
+                      </NativeSelect>
+                    </FormControl>
                     <FormMessage />
                   </FormItem>
                 )} />

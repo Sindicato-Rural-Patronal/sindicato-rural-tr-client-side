@@ -7,7 +7,7 @@ import { apiErrorMessage } from '@/lib/api-error-message'
 import { usePermissions } from '@/hooks/usePermissions'
 import {
   useAdminCompany, useUpdateCompany, useDeleteCompany, useAddCompanyProperty, useRemoveCompanyProperty,
-  COMPANY_TYPE_LABEL,
+  COMPANY_TYPE_LABEL, companyDisplayName,
 } from '@/hooks/useCompanies'
 import { CompanyForm } from '@/components/cadastro/CompanyForm'
 import { CompanyMembersPanel } from '@/components/cadastro/CompanyMembersPanel'
@@ -82,9 +82,10 @@ function EmpresaPage() {
           </Link>
           <h1 className="mt-1 flex items-center gap-2 text-2xl font-bold tracking-tight text-foreground">
             <Building2 className="size-6 shrink-0 text-muted-foreground" />
-            <span className="truncate">{company.name}</span>
+            <span className="truncate">{companyDisplayName(company)}</span>
           </h1>
           <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+            {company.tradeName && <span className="truncate">{company.name} ·</span>}
             <span>{company.cnpj ? `CNPJ ${maskCNPJ(company.cnpj)}` : 'Sem CNPJ'}</span>
             <Badge variant={company.type === 'PUBLIC' ? 'secondary' : 'outline'}>{COMPANY_TYPE_LABEL[company.type]}</Badge>
             {company.isPartner && <Badge variant="outline" className="gap-1"><Handshake className="size-3" /> Parceira</Badge>}
@@ -155,7 +156,7 @@ function EmpresaPage() {
         onOpenChange={setConfirmDelete}
         title="Excluir empresa"
         description={<>
-          Excluir <strong>{company.name}</strong>? A empresa some da lista e, se for parceira, da página inicial.
+          Excluir <strong>{companyDisplayName(company)}</strong>? A empresa some da lista e, se for parceira, da página inicial.
           As pessoas vinculadas não são apagadas.
         </>}
         onConfirm={handleDelete}

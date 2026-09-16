@@ -11,9 +11,25 @@ export const COMPANY_TYPE_LABEL: Record<CompanyType, string> = {
   PUBLIC: 'Pública',
 }
 
+/** Endereço da sede, direto no cadastro da empresa. */
+export type CompanyAddress = {
+  zipCode: string | null
+  street: string | null
+  number: string | null
+  complement: string | null
+  neighborhood: string | null
+  city: string | null
+  state: string | null
+}
+
 export type Company = {
   id: string
+  /** Razão social. */
   name: string
+  /** Nome fantasia. */
+  tradeName: string | null
+  addressId: string | null
+  address: CompanyAddress | null
   cnpj: string | null
   stateRegistration: string | null
   type: CompanyType
@@ -49,9 +65,18 @@ export type CompanyDetail = Company & {
   properties: UserProperty[]
 }
 
-/** Campos editáveis (o logo vai pelo upload; `partnerLogo: null` remove). */
-export type CompanyInput = Partial<Omit<Company, 'id' | 'partnerLogo' | 'createdAt' | 'updatedAt'>> & {
+/**
+ * Campos editáveis (o logo vai pelo upload; `partnerLogo: null` remove).
+ * `address` com tudo vazio (ou null) remove o endereço.
+ */
+export type CompanyInput = Partial<Omit<Company, 'id' | 'partnerLogo' | 'address' | 'addressId' | 'createdAt' | 'updatedAt'>> & {
   partnerLogo?: null
+  address?: CompanyAddress | null
+}
+
+/** Nome para exibir: o fantasia, quando houver; senão a razão social. */
+export function companyDisplayName(c: { name: string; tradeName?: string | null }): string {
+  return c.tradeName || c.name
 }
 
 export type CompanyFilters = {

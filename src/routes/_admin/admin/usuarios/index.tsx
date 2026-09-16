@@ -41,6 +41,7 @@ import { PasswordInput } from '@/components/PasswordInput'
 import { STICKY_ACTIONS_CELL, STICKY_ACTIONS_ROW } from '@/lib/table-sticky-actions'
 import { CompaniesList } from '@/components/cadastro/CompaniesList'
 import { useAdminCompanies } from '@/hooks/useCompanies'
+import { MEMBER_TYPES } from '@/lib/member-types'
 
 export const Route = createFileRoute('/_admin/admin/usuarios/')({
   // Filtros principais na URL (sobrevivem a voltar/atualizar/compartilhar).
@@ -1000,12 +1001,16 @@ function RouteComponent() {
               </div>
               <div className="flex flex-col gap-1">
                 <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Tipo de membro</span>
-                <Input
-                  className="h-8 text-xs w-32"
-                  placeholder="Tipo..."
-                  value={memberTypeFilter}
-                  onChange={e => { setMemberTypeFilter(e.target.value); setUsersPage(1) }}
-                />
+                <Select
+                  value={memberTypeFilter || 'all'}
+                  onValueChange={v => { setMemberTypeFilter(v === 'all' ? '' : v); setUsersPage(1) }}
+                >
+                  <SelectTrigger className="h-8 text-xs w-52"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos</SelectItem>
+                    {MEMBER_TYPES.map(t => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
+                  </SelectContent>
+                </Select>
               </div>
               <div className="flex flex-col gap-1">
                 <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Classificação</span>

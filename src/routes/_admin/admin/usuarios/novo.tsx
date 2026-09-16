@@ -18,6 +18,7 @@ import { useUnsavedGuard, confirmLeaveIfDirty } from '@/hooks/use-unsaved-guard'
 import { CadproFields } from '@/components/CadproFields'
 import { toIso } from '@/utils/dates'
 import { upperNoAccents } from '@/utils/text-format'
+import { memberTypeOptions } from '@/lib/member-types'
 import {
   GENDER_OPTIONS, ETHNICITY_OPTIONS, EDUCATION_OPTIONS,
   MARITAL_STATUS_OPTIONS, CNH_CATEGORY_OPTIONS,
@@ -351,7 +352,7 @@ function RouteComponent() {
             <FieldRow label="Categoria funcional">
               <Input className={inp} value={form.functionalCategory} onChange={e => set('functionalCategory', upperNoAccents(e.target.value))} />
             </FieldRow>
-            <FieldRow label="CAD/PRO (até 3)">
+            <FieldRow label="CAD/PRO (até 5)">
               <CadproFields value={form.cadPro} onChange={v => set('cadPro', v)} />
             </FieldRow>
             <FieldRow label="Renda familiar">
@@ -419,7 +420,9 @@ function RouteComponent() {
             <CardTitle className="text-sm flex items-center gap-2"><Briefcase className="size-4" /> Associação</CardTitle>
           </CardHeader>
           <CardContent className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            <FieldRow label="Tipo de membro"><Input className={inp} value={form.memberType} onChange={e => set('memberType', upperNoAccents(e.target.value))} /></FieldRow>
+            <FieldRow label="Tipo de membro">
+              <SelectField value={form.memberType} onChange={v => set('memberType', v)} placeholder="Selecione" options={memberTypeOptions(form.memberType)} />
+            </FieldRow>
             <FieldRow label="Classificação"><Input className={inp} value={form.memberClassification} onChange={e => set('memberClassification', upperNoAccents(e.target.value))} /></FieldRow>
             <FieldRow label="Situação">
               <SelectField value={form.memberStatus} onChange={v => set('memberStatus', v)} placeholder="Selecione" options={[

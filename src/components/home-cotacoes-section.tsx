@@ -1,16 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { useMarketQuotes, type MarketQuote } from '@/hooks/useMarketQuotes'
-import { formatDateFromString } from '@/utils/format-data-from-string'
+import { QUOTE_PERIOD_LABEL, quoteProductLabel, trendOf } from '@/lib/quote-utils'
+import { centsToBRL } from '@/utils/masks'
 import { TrendingUp, TrendingDown, Minus } from 'lucide-react'
-
-function trendOf(variation: string | null): 'up' | 'down' | 'neutral' {
-  const v = (variation ?? '').trim()
-  if (!v) return 'neutral'
-  // Variação numericamente zero ("0", "0,00", "0.00", "+0") é neutra, não alta.
-  const n = parseFloat(v.replace('+', '').replace(',', '.'))
-  if (n === 0) return 'neutral'
-  return v.startsWith('-') ? 'down' : 'up'
-}
 
 function timeAgo(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime()
@@ -26,12 +18,23 @@ function timeAgo(iso: string): string {
   return `há ${mo} mês${mo > 1 ? 'es' : ''}`
 }
 
+// "16/09" a partir de "2026-09-16T00:00:00.000Z" (data pura, sem fuso).
+function dayMonth(iso: string): string {
+  const [, m, d] = iso.slice(0, 10).split('-')
+  return `${d}/${m}`
+}
+
 function QuoteCard({ q }: { q: MarketQuote }) {
   const trend = trendOf(q.variation)
   return (
     <div className="flex min-w-40 shrink-0 flex-col gap-0.5 rounded-lg border border-border bg-card px-4 py-3">
-      <span className="text-xs font-medium text-muted-foreground">{q.label}</span>
-      <span className="text-lg font-bold tabular-nums text-foreground">{q.value}</span>
+      <span className="text-xs font-medium text-muted-foreground">{quoteProductLabel(q.label)}</span>
+      <span className="text-lg font-bold tabular-nums text-foreground">
+        {q.priceCents != null ? centsToBRL(q.priceCents) : q.value}
+        {q.priceCents != null && q.unit && (
+          <span className="ml-1 text-[11px] font-normal text-muted-foreground">/{q.unit}</span>
+        )}
+      </span>
       <div className="flex items-center justify-between gap-2">
         {q.variation ? (
           <span
@@ -57,7 +60,8 @@ function QuoteCard({ q }: { q: MarketQuote }) {
         )}
         {q.referenceDate && (
           <span className="text-[10px] text-muted-foreground">
-            {formatDateFromString(q.referenceDate)}
+            {dayMonth(q.referenceDate)}
+            {q.period && ` · ${QUOTE_PERIOD_LABEL[q.period]}`}
           </span>
         )}
       </div>
@@ -86,7 +90,7 @@ export function CotacoesSection() {
     return () => window.removeEventListener('resize', measure)
   }, [quotes, shouldScroll])
 
-  // Sem cotações ativas → não renderiza a faixa.
+  // Sem cotações lançadas → não renderiza a faixa.
   if (quotes.length === 0) return null
 
   const lastUpdated = quotes.reduce<string | null>((acc, q) => {

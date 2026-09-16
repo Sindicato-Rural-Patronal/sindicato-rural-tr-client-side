@@ -34,7 +34,7 @@ describe('pessoaSchema', () => {
 })
 
 describe('roomSchema', () => {
-  const valid = { name: 'Sala A', description: 'Sala principal', maxCapacity: 30 }
+  const valid = { name: 'SALA 1', description: 'Sala principal', maxCapacity: 30 }
 
   it('valida dados corretos', () => {
     expect(roomSchema.safeParse(valid).success).toBe(true)
@@ -48,6 +48,11 @@ describe('roomSchema', () => {
   it('rejeita nome vazio', () => {
     const result = roomSchema.safeParse({ ...valid, name: '' })
     expect(result.success).toBe(false)
+  })
+
+  it('rejeita sala fora da lista fixa', () => {
+    expect(roomSchema.safeParse({ ...valid, name: 'LABORATORIO 01' }).success).toBe(false)
+    expect(roomSchema.safeParse({ ...valid, name: 'SALA DE VIDEO CONFERENCIA' }).success).toBe(true)
   })
 })
 

@@ -2,7 +2,9 @@ import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Plus, X } from 'lucide-react'
 
-// Edita a lista de CAD/PRO do associado (até 3). Opera no array cru (pode ter
+const MAX_CADPRO = 5
+
+// Edita a lista de CAD/PRO do associado (até MAX_CADPRO). Opera no array cru (pode ter
 // entradas vazias durante a edição); o formulário filtra vazios ao salvar.
 export function CadproFields({ value, onChange, disabled }: {
   value: string[]
@@ -21,7 +23,7 @@ export function CadproFields({ value, onChange, disabled }: {
     onChange(next.length ? next : [''])
   }
   function add() {
-    if (items.length < 3) onChange([...items, ''])
+    if (items.length < MAX_CADPRO) onChange([...items, ''])
   }
 
   return (
@@ -42,7 +44,7 @@ export function CadproFields({ value, onChange, disabled }: {
           )}
         </div>
       ))}
-      {items.length < 3 && !disabled && (
+      {items.length < MAX_CADPRO && !disabled && (
         <Button type="button" variant="outline" size="sm" className="w-fit gap-1.5" onClick={add}>
           <Plus className="size-3.5" /> Adicionar CAD/PRO
         </Button>

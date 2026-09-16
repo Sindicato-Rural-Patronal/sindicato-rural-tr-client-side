@@ -1,10 +1,18 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { apiFetch, API_BASE } from '@/lib/api'
+import type { QuotePeriod } from '@/lib/quote-utils'
 
+// Produtos fixos (SOJA, MILHO, TRIGO, MANDIOCA, DOLAR). No painel só se lança
+// o preço e o período; a data é a do dia, definida pelo backend.
 export type MarketQuote = {
   id: string
   label: string
+  /** Texto pronto ("R$ 120,00 /sc 60kg"); vazio antes do primeiro lançamento. */
   value: string
+  priceCents: number | null
+  /** Unidade fixa do produto ("sc 60kg", "t"); null no dólar. */
+  unit: string | null
+  period: QuotePeriod | null
   variation: string | null
   referenceDate: string | null
   isActive: boolean
@@ -13,17 +21,13 @@ export type MarketQuote = {
   updatedAt: string
 }
 
-// `variation` não entra aqui — é calculada no backend pelo histórico de valores.
-export type MarketQuoteInput = {
-  label: string
-  value: string
-  referenceDate?: string | null
-  isActive?: boolean
-  order?: number
+export type DailyQuotesInput = {
+  period: QuotePeriod
+  prices: { id: string; priceCents: number }[]
 }
 
-// Público (home): apenas cotações ativas, ordenadas. Usa fetch cru (sem token /
-// sem handleUnauthorized) pra não deslogar um visitante com token velho.
+// Público (home): produtos com preço lançado, ordenados. Usa fetch cru (sem
+// token / sem handleUnauthorized) pra não deslogar um visitante com token velho.
 export function useMarketQuotes() {
   return useQuery<MarketQuote[]>({
     queryKey: ['market-quotes'],
@@ -31,7 +35,7 @@ export function useMarketQuotes() {
   })
 }
 
-// Admin: todas (inclui inativas).
+// Admin: todos os produtos, com ou sem preço.
 export function useAdminMarketQuotes(opts: { enabled?: boolean } = {}) {
   return useQuery<MarketQuote[]>({
     queryKey: ['admin', 'market-quotes'],
@@ -40,33 +44,15 @@ export function useAdminMarketQuotes(opts: { enabled?: boolean } = {}) {
   })
 }
 
-function invalidateQuotes(qc: ReturnType<typeof useQueryClient>) {
-  qc.invalidateQueries({ queryKey: ['market-quotes'] })
-  qc.invalidateQueries({ queryKey: ['admin', 'market-quotes'] })
-}
-
-export function useCreateMarketQuote() {
+export function useSaveDailyQuotes() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (body: MarketQuoteInput) =>
-      apiFetch('/market-quotes', { method: 'POST', body: JSON.stringify(body) }),
-    onSuccess: () => invalidateQuotes(qc),
-  })
-}
-
-export function useUpdateMarketQuote() {
-  const qc = useQueryClient()
-  return useMutation({
-    mutationFn: ({ id, body }: { id: string; body: Partial<MarketQuoteInput> }) =>
-      apiFetch(`/market-quotes/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
-    onSuccess: () => invalidateQuotes(qc),
-  })
-}
-
-export function useDeleteMarketQuote() {
-  const qc = useQueryClient()
-  return useMutation({
-    mutationFn: (id: string) => apiFetch(`/market-quotes/${id}`, { method: 'DELETE' }),
-    onSuccess: () => invalidateQuotes(qc),
+    mutationFn: (body: DailyQuotesInput) =>
+      apiFetch('/admin/market-quotes/daily', { method: 'PUT', body: JSON.stringify(body) })
+        .then(r => r.json() as Promise<MarketQuote[]>),
+    onSuccess: data => {
+      qc.setQueryData(['admin', 'market-quotes'], data)
+      qc.invalidateQueries({ queryKey: ['market-quotes'] })
+    },
   })
 }
