@@ -34,6 +34,8 @@ Site institucional do **Sindicato Rural de Terra Roxa** (Paraná, Brasil). Plata
 /noticias/$id               → _public/noticias/$id.tsx
 /sobre                      → _public/sobre.tsx
 /contato                    → _public/contato.tsx
+/convenios                  → _public/convenios/index.tsx (cartões dos convênios ativos)
+/convenios/$slug            → _public/convenios/$slug.tsx (tabela de valores, documentos, sobre)
 /login                      → login.tsx
 /admin                      → _admin/admin/index.tsx (redirect → /admin/cursos)
 /admin/cursos               → _admin/admin/cursos/index.tsx (CRUD completo)
@@ -46,6 +48,9 @@ Site institucional do **Sindicato Rural de Terra Roxa** (Paraná, Brasil). Plata
 /admin/salas                → _admin/admin/salas/index.tsx
 /admin/administradores      → _admin/admin/administradores/index.tsx
 /admin/cotacoes             → _admin/admin/cotacoes/index.tsx (cotações da home)
+/admin/convenios            → _admin/admin/convenios/index.tsx (lista de convênios)
+/admin/convenios/novo       → _admin/admin/convenios/novo.tsx (editor, criação)
+/admin/convenios/$id        → _admin/admin/convenios/$id.tsx (editor com pré-visualização)
 /admin/auditoria            → _admin/admin/auditoria/index.tsx (trilha de auditoria)
 /admin/financeiro           → _admin/admin/financeiro/index.tsx (Financeiro: dashboard, lançamentos, categorias, caixas)
 /admin/dashboard            → _admin/admin/dashboard.tsx (painel: stats + calendário de cursos + cadastros incompletos)
@@ -285,6 +290,13 @@ mapCourses(list: ApiCourse[]): Course[]
 - `GET /api/rooms` — lista
 - `POST /api/rooms` — criar
 
+**Convênios** — gated por `*_CONVENIO`; preço em centavos (Int); listas em JSON
+- `GET /api/convenios` — menu público (ativos: id, slug, name, subtitle, logoUrl, order)
+- `GET /api/convenios/:slug` — página pública (inativo/inexistente → 404)
+- `GET /api/admin/convenios` · `GET /api/admin/convenios/:id`
+- `POST /api/admin/convenios` · `PATCH /api/admin/convenios/:id` (`logoUrl: null` remove o logo) · `DELETE /api/admin/convenios/:id`
+- `POST /api/admin/convenios/:id/logo` — multipart (reduzido para caber em 480×240, PNG)
+
 **Cotações (home)**
 - `GET /api/market-quotes` — cotações ativas (público)
 - `GET /api/admin/market-quotes` — todas (admin)
@@ -321,6 +333,7 @@ mapCourses(list: ApiCourse[]): Course[]
 - Notícias, salas, admins e parceiros implementados.
 - Dashboard admin **implementado** — stats + calendário de cursos + lista de cadastros incompletos (não é mais stub).
 - Cotações da home, trilha de auditoria e convites de admin implementados.
+- **Convênios**: dropdown "Convênios" no header público lista os convênios ativos; cada um tem página em `/convenios/$slug` (tabela de valores por faixa, documentos para adesão, destaques e texto). Conteúdo 100% editável em `/admin/convenios` (`ConvenioEditor` + `ConvenioPageView` compartilhado com a pré-visualização). Hooks em `useConvenios.ts`. Unimed semeado com os dados da página antiga (`ruraltr.com.br/pgs/print_unimed.php`). Regras com `UPDATE_BANNER` receberam as permissões `*_CONVENIO` na migration.
 - **Financeiro** (admin): lançamentos de caixa (valor em centavos Int), categorias, dashboard, comprovantes (anexo em Bytes no banco), export CSV, multi-caixa e transferência entre caixas, relatório PDF do período. Gated por `READ/CREATE/UPDATE/DELETE_FINANCE`. Filtros dos lançamentos vivem na URL (search params).
 - Deploy em produção via Docker (Dockerfile + docker-compose.prod.yml + nginx).
 

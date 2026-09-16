@@ -83,6 +83,7 @@ export function PublicFooter() {
             <nav className="flex flex-col gap-2 text-sm text-brand-foreground/90">
               <Link to="/" className="transition-colors hover:text-white">{t('nav.home')}</Link>
               <Link to="/cursos" className="transition-colors hover:text-white">{t('nav.courses')}</Link>
+              <Link to="/convenios" className="transition-colors hover:text-white">{t('nav.convenios')}</Link>
               <Link to="/sobre" className="transition-colors hover:text-white">{t('nav.about')}</Link>
               <Link to="/contato" className="transition-colors hover:text-white">{t('nav.contact')}</Link>
             </nav>

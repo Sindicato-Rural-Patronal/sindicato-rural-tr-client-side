@@ -14,6 +14,7 @@ const NAV: NavItem[] = [
   { label: 'Salas', to: '/admin/salas', perm: 'READ_COURSE' },
   { label: 'Banners', to: '/admin/banners', perm: 'READ_BANNER' },
   { label: 'Cotações', to: '/admin/cotacoes', perm: 'READ_MARKET_QUOTE' },
+  { label: 'Convênios', to: '/admin/convenios', perm: 'READ_CONVENIO', hint: 'unimed tabela de valores' },
   { label: 'Mensagens', to: '/admin/mensagens', perm: 'READ_CONTACT', hint: 'contato' },
   { label: 'Auditoria', to: '/admin/auditoria', perm: 'READ_AUDIT' },
   { label: 'Financeiro', to: '/admin/financeiro', perm: 'READ_FINANCE', hint: 'caixa lançamentos' },

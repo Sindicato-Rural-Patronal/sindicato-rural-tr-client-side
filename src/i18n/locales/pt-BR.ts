@@ -7,6 +7,9 @@ const ptBR = {
     news: 'Notícias',
     openMenu: 'Abrir menu',
     closeMenu: 'Fechar menu',
+    convenios: 'Convênios',
+    allConvenios: 'Todos os convênios',
+    loading: 'Carregando…',
   },
   footer: {
     socialMedia: 'Redes sociais',
@@ -159,6 +162,7 @@ const ptBR = {
       rules: 'Regras',
       banners: 'Banners',
       quotes: 'Cotações',
+      convenios: 'Convênios',
       messages: 'Mensagens',
       audit: 'Auditoria',
       finance: 'Financeiro',

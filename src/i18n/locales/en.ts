@@ -7,6 +7,9 @@ const en = {
     news: 'News',
     openMenu: 'Open menu',
     closeMenu: 'Close menu',
+    convenios: 'Agreements',
+    allConvenios: 'All agreements',
+    loading: 'Loading…',
   },
   footer: {
     socialMedia: 'Social media',
@@ -159,6 +162,7 @@ const en = {
       rules: 'Rules',
       banners: 'Banners',
       quotes: 'Market quotes',
+      convenios: 'Agreements',
       messages: 'Messages',
       audit: 'Audit log',
       finance: 'Finance',

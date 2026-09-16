@@ -62,6 +62,7 @@ const PERM_GROUPS = [
   { label: 'Cotações',        perms: ['CREATE_MARKET_QUOTE', 'READ_MARKET_QUOTE', 'UPDATE_MARKET_QUOTE', 'DELETE_MARKET_QUOTE'] },
   { label: 'Auditoria',       perms: ['READ_AUDIT'] },
   { label: 'Financeiro',      perms: ['CREATE_FINANCE', 'READ_FINANCE', 'UPDATE_FINANCE', 'DELETE_FINANCE'] },
+  { label: 'Convênios',       perms: ['CREATE_CONVENIO', 'READ_CONVENIO', 'UPDATE_CONVENIO', 'DELETE_CONVENIO'] },
 ]
 
 function PermCheckboxes({

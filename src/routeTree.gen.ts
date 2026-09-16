@@ -18,9 +18,11 @@ import { Route as PublicSobreRouteImport } from './routes/_public/sobre'
 import { Route as PublicContatoRouteImport } from './routes/_public/contato'
 import { Route as PublicNoticiasIndexRouteImport } from './routes/_public/noticias/index'
 import { Route as PublicCursosIndexRouteImport } from './routes/_public/cursos/index'
+import { Route as PublicConveniosIndexRouteImport } from './routes/_public/convenios/index'
 import { Route as AdminAdminIndexRouteImport } from './routes/_admin/admin/index'
 import { Route as PublicNoticiasIdRouteImport } from './routes/_public/noticias/$id'
 import { Route as PublicCursosIdRouteImport } from './routes/_public/cursos/$id'
+import { Route as PublicConveniosSlugRouteImport } from './routes/_public/convenios/$slug'
 import { Route as AdminAdminUsuariosRouteImport } from './routes/_admin/admin/usuarios'
 import { Route as AdminAdminUnimedRouteImport } from './routes/_admin/admin/unimed'
 import { Route as AdminAdminSalasRouteImport } from './routes/_admin/admin/salas'
@@ -38,11 +40,14 @@ import { Route as AdminAdminNoticiasIndexRouteImport } from './routes/_admin/adm
 import { Route as AdminAdminFinanceiroIndexRouteImport } from './routes/_admin/admin/financeiro/index'
 import { Route as AdminAdminCursosIndexRouteImport } from './routes/_admin/admin/cursos/index'
 import { Route as AdminAdminCotacoesIndexRouteImport } from './routes/_admin/admin/cotacoes/index'
+import { Route as AdminAdminConveniosIndexRouteImport } from './routes/_admin/admin/convenios/index'
 import { Route as AdminAdminAuditoriaIndexRouteImport } from './routes/_admin/admin/auditoria/index'
 import { Route as AdminAdminAdministradoresIndexRouteImport } from './routes/_admin/admin/administradores/index'
 import { Route as AdminAdminUsuariosNovoRouteImport } from './routes/_admin/admin/usuarios/novo'
 import { Route as AdminAdminUsuariosIdRouteImport } from './routes/_admin/admin/usuarios/$id'
 import { Route as AdminAdminCursosNovoRouteImport } from './routes/_admin/admin/cursos/novo'
+import { Route as AdminAdminConveniosNovoRouteImport } from './routes/_admin/admin/convenios/novo'
+import { Route as AdminAdminConveniosIdRouteImport } from './routes/_admin/admin/convenios/$id'
 
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
@@ -87,6 +92,11 @@ const PublicCursosIndexRoute = PublicCursosIndexRouteImport.update({
   path: '/cursos/',
   getParentRoute: () => PublicRoute,
 } as any)
+const PublicConveniosIndexRoute = PublicConveniosIndexRouteImport.update({
+  id: '/convenios/',
+  path: '/convenios/',
+  getParentRoute: () => PublicRoute,
+} as any)
 const AdminAdminIndexRoute = AdminAdminIndexRouteImport.update({
   id: '/admin/',
   path: '/admin/',
@@ -100,6 +110,11 @@ const PublicNoticiasIdRoute = PublicNoticiasIdRouteImport.update({
 const PublicCursosIdRoute = PublicCursosIdRouteImport.update({
   id: '/cursos/$id',
   path: '/cursos/$id',
+  getParentRoute: () => PublicRoute,
+} as any)
+const PublicConveniosSlugRoute = PublicConveniosSlugRouteImport.update({
+  id: '/convenios/$slug',
+  path: '/convenios/$slug',
   getParentRoute: () => PublicRoute,
 } as any)
 const AdminAdminUsuariosRoute = AdminAdminUsuariosRouteImport.update({
@@ -189,6 +204,12 @@ const AdminAdminCotacoesIndexRoute = AdminAdminCotacoesIndexRouteImport.update({
   path: '/admin/cotacoes/',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminAdminConveniosIndexRoute =
+  AdminAdminConveniosIndexRouteImport.update({
+    id: '/admin/convenios/',
+    path: '/admin/convenios/',
+    getParentRoute: () => AdminRoute,
+  } as any)
 const AdminAdminAuditoriaIndexRoute =
   AdminAdminAuditoriaIndexRouteImport.update({
     id: '/admin/auditoria/',
@@ -216,6 +237,16 @@ const AdminAdminCursosNovoRoute = AdminAdminCursosNovoRouteImport.update({
   path: '/novo',
   getParentRoute: () => AdminAdminCursosRoute,
 } as any)
+const AdminAdminConveniosNovoRoute = AdminAdminConveniosNovoRouteImport.update({
+  id: '/admin/convenios/novo',
+  path: '/admin/convenios/novo',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminAdminConveniosIdRoute = AdminAdminConveniosIdRouteImport.update({
+  id: '/admin/convenios/$id',
+  path: '/admin/convenios/$id',
+  getParentRoute: () => AdminRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof PublicIndexRoute
@@ -234,16 +265,21 @@ export interface FileRoutesByFullPath {
   '/admin/salas': typeof AdminAdminSalasRouteWithChildren
   '/admin/unimed': typeof AdminAdminUnimedRoute
   '/admin/usuarios': typeof AdminAdminUsuariosRouteWithChildren
+  '/convenios/$slug': typeof PublicConveniosSlugRoute
   '/cursos/$id': typeof PublicCursosIdRoute
   '/noticias/$id': typeof PublicNoticiasIdRoute
   '/admin/': typeof AdminAdminIndexRoute
+  '/convenios/': typeof PublicConveniosIndexRoute
   '/cursos/': typeof PublicCursosIndexRoute
   '/noticias/': typeof PublicNoticiasIndexRoute
+  '/admin/convenios/$id': typeof AdminAdminConveniosIdRoute
+  '/admin/convenios/novo': typeof AdminAdminConveniosNovoRoute
   '/admin/cursos/novo': typeof AdminAdminCursosNovoRoute
   '/admin/usuarios/$id': typeof AdminAdminUsuariosIdRoute
   '/admin/usuarios/novo': typeof AdminAdminUsuariosNovoRoute
   '/admin/administradores/': typeof AdminAdminAdministradoresIndexRoute
   '/admin/auditoria/': typeof AdminAdminAuditoriaIndexRoute
+  '/admin/convenios/': typeof AdminAdminConveniosIndexRoute
   '/admin/cotacoes/': typeof AdminAdminCotacoesIndexRoute
   '/admin/cursos/': typeof AdminAdminCursosIndexRoute
   '/admin/financeiro/': typeof AdminAdminFinanceiroIndexRoute
@@ -263,16 +299,21 @@ export interface FileRoutesByTo {
   '/admin/mensagens': typeof AdminAdminMensagensRoute
   '/admin/minha-conta': typeof AdminAdminMinhaContaRoute
   '/admin/unimed': typeof AdminAdminUnimedRoute
+  '/convenios/$slug': typeof PublicConveniosSlugRoute
   '/cursos/$id': typeof PublicCursosIdRoute
   '/noticias/$id': typeof PublicNoticiasIdRoute
   '/admin': typeof AdminAdminIndexRoute
+  '/convenios': typeof PublicConveniosIndexRoute
   '/cursos': typeof PublicCursosIndexRoute
   '/noticias': typeof PublicNoticiasIndexRoute
+  '/admin/convenios/$id': typeof AdminAdminConveniosIdRoute
+  '/admin/convenios/novo': typeof AdminAdminConveniosNovoRoute
   '/admin/cursos/novo': typeof AdminAdminCursosNovoRoute
   '/admin/usuarios/$id': typeof AdminAdminUsuariosIdRoute
   '/admin/usuarios/novo': typeof AdminAdminUsuariosNovoRoute
   '/admin/administradores': typeof AdminAdminAdministradoresIndexRoute
   '/admin/auditoria': typeof AdminAdminAuditoriaIndexRoute
+  '/admin/convenios': typeof AdminAdminConveniosIndexRoute
   '/admin/cotacoes': typeof AdminAdminCotacoesIndexRoute
   '/admin/cursos': typeof AdminAdminCursosIndexRoute
   '/admin/financeiro': typeof AdminAdminFinanceiroIndexRoute
@@ -300,16 +341,21 @@ export interface FileRoutesById {
   '/_admin/admin/salas': typeof AdminAdminSalasRouteWithChildren
   '/_admin/admin/unimed': typeof AdminAdminUnimedRoute
   '/_admin/admin/usuarios': typeof AdminAdminUsuariosRouteWithChildren
+  '/_public/convenios/$slug': typeof PublicConveniosSlugRoute
   '/_public/cursos/$id': typeof PublicCursosIdRoute
   '/_public/noticias/$id': typeof PublicNoticiasIdRoute
   '/_admin/admin/': typeof AdminAdminIndexRoute
+  '/_public/convenios/': typeof PublicConveniosIndexRoute
   '/_public/cursos/': typeof PublicCursosIndexRoute
   '/_public/noticias/': typeof PublicNoticiasIndexRoute
+  '/_admin/admin/convenios/$id': typeof AdminAdminConveniosIdRoute
+  '/_admin/admin/convenios/novo': typeof AdminAdminConveniosNovoRoute
   '/_admin/admin/cursos/novo': typeof AdminAdminCursosNovoRoute
   '/_admin/admin/usuarios/$id': typeof AdminAdminUsuariosIdRoute
   '/_admin/admin/usuarios/novo': typeof AdminAdminUsuariosNovoRoute
   '/_admin/admin/administradores/': typeof AdminAdminAdministradoresIndexRoute
   '/_admin/admin/auditoria/': typeof AdminAdminAuditoriaIndexRoute
+  '/_admin/admin/convenios/': typeof AdminAdminConveniosIndexRoute
   '/_admin/admin/cotacoes/': typeof AdminAdminCotacoesIndexRoute
   '/_admin/admin/cursos/': typeof AdminAdminCursosIndexRoute
   '/_admin/admin/financeiro/': typeof AdminAdminFinanceiroIndexRoute
@@ -336,16 +382,21 @@ export interface FileRouteTypes {
     | '/admin/salas'
     | '/admin/unimed'
     | '/admin/usuarios'
+    | '/convenios/$slug'
     | '/cursos/$id'
     | '/noticias/$id'
     | '/admin/'
+    | '/convenios/'
     | '/cursos/'
     | '/noticias/'
+    | '/admin/convenios/$id'
+    | '/admin/convenios/novo'
     | '/admin/cursos/novo'
     | '/admin/usuarios/$id'
     | '/admin/usuarios/novo'
     | '/admin/administradores/'
     | '/admin/auditoria/'
+    | '/admin/convenios/'
     | '/admin/cotacoes/'
     | '/admin/cursos/'
     | '/admin/financeiro/'
@@ -365,16 +416,21 @@ export interface FileRouteTypes {
     | '/admin/mensagens'
     | '/admin/minha-conta'
     | '/admin/unimed'
+    | '/convenios/$slug'
     | '/cursos/$id'
     | '/noticias/$id'
     | '/admin'
+    | '/convenios'
     | '/cursos'
     | '/noticias'
+    | '/admin/convenios/$id'
+    | '/admin/convenios/novo'
     | '/admin/cursos/novo'
     | '/admin/usuarios/$id'
     | '/admin/usuarios/novo'
     | '/admin/administradores'
     | '/admin/auditoria'
+    | '/admin/convenios'
     | '/admin/cotacoes'
     | '/admin/cursos'
     | '/admin/financeiro'
@@ -401,16 +457,21 @@ export interface FileRouteTypes {
     | '/_admin/admin/salas'
     | '/_admin/admin/unimed'
     | '/_admin/admin/usuarios'
+    | '/_public/convenios/$slug'
     | '/_public/cursos/$id'
     | '/_public/noticias/$id'
     | '/_admin/admin/'
+    | '/_public/convenios/'
     | '/_public/cursos/'
     | '/_public/noticias/'
+    | '/_admin/admin/convenios/$id'
+    | '/_admin/admin/convenios/novo'
     | '/_admin/admin/cursos/novo'
     | '/_admin/admin/usuarios/$id'
     | '/_admin/admin/usuarios/novo'
     | '/_admin/admin/administradores/'
     | '/_admin/admin/auditoria/'
+    | '/_admin/admin/convenios/'
     | '/_admin/admin/cotacoes/'
     | '/_admin/admin/cursos/'
     | '/_admin/admin/financeiro/'
@@ -491,6 +552,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PublicCursosIndexRouteImport
       parentRoute: typeof PublicRoute
     }
+    '/_public/convenios/': {
+      id: '/_public/convenios/'
+      path: '/convenios'
+      fullPath: '/convenios/'
+      preLoaderRoute: typeof PublicConveniosIndexRouteImport
+      parentRoute: typeof PublicRoute
+    }
     '/_admin/admin/': {
       id: '/_admin/admin/'
       path: '/admin'
@@ -510,6 +578,13 @@ declare module '@tanstack/react-router' {
       path: '/cursos/$id'
       fullPath: '/cursos/$id'
       preLoaderRoute: typeof PublicCursosIdRouteImport
+      parentRoute: typeof PublicRoute
+    }
+    '/_public/convenios/$slug': {
+      id: '/_public/convenios/$slug'
+      path: '/convenios/$slug'
+      fullPath: '/convenios/$slug'
+      preLoaderRoute: typeof PublicConveniosSlugRouteImport
       parentRoute: typeof PublicRoute
     }
     '/_admin/admin/usuarios': {
@@ -631,6 +706,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminAdminCotacoesIndexRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/_admin/admin/convenios/': {
+      id: '/_admin/admin/convenios/'
+      path: '/admin/convenios'
+      fullPath: '/admin/convenios/'
+      preLoaderRoute: typeof AdminAdminConveniosIndexRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/_admin/admin/auditoria/': {
       id: '/_admin/admin/auditoria/'
       path: '/admin/auditoria'
@@ -665,6 +747,20 @@ declare module '@tanstack/react-router' {
       fullPath: '/admin/cursos/novo'
       preLoaderRoute: typeof AdminAdminCursosNovoRouteImport
       parentRoute: typeof AdminAdminCursosRoute
+    }
+    '/_admin/admin/convenios/novo': {
+      id: '/_admin/admin/convenios/novo'
+      path: '/admin/convenios/novo'
+      fullPath: '/admin/convenios/novo'
+      preLoaderRoute: typeof AdminAdminConveniosNovoRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/_admin/admin/convenios/$id': {
+      id: '/_admin/admin/convenios/$id'
+      path: '/admin/convenios/$id'
+      fullPath: '/admin/convenios/$id'
+      preLoaderRoute: typeof AdminAdminConveniosIdRouteImport
+      parentRoute: typeof AdminRoute
     }
   }
 }
@@ -747,7 +843,10 @@ interface AdminRouteChildren {
   AdminAdminUnimedRoute: typeof AdminAdminUnimedRoute
   AdminAdminUsuariosRoute: typeof AdminAdminUsuariosRouteWithChildren
   AdminAdminIndexRoute: typeof AdminAdminIndexRoute
+  AdminAdminConveniosIdRoute: typeof AdminAdminConveniosIdRoute
+  AdminAdminConveniosNovoRoute: typeof AdminAdminConveniosNovoRoute
   AdminAdminAuditoriaIndexRoute: typeof AdminAdminAuditoriaIndexRoute
+  AdminAdminConveniosIndexRoute: typeof AdminAdminConveniosIndexRoute
   AdminAdminCotacoesIndexRoute: typeof AdminAdminCotacoesIndexRoute
   AdminAdminFinanceiroIndexRoute: typeof AdminAdminFinanceiroIndexRoute
 }
@@ -765,7 +864,10 @@ const AdminRouteChildren: AdminRouteChildren = {
   AdminAdminUnimedRoute: AdminAdminUnimedRoute,
   AdminAdminUsuariosRoute: AdminAdminUsuariosRouteWithChildren,
   AdminAdminIndexRoute: AdminAdminIndexRoute,
+  AdminAdminConveniosIdRoute: AdminAdminConveniosIdRoute,
+  AdminAdminConveniosNovoRoute: AdminAdminConveniosNovoRoute,
   AdminAdminAuditoriaIndexRoute: AdminAdminAuditoriaIndexRoute,
+  AdminAdminConveniosIndexRoute: AdminAdminConveniosIndexRoute,
   AdminAdminCotacoesIndexRoute: AdminAdminCotacoesIndexRoute,
   AdminAdminFinanceiroIndexRoute: AdminAdminFinanceiroIndexRoute,
 }
@@ -776,8 +878,10 @@ interface PublicRouteChildren {
   PublicContatoRoute: typeof PublicContatoRoute
   PublicSobreRoute: typeof PublicSobreRoute
   PublicIndexRoute: typeof PublicIndexRoute
+  PublicConveniosSlugRoute: typeof PublicConveniosSlugRoute
   PublicCursosIdRoute: typeof PublicCursosIdRoute
   PublicNoticiasIdRoute: typeof PublicNoticiasIdRoute
+  PublicConveniosIndexRoute: typeof PublicConveniosIndexRoute
   PublicCursosIndexRoute: typeof PublicCursosIndexRoute
   PublicNoticiasIndexRoute: typeof PublicNoticiasIndexRoute
 }
@@ -786,8 +890,10 @@ const PublicRouteChildren: PublicRouteChildren = {
   PublicContatoRoute: PublicContatoRoute,
   PublicSobreRoute: PublicSobreRoute,
   PublicIndexRoute: PublicIndexRoute,
+  PublicConveniosSlugRoute: PublicConveniosSlugRoute,
   PublicCursosIdRoute: PublicCursosIdRoute,
   PublicNoticiasIdRoute: PublicNoticiasIdRoute,
+  PublicConveniosIndexRoute: PublicConveniosIndexRoute,
   PublicCursosIndexRoute: PublicCursosIndexRoute,
   PublicNoticiasIndexRoute: PublicNoticiasIndexRoute,
 }
