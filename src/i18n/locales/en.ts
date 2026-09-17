@@ -11,7 +11,6 @@ const en = {
     quotes: 'Market quotes',
   },
   footer: {
-    tagline: 'Representing rural producers and workers in Terra Roxa and the surrounding region.',
     contact: 'Contact',
     socialMedia: 'Social media',
     quickLinks: 'Quick links',

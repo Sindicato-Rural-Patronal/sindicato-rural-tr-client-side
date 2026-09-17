@@ -43,7 +43,6 @@ export function PublicFooter() {
               </div>
               <p className="font-semibold leading-tight">Sindicato Rural<br />de Terra Roxa</p>
             </div>
-            <p className="max-w-xs text-sm text-brand-foreground/80">{t('footer.tagline')}</p>
             {socials.length > 0 && (
               <div>
                 <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-brand-foreground/70">{t('footer.socialMedia')}</h4>
