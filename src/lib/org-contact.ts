@@ -4,9 +4,9 @@
  * aparecem enquanto carrega ou se um campo estiver vazio.
  */
 export const ORG_CONTACT = {
-  phone: '(44) 3645-1200',
+  phone: '(44) 3645-2199',
   email: 'contato@sindicatoruraltr.com.br',
-  street: 'Rua Sete de Setembro, 1847',
+  street: 'Rua José Tondato, 80',
   district: 'Centro',
   city: 'Terra Roxa',
   state: 'PR',
@@ -15,7 +15,7 @@ export const ORG_CONTACT = {
   mapQuery: 'Sindicato Rural de Terra Roxa PR Brasil',
 } as const
 
-/** "(44) 3645-1200" → "4436451200" para href tel:. */
+/** "(44) 3645-2199" → "4436452199" para href tel:. */
 export function phoneDigits(phone: string): string {
   return phone.replace(/\D/g, '')
 }

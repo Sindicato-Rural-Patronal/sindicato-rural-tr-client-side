@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { MEMBER_TYPE_OPTIONS, memberTypeLabel } from '@/lib/member-types'
 import { roomNameOptions } from '@/lib/room-names'
-import { currentQuotePeriod, quoteProductLabel, trendOf } from '@/lib/quote-utils'
+import { QUOTE_UNIT_OPTIONS, currentQuotePeriod, quoteProductLabel, quoteUnitLong, trendOf } from '@/lib/quote-utils'
 import { companyDisplayName } from '@/hooks/useCompanies'
 
 describe('tipo de membro', () => {
@@ -43,6 +43,13 @@ describe('cotações', () => {
     expect(trendOf('-0,4%')).toBe('down')
     expect(trendOf('0,0%')).toBe('neutral')
     expect(trendOf(null)).toBe('neutral')
+  })
+
+  it('unidades iguais às do backend, com nome por extenso', () => {
+    expect(QUOTE_UNIT_OPTIONS.map(o => o.value)).toEqual(['sc 60kg', 'sc 50kg', 'sc 40kg', 't', 'kg', '@', ''])
+    expect(quoteUnitLong('t')).toBe('tonelada')
+    expect(quoteUnitLong('cx')).toBe('cx')
+    expect(quoteUnitLong(null)).toBe('')
   })
 })
 

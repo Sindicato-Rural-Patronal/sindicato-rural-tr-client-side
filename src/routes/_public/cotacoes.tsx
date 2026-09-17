@@ -6,7 +6,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { useQuoteHistory, type QuoteHistorySeries } from '@/hooks/useMarketQuotes'
 import { usePublicSiteSettings } from '@/hooks/useSiteSettings'
 import { useSeo } from '@/hooks/useSeo'
-import { QUOTE_PERIOD_LABEL, quoteProductLabel } from '@/lib/quote-utils'
+import { QUOTE_PERIOD_LABEL, quoteProductLabel, quoteUnitLong } from '@/lib/quote-utils'
 import { cn } from '@/lib/utils'
 import { centsToBRL } from '@/utils/masks'
 
@@ -130,7 +130,7 @@ function ProductCard({ series, domain, view }: { series: QuoteHistorySeries; dom
       <header className="flex flex-wrap items-start justify-between gap-2">
         <div>
           <h2 className="text-lg font-semibold text-foreground">{name}</h2>
-          <p className="text-xs text-muted-foreground">{series.unit ? `R$ por ${series.unit}` : 'R$'}</p>
+          <p className="text-xs text-muted-foreground">{series.unit ? `R$ por ${quoteUnitLong(series.unit)}` : 'R$'}</p>
         </div>
         <div className="text-right">
           <p className="text-xl font-bold text-foreground">{centsToBRL(last.priceCents)}</p>

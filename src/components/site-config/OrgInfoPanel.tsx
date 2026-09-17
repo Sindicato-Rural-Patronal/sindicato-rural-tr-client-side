@@ -90,7 +90,7 @@ function OrgInfoForm({ initial, canEdit }: { initial: SiteSettings; canEdit: boo
           </Field>
           <Field id="org-street" label="Rua e número" className="md:col-span-4">
             <Input id="org-street" className="h-9" disabled={d} value={form.orgStreet}
-              onChange={e => set('orgStreet', e.target.value)} placeholder="Rua Sete de Setembro, 1847" />
+              onChange={e => set('orgStreet', e.target.value)} placeholder="Rua José Tondato, 80" />
           </Field>
           <Field id="org-district" label="Bairro" className="md:col-span-2">
             <Input id="org-district" className="h-9" disabled={d} value={form.orgDistrict}

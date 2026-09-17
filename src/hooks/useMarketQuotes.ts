@@ -57,6 +57,20 @@ export function useSaveDailyQuotes() {
   })
 }
 
+// Troca a unidade do produto (null = sem unidade). Atualiza a lista do painel e a faixa da home.
+export function useUpdateQuoteUnit() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, unit }: { id: string; unit: string | null }) =>
+      apiFetch(`/admin/market-quotes/${id}`, { method: 'PATCH', body: JSON.stringify({ unit }) })
+        .then(r => r.json() as Promise<MarketQuote>),
+    onSuccess: quote => {
+      qc.setQueryData<MarketQuote[]>(['admin', 'market-quotes'], list => list?.map(q => (q.id === quote.id ? quote : q)))
+      qc.invalidateQueries({ queryKey: ['market-quotes'] })
+    },
+  })
+}
+
 export type QuoteHistoryPoint = {
   /** "YYYY-MM-DD" (data do lançamento, sem fuso). */
   date: string

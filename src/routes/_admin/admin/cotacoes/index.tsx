@@ -2,18 +2,19 @@ import { createFileRoute, Link } from '@tanstack/react-router'
 import { useState } from 'react'
 import { toast } from 'sonner'
 import { CalendarDays, ExternalLink, Loader2, Minus, Save, Sun, Sunset, TrendingDown, TrendingUp } from 'lucide-react'
-import { useAdminMarketQuotes, useSaveDailyQuotes, type MarketQuote } from '@/hooks/useMarketQuotes'
+import { useAdminMarketQuotes, useSaveDailyQuotes, useUpdateQuoteUnit, type MarketQuote } from '@/hooks/useMarketQuotes'
 import { usePublicSiteSettings, useUpdateQuotesSource } from '@/hooks/useSiteSettings'
 import { usePermissions } from '@/hooks/usePermissions'
 import { useUnsavedGuard } from '@/hooks/use-unsaved-guard'
 import { apiErrorMessage } from '@/lib/api-error-message'
 import {
-  QUOTE_PERIOD_LABEL, currentQuotePeriod, quoteProductLabel, trendOf, type QuotePeriod,
+  QUOTE_PERIOD_LABEL, QUOTE_UNIT_OPTIONS, currentQuotePeriod, quoteProductLabel, trendOf, type QuotePeriod,
 } from '@/lib/quote-utils'
 import { formatDateFromString } from '@/utils/format-data-from-string'
 import { maskMoney, moneyToCents } from '@/utils/masks'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { NativeSelect } from '@/components/ui/native-select'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { LoadErrorBanner } from '@/components/LoadErrorBanner'
@@ -119,6 +120,7 @@ function RouteComponent() {
     enabled: !permLoading && can('READ_MARKET_QUOTE'),
   })
   const save = useSaveDailyQuotes()
+  const updateUnit = useUpdateQuoteUnit()
   const canEdit = can('UPDATE_MARKET_QUOTE')
 
   const [period, setPeriod] = useState<QuotePeriod>(() => currentQuotePeriod())
@@ -144,6 +146,16 @@ function RouteComponent() {
       toast.success(`${filled.length === 1 ? 'Cotação lançada' : `${filled.length} cotações lançadas`} (${QUOTE_PERIOD_LABEL[period].toLowerCase()}).`)
     } catch (err) {
       toast.error(apiErrorMessage(err, 'Erro ao lançar as cotações.'))
+    }
+  }
+
+  async function handleUnit(q: MarketQuote, value: string) {
+    try {
+      await updateUnit.mutateAsync({ id: q.id, unit: value || null })
+      const label = QUOTE_UNIT_OPTIONS.find(o => o.value === value)?.label ?? value
+      toast.success(`Unidade de ${quoteProductLabel(q.label)}: ${label.toLowerCase()}.`)
+    } catch (err) {
+      toast.error(apiErrorMessage(err, 'Erro ao trocar a unidade.'))
     }
   }
 
@@ -198,7 +210,7 @@ function RouteComponent() {
             <div className="hidden grid-cols-[1fr_1.3fr_1.2fr] gap-4 border-y border-border bg-muted/40 px-6 py-2 text-xs font-medium text-muted-foreground sm:grid">
               <span>Produto</span>
               <span>Último lançamento</span>
-              <span>Novo preço</span>
+              <span>Novo preço e unidade</span>
             </div>
 
             {isLoading && Array.from({ length: 5 }).map((_, i) => (
@@ -223,7 +235,16 @@ function RouteComponent() {
                       value={prices[q.id] ?? ''}
                       onChange={e => setPrices(p => ({ ...p, [q.id]: maskMoney(e.target.value) }))}
                     />
-                    <span className="w-14 shrink-0 text-xs text-muted-foreground">{q.unit && `/${q.unit}`}</span>
+                    <NativeSelect
+                      aria-label={`Unidade de ${quoteProductLabel(q.label)}`}
+                      className="h-9 w-36 shrink-0 px-2"
+                      disabled={!canEdit || updateUnit.isPending}
+                      value={q.unit ?? ''}
+                      onChange={e => handleUnit(q, e.target.value)}
+                    >
+                      {QUOTE_UNIT_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                      {q.unit && !QUOTE_UNIT_OPTIONS.some(o => o.value === q.unit) && <option value={q.unit}>{q.unit}</option>}
+                    </NativeSelect>
                   </div>
                 </div>
               )
