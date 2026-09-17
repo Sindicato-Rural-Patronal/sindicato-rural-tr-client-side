@@ -46,7 +46,7 @@ export function GalleryAlbumDialog({ open, album, saving, onClose, onSubmit }: {
           <DialogHeader>
             <DialogTitle>{album ? 'Editar galeria' : 'Nova galeria'}</DialogTitle>
             <DialogDescription>
-              Aparece na página inicial assim que tiver pelo menos uma foto e estiver visível.
+              Aparece na página Sobre assim que tiver pelo menos uma foto e estiver visível.
             </DialogDescription>
           </DialogHeader>
 
@@ -67,7 +67,7 @@ export function GalleryAlbumDialog({ open, album, saving, onClose, onSubmit }: {
           </div>
           <label className="flex w-fit cursor-pointer items-center gap-2 text-sm">
             <input type="checkbox" className="accent-primary" checked={isActive} onChange={e => setIsActive(e.target.checked)} />
-            Visível na página inicial
+            Visível no site
           </label>
 
           {error && <p className="text-sm text-destructive" role="alert">{error}</p>}

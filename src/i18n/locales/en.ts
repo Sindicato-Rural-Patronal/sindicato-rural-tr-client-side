@@ -41,7 +41,6 @@ const en = {
     previous: 'Previous photo',
     next: 'Next photo',
     learnMore: 'Learn more',
-    seeAll: 'See all photos',
   },
   aboutPage: {
     title: 'About the Union',

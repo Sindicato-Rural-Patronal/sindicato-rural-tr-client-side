@@ -118,8 +118,8 @@ export function GalleryAlbumCard({
             {!album.isActive
               ? <Badge variant="outline" className="gap-1"><EyeOff className="size-3" /> Oculta</Badge>
               : photos.length === 0
-                ? <Badge variant="outline">Sem fotos: não aparece na home</Badge>
-                : <Badge className="gap-1"><Eye className="size-3" /> Na home</Badge>}
+                ? <Badge variant="outline">Sem fotos: não aparece no site</Badge>
+                : <Badge className="gap-1"><Eye className="size-3" /> No site</Badge>}
           </div>
           {album.description && <p className="mt-1 text-sm text-muted-foreground">{album.description}</p>}
           {album.linkUrl && (
@@ -137,7 +137,7 @@ export function GalleryAlbumCard({
               aria-label={`Descer ${album.title}`} title="Descer"><ArrowDown className="size-4" /></Button>
             <Button size="sm" variant="ghost" className="h-8 px-2" onClick={onToggleActive}
               aria-label={album.isActive ? `Ocultar ${album.title}` : `Mostrar ${album.title}`}
-              title={album.isActive ? 'Ocultar da home' : 'Mostrar na home'}>
+              title={album.isActive ? 'Ocultar do site' : 'Mostrar no site'}>
               {album.isActive ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
             </Button>
             <Button size="sm" variant="ghost" className="h-8 px-2" onClick={onEdit}
@@ -227,7 +227,7 @@ export function GalleryAlbumCard({
         open={!!deleteTarget}
         onOpenChange={o => { if (!o) setDeleteTarget(null) }}
         title="Excluir foto"
-        description="A foto sai da galeria e da página inicial. Não dá para desfazer."
+        description="A foto sai da galeria e da página Sobre. Não dá para desfazer."
         onConfirm={confirmDeletePhoto}
         pending={deletePhoto.isPending}
       />

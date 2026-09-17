@@ -14,7 +14,7 @@ import { EmptyState } from '@/components/EmptyState'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 
-// Galerias de fotos da página inicial (História do Sindicato, FAEP, Patrulha Rural…).
+// Galerias de fotos da página Sobre (História do Sindicato, FAEP, Patrulha Rural…).
 export function GalleriesPanel({ canCreate, canEdit, canDelete }: {
   canCreate: boolean
   canEdit: boolean
@@ -50,7 +50,7 @@ export function GalleriesPanel({ canCreate, canEdit, canDelete }: {
   async function toggleActive(album: GalleryAlbum) {
     try {
       await update.mutateAsync({ id: album.id, body: { isActive: !album.isActive } })
-      toast.success(album.isActive ? 'Galeria ocultada da home.' : 'Galeria visível na home.')
+      toast.success(album.isActive ? 'Galeria ocultada do site.' : 'Galeria visível no site.')
     } catch (e) {
       toast.error(apiErrorMessage(e, 'Erro ao alterar a visibilidade.'))
     }
@@ -82,7 +82,7 @@ export function GalleriesPanel({ canCreate, canEdit, canDelete }: {
     <div className="flex flex-col gap-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-sm text-muted-foreground">
-          Seção "O Sindicato em imagens" da página inicial, na ordem abaixo. Galeria sem foto ou oculta não aparece.
+          Seção "O Sindicato em imagens" da página Sobre, na ordem abaixo. Galeria sem foto ou oculta não aparece.
         </p>
         {canCreate && (
           <Button className="shrink-0" onClick={() => setDialog('new')}>

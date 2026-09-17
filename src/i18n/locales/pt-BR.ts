@@ -41,7 +41,6 @@ const ptBR = {
     previous: 'Foto anterior',
     next: 'Próxima foto',
     learnMore: 'Saiba mais',
-    seeAll: 'Ver todas as fotos',
   },
   aboutPage: {
     title: 'Sobre o Sindicato',

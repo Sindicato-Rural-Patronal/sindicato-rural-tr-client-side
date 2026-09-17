@@ -5,7 +5,7 @@ import type { GalleryAlbum } from '@/hooks/useGalleries'
 import { safeUrl } from '@/utils/safe-url'
 
 // Fotos de uma galeria em tela cheia: setas (e ← →), legenda, contador,
-// miniaturas e o link "Saiba mais" da galeria. Usado na home e no Sobre.
+// miniaturas e o link "Saiba mais" da galeria. Usado na página Sobre.
 export function GalleryLightbox({ album, index, onIndex, onClose }: {
   album: GalleryAlbum
   index: number

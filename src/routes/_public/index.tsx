@@ -3,7 +3,6 @@ import { safeUrl } from '@/utils/safe-url'
 import { useRef, useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import Autoplay from 'embla-carousel-autoplay'
-import { HomeGallerySection } from '@/components/home-gallery-section'
 import { HeroSection } from '@/components/home-hero-section'
 import { CotacoesSection } from '@/components/home-cotacoes-section'
 import { CoursesSection } from '@/components/home-courses-section'
@@ -129,7 +128,6 @@ function HomePage() {
   return (
     <div className="bg-background">
       <HeroSection />
-      <HomeGallerySection />
       <CoursesSection autoplayPlugin={autoplayPlugin} />
       <CotacoesSection />
       <HomeNewsSection />

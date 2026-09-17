@@ -84,8 +84,7 @@ src/
 │   ├── adminSideBar.tsx             # Sidebar admin — usa logo-icon.png; link perfil via userDataId
 │   ├── nav-user.tsx                 # Dropdown do usuário (logout)
 │   ├── home-hero-section.tsx        # Banner hero
-│   ├── home-gallery-section.tsx     # Galerias de fotos (no lugar dos números); link "Ver todas" → /sobre#galeria
-│   ├── GalleryLightbox.tsx          # Fotos de uma galeria em tela cheia (home e Sobre)
+│   ├── GalleryLightbox.tsx          # Fotos de uma galeria em tela cheia (página Sobre)
 │   ├── home-cotacoes-section.tsx    # Faixa de cotações (preço, unidade, dia/período, fonte, link histórico)
 │   ├── cotacoes/QuoteHistoryChart.tsx # Gráfico SVG de um produto (linha, crosshair/tooltip, setas do teclado)
 │   ├── galerias/                    # Admin: GalleryAlbumCard (fotos, legenda, ordem), GalleryAlbumDialog
@@ -345,7 +344,7 @@ mapCourses(list: ApiCourse[]): Course[]
 - `PUT /api/admin/market-quotes/source` — `{ source }` (UPDATE_MARKET_QUOTE); vazio esconde a fonte
 - `PATCH /api/admin/market-quotes/:id` — `{ unit }` (sc 60kg, sc 50kg, sc 40kg, t, kg, @ ou null) (UPDATE_MARKET_QUOTE)
 
-**Galerias da home** — permissões `*_BANNER`
+**Galerias (página Sobre)** — permissões `*_BANNER`
 - `GET /api/galleries` — ativas com pelo menos uma foto (público)
 - `GET /api/admin/galleries` · `POST /api/admin/galleries` · `PATCH /api/admin/galleries/:id` · `DELETE /api/admin/galleries/:id`
 - `PATCH /api/admin/galleries/reorder` `{ order: id[] }`
@@ -386,7 +385,7 @@ mapCourses(list: ApiCourse[]): Course[]
 - **Ajustes de cadastro (set/2026)**: tipo de membro é select (Aluno, Produtor rural, Trabalhador rural assalariado/autônomo; o backend recusa valor fora da lista); CAD/PRO até 5; salas com nome de lista fixa; empresa com razão social (`name`), nome fantasia (`tradeName`, exibido quando houver — `companyDisplayName`) e endereço da sede no próprio cadastro (CEP com busca).
 - **Cotações**: produtos fixos; o admin só lança preço (centavos) e período manhã/tarde; a data é a do dia; a unidade de cada produto é escolhida na mesma tela (saca 60/50/40 kg, tonelada, quilo, arroba ou sem unidade). Home mostra preço + unidade + dia/período + fonte (editável no admin de cotações) e linka para `/cotacoes` (histórico em gráfico/tabela).
 - **Inscrições de curso**: selos "Associado" (situação ativa e validade em dia), "Parceira" (vínculo com empresa parceira ativa), cargo na diretoria e cargo de contato público; o CSV traz as mesmas colunas.
-- **Home**: os números (associados, cursos realizados, anos, alunos) saíram; no lugar, galerias de fotos (História do Sindicato, FAEP, Patrulha Rural já criadas, vazias até receber fotos).
+- **Home**: os números (associados, cursos realizados, anos, alunos) saíram. As galerias de fotos (História do Sindicato, FAEP, Patrulha Rural) ficam só na página Sobre (#galeria) — o usuário pediu para NÃO ter seção de galerias na home.
 - **Configurações do site** (`/admin/configuracoes`): centraliza o que é do site público — Dados do sindicato (telefone, e-mail, endereço, horário, busca do mapa e texto do Sobre; usados no rodapé, Contato, Sobre e convênios via `useOrgInfo`), Redes sociais, Galerias, Parceiros da home (adicionar empresa, logo, link, ordem, tirar) e Contatos públicos ("Nossa Equipe": qualquer pessoa do cadastro, com cargo e ordem). Permissões: Dados/Redes/Galerias `*_BANNER`; Parceiros e Contatos `*_USER`. A empresa não tem mais aba Parceria e o diálogo de admin não marca mais contato público — ambos apontam para cá.
 - **Convênios**: dropdown "Convênios" no header público lista os convênios ativos; cada um tem página em `/convenios/$slug` (tabela de valores por faixa, documentos para adesão, destaques e texto). Conteúdo 100% editável em `/admin/convenios` (`ConvenioEditor` + `ConvenioPageView` compartilhado com a pré-visualização). Hooks em `useConvenios.ts`. Unimed semeado com os dados da página antiga (`ruraltr.com.br/pgs/print_unimed.php`). Regras com `UPDATE_BANNER` receberam as permissões `*_CONVENIO` na migration.
 - **Financeiro** (admin): lançamentos de caixa (valor em centavos Int), categorias, dashboard, comprovantes (anexo em Bytes no banco), export CSV, multi-caixa e transferência entre caixas, relatório PDF do período. Gated por `READ/CREATE/UPDATE/DELETE_FINANCE`. Filtros dos lançamentos vivem na URL (search params).

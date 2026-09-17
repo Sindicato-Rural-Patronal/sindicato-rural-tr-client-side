@@ -1,8 +1,8 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { apiFetch, apiUpload, API_BASE } from '@/lib/api'
 
-// Galerias de imagens da home (História do Sindicato, FAEP, Patrulha Rural…).
-// Conteúdo da home → mesmas permissões dos banners (*_BANNER).
+// Galerias de imagens da página Sobre (História do Sindicato, FAEP, Patrulha Rural…).
+// Conteúdo do site → mesmas permissões dos banners (*_BANNER).
 
 export type GalleryPhoto = {
   id: string

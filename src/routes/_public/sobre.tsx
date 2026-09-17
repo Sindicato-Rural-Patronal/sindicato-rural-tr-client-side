@@ -86,7 +86,7 @@ function AboutPage() {
   )
 }
 
-// Todas as fotos de todas as galerias ativas. A home linka para cá com #galeria.
+// Todas as fotos de todas as galerias ativas (âncora #galeria).
 function AboutGallery() {
   const { t } = useTranslation()
   const { data: albums = [], isLoading } = usePublicGalleries()
