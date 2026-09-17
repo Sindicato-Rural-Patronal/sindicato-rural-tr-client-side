@@ -80,7 +80,7 @@ src/
 │   │                                #   PersonCompanies; PropertiesManager
 │   │                                #   (propriedades/endereços, compartilhado por pessoa e empresa)
 │   ├── PublicHeader.tsx             # Nav pública (sticky; convênios como itens próprios; menu mobile abaixo de lg) — logo-full.png
-│   ├── public-footer.tsx            # Footer
+│   ├── public-footer.tsx            # Footer: 4 colunas (marca+redes, links, contato via useOrgInfo, chamada)
 │   ├── adminSideBar.tsx             # Sidebar admin — usa logo-icon.png; link perfil via userDataId
 │   ├── nav-user.tsx                 # Dropdown do usuário (logout)
 │   ├── home-hero-section.tsx        # Banner hero

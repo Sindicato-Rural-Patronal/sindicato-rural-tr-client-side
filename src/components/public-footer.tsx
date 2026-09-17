@@ -1,12 +1,16 @@
 import { Link } from '@tanstack/react-router'
-import { Phone, Mail, MapPin } from 'lucide-react'
+import { Clock, Phone, Mail, MapPin } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { FaFacebook, FaInstagram, FaWhatsapp } from 'react-icons/fa'
 import { useTranslation } from 'react-i18next'
 import { LanguageToggle } from '@/components/LanguageToggle'
 import { useOrgInfo, usePublicSiteSettings } from '@/hooks/useSiteSettings'
+import { phoneDigits } from '@/lib/org-contact'
 import { safeUrl } from '@/utils/safe-url'
 
+// Quatro colunas sempre preenchidas (marca + redes, links, contato, chamada),
+// distribuídas na largura toda; as redes ficam sob a marca, então a grade não
+// fica com buraco quando não há rede social cadastrada.
 export function PublicFooter() {
   const { t } = useTranslation()
   const { data: social } = usePublicSiteSettings()
@@ -17,101 +21,113 @@ export function PublicFooter() {
     { label: 'WhatsApp', url: social?.whatsapp, Icon: FaWhatsapp },
   ].filter(s => !!s.url && s.url.trim() !== '')
 
+  const links = [
+    { to: '/', label: t('nav.home') },
+    { to: '/cursos', label: t('nav.courses') },
+    { to: '/noticias', label: t('nav.news') },
+    { to: '/convenios', label: t('nav.convenios') },
+    { to: '/cotacoes', label: t('nav.quotes') },
+    { to: '/sobre', label: t('nav.about') },
+    { to: '/contato', label: t('nav.contact') },
+  ]
+
   return (
     <footer className="border-t bg-brand text-brand-foreground">
       <div className="container mx-auto px-4 py-12">
-        <div className="grid gap-8 md:grid-cols-4">
-          {/* Logo + contact */}
+        <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-[1.3fr_0.8fr_1.2fr_1fr] lg:gap-12">
+          {/* Marca + redes */}
           <div className="space-y-4">
             <div className="flex items-center gap-3">
               <div className="flex size-14 shrink-0 items-center justify-center rounded-full bg-white p-1">
-                <img
-                  src="/logo-full.png"
-                  alt="Logo Sindicato Rural de Terra Roxa"
-                  width={52}
-                  height={52}
-                  className="object-contain"
-                />
+                <img src="/logo-full.png" alt="" width={52} height={52} className="object-contain" />
               </div>
+              <p className="font-semibold leading-tight">Sindicato Rural<br />de Terra Roxa</p>
             </div>
-            <div className="space-y-2 text-sm text-brand-foreground/90">
-              <p className="flex items-center gap-2">
-                <Phone className="size-4 shrink-0" />
-                {org.phone}
-              </p>
-              <p className="flex items-center gap-2">
-                <Mail className="size-4 shrink-0" />
-                {org.email}
-              </p>
-              <p className="flex items-start gap-2">
-                <MapPin className="mt-0.5 size-4 shrink-0" />
-                <span>
-                  {org.street}
-                  <br />
-                  {org.district} - {org.zip}
-                  <br />
-                  {org.city} - {org.state}
-                </span>
-              </p>
-            </div>
+            <p className="max-w-xs text-sm text-brand-foreground/80">{t('footer.tagline')}</p>
+            {socials.length > 0 && (
+              <div>
+                <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-brand-foreground/70">{t('footer.socialMedia')}</h4>
+                <div className="flex gap-3">
+                  {socials.map(s => (
+                    <a
+                      key={s.label}
+                      href={safeUrl(s.url || '')}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex size-10 items-center justify-center rounded-full bg-white/20 transition-colors hover:bg-white/30"
+                      aria-label={s.label}
+                    >
+                      <s.Icon className="size-5" />
+                    </a>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
 
-          {/* Social media */}
-          {socials.length > 0 && (
-            <div>
-              <h4 className="mb-4 text-sm font-semibold">{t('footer.socialMedia')}</h4>
-              <div className="flex gap-3">
-                {socials.map(s => (
-                  <a
-                    key={s.label}
-                    href={safeUrl(s.url || '')}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex size-10 items-center justify-center rounded-full bg-white/20 transition-colors hover:bg-white/30"
-                    aria-label={s.label}
-                  >
-                    <s.Icon className="size-5" />
-                  </a>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Quick links */}
+          {/* Links */}
           <div>
             <h4 className="mb-4 text-sm font-semibold">{t('footer.quickLinks')}</h4>
-            <nav className="flex flex-col gap-2 text-sm text-brand-foreground/90">
-              <Link to="/" className="transition-colors hover:text-white">{t('nav.home')}</Link>
-              <Link to="/cursos" className="transition-colors hover:text-white">{t('nav.courses')}</Link>
-              <Link to="/convenios" className="transition-colors hover:text-white">{t('nav.convenios')}</Link>
-              <Link to="/sobre" className="transition-colors hover:text-white">{t('nav.about')}</Link>
-              <Link to="/contato" className="transition-colors hover:text-white">{t('nav.contact')}</Link>
+            <nav className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm text-brand-foreground/90 sm:grid-cols-1">
+              {links.map(l => (
+                <Link key={l.to} to={l.to} className="w-fit transition-colors hover:text-white">{l.label}</Link>
+              ))}
             </nav>
           </div>
 
-          {/* CTA */}
+          {/* Contato */}
+          <div>
+            <h4 className="mb-4 text-sm font-semibold">{t('footer.contact')}</h4>
+            <div className="space-y-3 text-sm text-brand-foreground/90">
+              <a href={`tel:${phoneDigits(org.phone)}`} className="flex items-center gap-2 transition-colors hover:text-white">
+                <Phone className="size-4 shrink-0" />
+                {org.phone}
+              </a>
+              <a href={`mailto:${org.email}`} className="flex items-center gap-2 break-all transition-colors hover:text-white">
+                <Mail className="size-4 shrink-0" />
+                {org.email}
+              </a>
+              <p className="flex items-start gap-2">
+                <MapPin className="mt-0.5 size-4 shrink-0" />
+                <span>
+                  {org.street}, {org.district}
+                  <br />
+                  {org.city} - {org.state}, {org.zip}
+                </span>
+              </p>
+              {org.hours.length > 0 && (
+                <p className="flex items-start gap-2">
+                  <Clock className="mt-0.5 size-4 shrink-0" />
+                  <span>
+                    {org.hours.map(h => (
+                      <span key={h.label} className="block">{h.label}{h.time && `: ${h.time}`}</span>
+                    ))}
+                  </span>
+                </p>
+              )}
+            </div>
+          </div>
+
+          {/* Chamada */}
           <div className="space-y-3">
             <h4 className="text-sm font-semibold">{t('footer.contactUs')}</h4>
-            <p className="text-xs text-brand-foreground/80">{t('footer.contactCta')}</p>
-            <Link to="/contato">
-              <Button className="w-full bg-white text-sm font-semibold text-brand hover:bg-white/90">
-                {t('footer.contactButton')}
-              </Button>
-            </Link>
-            <Link to="/login">
-              <Button
-                variant="outline"
-                className="mt-1 w-full border border-white/60 bg-transparent text-sm text-white transition-colors hover:bg-white hover:text-brand"
-              >
-                {t('footer.adminPanel')}
-              </Button>
-            </Link>
+            <p className="text-sm text-brand-foreground/80">{t('footer.contactCta')}</p>
+            <Button asChild className="w-full bg-white text-sm font-semibold text-brand hover:bg-white/90">
+              <Link to="/contato">{t('footer.contactButton')}</Link>
+            </Button>
+            <Button
+              asChild
+              variant="outline"
+              className="w-full border border-white/60 bg-transparent text-sm text-white transition-colors hover:bg-white hover:text-brand"
+            >
+              <Link to="/login">{t('footer.adminPanel')}</Link>
+            </Button>
           </div>
         </div>
 
-        <div className="mt-10 border-t border-white/20 pt-6 flex items-center justify-between text-xs text-brand-foreground/50">
+        <div className="mt-10 flex items-center justify-between border-t border-white/20 pt-6 text-xs text-brand-foreground/60">
           <span>{t('footer.copyright', { year: new Date().getFullYear() })}</span>
-          <LanguageToggle variant="ghost" className="text-white/70 hover:text-white hover:bg-white/10" />
+          <LanguageToggle variant="ghost" className="text-white/70 hover:bg-white/10 hover:text-white" />
         </div>
       </div>
     </footer>

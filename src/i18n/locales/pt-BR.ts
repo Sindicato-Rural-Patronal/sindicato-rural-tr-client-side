@@ -8,8 +8,11 @@ const ptBR = {
     openMenu: 'Abrir menu',
     closeMenu: 'Fechar menu',
     convenios: 'Convênios',
+    quotes: 'Cotações',
   },
   footer: {
+    tagline: 'Representando os produtores e trabalhadores rurais de Terra Roxa e região.',
+    contact: 'Contato',
     socialMedia: 'Redes sociais',
     quickLinks: 'Links rápidos',
     contactUs: 'Fale conosco',
