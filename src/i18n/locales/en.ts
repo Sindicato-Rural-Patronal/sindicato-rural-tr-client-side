@@ -165,7 +165,6 @@ const en = {
       admins: 'Administrators',
       rules: 'Rules',
       banners: 'Banners',
-      galleries: 'Galleries',
       quotes: 'Market quotes',
       convenios: 'Agreements',
       messages: 'Messages',
@@ -173,8 +172,8 @@ const en = {
       finance: 'Finance',
     },
     settings: {
-      title: 'Settings',
-      subtitle: 'General site settings.',
+      title: 'Site settings',
+      subtitle: 'What shows on the public site: social media, home galleries, partners and contacts.',
       socialTitle: 'Social media',
       hint: 'Paste the full URL (with https://). Leave blank to hide it from the footer.',
       save: 'Save',

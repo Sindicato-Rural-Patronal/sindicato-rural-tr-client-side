@@ -23,7 +23,7 @@ function NovaEmpresaPage() {
         </Link>
         <h1 className="mt-1 text-2xl font-bold tracking-tight text-foreground">Nova empresa</h1>
         <p className="text-sm text-muted-foreground">
-          Depois de criar, vincule as pessoas, adicione endereços e configure a parceria.
+          Depois de criar, vincule as pessoas e adicione outros endereços.
         </p>
       </div>
 

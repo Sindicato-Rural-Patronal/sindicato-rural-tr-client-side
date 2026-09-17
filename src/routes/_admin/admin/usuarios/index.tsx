@@ -599,7 +599,7 @@ function EditarAdminDialog({ admin, onClose }: { admin: UserAdmin | null; onClos
   const { data: regrasData } = useAdminRules()
   const regras = regrasData?.data ?? []
   const updateAdmin = useUpdateAdmin(admin?.id ?? '')
-  const [form, setForm] = useState({ username: '', password: '', confirm: '', userRole: '', isPublic: false, publicTitle: '' })
+  const [form, setForm] = useState({ username: '', password: '', confirm: '', userRole: '' })
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
@@ -609,8 +609,6 @@ function EditarAdminDialog({ admin, onClose }: { admin: UserAdmin | null; onClos
         password: '',
         confirm: '',
         userRole: admin.rulesId,
-        isPublic: admin.isPublic,
-        publicTitle: admin.publicTitle ?? '',
       })
       setError(null)
     }
@@ -625,12 +623,10 @@ function EditarAdminDialog({ admin, onClose }: { admin: UserAdmin | null; onClos
       setError('As senhas não coincidem.')
       return
     }
-    const body: { username?: string; password?: string; rulesId?: string; isPublic?: boolean; publicTitle?: string | null } = {}
+    const body: { username?: string; password?: string; rulesId?: string } = {}
     if (form.username !== admin?.username) body.username = form.username
     if (form.password.trim()) body.password = form.password
     if (form.userRole !== admin?.rulesId) body.rulesId = form.userRole
-    if (form.isPublic !== admin?.isPublic) body.isPublic = form.isPublic
-    if (form.publicTitle !== (admin?.publicTitle ?? '')) body.publicTitle = form.publicTitle || null
     if (Object.keys(body).length === 0) { onClose(); return }
     try {
       await updateAdmin.mutateAsync(body)
@@ -684,32 +680,15 @@ function EditarAdminDialog({ admin, onClose }: { admin: UserAdmin | null; onClos
               ))}
             </NativeSelect>
           </div>
-          <div className="rounded-lg border border-border p-3 flex flex-col gap-3">
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={form.isPublic}
-                onChange={e => setForm(p => ({ ...p, isPublic: e.target.checked, publicTitle: e.target.checked ? p.publicTitle : '' }))}
-                className="accent-primary"
-              />
-              <div className="flex items-center gap-1.5">
-                <Globe className="size-3.5 text-muted-foreground" />
-                <span className="text-sm font-medium">Exibir como contato público</span>
-              </div>
-            </label>
-            {form.isPublic && (
-              <div className="flex flex-col gap-1.5 pl-5">
-                <Label htmlFor="edit-admin-public-title" className="text-xs text-muted-foreground">Título público</Label>
-                <Input
-                  id="edit-admin-public-title"
-                  value={form.publicTitle}
-                  onChange={e => setForm(p => ({ ...p, publicTitle: e.target.value }))}
-                  placeholder="ex: Presidente, Secretária..."
-                  className="h-9"
-                />
-              </div>
-            )}
-          </div>
+          <p className="flex items-start gap-1.5 text-xs text-muted-foreground">
+            <Globe className="mt-0.5 size-3.5 shrink-0" />
+            <span>
+              Para mostrar esta pessoa na página Contato do site, use{' '}
+              <Link to="/admin/configuracoes" search={{ tab: 'contatos' }} className="text-primary hover:underline" onClick={onClose}>
+                Configurações do site › Contatos públicos
+              </Link>.
+            </span>
+          </p>
           {error && <p className="text-sm text-destructive">{error}</p>}
           <DialogFooter>
             <Button type="button" variant="outline" onClick={onClose}>Cancelar</Button>

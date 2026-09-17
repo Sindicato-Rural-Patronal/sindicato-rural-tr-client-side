@@ -11,7 +11,6 @@ import {
 } from '@/hooks/useCompanies'
 import { CompanyForm } from '@/components/cadastro/CompanyForm'
 import { CompanyMembersPanel } from '@/components/cadastro/CompanyMembersPanel'
-import { CompanyPartnerPanel } from '@/components/cadastro/CompanyPartnerPanel'
 import { PropertiesManager } from '@/components/cadastro/PropertiesManager'
 import { DeleteConfirmDialog } from '@/components/DeleteConfirmDialog'
 import { LoadErrorBanner } from '@/components/LoadErrorBanner'
@@ -88,7 +87,11 @@ function EmpresaPage() {
             {company.tradeName && <span className="truncate">{company.name} ·</span>}
             <span>{company.cnpj ? `CNPJ ${maskCNPJ(company.cnpj)}` : 'Sem CNPJ'}</span>
             <Badge variant={company.type === 'PUBLIC' ? 'secondary' : 'outline'}>{COMPANY_TYPE_LABEL[company.type]}</Badge>
-            {company.isPartner && <Badge variant="outline" className="gap-1"><Handshake className="size-3" /> Parceira</Badge>}
+            {company.isPartner && (
+              <Link to="/admin/configuracoes" search={{ tab: 'parceiros' }} title="Logo, link e ordem em Configurações do site › Parceiros">
+                <Badge variant="outline" className="gap-1 hover:bg-muted"><Handshake className="size-3" /> Parceira na home</Badge>
+              </Link>
+            )}
           </div>
         </div>
         {can('DELETE_USER') && (
@@ -103,7 +106,6 @@ function EmpresaPage() {
           <TabsTrigger value="dados"><Building2 className="mr-1.5 size-3.5" /> Dados</TabsTrigger>
           <TabsTrigger value="pessoas"><Users className="mr-1.5 size-3.5" /> Pessoas <Count n={company.members.length} /></TabsTrigger>
           <TabsTrigger value="enderecos"><TreePine className="mr-1.5 size-3.5" /> Propriedades <Count n={company.properties.length} /></TabsTrigger>
-          <TabsTrigger value="parceria"><Handshake className="mr-1.5 size-3.5" /> Parceria</TabsTrigger>
         </TabsList>
 
         <TabsContent value="dados">
@@ -146,9 +148,6 @@ function EmpresaPage() {
           />
         </TabsContent>
 
-        <TabsContent value="parceria">
-          <CompanyPartnerPanel key={company.updatedAt} company={company} readOnly={readOnly} />
-        </TabsContent>
       </Tabs>
 
       <DeleteConfirmDialog

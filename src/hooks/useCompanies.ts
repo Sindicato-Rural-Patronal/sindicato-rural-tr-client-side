@@ -201,6 +201,26 @@ export function useRemoveCompanyProperty(companyId: string) {
   })
 }
 
+/** Liga/desliga a parceria de qualquer empresa (o id vai na chamada, não no hook). */
+export function useSetCompanyPartner() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, ...body }: { id: string; isPartner: boolean; partnerOrder?: number | null }) =>
+      apiFetch(`/admin/companies/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
+    onSuccess: () => invalidateCompanyViews(qc),
+  })
+}
+
+/** Nova ordem dos parceiros na home: todos os ids de empresas parceiras. */
+export function useReorderPartners() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (order: string[]) =>
+      apiFetch('/admin/partners/reorder', { method: 'PATCH', body: JSON.stringify({ order }) }),
+    onSettled: () => invalidateCompanyViews(qc),
+  })
+}
+
 export function useUploadCompanyPartnerLogo(companyId: string) {
   const qc = useQueryClient()
   return useMutation({

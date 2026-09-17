@@ -165,7 +165,6 @@ const ptBR = {
       admins: 'Administradores',
       rules: 'Regras',
       banners: 'Banners',
-      galleries: 'Galerias',
       quotes: 'Cotações',
       convenios: 'Convênios',
       messages: 'Mensagens',
@@ -173,8 +172,8 @@ const ptBR = {
       finance: 'Financeiro',
     },
     settings: {
-      title: 'Configurações',
-      subtitle: 'Ajustes gerais do site.',
+      title: 'Configurações do site',
+      subtitle: 'O que aparece no site público: redes sociais, galerias da página inicial, parceiros e contatos.',
       socialTitle: 'Redes sociais',
       hint: 'Cole a URL completa (com https://). Deixe em branco para ocultar do rodapé.',
       save: 'Salvar',

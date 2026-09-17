@@ -504,6 +504,19 @@ export function useUpdateAdmin(adminId: string) {
   })
 }
 
+/** Marca/desmarca um administrador como contato público (página Contato). */
+export function useSetPublicContact() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ adminId, isPublic, publicTitle }: { adminId: string; isPublic: boolean; publicTitle: string | null }) =>
+      apiFetch(`/admin/users/${adminId}`, { method: 'PATCH', body: JSON.stringify({ isPublic, publicTitle }) }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'admins'] })
+      queryClient.invalidateQueries({ queryKey: ['contacts'] })
+    },
+  })
+}
+
 export function useDeleteAdmin() {
   const queryClient = useQueryClient()
   return useMutation({

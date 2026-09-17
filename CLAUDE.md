@@ -44,13 +44,14 @@ Site institucional do **Sindicato Rural de Terra Roxa** (Paraná, Brasil). Plata
 /admin/usuarios             → _admin/admin/usuarios/index.tsx (abas ?tab=associados|empresas|admins)
 /admin/usuarios/$id         → _admin/admin/usuarios/$id.tsx (detalhe completo; aba "Empresas" = vínculos)
 /admin/empresas/novo        → _admin/admin/empresas/novo.tsx (criar empresa)
-/admin/empresas/$id         → _admin/admin/empresas/$id.tsx (abas Dados / Pessoas / Propriedades / Parceria)
+/admin/empresas/$id         → _admin/admin/empresas/$id.tsx (abas Dados / Pessoas / Propriedades)
 /admin/banners              → _admin/admin/banners.tsx
 /admin/mensagens            → _admin/admin/mensagens.tsx
 /admin/salas                → _admin/admin/salas/index.tsx (nome = lista fixa de salas)
 /admin/administradores      → _admin/admin/administradores/index.tsx
 /admin/cotacoes             → _admin/admin/cotacoes/index.tsx (lançamento do dia: produtos fixos, preço + manhã/tarde)
-/admin/galerias             → _admin/admin/galerias/index.tsx (galerias de fotos da home)
+/admin/galerias             → _admin/admin/galerias/index.tsx (redireciona p/ /admin/configuracoes?tab=galerias)
+/admin/configuracoes        → _admin/admin/configuracoes.tsx (Configurações do site: ?tab=redes|galerias|parceiros|contatos)
 /admin/convenios            → _admin/admin/convenios/index.tsx (lista de convênios)
 /admin/convenios/novo       → _admin/admin/convenios/novo.tsx (editor, criação)
 /admin/convenios/$id        → _admin/admin/convenios/$id.tsx (editor com pré-visualização)
@@ -75,7 +76,7 @@ src/
 ├── components/
 │   ├── ui/                          # shadcn/ui + pagination.tsx (PaginatedResponse)
 │   ├── cadastro/                    # Empresas: CompaniesList, CompanyForm, CompanyMembersPanel,
-│   │                                #   CompanyPartnerPanel, PersonCompanies; PropertiesManager
+│   │                                #   PersonCompanies; PropertiesManager
 │   │                                #   (propriedades/endereços, compartilhado por pessoa e empresa)
 │   ├── PublicHeader.tsx             # Nav pública responsiva (sticky, mobile menu) — usa logo-full.png
 │   ├── public-footer.tsx            # Footer
@@ -85,6 +86,8 @@ src/
 │   ├── home-gallery-section.tsx     # Galerias de fotos (no lugar dos números) + lightbox
 │   ├── home-cotacoes-section.tsx    # Faixa de cotações (preço, unidade, dia/período)
 │   ├── galerias/                    # Admin: GalleryAlbumCard (fotos, legenda, ordem), GalleryAlbumDialog
+│   ├── site-config/                 # Abas de Configurações do site: SocialLinksPanel, GalleriesPanel,
+│   │                                #   PartnersPanel (+ PartnerEditDialog: logo/link), PublicContactsPanel
 │   ├── home-courses-section.tsx     # Carrossel de cursos (CoursesSection)
 │   ├── home-news-section.tsx        # Seção de notícias na home
 │   ├── course-card.tsx              # CourseCard + CourseCardSimple (carousel-aware)
@@ -365,7 +368,8 @@ mapCourses(list: ApiCourse[]): Course[]
 - Trilha de auditoria e convites de admin implementados.
 - **Ajustes de cadastro (set/2026)**: tipo de membro é select (Aluno, Produtor rural, Trabalhador rural assalariado/autônomo; valor antigo fora da lista aparece marcado); CAD/PRO até 5; salas com nome de lista fixa; empresa com razão social (`name`), nome fantasia (`tradeName`, exibido quando houver — `companyDisplayName`) e endereço da sede no próprio cadastro (CEP com busca).
 - **Cotações**: produtos fixos; o admin só lança preço (centavos) e período manhã/tarde; a data é a do dia. Home mostra preço + unidade + dia/período.
-- **Home**: os números (associados, cursos realizados, anos, alunos) saíram; no lugar, galerias de fotos editáveis em `/admin/galerias` (História do Sindicato, FAEP, Patrulha Rural já criadas, vazias até receber fotos).
+- **Home**: os números (associados, cursos realizados, anos, alunos) saíram; no lugar, galerias de fotos (História do Sindicato, FAEP, Patrulha Rural já criadas, vazias até receber fotos).
+- **Configurações do site** (`/admin/configuracoes`): centraliza o que é do site público — Redes sociais, Galerias, Parceiros da home (adicionar empresa, logo, link, ordem, tirar) e Contatos públicos (administradores em "Nossa Equipe" com cargo). Cada aba segue a permissão da área de origem: `*_BANNER`, `*_USER` (empresas) e `*_USER_ADMIN`. A empresa não tem mais aba Parceria e o diálogo de admin não marca mais contato público — ambos apontam para cá.
 - **Convênios**: dropdown "Convênios" no header público lista os convênios ativos; cada um tem página em `/convenios/$slug` (tabela de valores por faixa, documentos para adesão, destaques e texto). Conteúdo 100% editável em `/admin/convenios` (`ConvenioEditor` + `ConvenioPageView` compartilhado com a pré-visualização). Hooks em `useConvenios.ts`. Unimed semeado com os dados da página antiga (`ruraltr.com.br/pgs/print_unimed.php`). Regras com `UPDATE_BANNER` receberam as permissões `*_CONVENIO` na migration.
 - **Financeiro** (admin): lançamentos de caixa (valor em centavos Int), categorias, dashboard, comprovantes (anexo em Bytes no banco), export CSV, multi-caixa e transferência entre caixas, relatório PDF do período. Gated por `READ/CREATE/UPDATE/DELETE_FINANCE`. Filtros dos lançamentos vivem na URL (search params).
 - Deploy em produção via Docker (Dockerfile + docker-compose.prod.yml + nginx).
