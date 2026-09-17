@@ -38,7 +38,7 @@ Site institucional do **Sindicato Rural de Terra Roxa** (Paraná, Brasil). Plata
 /convenios/$slug            → _public/convenios/$slug.tsx (tabela de valores, documentos, sobre)
 /login                      → login.tsx
 /admin                      → _admin/admin/index.tsx (redirect → /admin/cursos)
-/admin/cursos               → _admin/admin/cursos/index.tsx (CRUD completo em diálogos: criar, editar, duplicar, inscrições)
+/admin/cursos               → _admin/admin/cursos/index.tsx (CRUD completo em diálogos: criar, editar, duplicar, inscrições; ?curso=<id>&aba=inscricoes abre a janela do curso)
 /admin/noticias             → _admin/admin/noticias/index.tsx
 /admin/usuarios             → _admin/admin/usuarios/index.tsx (abas ?tab=associados|empresas|admins)
 /admin/usuarios/$id         → _admin/admin/usuarios/$id.tsx (detalhe completo; aba "Empresas" = vínculos; ?completar=1 abre "Completar cadastro")
@@ -56,13 +56,13 @@ Site institucional do **Sindicato Rural de Terra Roxa** (Paraná, Brasil). Plata
 /admin/convenios/$id        → _admin/admin/convenios/$id.tsx (editor com pré-visualização)
 /admin/auditoria            → _admin/admin/auditoria/index.tsx (trilha de auditoria; linha abre IP, local, navegador e "O que mudou"; filtros na URL, inclusive ?ip=)
 /admin/financeiro           → _admin/admin/financeiro/index.tsx (Financeiro: dashboard, lançamentos, categorias, caixas)
-/admin/dashboard            → _admin/admin/dashboard.tsx (painel: stats + calendário de cursos + cadastros incompletos)
+/admin/dashboard            → _admin/admin/dashboard.tsx (painel: stats + calendário de cursos + cadastros incompletos; pendências ficam no sino)
 /convite/:token             → convite/$token.tsx (público: ativar acesso de admin por convite)
 ```
 
 Layouts pai:
 - `_public.tsx` — Header + Footer público
-- `_admin.tsx` — Sidebar admin (AdminSideBar), token-gated (valida JWT + expiração)
+- `_admin.tsx` — Sidebar admin (AdminSideBar), token-gated (valida JWT + expiração); no celular, topo com SidebarTrigger + sino de notificações
 
 `routeTree.gen.ts` é **gerado automaticamente** pelo TanStack Router — não editar manualmente.
 
@@ -84,7 +84,9 @@ src/
 │   ├── RouteErrorPage.tsx           # defaultErrorComponent: "Tentar de novo" (router.invalidate) + "Ir para o início"
 │   ├── PageLoader.tsx               # defaultPendingComponent (rota demorando a carregar)
 │   ├── LoadErrorRetry.tsx           # Falha de carregamento no site público: mensagem + "Tentar de novo" (nunca "não há nada")
-│   ├── adminSideBar.tsx             # Sidebar admin — usa logo-icon.png; link perfil via userDataId
+│   ├── adminSideBar.tsx             # Sidebar admin — usa logo-icon.png; link perfil via userDataId; sino ao lado do logo
+│   ├── notifications/NotificationBell.tsx # Sino (número = avisos não lidos + pendências warning): Popover no computador,
+│   │                                #   Sheet no celular; seções Pendências e Avisos; abre o link pelo roteador
 │   ├── nav-user.tsx                 # Dropdown do usuário (logout)
 │   ├── home-hero-section.tsx        # Banner hero
 │   ├── GalleryLightbox.tsx          # Fotos de uma galeria em tela cheia (página Sobre)
@@ -121,6 +123,8 @@ src/
 │   │                                #   propriedades, logo de parceira, títulos usados + COMMON_MEMBER_TITLES
 │   ├── useGalleries.ts              # Galerias: pública, admin, CRUD, upload/legenda/ordem das fotos
 │   ├── useMarketQuotes.ts           # Cotações: pública, admin, useSaveDailyQuotes (PUT daily), useQuoteHistory
+│   ├── useNotifications.ts          # Sino: useNotifications (a cada 60s e ao voltar à aba), useMarkNotificationsRead
+│   │                                #   (marca na tela antes da resposta), markReadLocally
 │   ├── useSiteSettings.ts           # Configurações do site (pública/admin/salvar), useUpdateQuotesSource,
 │   │                                #   useOrgInfo (dados do sindicato com fallback de lib/org-contact.ts)
 │   ├── usePublicContactsAdmin.ts    # Contatos públicos no admin: listar, adicionar, cargo, tirar, reordenar
@@ -150,6 +154,7 @@ src/
 │   ├── calendar-links.ts            # Curso na agenda/WhatsApp: buildCourseIcs (.ics, hora de Brasília → UTC, repete por dia),
 │   │                                #   googleCalendarUrl, whatsappShareUrl (só nome, data, horário, local e link)
 │   ├── quote-utils.ts               # Cotações: período (manhã/tarde), rótulo dos produtos, unidades (QUOTE_UNIT_OPTIONS), trendOf
+│   ├── relative-time.ts             # relativeTime ("agora", "há 5 min", "há 2 h", "ontem", "12/09") + fullDateTime
 │   ├── audit-fields.ts              # Auditoria "O que mudou": AUDIT_FIELD_LABELS (campo → português), formatAuditValue, auditChanges
 │   ├── quote-price-check.ts         # Cotações: findQuoteDeviations (preço >20% diferente do último → confirmação), formatQuoteChange
 │   ├── banner-dates.ts              # Banners: bannerStartIso/bannerEndIso (dia → 00:00 / 23:59:59.999 -03:00), brasiliaYmd
@@ -404,6 +409,10 @@ photoGallery: { id, url, caption }[], instructors: CourseInstructor[]
 - `GET /api/admin/finance/attachments/:id` (download inline) · `DELETE /api/admin/finance/attachments/:id`
 - `GET /api/admin/finance/summary?from=&to=` — KPIs + por categoria + por mês + saldo por caixa
 
+**Notificações (admin)** — sino do painel; pendências conforme as permissões de quem está logado
+- `GET /api/admin/notifications` — `{ unreadCount, pendingCount, events: [{ id, type, title, body, link, createdAt, read }], pending: [{ type, title, body, count, link, severity: info|warning }] }` (avisos dos últimos 30 dias)
+- `PATCH /api/admin/notifications/read` — `{ ids?: string[] }` (sem ids = todos) → `{ updated }`
+
 **Utilitário**
 - `GET /api/address/cep/:cep` — lookup CEP (ViaCEP + cache local)
 
@@ -418,6 +427,7 @@ photoGallery: { id, url, caption }[], instructors: CourseInstructor[]
 - Notícias, salas, admins e parceiros implementados.
 - **Empresas separadas de pessoas** (set/2026): `Company` tem vínculos N:N com pessoas (`CompanyMember`, cada um com título livre, ex.: SOCIO, CONTADOR), propriedades próprias (endereços; `Property` pertence a uma pessoa OU a uma empresa) e a parceria (antes flags em `UserData`). Lista na aba "Empresas" de `/admin/usuarios`. O CNPJ saiu do formulário de pessoa; as colunas `cnpj`/`isPartner`/`partner*` de `UserData` foram removidas (valores antigos de CNPJ e de tipo de membro fora da lista foram para as observações do associado). A migration criou uma empresa para cada pessoa ativa que era parceira ou tinha CNPJ, com a pessoa como RESPONSAVEL.
 - Dashboard admin **implementado** — stats + calendário de cursos + lista de cadastros incompletos (não é mais stub).
+- **Notificações** (set/2026): sino no topo da barra lateral (embaixo do logo com a barra recolhida) e no topo da tela no celular. Número = avisos não lidos + pendências `warning` ("9+" acima de 9). Painel com "Pendências" (calculadas no backend; importantes primeiro, em âmbar) e "Avisos" (30 dias; clicar marca como lido e abre o `link`; "Marcar todas como lidas"). Links abrem pelo roteador (`navigate({ href })`, só caminhos `/admin`): `/admin/cursos?curso=<id>&aba=inscricoes`, `/admin/usuarios?incomplete=true` ou `?tab=admins` (a tela de usuários acompanha a URL mesmo já aberta), `/admin/configuracoes?tab=...`, `/admin/mensagens`, `/admin/cotacoes`. Alertas de pendência não ficam no painel geral.
 - Trilha de auditoria e convites de admin implementados.
 - **Ajustes de cadastro (set/2026)**: tipo de membro é select (Aluno, Produtor rural, Trabalhador rural assalariado/autônomo; o backend recusa valor fora da lista); CAD/PRO até 5; salas com nome de lista fixa; empresa com razão social (`name`), nome fantasia (`tradeName`, exibido quando houver — `companyDisplayName`) e endereço da sede no próprio cadastro (CEP com busca).
 - **Cotações**: produtos fixos; o admin só lança preço (centavos) e período manhã/tarde; a data é a do dia; a unidade de cada produto é escolhida na mesma tela (saca 60/50/40 kg, tonelada, quilo, arroba ou sem unidade) e só é salva no "Salvar cotações", junto com os preços (PATCH das unidades alteradas, depois PUT daily se houver preço; erro mostrado por produto). Preço >20% diferente do último lançado abre confirmação ("Corrigir" / "Salvar mesmo assim"); "Repetir último" preenche o preço anterior; Enter no preço vai para o próximo (não envia). Home mostra preço + unidade + dia/período + fonte (editável no admin de cotações) e linka para `/cotacoes` (histórico em gráfico/tabela).

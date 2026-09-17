@@ -3,6 +3,7 @@ import { BookOpen, DoorOpen, HeartHandshake, HeartPulse, Images, LayoutDashboard
 import { Link, useRouterState } from '@tanstack/react-router'
 import { useTranslation } from 'react-i18next'
 import { NavUser } from '@/components/nav-user'
+import { NotificationBell } from '@/components/notifications/NotificationBell'
 import { useMe, useContactMessages } from '@/hooks/useAdmin'
 import { openCommandPalette } from '@/lib/command-palette'
 import {
@@ -80,8 +81,9 @@ export function AdminSideBar({ ...props }: React.ComponentProps<typeof Sidebar>)
     <Sidebar collapsible="icon" {...props}>
       <SidebarHeader className="border-b border-sidebar-border py-3">
         <SidebarMenu>
-          <SidebarMenuItem>
-            <SidebarMenuButton size="lg" asChild>
+          {/* Sino ao lado do logo; com a barra recolhida (só ícones) fica embaixo dele. */}
+          <SidebarMenuItem className="flex items-center gap-1 group-data-[collapsible=icon]:flex-col">
+            <SidebarMenuButton size="lg" asChild className="min-w-0 flex-1">
               <Link to="/admin/dashboard">
                 <img
                   src="/favicon.ico"
@@ -94,6 +96,10 @@ export function AdminSideBar({ ...props }: React.ComponentProps<typeof Sidebar>)
                 </div>
               </Link>
             </SidebarMenuButton>
+            {/* No celular o sino fica no topo da tela (_admin.tsx), não dentro da barra. */}
+            {!isMobile && (
+              <NotificationBell side="right" align="start" className="group-data-[collapsible=icon]:size-8" />
+            )}
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarHeader>

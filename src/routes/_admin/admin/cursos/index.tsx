@@ -2,7 +2,7 @@ import { createFileRoute, Link } from '@tanstack/react-router'
 import { useQueryClient } from '@tanstack/react-query'
 import { apiErrorMessage } from '@/lib/api-error-message'
 import { apiFetch } from '@/lib/api'
-import { useState, useRef } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import type { ComponentProps } from 'react'
 import { toast } from 'sonner'
 import ReactMarkdown from 'react-markdown'
@@ -1124,14 +1124,19 @@ function RegistrationsTab({
 
 // ─── view dialog ─────────────────────────────────────────────────────────────
 
+type ViewTab = 'details' | 'registrations' | 'gallery' | 'instructors'
+
 function ViewDialog({
   course,
+  initialTab = 'details',
   onClose,
   onEdit,
   onDuplicate,
   onDelete,
 }: {
   course: CourseCardItem | null
+  /** Aba aberta ao montar (link das notificações: `?aba=inscricoes`). */
+  initialTab?: ViewTab
   onClose: () => void
   onEdit: (c: Course) => void
   onDuplicate: (c: Course) => void
@@ -1281,7 +1286,7 @@ function ViewDialog({
           </button>
         </div>
 
-        <Tabs defaultValue="details">
+        <Tabs defaultValue={initialTab}>
           <div className="px-6 pt-4">
             <div className="flex items-center gap-2 mb-1">
               <StatusBadge status={status} />
@@ -1632,7 +1637,22 @@ function ViewDialog({
 
 // ─── route ────────────────────────────────────────────────────────────────────
 
+// `?curso=<id>&aba=inscricoes` abre direto a janela do curso (links das notificações).
+const ABAS: Record<string, ViewTab> = {
+  detalhes: 'details',
+  inscricoes: 'registrations',
+  imagens: 'gallery',
+  instrutores: 'instructors',
+}
+
+type CoursesSearch = { curso?: string; aba?: string }
+
 export const Route = createFileRoute('/_admin/admin/cursos/')({
+  validateSearch: (s: Record<string, unknown>): CoursesSearch => ({
+    // O parser da URL transforma "123" em número; o id volta a ser texto.
+    curso: typeof s.curso === 'string' && s.curso ? s.curso : typeof s.curso === 'number' ? String(s.curso) : undefined,
+    aba: typeof s.aba === 'string' && Object.hasOwn(ABAS, s.aba) ? s.aba : undefined,
+  }),
   component: RouteComponent,
 })
 
@@ -1662,6 +1682,43 @@ function RouteComponent() {
   const { t } = useTranslation()
   const { can } = usePermissions()
 
+  // Link direto (`?curso=<id>&aba=inscricoes`): busca o curso e abre a janela dele.
+  const { curso: linkedId, aba } = Route.useSearch()
+  const navigate = Route.useNavigate()
+  const { data: linkedCourse, isError: linkedError } = useAdminCourse(linkedId ?? '')
+  // Outro link chegou com a página já aberta: ele passa na frente do curso clicado antes.
+  const [lastLinkedId, setLastLinkedId] = useState(linkedId)
+  // Fechado pela pessoa: some na hora, sem esperar a URL ser limpa.
+  const [dismissedId, setDismissedId] = useState<string | null>(null)
+  if (lastLinkedId !== linkedId) {
+    setLastLinkedId(linkedId)
+    setDismissedId(null)
+    if (linkedId) setViewDialog(null)
+  }
+  const shownCourse: CourseCardItem | null = viewDialog
+    ?? (linkedId && linkedId !== dismissedId && linkedCourse?.id === linkedId
+      ? { ...linkedCourse, photoCount: linkedCourse.photoGallery?.length ?? 0 }
+      : null)
+
+  function clearLink() {
+    if (linkedId || aba) {
+      navigate({ search: prev => ({ ...prev, curso: undefined, aba: undefined }), replace: true })
+    }
+  }
+
+  function closeView() {
+    setViewDialog(null)
+    if (linkedId) setDismissedId(linkedId)
+    clearLink()
+  }
+
+  // Curso do link não existe mais (ou sem acesso): avisa e limpa a URL.
+  useEffect(() => {
+    if (!linkedId || !linkedError) return
+    toast.error('Não foi possível abrir o curso do link.')
+    navigate({ search: prev => ({ ...prev, curso: undefined, aba: undefined }), replace: true })
+  }, [linkedId, linkedError, navigate])
+
   const courses = data?.data ?? []
   const totalPages = data?.totalPages ?? 1
   const total = data?.total ?? 0
@@ -1686,7 +1743,7 @@ function RouteComponent() {
       selection.remove(id)
       toast.success('Curso excluído.')
       setDeleteConfirm(null)
-      setViewDialog(null)
+      closeView()
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : 'Erro ao excluir curso.'
       toast.error(msg)
@@ -1813,7 +1870,7 @@ function RouteComponent() {
             <AdminCourseCard
               key={course.id}
               course={course}
-              onClick={() => setViewDialog(course)}
+              onClick={() => { clearLink(); setViewDialog(course) }}
               onEdit={can('UPDATE_COURSE') ? () => openFormFromCard(course.id, 'edit') : undefined}
               onDuplicate={can('CREATE_COURSE') ? () => openFormFromCard(course.id, 'duplicate') : undefined}
               selected={selection.isSelected(course.id)}
@@ -1837,9 +1894,10 @@ function RouteComponent() {
 
       {/* key por curso: trocar de curso remonta o dialog (galeria na 1ª imagem, instrutor em branco) */}
       <ViewDialog
-        key={viewDialog?.id ?? ''}
-        course={viewDialog}
-        onClose={() => setViewDialog(null)}
+        key={shownCourse?.id ?? ''}
+        course={shownCourse}
+        initialTab={!viewDialog && aba ? ABAS[aba] : 'details'}
+        onClose={closeView}
         onEdit={c => setFormDialog({ open: true, editing: c, duplicateOf: null })}
         onDuplicate={c => setFormDialog({ open: true, editing: null, duplicateOf: c })}
         onDelete={(id, title) => setDeleteConfirm({ id, title })}

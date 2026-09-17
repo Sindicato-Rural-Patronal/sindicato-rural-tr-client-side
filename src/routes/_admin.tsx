@@ -2,6 +2,7 @@
 import { AdminSideBar } from '@/components/adminSideBar'
 import { CommandPalette } from '@/components/CommandPalette'
 import { LeaveConfirmHost } from '@/components/confirm-close-dialog'
+import { NotificationBell } from '@/components/notifications/NotificationBell'
 import { SidebarProvider, SidebarInset, SidebarTrigger } from '@/components/ui/sidebar'
 import { useSessionRenewal } from '@/context/AuthContext'
 import { isTokenValid, safeAdminRedirect } from '@/lib/auth-token'
@@ -33,6 +34,7 @@ function AdminLayout() {
       <SidebarInset className="overflow-y-auto">
         <header className="flex h-12 items-center gap-3 border-b px-4 md:hidden">
           <SidebarTrigger />
+          <NotificationBell className="ml-auto" />
         </header>
         <Outlet />
       </SidebarInset>

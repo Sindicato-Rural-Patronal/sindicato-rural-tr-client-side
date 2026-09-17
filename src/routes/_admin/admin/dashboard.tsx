@@ -73,24 +73,24 @@ function coursesInRange<T extends { startDate?: string | null; endDate?: string 
 
 // ─── stat card ────────────────────────────────────────────────────────────────
 
+// Só números. Pendências (o que precisa de atenção) ficam no sino de notificações.
 function StatCard({
-  title, value, description, icon: Icon, alert,
+  title, value, description, icon: Icon,
 }: {
   title: string
   value: number | string
   description: string
   icon: React.ElementType
-  alert?: boolean
 }) {
   return (
-    <Card className={alert ? 'border-amber-300 bg-amber-50/50 dark:border-amber-900 dark:bg-amber-950/20' : ''}>
+    <Card>
       <CardHeader className="flex flex-row items-center justify-between pb-2">
         <CardTitle className="text-sm font-medium text-muted-foreground">{title}</CardTitle>
-        <Icon className={`size-4 ${alert ? 'text-amber-600 dark:text-amber-400' : 'text-muted-foreground'}`} />
+        <Icon className="size-4 text-muted-foreground" />
       </CardHeader>
       <CardContent>
         <div className="text-2xl font-bold text-foreground">{value}</div>
-        <p className={`text-xs ${alert ? 'text-amber-600 dark:text-amber-400 font-medium' : 'text-muted-foreground'}`}>{description}</p>
+        <p className="text-xs text-muted-foreground">{description}</p>
       </CardContent>
     </Card>
   )

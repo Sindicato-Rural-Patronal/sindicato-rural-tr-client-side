@@ -757,7 +757,19 @@ function RouteComponent() {
   const adminSelection = useRowSelection()
   const [exportingRow, setExportingRow] = useState<string | null>(null)
 
-  // Espelha os filtros principais na URL (só o estado → URL; não há loop de volta).
+  // Link que chega com a tela já aberta (ex.: sino de notificações →
+  // `?incomplete=true` ou `?tab=admins`): a URL nova passa para os filtros.
+  const [lastUrl, setLastUrl] = useState({ tab: urlSearch.tab, incomplete: urlSearch.incomplete })
+  if (lastUrl.tab !== urlSearch.tab || lastUrl.incomplete !== urlSearch.incomplete) {
+    setLastUrl({ tab: urlSearch.tab, incomplete: urlSearch.incomplete })
+    if (lastUrl.tab !== urlSearch.tab) setActiveTab(urlSearch.tab ?? 'associados')
+    if (lastUrl.incomplete !== urlSearch.incomplete) {
+      setIncompleteOnly(urlSearch.incomplete ?? false)
+      setUsersPage(1)
+    }
+  }
+
+  // Espelha os filtros principais na URL (estado → URL; a URL igual ao estado não muda nada acima).
   useEffect(() => {
     navigate({
       search: {
