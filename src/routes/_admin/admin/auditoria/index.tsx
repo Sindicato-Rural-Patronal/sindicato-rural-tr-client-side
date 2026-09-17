@@ -1,10 +1,14 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { Fragment, useCallback, useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
-import { useAuditLogs, useAdminAdmins } from '@/hooks/useAdmin'
-import type { AuditLog } from '@/hooks/useAdmin'
+import { useAdminAdmins } from '@/hooks/useAdmin'
+import { useAuditTrail } from '@/hooks/useAuditTrail'
+import type { AuditAction, AuditTrailItem } from '@/hooks/useAuditTrail'
 import { usePermissions } from '@/hooks/usePermissions'
-import { ScrollText, Plus, Pencil, Trash2, Dot, Search, X, Download, Loader2 } from 'lucide-react'
+import {
+  ScrollText, Plus, Pencil, Trash2, Dot, Search, X, Download, Loader2, LogIn, ShieldAlert, ChevronDown,
+} from 'lucide-react'
+import { AuditRowDetails } from '@/components/auditoria/AuditRowDetails'
 import { apiErrorMessage } from '@/lib/api-error-message'
 import { downloadExport } from '@/lib/export'
 import { Button } from '@/components/ui/button'
@@ -22,14 +26,23 @@ import { useDebouncedValue } from '@/hooks/useDebouncedValue'
 
 type AuditSearch = {
   page?: number
-  action?: 'create' | 'edit' | 'delete' | 'export'
+  action?: AuditAction
   entity?: string
   actorId?: string
+  ip?: string
   from?: string
   to?: string
   q?: string
 }
-const ACTIONS: AuditSearch['action'][] = ['create', 'edit', 'delete', 'export']
+const ACTION_OPTIONS: [AuditAction, string][] = [
+  ['create', 'Criações'],
+  ['edit', 'Edições'],
+  ['delete', 'Exclusões'],
+  ['export', 'Exportações'],
+  ['login', 'Logins'],
+  ['login_failed', 'Falhas de login'],
+]
+const ACTIONS = ACTION_OPTIONS.map(([a]) => a)
 function str(v: unknown): string | undefined {
   return typeof v === 'string' && v.trim() ? v : undefined
 }
@@ -39,9 +52,10 @@ export const Route = createFileRoute('/_admin/admin/auditoria/')({
     const page = Number(s.page)
     return {
       page: Number.isFinite(page) && page > 1 ? page : undefined,
-      action: ACTIONS.includes(s.action as AuditSearch['action']) ? (s.action as AuditSearch['action']) : undefined,
+      action: ACTIONS.includes(s.action as AuditAction) ? (s.action as AuditAction) : undefined,
       entity: str(s.entity),
       actorId: str(s.actorId),
+      ip: str(s.ip),
       from: str(s.from),
       to: str(s.to),
       q: str(s.q),
@@ -54,33 +68,47 @@ export const Route = createFileRoute('/_admin/admin/auditoria/')({
 const ENTITIES = [
   'Administrador', 'Banner', 'Beneficiário Unimed', 'Caixa', 'Categoria financeira', 'Comprovante',
   'Configurações do site', 'Contato público', 'Convênio', 'Convite', 'Cotação', 'Curso', 'Empresa',
-  'Endereço', 'Exportação', 'Galeria', 'Inscrição', 'Instrutor', 'Lançamento', 'Mensagem', 'Notícia',
+  'Endereço', 'Exportação', 'Galeria', 'Inscrição', 'Instrutor', 'Lançamento', 'Login', 'Mensagem', 'Notícia',
   'Propriedade', 'Regra', 'Relação', 'Sala', 'Transferência', 'Usuário',
 ]
 
 // A frase ("Iniciou o curso "HORTA"") vem pronta do backend (lib/audit-sentence.ts).
 // Sem ela (backend antigo), mostra o básico.
-const VERB: Record<string, string> = { POST: 'Criou', PATCH: 'Editou', PUT: 'Editou', DELETE: 'Excluiu', EXPORT: 'Exportou' }
-function acaoLegivel(r: AuditLog & { summary?: string }): string {
+const VERB: Record<string, string> = {
+  POST: 'Criou', PATCH: 'Editou', PUT: 'Editou', DELETE: 'Excluiu', EXPORT: 'Exportou',
+  LOGIN: 'Entrou no painel', LOGIN_FAILED: 'Tentativa de login falhou', LOGIN_BLOCKED: 'Login bloqueado',
+}
+function acaoLegivel(r: AuditTrailItem): string {
   if (r.summary) return r.summary
   const base = `${VERB[r.method] ?? r.method} · ${r.entity}`
   return r.targetLabel ? `${base} "${r.targetLabel}"` : base
 }
-type ActionKind = 'create' | 'edit' | 'delete' | 'export' | 'other'
+type ActionKind = 'create' | 'edit' | 'delete' | 'export' | 'login' | 'login_failed' | 'other'
 function actionKind(method: string): ActionKind {
   if (method === 'POST') return 'create'
   if (method === 'PATCH' || method === 'PUT') return 'edit'
   if (method === 'DELETE') return 'delete'
   if (method === 'EXPORT') return 'export'
+  if (method === 'LOGIN') return 'login'
+  if (method === 'LOGIN_FAILED' || method === 'LOGIN_BLOCKED') return 'login_failed'
   return 'other'
 }
-const KIND_ICON = { create: Plus, edit: Pencil, delete: Trash2, export: Download, other: Dot }
+const KIND_ICON = {
+  create: Plus, edit: Pencil, delete: Trash2, export: Download, login: LogIn, login_failed: ShieldAlert, other: Dot,
+}
 const KIND_COLOR: Record<ActionKind, string> = {
   create: 'text-emerald-600 dark:text-emerald-400',
   edit: 'text-amber-600 dark:text-amber-400',
   delete: 'text-red-600 dark:text-red-400',
   export: 'text-blue-600 dark:text-blue-400',
+  login: 'text-sky-600 dark:text-sky-400',
+  login_failed: 'text-red-600 dark:text-red-400',
   other: 'text-muted-foreground',
+}
+
+/** "Terra Roxa, PR, Brasil · Chrome no Windows" (linhas antigas: vazio). */
+function origemLegivel(r: AuditTrailItem): string {
+  return [r.location, r.device].filter(Boolean).join(' · ')
 }
 
 // Tempo relativo curto ("há 5 min", "há 2 h", "há 3 d"); título traz a data exata.
@@ -107,13 +135,22 @@ function RouteComponent() {
   )
   const page = search.page ?? 1
 
-  const filters = { action: search.action, entity: search.entity, actorId: search.actorId, from: search.from, to: search.to, q: search.q }
-  const { data, isLoading, isError } = useAuditLogs(
-    // o hook só repassa `action` para a query; 'export' ainda não está no tipo dele
-    { page, limit: 30, ...filters },
-    { enabled },
-  )
+  const filters = {
+    action: search.action, entity: search.entity, actorId: search.actorId, ip: search.ip,
+    from: search.from, to: search.to, q: search.q,
+  }
+  const { data, isLoading, isError } = useAuditTrail({ page, limit: 30, ...filters }, { enabled })
   const [exporting, setExporting] = useState(false)
+  // Linhas abertas (IP, navegador, o que mudou).
+  const [expanded, setExpanded] = useState<Set<string>>(() => new Set())
+  function toggleRow(id: string) {
+    setExpanded(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
 
   async function handleExport() {
     setExporting(true)
@@ -151,7 +188,7 @@ function RouteComponent() {
   const rows = data?.data ?? []
   const total = data?.total ?? 0
   const totalPages = data?.totalPages ?? 1
-  const hasFilters = !!(search.action || search.entity || search.actorId || search.from || search.to || search.q)
+  const hasFilters = !!(search.action || search.entity || search.actorId || search.ip || search.from || search.to || search.q)
 
   function clearFilters() {
     setSearchInput('')
@@ -167,7 +204,7 @@ function RouteComponent() {
       <div>
         <h1 className="text-2xl font-bold tracking-tight text-foreground">Auditoria</h1>
         <p className="text-sm text-muted-foreground">
-          Registro de criações, edições, exclusões e exportações feitas no sistema.
+          Registro de criações, edições, exclusões, exportações e tentativas de login, com o IP e o aparelho de origem.
         </p>
       </div>
 
@@ -176,19 +213,14 @@ function RouteComponent() {
         <div className="flex flex-wrap items-end gap-2">
           <div className="flex flex-col gap-1">
             <Label className="text-[11px] text-muted-foreground">Ação</Label>
-            <div className="flex gap-1">
-              {([['', 'Todas'], ['create', 'Criações'], ['edit', 'Edições'], ['delete', 'Exclusões'], ['export', 'Exportações']] as const).map(([a, lbl]) => (
-                <Button
-                  key={a || 'all'}
-                  size="sm"
-                  variant={(search.action ?? '') === a ? 'default' : 'outline'}
-                  className="h-9"
-                  onClick={() => setSearch({ action: (a || undefined) as AuditSearch['action'], page: undefined })}
-                >
-                  {lbl}
-                </Button>
-              ))}
-            </div>
+            <NativeSelect
+              className="h-9"
+              value={search.action ?? ''}
+              onChange={e => setSearch({ action: (e.target.value || undefined) as AuditAction | undefined, page: undefined })}
+            >
+              <option value="">Todas</option>
+              {ACTION_OPTIONS.map(([a, lbl]) => <option key={a} value={a}>{lbl}</option>)}
+            </NativeSelect>
           </div>
           <div className="flex flex-col gap-1">
             <Label className="text-[11px] text-muted-foreground">Tipo</Label>
@@ -212,6 +244,21 @@ function RouteComponent() {
             <Label className="text-[11px] text-muted-foreground">Até</Label>
             <Input type="date" className="h-9 w-[150px]" value={search.to ?? ''} onChange={e => setSearch({ to: e.target.value || undefined, page: undefined })} />
           </div>
+          {search.ip && (
+            <div className="flex flex-col gap-1">
+              <Label className="text-[11px] text-muted-foreground">IP</Label>
+              <Button
+                size="sm"
+                variant="secondary"
+                className="h-9 gap-1.5 font-mono"
+                title="Tirar o filtro de IP"
+                onClick={() => setSearch({ ip: undefined, page: undefined })}
+              >
+                {search.ip}
+                <X className="size-3.5" />
+              </Button>
+            </div>
+          )}
           {hasFilters && (
             <Button size="sm" variant="ghost" className="h-9 gap-1.5 text-muted-foreground" onClick={clearFilters}>
               <X className="size-4" /> Limpar
@@ -272,22 +319,56 @@ function RouteComponent() {
               {rows.map(r => {
                 const kind = actionKind(r.method)
                 const Icon = KIND_ICON[kind]
+                const open = expanded.has(r.id)
+                const origem = origemLegivel(r)
                 return (
-                  <TableRow key={r.id}>
-                    <TableCell className="whitespace-nowrap text-muted-foreground text-xs" title={new Date(r.createdAt).toLocaleString('pt-BR')}>
-                      {relativeTime(r.createdAt)}
-                    </TableCell>
-                    <TableCell className="font-medium text-foreground">{r.actorName}</TableCell>
-                    <TableCell>
-                      <span className="inline-flex items-center gap-2">
-                        <Icon className={`size-4 shrink-0 ${KIND_COLOR[kind]}`} />
-                        <span className="text-foreground">{acaoLegivel(r)}</span>
-                      </span>
-                    </TableCell>
-                    <TableCell className="hidden lg:table-cell font-mono text-[11px] text-muted-foreground max-w-xs truncate" title={`${r.method} ${r.path} · ${r.statusCode}`}>
-                      {r.method} {r.path} · {r.statusCode}
-                    </TableCell>
-                  </TableRow>
+                  <Fragment key={r.id}>
+                    <TableRow
+                      className="cursor-pointer"
+                      data-state={open ? 'selected' : undefined}
+                      onClick={() => toggleRow(r.id)}
+                    >
+                      <TableCell className="whitespace-nowrap text-muted-foreground text-xs align-top" title={new Date(r.createdAt).toLocaleString('pt-BR')}>
+                        {relativeTime(r.createdAt)}
+                      </TableCell>
+                      <TableCell className="font-medium text-foreground align-top">{r.actorName}</TableCell>
+                      <TableCell className="align-top">
+                        <div className="flex items-start gap-2">
+                          <Icon className={`size-4 shrink-0 mt-0.5 ${KIND_COLOR[kind]}`} />
+                          <div className="min-w-0 flex-1">
+                            <span className="text-foreground">{acaoLegivel(r)}</span>
+                            {origem && <p className="text-xs text-muted-foreground">{origem}</p>}
+                          </div>
+                          <button
+                            type="button"
+                            className="shrink-0 rounded p-0.5 text-muted-foreground hover:text-foreground"
+                            aria-expanded={open}
+                            aria-label={open ? 'Esconder detalhes' : 'Ver detalhes'}
+                            onClick={e => {
+                              e.stopPropagation()
+                              toggleRow(r.id)
+                            }}
+                          >
+                            <ChevronDown className={`size-4 transition-transform ${open ? 'rotate-180' : ''}`} />
+                          </button>
+                        </div>
+                      </TableCell>
+                      <TableCell className="hidden lg:table-cell font-mono text-[11px] text-muted-foreground max-w-xs truncate align-top" title={`${r.method} ${r.path} · ${r.statusCode}`}>
+                        {r.method} {r.path} · {r.statusCode}
+                      </TableCell>
+                    </TableRow>
+                    {open && (
+                      <TableRow className="hover:bg-transparent">
+                        <TableCell colSpan={4} className="bg-muted/30 whitespace-normal">
+                          <AuditRowDetails
+                            row={r}
+                            ipFiltered={!!r.ip && search.ip === r.ip}
+                            onFilterIp={ip => setSearch({ ip, page: undefined })}
+                          />
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </Fragment>
                 )
               })}
             </TableBody>

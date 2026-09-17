@@ -52,7 +52,7 @@ function AddContactDialog({ existingIds, pending, onClose, onSubmit }: {
               <InitialsAvatar name={picked.name} avatar={picked.avatar} />
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-medium">{picked.name}</p>
-                <p className="truncate text-xs text-muted-foreground">{picked.email} · {maskPhone(picked.phone)}</p>
+                <p className="truncate text-xs text-muted-foreground">{[picked.email, maskPhone(picked.phone)].filter(Boolean).join(' · ')}</p>
               </div>
               <Button type="button" size="sm" variant="ghost" onClick={() => setPicked(null)}>Trocar</Button>
             </div>
@@ -230,7 +230,7 @@ export function PublicContactsPanel({ canEdit }: { canEdit: boolean }) {
                 </Link>
                 <p className="truncate text-xs text-muted-foreground">
                   <span className="font-medium text-primary">{c.title || 'Sem cargo'}</span>
-                  {' · '}{c.userData.email}{c.userData.phone && <> · {maskPhone(c.userData.phone)}</>}
+                  {c.userData.email && <> · {c.userData.email}</>}{c.userData.phone && <> · {maskPhone(c.userData.phone)}</>}
                 </p>
               </div>
             </div>

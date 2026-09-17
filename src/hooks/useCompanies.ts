@@ -57,7 +57,7 @@ export type CompanyMember = {
   title: string
   createdAt: string
   updatedAt: string
-  userData: { id: string; name: string; cpf: string | null; phone: string; email: string }
+  userData: { id: string; name: string; cpf: string | null; phone: string; email: string | null }
 }
 
 export type CompanyDetail = Company & {

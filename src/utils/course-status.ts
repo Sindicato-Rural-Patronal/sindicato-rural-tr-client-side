@@ -64,12 +64,12 @@ type CourseDates = {
 
 /**
  * Situação do curso a partir das datas (Brasília):
- * - closed: já terminou, ou inscrições encerraram antes de começar
+ * - closed: já terminou (ou o painel marcou "concluído"), ou inscrições encerraram antes de começar
  * - in_progress: começou e ainda não terminou (ou o painel marcou "em andamento")
  * - open: ainda vai começar e inscrições em aberto
  */
 export function getCourseSituation(c: CourseDates, now: Date = new Date()): CourseSituation {
-  if (hasCourseEnded(c.endDate, now)) return 'closed'
+  if (c.status === 'COMPLETED' || hasCourseEnded(c.endDate, now)) return 'closed'
 
   const start = dayOf(c.startDate)
   if (c.status === 'IN_PROGRESS' || (start && start <= brasiliaToday(now))) return 'in_progress'
@@ -84,11 +84,24 @@ type CourseForRegistration = CourseDates & {
   enrolled: number
 }
 
-/** Por que não dá para se inscrever agora (null = pode). */
+/** Por que não dá para se inscrever agora (null = pode). Curso concluído no painel conta como terminado. */
 export function getRegistrationBlock(c: CourseForRegistration, now: Date = new Date()): RegistrationBlock {
-  if (hasCourseEnded(c.endDate, now)) return 'ended'
+  if (c.status === 'COMPLETED' || hasCourseEnded(c.endDate, now)) return 'ended'
   if (c.status === 'IN_PROGRESS') return 'in_progress'
   if (isRegistrationDeadlinePassed(c.registrationDeadline, c.registrationDeadlineTime, now)) return 'deadline'
   if (c.maxStudents - c.enrolled <= 0) return 'full'
   return null
+}
+
+/**
+ * O curso já começou (dá para marcar presença): iniciado ou concluído no painel,
+ * ou o dia do início (Brasília) já chegou.
+ */
+export function hasCourseStarted(
+  c: { status?: string; startDate?: string | null },
+  now: Date = new Date(),
+): boolean {
+  if (c.status === 'IN_PROGRESS' || c.status === 'COMPLETED') return true
+  const start = dayOf(c.startDate)
+  return !!start && start <= brasiliaToday(now)
 }

@@ -9,6 +9,7 @@ export function StatusBadge({ status }: { status: Course['status'] }) {
     PRIVATE: { label: t('admin.courses.form.statusPrivate'), cls: 'bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-400 dark:border-amber-900' },
     UNPUBLISHED: { label: t('admin.courses.form.statusDraft'), cls: 'bg-muted text-muted-foreground border-border' },
     IN_PROGRESS: { label: t('admin.courses.form.statusInProgress'), cls: 'bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-950/40 dark:text-blue-400 dark:border-blue-900' },
+    COMPLETED: { label: 'Concluído', cls: 'bg-violet-100 text-violet-700 border-violet-200 dark:bg-violet-950/40 dark:text-violet-400 dark:border-violet-900' },
   }
 
   const { label, cls } = STATUS_MAP[status] ?? STATUS_MAP.UNPUBLISHED

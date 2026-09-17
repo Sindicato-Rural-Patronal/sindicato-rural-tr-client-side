@@ -11,20 +11,22 @@ import { FaWhatsapp } from 'react-icons/fa'
 import { usePermissions } from '@/hooks/usePermissions'
 import { PermissionButton } from '@/components/PermissionButton'
 import { useTranslation } from 'react-i18next'
-import { useAdminCourses, useAdminCourse, useDeleteCourse, useUploadGalleryPhoto, useAssignInstructor, useRemoveInstructorAssignment, adminCourseQuery, fetchAllCourseRegistrations, useAllCourseRegistrations, useAdminRegisterPerson, useConfirmAllRegistrations } from '@/hooks/useCourse'
+import { useAdminCourses, useAdminCourse, useDeleteCourse, useUploadGalleryPhoto, useAssignInstructor, useRemoveInstructorAssignment, adminCourseQuery, fetchAllCourseRegistrations, useAllCourseRegistrations, useAdminRegisterPerson, useConfirmAllRegistrations, useSetRegistrationAttendance, useMarkUnmarkedAttendance, useCompleteCourse } from '@/hooks/useCourse'
 import type { CourseCardItem } from '@/hooks/useCourse'
 import { useCourseRegistrations, useCancelRegistration, useInstructors, useConfirmRegistration, useStartCourse, useUploadRegistrationFicha, useDeleteRegistrationFicha, openRegistrationFicha } from '@/hooks/useAdmin'
 import type { UserDataDetail, Registration } from '@/hooks/useAdmin'
 import { formatDateFromString } from '@/utils/format-data-from-string'
 import { formatBRL } from '@/utils/format-currency'
 import { calcAge } from '@/utils/age'
+import { hasCourseStarted } from '@/utils/course-status'
+import { attendanceCounts, attendanceSummary, canReceiveCertificate } from '@/utils/course-attendance'
 import { upperNoAccents } from '@/utils/text-format'
 import { maskCPF, maskPhone } from '@/utils/masks'
 import { markdownToPlainText } from '@/lib/markdown-text'
 import { whatsappUrl, telHref, uniqueContactLines, phoneKey } from '@/lib/contact-links'
 import { copyText } from '@/lib/copy-text'
 import { cn } from '@/lib/utils'
-import { Plus, Building2, GraduationCap, Calendar, Search, BookOpen, Images, ChevronLeft, ChevronRight, X, Pencil, Trash2, Clock, MapPin, User, ImageUp, ImagePlus, UserCheck, UserX, FileDown, Loader2, CheckCircle2, Circle, PlayCircle, Paperclip, Eye, FileSpreadsheet, Award, CopyPlus, MoreVertical, CheckCheck, UserPlus, Mail, Phone, ExternalLink, Link2 } from 'lucide-react'
+import { Plus, Building2, GraduationCap, Calendar, Search, BookOpen, Images, ChevronLeft, ChevronRight, X, Pencil, Trash2, Clock, MapPin, User, ImageUp, ImagePlus, UserCheck, UserX, FileDown, Loader2, CheckCircle2, Circle, PlayCircle, Paperclip, Eye, FileSpreadsheet, Award, CopyPlus, MoreVertical, CheckCheck, UserPlus, Mail, Phone, ExternalLink, Link2, ClipboardList, UserRoundCheck, UserRoundX, CircleCheckBig } from 'lucide-react'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
@@ -421,14 +423,26 @@ function RegistrationsTab({
   const [exportingCsv, setExportingCsv] = useState(false)
   const [certId, setCertId] = useState<string | null>(null)
   const [exportingCerts, setExportingCerts] = useState(false)
+  const [startOpen, setStartOpen] = useState(false)
+  const setAttendance = useSetRegistrationAttendance(courseId)
+  const markAllPresent = useMarkUnmarkedAttendance(courseId)
+  const [markAllOpen, setMarkAllOpen] = useState(false)
+  const [exportingLista, setExportingLista] = useState(false)
   const { data: courseDetail } = useAdminCourse(courseId)
+  const queryClient = useQueryClient()
   const { can } = usePermissions()
   const canManage = can('UPDATE_COURSE')
   const { t } = useTranslation()
 
   const inProgress = courseStatus === 'IN_PROGRESS'
+  const completed = courseStatus === 'COMPLETED'
   const registeredIds = allRegs.data ? new Set(allRegs.data.map(r => r.userDataId)) : undefined
   const pendingCount = allRegs.data?.filter(r => !r.confirmed).length ?? 0
+  // Presença: aparece quando o curso já começou (iniciado, concluído ou chegou o dia do início).
+  const started = hasCourseStarted({ status: courseStatus, startDate: courseDetail?.startDate })
+  const counts = allRegs.data ? attendanceCounts(allRegs.data) : null
+  // "Todos presentes" só marca as confirmadas ainda sem marcar (mesma regra do backend).
+  const unmarkedConfirmed = counts?.unmarked ?? 0
 
   // Cancelar a última inscrição de uma página > 1 deixaria a lista vazia.
   if (resp && total > 0 && page > totalPages) {
@@ -441,6 +455,64 @@ function RegistrationsTab({
       toast.success('Curso iniciado! Status: Em andamento.')
     } catch (e) {
       toast.error(apiErrorMessage(e, 'Não foi possível iniciar o curso.'))
+    } finally {
+      setStartOpen(false)
+    }
+  }
+
+  // Clicar no botão já marcado desmarca (volta a "sem marcar").
+  function markAttendance(reg: Registration, value: boolean) {
+    const attended = reg.attended === value ? null : value
+    setAttendance.mutate(
+      { id: reg.id, attended },
+      { onError: e => toast.error(apiErrorMessage(e, `Não foi possível marcar a presença de ${reg.userData.name}.`)) },
+    )
+  }
+
+  async function handleMarkAllPresent() {
+    try {
+      const { updated } = await markAllPresent.mutateAsync(true)
+      toast.success(updated === 1 ? '1 inscrição marcada como presente.' : `${updated} inscrições marcadas como presentes.`)
+    } catch (e) {
+      toast.error(apiErrorMessage(e, 'Não foi possível marcar a presença.'))
+    } finally {
+      setMarkAllOpen(false)
+    }
+  }
+
+  // Lista de presença para imprimir: confirmadas, em ordem alfabética, uma folha por dia.
+  async function downloadListaPresenca() {
+    setExportingLista(true)
+    try {
+      const { downloadListaPresencaPdf } = await import('@/lib/lista-presenca-pdf')
+      const regs = await fetchAllCourseRegistrations(courseId)
+      const confirmed = regs.filter(r => r.confirmed)
+      if (confirmed.length === 0) {
+        toast.error('Nenhuma inscrição confirmada para a lista de presença.')
+        return
+      }
+      const detail: Course = courseDetail ?? await queryClient.fetchQuery<Course>(adminCourseQuery(courseId))
+      const instructors = detail.instructors?.length
+        ? detail.instructors.map(i => i.name)
+        : [detail.instructorName].filter(Boolean)
+      await downloadListaPresencaPdf(
+        {
+          title: courseTitle,
+          eventNumber,
+          startDate: detail.startDate,
+          endDate: detail.endDate,
+          startTime: detail.startTime,
+          endTime: detail.endTime,
+          location: detail.location,
+          instructors,
+        },
+        confirmed.map(r => ({ name: r.userData.name, cpf: r.userData.cpf })),
+        `lista-presenca-${courseTitle}`,
+      )
+    } catch {
+      toast.error('Erro ao gerar a lista de presença.')
+    } finally {
+      setExportingLista(false)
     }
   }
 
@@ -637,16 +709,24 @@ function RegistrationsTab({
     try {
       const { downloadCertificadoPdf } = await import('@/lib/certificado-pdf')
       const regs = await fetchAllCourseRegistrations(courseId)
-      const confirmed = regs.filter(r => r.confirmed)
-      if (confirmed.length === 0) {
-        toast.error('Nenhuma inscrição confirmada para emitir certificado.')
+      // Confirmadas que não foram marcadas como falta.
+      const eligible = regs.filter(canReceiveCertificate)
+      const absent = regs.filter(r => r.confirmed && r.attended === false).length
+      if (eligible.length === 0) {
+        toast.error(absent > 0
+          ? 'Nenhum certificado a emitir: as inscrições confirmadas estão marcadas como falta.'
+          : 'Nenhuma inscrição confirmada para emitir certificado.')
         return
       }
       const course = certCourse()
       await downloadCertificadoPdf(
-        confirmed.map(r => ({ course, participant: { name: r.userData.name, cpf: r.userData.cpf } })),
+        eligible.map(r => ({ course, participant: { name: r.userData.name, cpf: r.userData.cpf } })),
         `certificados-${courseTitle}`,
       )
+      const done = eligible.length === 1 ? '1 certificado gerado.' : `${eligible.length} certificados gerados.`
+      toast.success(absent > 0
+        ? `${done} ${absent === 1 ? '1 pessoa marcada como falta ficou' : `${absent} pessoas marcadas como falta ficaram`} de fora.`
+        : done)
     } catch {
       toast.error('Erro ao gerar os certificados.')
     } finally {
@@ -672,8 +752,8 @@ function RegistrationsTab({
                 <CheckCheck className="size-3.5" /> Confirmar todas ({pendingCount})
               </Button>
             )}
-            {total > 0 && !inProgress && (
-              <Button size="sm" className="h-8 gap-1.5" disabled={startCourse.isPending} onClick={handleStart}>
+            {canManage && total > 0 && !inProgress && !completed && (
+              <Button size="sm" className="h-8 gap-1.5" disabled={startCourse.isPending} onClick={() => setStartOpen(true)}>
                 {startCourse.isPending ? <Loader2 className="size-3.5 animate-spin" /> : <PlayCircle className="size-3.5" />}
                 {t('admin.courses.startCourse')}
               </Button>
@@ -683,8 +763,27 @@ function RegistrationsTab({
                 <PlayCircle className="size-3" /> {t('admin.courses.form.statusInProgress')}
               </span>
             )}
+            {completed && (
+              <span className="inline-flex items-center gap-1 rounded-full border border-violet-200 bg-violet-100 px-2 py-0.5 text-xs font-medium text-violet-700 dark:border-violet-900 dark:bg-violet-950/40 dark:text-violet-400">
+                <CircleCheckBig className="size-3" /> Concluído
+              </span>
+            )}
           </div>
         </div>
+
+        {started && total > 0 && (
+          <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border bg-muted/30 px-3 py-2">
+            <p className="text-sm text-foreground">
+              <span className="font-medium">Presença:</span>{' '}
+              {counts ? attendanceSummary(counts) : t('common.loading')}
+            </p>
+            {canManage && unmarkedConfirmed > 0 && (
+              <Button size="sm" variant="outline" className="h-8 gap-1.5" onClick={() => setMarkAllOpen(true)}>
+                <UserRoundCheck className="size-3.5" /> Todos presentes ({unmarkedConfirmed})
+              </Button>
+            )}
+          </div>
+        )}
 
         {total > 0 && (
           <div className="flex flex-wrap items-center gap-2">
@@ -704,17 +803,15 @@ function RegistrationsTab({
               {exportingCsv ? <Loader2 className="size-3.5 animate-spin" /> : <FileSpreadsheet className="size-3.5" />}
               Planilha
             </Button>
-            <Button size="sm" variant="outline" className="h-8 gap-1.5" disabled={exportingCerts} onClick={certAll} title="Certificados dos confirmados">
+            <Button size="sm" variant="outline" className="h-8 gap-1.5" disabled={exportingLista} onClick={downloadListaPresenca} title="Lista de presença para imprimir (inscrições confirmadas)">
+              {exportingLista ? <Loader2 className="size-3.5 animate-spin" /> : <ClipboardList className="size-3.5" />}
+              Lista de presença
+            </Button>
+            <Button size="sm" variant="outline" className="h-8 gap-1.5" disabled={exportingCerts} onClick={certAll} title="Certificados dos confirmados que não faltaram">
               {exportingCerts ? <Loader2 className="size-3.5 animate-spin" /> : <Award className="size-3.5" />}
               Certificados
             </Button>
           </div>
-        )}
-
-        {total > 0 && !inProgress && (
-          <p className="text-xs text-muted-foreground">
-            {t('admin.courses.startCourseHint')}
-          </p>
         )}
       </div>
 
@@ -742,16 +839,16 @@ function RegistrationsTab({
         const whatsapp = whatsappUrl(reg.userData.phone)
         const tel = telHref(reg.userData.phone)
         return (
-          // Celular: dados da pessoa em cima e botões (só ícones) embaixo, para o
-          // nome não ficar cortado. Tela larga: tudo na mesma linha.
-          <div key={reg.id} className="flex flex-col gap-2 rounded-lg border border-border bg-card p-3 lg:flex-row lg:items-center lg:gap-3">
+          // Dados da pessoa em cima e botões embaixo, em qualquer largura: a janela do
+          // curso é estreita e, com presença + ações na mesma linha, o nome sumia.
+          <div key={reg.id} className="flex flex-col gap-2 rounded-lg border border-border bg-card p-3">
             <div className="flex min-w-0 flex-1 items-center gap-3">
               <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary font-semibold text-sm">
                 {reg.userData.name.charAt(0).toUpperCase()}
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-1.5 flex-wrap">
-                  <p className="text-sm font-medium text-foreground wrap-break-word lg:truncate">{reg.userData.name}</p>
+                  <p className="text-sm font-medium text-foreground wrap-break-word">{reg.userData.name}</p>
                   {minor && (
                     <span
                       className="inline-flex items-center rounded-full border border-red-300 bg-red-100 px-1.5 text-[10px] font-semibold text-red-700 dark:border-red-900 dark:bg-red-950/40 dark:text-red-400"
@@ -779,14 +876,41 @@ function RegistrationsTab({
                   )}
                 </div>
                 <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
-                  <span className="break-all">{reg.userData.email}</span>
+                  {reg.userData.email && <span className="break-all">{reg.userData.email}</span>}
                   {reg.userData.phone && <span>{maskPhone(reg.userData.phone)}</span>}
                   {reg.userData.cpf && <span className="font-mono">{maskCPF(reg.userData.cpf)}</span>}
                 </div>
               </div>
             </div>
 
-            <div className="flex flex-wrap items-center gap-1 lg:shrink-0 lg:justify-end">
+            <div className="flex flex-wrap items-center gap-1 border-t border-border/60 pt-2">
+              {/* Presença só nas confirmadas; clicar de novo no botão marcado desmarca. */}
+              {started && reg.confirmed && (
+                <div role="group" aria-label={`Presença de ${reg.userData.name}`} className="mr-1 flex items-center gap-1">
+                  <Button
+                    size="sm"
+                    variant={reg.attended === true ? 'default' : 'outline'}
+                    aria-pressed={reg.attended === true}
+                    title={reg.attended === true ? 'Marcado como presente. Clique para desmarcar.' : 'Marcar como presente'}
+                    disabled={!canManage}
+                    className={cn('h-9 gap-1 px-2.5 text-xs lg:h-7', reg.attended === true && 'bg-emerald-600 text-white hover:bg-emerald-700')}
+                    onClick={() => markAttendance(reg, true)}
+                  >
+                    <UserRoundCheck className="size-3.5" /> Presente
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant={reg.attended === false ? 'default' : 'outline'}
+                    aria-pressed={reg.attended === false}
+                    title={reg.attended === false ? 'Marcado como falta. Clique para desmarcar.' : 'Marcar falta'}
+                    disabled={!canManage}
+                    className={cn('h-9 gap-1 px-2.5 text-xs lg:h-7', reg.attended === false && 'bg-red-600 text-white hover:bg-red-700')}
+                    onClick={() => markAttendance(reg, false)}
+                  >
+                    <UserRoundX className="size-3.5" /> Faltou
+                  </Button>
+                </div>
+              )}
               <span className="text-xs text-muted-foreground hidden lg:inline mr-1">
                 {new Date(reg.createdAt).toLocaleDateString('pt-BR')}
               </span>
@@ -822,7 +946,7 @@ function RegistrationsTab({
                 {fichaId === reg.userDataId ? <Loader2 className="size-3.5 animate-spin" /> : <FileDown className="size-3.5" />}
                 <span className="hidden lg:inline">{t('admin.courses.ficha')}</span>
               </RowAction>
-              {reg.confirmed && (
+              {canReceiveCertificate(reg) && (
                 <RowAction
                   label="Emitir certificado de conclusão"
                   className="text-amber-600 hover:text-amber-700 hover:bg-amber-50 dark:hover:bg-amber-950/30"
@@ -938,6 +1062,62 @@ function RegistrationsTab({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <AlertDialog open={startOpen} onOpenChange={open => { if (!startCourse.isPending) setStartOpen(open) }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmar início do curso</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="flex flex-col gap-2">
+                <p>O curso passa para "Em andamento": sai da lista do site e não aceita novas inscrições.</p>
+                {allRegs.data && (
+                  <p className={pendingCount > 0 ? 'font-medium text-amber-700 dark:text-amber-400' : undefined}>
+                    {pendingCount === 0
+                      ? 'Todas as inscrições estão confirmadas.'
+                      : pendingCount === 1
+                        ? '1 inscrição ainda não foi confirmada. Dá para iniciar assim mesmo.'
+                        : `${pendingCount} inscrições ainda não foram confirmadas. Dá para iniciar assim mesmo.`}
+                  </p>
+                )}
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={startCourse.isPending}>Voltar</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={startCourse.isPending}
+              onClick={e => { e.preventDefault(); handleStart() }}
+            >
+              {startCourse.isPending ? 'Iniciando...' : 'Iniciar curso'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={markAllOpen} onOpenChange={open => { if (!markAllPresent.isPending) setMarkAllOpen(open) }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Marcar todos como presentes</AlertDialogTitle>
+            <AlertDialogDescription>
+              {unmarkedConfirmed === 1
+                ? '1 inscrição confirmada ainda sem presença marcada será marcada como presente.'
+                : `${unmarkedConfirmed} inscrições confirmadas ainda sem presença marcada serão marcadas como presentes.`}
+              {' '}Quem já está marcado como presente ou falta não muda.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={markAllPresent.isPending}>Voltar</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={markAllPresent.isPending}
+              onClick={e => { e.preventDefault(); handleMarkAllPresent() }}
+            >
+              {markAllPresent.isPending
+                ? 'Marcando...'
+                : unmarkedConfirmed === 1 ? 'Marcar 1 como presente' : `Marcar ${unmarkedConfirmed} como presentes`}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }
@@ -969,6 +1149,20 @@ function ViewDialog({
   const { data: instructors } = useInstructors()
   const assignInstructor = useAssignInstructor(course?.id ?? '')
   const removeAssignment = useRemoveInstructorAssignment(course?.id ?? '')
+  const completeCourse = useCompleteCourse()
+  const [completeOpen, setCompleteOpen] = useState(false)
+
+  async function handleComplete() {
+    if (!course) return
+    try {
+      await completeCourse.mutateAsync(course.id)
+      toast.success('Curso concluído.')
+    } catch (e) {
+      toast.error(apiErrorMessage(e, 'Não foi possível concluir o curso.'))
+    } finally {
+      setCompleteOpen(false)
+    }
+  }
 
   async function handleAssignInstructor() {
     if (!selInstrId) return
@@ -1030,7 +1224,8 @@ function ViewDialog({
   return (
     <>
     <Dialog open={!!course} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-y-auto overflow-x-hidden p-0" showCloseButton={false}>
+      {/* grid-cols-[minmax(0,1fr)]: sem isso a coluna do grid cresce até o conteúdo mais largo (abas) e corta a janela no celular. */}
+      <DialogContent className="sm:max-w-4xl max-h-[90vh] grid-cols-[minmax(0,1fr)] overflow-y-auto overflow-x-hidden p-0" showCloseButton={false}>
         {/* Image / Gallery */}
         <div className="relative h-64 bg-muted flex items-center justify-center overflow-hidden">
           {totalImages > 0 ? (
@@ -1113,7 +1308,7 @@ function ViewDialog({
               )}
             </div>
 
-            <TabsList className="mb-0">
+            <TabsList className="mb-0 max-w-full justify-start overflow-x-auto">
               <TabsTrigger value="details">{t('admin.courses.tabs.info')}</TabsTrigger>
               <TabsTrigger value="registrations">
                 {t('admin.courses.registrations')}
@@ -1365,6 +1560,17 @@ function ViewDialog({
               <CopyPlus className="size-4" /> Duplicar
             </PermissionButton>
             <ExportOneButton dataset="courses" id={course.id} label="Exportar curso" />
+            {status === 'IN_PROGRESS' && (
+              <PermissionButton
+                allowed={can('UPDATE_COURSE')}
+                noPermissionMessage="Sem permissão para concluir cursos"
+                variant="outline"
+                disabled={completeCourse.isPending}
+                onClick={() => setCompleteOpen(true)}
+              >
+                <CircleCheckBig className="size-4" /> Concluir curso
+              </PermissionButton>
+            )}
           </div>
           <div className="flex gap-2">
             <Button variant="outline" onClick={onClose}>{t('common.close')}</Button>
@@ -1398,6 +1604,27 @@ function ViewDialog({
       confirmLabel="Remover"
       pendingLabel="Removendo..."
     />
+
+    <AlertDialog open={completeOpen} onOpenChange={open => { if (!completeCourse.isPending) setCompleteOpen(open) }}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Concluir curso</AlertDialogTitle>
+          <AlertDialogDescription>
+            <strong>{title}</strong> passa para "Concluído". A página do curso continua abrindo pelo link, sem aceitar inscrições.
+            Para desfazer, altere o status na edição do curso.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel disabled={completeCourse.isPending}>Voltar</AlertDialogCancel>
+          <AlertDialogAction
+            disabled={completeCourse.isPending}
+            onClick={e => { e.preventDefault(); handleComplete() }}
+          >
+            {completeCourse.isPending ? 'Concluindo...' : 'Concluir curso'}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
     </>
   )
 }

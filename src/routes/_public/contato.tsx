@@ -53,9 +53,9 @@ function PublicContacts() {
           <p className="mt-2 text-muted-foreground">Entre em contato diretamente com nossos responsáveis</p>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 max-w-4xl mx-auto">
-          {contacts.map(c => (
+          {contacts.map((c, i) => (
             <div
-              key={c.userData.email}
+              key={`${c.userData.name}-${i}`}
               className="flex items-center gap-4 rounded-xl border bg-card p-5 shadow-sm hover:shadow-md transition-shadow"
             >
               <InitialsAvatar name={c.userData.name} avatar={c.userData.avatar} size="lg" className="font-bold border-2 border-border" />
@@ -64,13 +64,15 @@ function PublicContacts() {
                 {c.publicTitle && (
                   <p className="text-xs font-medium text-primary">{c.publicTitle}</p>
                 )}
-                <a
-                  href={`mailto:${c.userData.email}`}
-                  className="text-xs text-muted-foreground hover:text-foreground transition-colors truncate flex items-center gap-1"
-                >
-                  <Mail className="size-3 shrink-0" />
-                  {c.userData.email}
-                </a>
+                {c.userData.email && (
+                  <a
+                    href={`mailto:${c.userData.email}`}
+                    className="text-xs text-muted-foreground hover:text-foreground transition-colors truncate flex items-center gap-1"
+                  >
+                    <Mail className="size-3 shrink-0" />
+                    {c.userData.email}
+                  </a>
+                )}
                 {c.userData.phone && (
                   <a
                     href={`tel:${c.userData.phone.replace(/\D/g, '')}`}

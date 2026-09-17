@@ -424,7 +424,7 @@ function RouteComponent() {
                   >
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm font-medium text-foreground">{user.name}</p>
-                      <p className="truncate text-xs text-muted-foreground">{user.email}</p>
+                      {user.email && <p className="truncate text-xs text-muted-foreground">{user.email}</p>}
                     </div>
                     {user.memberType && (
                       <span className="shrink-0 inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400">

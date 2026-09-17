@@ -1177,11 +1177,11 @@ function RouteComponent() {
                             <InitialsAvatar name={u.name} avatar={u.avatar} size="sm" />
                             <div>
                               <p className="font-medium text-sm text-foreground">{u.name}</p>
-                              <p className="text-xs text-muted-foreground md:hidden">{u.email}</p>
+                              {u.email && <p className="text-xs text-muted-foreground md:hidden">{u.email}</p>}
                             </div>
                           </div>
                         </TableCell>
-                        <TableCell className="text-muted-foreground text-sm hidden md:table-cell">{u.email}</TableCell>
+                        <TableCell className="text-muted-foreground text-sm hidden md:table-cell">{u.email || '—'}</TableCell>
                         <TableCell className="text-muted-foreground text-sm hidden lg:table-cell">{u.phone}</TableCell>
                         <TableCell className="text-muted-foreground text-sm font-mono hidden lg:table-cell">{u.cpf ? maskCPF(u.cpf) : '—'}</TableCell>
                         <TableCell className="text-muted-foreground text-sm hidden md:table-cell">
@@ -1330,7 +1330,7 @@ function RouteComponent() {
                           </div>
                         </div>
                       </TableCell>
-                      <TableCell className="text-muted-foreground text-sm hidden md:table-cell">{a.userData.email}</TableCell>
+                      <TableCell className="text-muted-foreground text-sm hidden md:table-cell">{a.userData.email || '—'}</TableCell>
                       <TableCell>
                         <div className="flex items-center gap-1.5 flex-wrap">
                           <Shield className="size-3.5 text-muted-foreground" />
@@ -1395,7 +1395,7 @@ function RouteComponent() {
         onOpenChange={open => !open && setDeleteAssociadoTarget(null)}
         title="Excluir associado"
         description={<>
-          <span className="font-medium text-foreground">{deleteAssociadoTarget?.name}</span> — {deleteAssociadoTarget?.email}
+          <span className="font-medium text-foreground">{deleteAssociadoTarget?.name}</span>{deleteAssociadoTarget?.email && <> — {deleteAssociadoTarget.email}</>}
           <br />Esta ação não pode ser desfeita.
         </>}
         onConfirm={handleDeleteAssociado}

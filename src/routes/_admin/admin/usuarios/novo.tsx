@@ -188,15 +188,6 @@ async function findPersonByCpf(digits: string): Promise<ExistingPerson | null> {
   return hit ? { id: hit.id, name: hit.name } : null
 }
 
-// E-mail é único no banco: outro cadastro com exatamente o mesmo e-mail.
-async function findPersonByEmail(email: string): Promise<ExistingPerson | null> {
-  const qs = new URLSearchParams({ page: '1', limit: '5', search: email })
-  const res = await apiFetch(`/admin/users?${qs}`)
-  const data = (await res.json()) as PaginatedResponse<UserData>
-  const hit = data.data.find(u => u.email === email)
-  return hit ? { id: hit.id, name: hit.name } : null
-}
-
 const cpfCheckKey = (digits: string | null) => ['admin', 'users', 'cpf-check', digits] as const
 
 // ─── página ──────────────────────────────────────────────────────────────────
@@ -296,26 +287,19 @@ function RouteComponent() {
     }
 
     const cpf = cpfDigits(form.cpf)
-    const email = form.email.trim()
+    // E-mail é opcional e pode repetir entre pessoas (casal, família): vazio não vai.
+    const email = form.email.trim() || undefined
     setSaving(true)
 
-    // 2. CPF e e-mail já usados por outro cadastro (confere de novo aqui caso
-    //    não tenha saído do campo). Se a busca falhar, o backend ainda recusa.
+    // 2. CPF já usado por outro cadastro (confere de novo aqui caso não tenha
+    //    saído do campo). Se a busca falhar, o backend ainda recusa.
     try {
-      const [byCpf, byEmail] = await Promise.all([
-        queryClient.fetchQuery({ queryKey: cpfCheckKey(cpf), queryFn: () => findPersonByCpf(cpf) }),
-        findPersonByEmail(email),
-      ])
+      const byCpf = await queryClient.fetchQuery({ queryKey: cpfCheckKey(cpf), queryFn: () => findPersonByCpf(cpf) })
       setCpfToCheck(cpf)
       if (byCpf) {
         setSaving(false)
         showProblems({}, 'Já existe um cadastro com este CPF.')
         focusFieldById(fieldId('cpf'))
-        return
-      }
-      if (byEmail) {
-        setSaving(false)
-        showProblems({ email: `Este e-mail já está no cadastro de ${byEmail.name}.` }, 'Este e-mail já está em outro cadastro.')
         return
       }
     } catch { /* segue: o backend faz a checagem definitiva */ }
@@ -330,12 +314,12 @@ function RouteComponent() {
       const created = await res.json()
       newId = created.id
     } catch (err) {
-      const msg = err instanceof ApiError && err.status === 409
-        ? `${apiErrorMessage(err)} Confira CPF, e-mail e telefone: algum deles já está em outro cadastro.`
-        : apiErrorMessage(err, 'Erro ao cadastrar associado.')
+      const msg = apiErrorMessage(err, 'Erro ao cadastrar associado.')
       setFormMessage(msg)
       toast.error(msg)
       setSaving(false)
+      // 409 = CPF de outra pessoa (o único dado que não pode repetir).
+      if (err instanceof ApiError && err.status === 409) focusFieldById(fieldId('cpf'))
       return
     }
 
@@ -453,7 +437,7 @@ function RouteComponent() {
             <FieldRow label="Apelido">
               <Input className={inp} value={form.nickname} onChange={e => set('nickname', upperNoAccents(e.target.value))} />
             </FieldRow>
-            <FieldRow label="E-mail" required htmlFor={fieldId('email')} error={errors.email}>
+            <FieldRow label="E-mail" htmlFor={fieldId('email')} error={errors.email}>
               <Input className={inp} {...invalid('email')} type="email" value={form.email} onChange={e => set('email', e.target.value)} />
             </FieldRow>
             <FieldRow label="Telefone" required htmlFor={fieldId('phone')} error={errors.phone}>

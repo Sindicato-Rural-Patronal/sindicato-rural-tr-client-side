@@ -5,6 +5,7 @@ import {
   getCourseSituation,
   getRegistrationBlock,
   hasCourseEnded,
+  hasCourseStarted,
   isRegistrationDeadlinePassed,
 } from '@/utils/course-status'
 
@@ -97,6 +98,12 @@ describe('fim do curso e andamento', () => {
     expect(getCourseSituation(marked, deadlineDayLate)).toBe('in_progress')
   })
 
+  it('status COMPLETED conta como terminado, mesmo antes do fim', () => {
+    const done = { ...base, status: 'COMPLETED' }
+    expect(getRegistrationBlock(done, deadlineDayLate)).toBe('ended')
+    expect(getCourseSituation(done, deadlineDayLate)).toBe('closed')
+  })
+
   it('curso lotado', () => {
     expect(getRegistrationBlock({ ...base, enrolled: 20 }, deadlineDayLate)).toBe('full')
   })
@@ -104,5 +111,18 @@ describe('fim do curso e andamento', () => {
   it('terminado tem prioridade sobre prazo e lotação', () => {
     const c = { ...lastDay, registrationDeadline: '2026-09-10', enrolled: 20 }
     expect(getRegistrationBlock(c, nextDayEarly)).toBe('ended')
+  })
+})
+
+describe('hasCourseStarted (presença)', () => {
+  it('iniciado ou concluído no painel', () => {
+    expect(hasCourseStarted({ status: 'IN_PROGRESS', startDate: '2026-09-25' }, deadlineDayLate)).toBe(true)
+    expect(hasCourseStarted({ status: 'COMPLETED', startDate: '2026-09-25' }, deadlineDayLate)).toBe(true)
+  })
+
+  it('pela data de início em Brasília', () => {
+    expect(hasCourseStarted({ status: 'PUBLIC', startDate: '2026-09-21' }, deadlineDayLate)).toBe(false)
+    expect(hasCourseStarted({ status: 'PUBLIC', startDate: '2026-09-21' }, nextDayEarly)).toBe(true)
+    expect(hasCourseStarted({ status: 'PUBLIC', startDate: null }, nextDayEarly)).toBe(false)
   })
 })

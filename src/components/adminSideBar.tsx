@@ -156,7 +156,7 @@ export function AdminSideBar({ ...props }: React.ComponentProps<typeof Sidebar>)
       </SidebarContent>
 
       <SidebarFooter className="flex flex-col gap-2 pb-3">
-        {/* Idioma e tema agora ficam em Minha conta → Preferências. */}
+        {/* O tema fica em Minha conta → Preferências. */}
         <NavUser user={user} />
       </SidebarFooter>
     </Sidebar>

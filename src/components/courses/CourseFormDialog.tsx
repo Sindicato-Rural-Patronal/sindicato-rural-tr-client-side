@@ -41,7 +41,13 @@ const STATUS_HINTS: Record<Course['status'], string> = {
   PRIVATE: 'Não aparece na lista de cursos do site, mas quem tiver o link abre a página e pode se inscrever.',
   PUBLIC: 'Aparece na lista de cursos do site e aceita inscrições até o prazo.',
   IN_PROGRESS: 'Curso já começou: sai da lista do site; a página abre pelo link, mas não aceita novas inscrições.',
+  COMPLETED: 'Curso concluído: não aparece na lista do site; a página abre pelo link, mas não aceita inscrições.',
 }
+
+// "Em andamento" e "Concluído" só aparecem no select ao editar um curso que já
+// está num desses status (iniciar e concluir têm botões próprios); pela edição
+// dá para desfazer a conclusão.
+const courseFormSchema = courseBaseSchema
 
 // ─── create / edit form dialog ────────────────────────────────────────────────
 
@@ -335,6 +341,7 @@ function CourseFormDialogSession({ open, editing, duplicateOf = null, onClose }:
 
   const isCreating = !editing
   const source = isCreating ? duplicateOf : null
+  const startedStatus = editing?.status === 'IN_PROGRESS' || editing?.status === 'COMPLETED'
   const queryClient = useQueryClient()
 
   // imagens escolhidas antes do curso existir (modo criação)
@@ -357,7 +364,7 @@ function CourseFormDialogSession({ open, editing, duplicateOf = null, onClose }:
   )
 
   const form = useForm<CourseFormData>({
-    resolver: zodResolver(courseBaseSchema),
+    resolver: zodResolver(courseFormSchema),
     mode: 'onTouched',
     defaultValues: editing ? courseToForm(editing) : source ? courseToDuplicateForm(source, rooms) : emptyFormDefaults,
   })
@@ -507,8 +514,11 @@ function CourseFormDialogSession({ open, editing, duplicateOf = null, onClose }:
                           <SelectItem value="UNPUBLISHED">{t('admin.courses.form.statusDraft')}</SelectItem>
                           <SelectItem value="PRIVATE">{t('admin.courses.form.statusPrivate')}</SelectItem>
                           <SelectItem value="PUBLIC">{t('admin.courses.form.statusPublic')}</SelectItem>
-                          {field.value === 'IN_PROGRESS' && (
-                            <SelectItem value="IN_PROGRESS">{t('admin.courses.form.statusInProgress')}</SelectItem>
+                          {startedStatus && (
+                            <>
+                              <SelectItem value="IN_PROGRESS">{t('admin.courses.form.statusInProgress')}</SelectItem>
+                              <SelectItem value="COMPLETED">Concluído</SelectItem>
+                            </>
                           )}
                         </SelectContent>
                       </Select>

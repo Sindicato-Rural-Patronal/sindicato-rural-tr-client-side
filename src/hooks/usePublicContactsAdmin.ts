@@ -9,7 +9,7 @@ export type AdminPublicContact = {
   userDataId: string
   title: string | null
   order: number
-  userData: { id: string; name: string; email: string; phone: string; avatar: string | null }
+  userData: { id: string; name: string; email: string | null; phone: string; avatar: string | null }
 }
 
 const KEY = ['admin', 'public-contacts'] as const

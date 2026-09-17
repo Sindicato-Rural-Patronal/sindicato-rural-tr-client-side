@@ -51,7 +51,7 @@ const API_ERROR_KEYS: Record<string, string> = {
 }
 
 /**
- * Traduz um erro vindo da API para o idioma atual.
+ * Traduz um erro vindo da API para o português.
  *
  * Aceita `Error`/`ApiError`, string crua ou qualquer unknown de um catch.
  * Mensagens conhecidas são traduzidas; desconhecidas aparecem como vieram

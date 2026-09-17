@@ -18,8 +18,8 @@ function checkField(field: PersonField, raw: string): string | null {
     case 'name':
       return v ? null : 'Informe o nome.'
     case 'email':
-      if (!v) return 'Informe o e-mail.'
-      return emailSchema.safeParse(v).success ? null : 'E-mail inválido. Confira o endereço.'
+      // Opcional: muita gente não tem e-mail. Pode repetir entre pessoas (casal, família).
+      return !v || emailSchema.safeParse(v).success ? null : 'E-mail inválido. Confira o endereço ou deixe em branco.'
     case 'phone':
       if (!v) return 'Informe o telefone.'
       return [10, 11].includes(digits(v).length) ? null : 'Telefone inválido: use DDD + número.'
@@ -42,8 +42,8 @@ function checkField(field: PersonField, raw: string): string | null {
 
 /**
  * Valida só os campos informados (quem chama escolhe: o cadastro novo manda
- * todos; a edição manda só os que mudaram). Nome, e-mail, telefone e CPF são
- * obrigatórios; os demais só são conferidos quando preenchidos.
+ * todos; a edição manda só os que mudaram). Nome, telefone e CPF são
+ * obrigatórios; os demais (inclusive o e-mail) só são conferidos quando preenchidos.
  */
 export function validatePersonFields(values: Partial<Record<PersonField, string>>): PersonFieldErrors {
   const errors: PersonFieldErrors = {}

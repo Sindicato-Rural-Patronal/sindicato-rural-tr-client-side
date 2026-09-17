@@ -30,4 +30,9 @@ describe('StatusBadge', () => {
     render(<StatusBadge status="UNPUBLISHED" />)
     expect(screen.getByText('Não publicado')).toBeInTheDocument()
   })
+
+  it('renderiza COMPLETED', () => {
+    render(<StatusBadge status="COMPLETED" />)
+    expect(screen.getByText('Concluído')).toBeInTheDocument()
+  })
 })

@@ -21,8 +21,7 @@ Site institucional do **Sindicato Rural de Terra Roxa** (Paraná, Brasil). Plata
 | Embla Carousel | 8.x | Carrossel |
 | @uiw/react-md-editor | 4.x | Editor markdown (descrições de cursos) |
 | React Markdown | 10.x | Renderização markdown |
-| react-i18next | 15.x | Internacionalização (pt-BR / en) |
-| i18next-browser-languagedetector | 8.x | Detecção de idioma via localStorage |
+| react-i18next | 17.x | Textos centralizados em pt-BR (`t()`); sem troca de idioma |
 
 ## Estrutura de Rotas
 
@@ -55,7 +54,7 @@ Site institucional do **Sindicato Rural de Terra Roxa** (Paraná, Brasil). Plata
 /admin/convenios            → _admin/admin/convenios/index.tsx (lista de convênios)
 /admin/convenios/novo       → _admin/admin/convenios/novo.tsx (editor, criação)
 /admin/convenios/$id        → _admin/admin/convenios/$id.tsx (editor com pré-visualização)
-/admin/auditoria            → _admin/admin/auditoria/index.tsx (trilha de auditoria)
+/admin/auditoria            → _admin/admin/auditoria/index.tsx (trilha de auditoria; linha abre IP, local, navegador e "O que mudou"; filtros na URL, inclusive ?ip=)
 /admin/financeiro           → _admin/admin/financeiro/index.tsx (Financeiro: dashboard, lançamentos, categorias, caixas)
 /admin/dashboard            → _admin/admin/dashboard.tsx (painel: stats + calendário de cursos + cadastros incompletos)
 /convite/:token             → convite/$token.tsx (público: ativar acesso de admin por convite)
@@ -103,8 +102,7 @@ src/
 │   ├── home-courses-section.tsx     # Carrossel de cursos (CoursesSection)
 │   ├── home-news-section.tsx        # Seção de notícias na home
 │   ├── course-card.tsx              # CourseCard + CourseCardSimple (carousel-aware)
-│   ├── StatusBadge.tsx              # Badge do status do curso (PUBLIC | PRIVATE | UNPUBLISHED | IN_PROGRESS)
-│   ├── LanguageToggle.tsx           # Toggle 🇧🇷 PT / 🇺🇸 EN (i18n)
+│   ├── StatusBadge.tsx              # Badge do status do curso (PUBLIC | PRIVATE | UNPUBLISHED | IN_PROGRESS | COMPLETED)
 │   ├── ImageCropDialog.tsx          # Dialog de crop de imagem (avatar/upload)
 │   ├── PermissionButton.tsx         # Botão condicional baseado em permissão
 │   ├── confirm-close-dialog.tsx     # Dialog de confirmação de descarte
@@ -130,6 +128,7 @@ src/
 │   ├── useBanner.ts                 # Hooks de banners
 │   ├── useRooms.ts                  # useRooms, useCreateRoom
 │   ├── useRowSelection.ts           # Seleção de linhas por id (continua entre páginas) para exportar
+│   ├── useAuditTrail.ts             # Auditoria: useAuditTrail (filtros action/entity/actorId/ip/from/to/q) + AuditTrailItem
 │   ├── usePermissions.ts            # Hook de permissões do usuário logado
 │   ├── use-users.ts                 # authenticateUser(username, password) → POST /api/auth/login
 │   └── use-mobile.ts               # useIsMobile (breakpoint hook)
@@ -144,17 +143,20 @@ src/
 │   ├── export.ts                    # downloadExport(dataset, params) → POST /admin/export/:dataset (filtros/ids no corpo; CSV)
 │   ├── member-types.ts              # MEMBER_TYPES (lista fixa {value,label}, também opções do select) + memberTypeLabel
 │   ├── membership.ts                # isActiveMember (selo "Associado" nas inscrições)
-│   ├── person-validation.ts         # validatePersonFields (nome, e-mail, telefones, CPF, RG, CNH — mesmas regras do backend),
+│   ├── person-validation.ts         # validatePersonFields (nome, e-mail opcional, telefones, CPF, RG, CNH — mesmas regras do backend),
 │   │                                #   firstInvalidField, focusFieldById (cadastro novo e edição de pessoa)
 │   ├── org-contact.ts               # Dados padrão do sindicato (fallback) + phoneDigits
 │   ├── room-names.ts                # Nomes fixos das salas + opções do select
 │   ├── calendar-links.ts            # Curso na agenda/WhatsApp: buildCourseIcs (.ics, hora de Brasília → UTC, repete por dia),
 │   │                                #   googleCalendarUrl, whatsappShareUrl (só nome, data, horário, local e link)
 │   ├── quote-utils.ts               # Cotações: período (manhã/tarde), rótulo dos produtos, unidades (QUOTE_UNIT_OPTIONS), trendOf
+│   ├── audit-fields.ts              # Auditoria "O que mudou": AUDIT_FIELD_LABELS (campo → português), formatAuditValue, auditChanges
 │   ├── quote-price-check.ts         # Cotações: findQuoteDeviations (preço >20% diferente do último → confirmação), formatQuoteChange
 │   ├── banner-dates.ts              # Banners: bannerStartIso/bannerEndIso (dia → 00:00 / 23:59:59.999 -03:00), brasiliaYmd
 │   │                                #   (instante → dia em Brasília), bannerState (mesma regra do GET /banners), bannerPeriodLabel
 │   ├── whatsapp-field.ts            # Campo WhatsApp das Redes sociais: telefone digitado ↔ link https://wa.me/55… salvo
+│   ├── lista-presenca-pdf.tsx       # Lista de presença (PDF): curso, data(s), horário, local, instrutores; tabela Nº/Nome/CPF/Assinatura,
+│   │                                #   uma folha por dia, inscrições confirmadas em ordem alfabética
 │   └── utils.ts                     # cn() helper (clsx + tailwind-merge)
 ├── routes/                          # File-based routing
 ├── utils/
@@ -166,6 +168,9 @@ src/
 │   ├── cpf.ts                       # isValidCpf, cpfDigits, sameCpf (compara só dígitos)
 │   ├── course-status.ts             # getCourseSituation (selo do card), getRegistrationBlock (botão Inscrever-se),
 │   │                                #   isRegistrationDeadlinePassed/hasCourseEnded — dia em Brasília, igual ao backend
+│   │                                #   (COMPLETED = terminado); hasCourseStarted (mostra a presença)
+│   ├── course-attendance.ts         # Presença: attendanceCounts/attendanceSummary (só confirmadas), canReceiveCertificate,
+│   │                                #   courseDays (uma folha por dia na lista de presença), sortByName
 │   └── masks.ts                     # maskCPF, maskCNPJ, maskPhone
 └── main.tsx                         # Entry: QueryClientProvider → AuthProvider → RouterProvider
 ```
@@ -219,15 +224,11 @@ useContactMessages          → GET /api/admin/contacts/messages (paginado + fil
 useMarkContactMessageRead / useDeleteContactMessage / useSendContactMessage
 ```
 
-## Internacionalização (i18n)
+## Textos (i18n)
 
-- **Biblioteca**: `react-i18next` + `i18next-browser-languagedetector`
-- **Config**: `src/i18n/index.ts`
-- **Locales**: `src/i18n/locales/pt-BR.ts` (default) e `src/i18n/locales/en.ts`
-- **Persistência**: `localStorage` key `sindicato-lang`
-- **Toggle**: componente `src/components/LanguageToggle.tsx` — exibe 🇧🇷 PT / 🇺🇸 EN
-  - Presente no `PublicHeader` (desktop + mobile) e no `AdminSideBar` (footer)
-- **Padrão**: `pt-BR`; fallback: `pt-BR`
+- O sistema é **só em português**: não há seletor nem detecção de idioma (o usuário decidiu remover o inglês).
+- Os textos ficam em `src/i18n/locales/pt-BR.ts` e são lidos com `t('chave')` (`react-i18next`); config em `src/i18n/index.ts` (`lng` fixo `pt-BR`; apaga a chave antiga `sindicato-lang` do localStorage).
+- `src/test/lib/i18n.test.ts` confere que toda chave usada em `t('...')` existe em `pt-BR.ts`.
 
 ## Tipo Principal: `Course`
 
@@ -235,7 +236,7 @@ Definido em `src/@types/course.ts`. O backend já responde com os campos em ingl
 
 **`Course`**:
 ```typescript
-id, status: 'PUBLIC' | 'PRIVATE' | 'UNPUBLISHED' | 'IN_PROGRESS',
+id, status: 'PUBLIC' | 'PRIVATE' | 'UNPUBLISHED' | 'IN_PROGRESS' | 'COMPLETED',
 title, description, maxStudents, minStudents, enrolled, preEnrolled, waitlist,
 coverImage: string | null, coverImageThumb?: string | null (WebP ~640px p/ cards; null → coverImage),
 price, startDate, endDate, startTime, endTime,
@@ -280,7 +281,8 @@ photoGallery: { id, url, caption }[], instructors: CourseInstructor[]
 **Cursos (público)**
 - `GET /api/courses` — lista cursos públicos
 - `GET /api/courses/:id` — detalhe
-- `POST /api/courses/:id/register` — inscrição `{ nome, email, telefone, cpf }`
+- `POST /api/courses/:id/register` — inscrição `{ name, phone, cpf, email? }`
+- `POST /api/courses/:id/register-full` — inscrição de quem não tem cadastro (`RegisterFullBody`: e-mail opcional; a pessoa é achada só pelo CPF)
 
 **Cursos (admin)**
 - `GET /api/admin/courses` — lista admin
@@ -294,6 +296,10 @@ photoGallery: { id, url, caption }[], instructors: CourseInstructor[]
 - `DELETE /api/admin/registrations/:id` — cancelar inscrição
 - `POST /api/admin/courses/:id/registrations` — "Inscrever pessoa" `{ userDataId }` (PersonPicker; já confirmada, ignora o prazo; já inscrita → 409; lotado → 409)
 - `PATCH /api/admin/courses/:id/registrations/confirm-all` — "Confirmar todas" → `{ confirmed }`
+- `POST /api/admin/courses/:id/start` — "Confirmar início" (diálogo avisa quantas inscrições faltam confirmar; não impede) → status `IN_PROGRESS`
+- `PATCH /api/admin/courses/:id/complete` — "Concluir curso" no diálogo do curso (só em andamento; senão 409) → `{ id, status: 'COMPLETED' }`
+- `PATCH /api/admin/registrations/:id/attendance` — presença `{ attended: true | false | null }` → `{ id, attended }` (`useSetRegistrationAttendance`, atualização otimista)
+- `PATCH /api/admin/courses/:id/registrations/attendance` — "Todos presentes" `{ attended: true }`: só confirmadas ainda sem marcar → `{ updated }`
 - Aba Inscrições: WhatsApp (`wa.me/55…`) e Ligar por linha, "Copiar telefones"/"Copiar e-mails" de todas as inscrições (`lib/contact-links.ts`, `lib/copy-text.ts`)
 
 **Usuários (admin)**
@@ -374,7 +380,8 @@ photoGallery: { id, url, caption }[], instructors: CourseInstructor[]
 - `POST /api/admin/galleries/:id/photos` (multipart; reduzida p/ 1600px JPEG) · `PATCH /photos/:photoId` `{ caption }` · `DELETE /photos/:photoId` · `PATCH /photos/reorder`
 
 **Auditoria**
-- `GET /api/admin/audit-logs` — trilha de auditoria (paginado; `action=create|edit|delete|export`). Cada linha traz `summary`, a frase pronta ("Iniciou o curso "HORTA"", montada no backend); a tela só a exibe. O filtro "Tipo" lista as entidades do backend (`lib/audit-entity.ts`)
+- `GET /api/admin/audit-logs` — trilha de auditoria (paginado; `action=create|edit|delete|export|login|login_failed`, `ip` exato). Cada linha traz `summary`, a frase pronta ("Iniciou o curso "HORTA"", "Tentativa de login falhou (usuário "x")", montada no backend); a tela só a exibe. O filtro "Tipo" lista as entidades do backend (`lib/audit-entity.ts`, inclui "Login")
+- Cada linha também traz de onde veio — `ip`, `location` ("Terra Roxa, PR, Brasil", aproximado pelo IP; o backend consulta o ipwho.is), `device` ("Chrome no Windows"), `userAgent` — e `changes` (`[{ field, before, after }]` em edições/exclusões; senha trocada = `password` "alterada", sem valor). Linhas antigas: tudo null. Tentativas de login ficam na trilha (LOGIN, LOGIN_FAILED, LOGIN_BLOCKED), com o usuário digitado e nunca a senha
 
 **Exportação CSV** — `POST /api/admin/export/:dataset` (corpo JSON; GET com query também existe) (planilha `;` com BOM, abre no Excel; cada exportação vai para a auditoria como "Exportou")
 - Datasets: `people`, `companies`, `properties` (`ownerIds`), `unimed` (READ_USER) · `admins` (READ_USER_ADMIN) · `courses`, `registrations` (`courseIds`) (READ_COURSE) · `contact-messages` (READ_CONTACT) · `audit-logs` (READ_AUDIT)
@@ -415,7 +422,9 @@ photoGallery: { id, url, caption }[], instructors: CourseInstructor[]
 - **Ajustes de cadastro (set/2026)**: tipo de membro é select (Aluno, Produtor rural, Trabalhador rural assalariado/autônomo; o backend recusa valor fora da lista); CAD/PRO até 5; salas com nome de lista fixa; empresa com razão social (`name`), nome fantasia (`tradeName`, exibido quando houver — `companyDisplayName`) e endereço da sede no próprio cadastro (CEP com busca).
 - **Cotações**: produtos fixos; o admin só lança preço (centavos) e período manhã/tarde; a data é a do dia; a unidade de cada produto é escolhida na mesma tela (saca 60/50/40 kg, tonelada, quilo, arroba ou sem unidade) e só é salva no "Salvar cotações", junto com os preços (PATCH das unidades alteradas, depois PUT daily se houver preço; erro mostrado por produto). Preço >20% diferente do último lançado abre confirmação ("Corrigir" / "Salvar mesmo assim"); "Repetir último" preenche o preço anterior; Enter no preço vai para o próximo (não envia). Home mostra preço + unidade + dia/período + fonte (editável no admin de cotações) e linka para `/cotacoes` (histórico em gráfico/tabela).
 - **Exportação** (set/2026): tudo que tem lista no painel exporta em CSV — selecionados, todos com os filtros atuais ou um registro só (ver "Exportação CSV" acima). A planilha de inscrições do curso agora vem do backend.
+- **E-mail e telefone de pessoa** (set/2026): podem repetir entre pessoas (casal, família) e o e-mail é opcional (`UserData.email: string | null`; vazio vai como null). Só o CPF identifica a pessoa e só ele dá "já cadastrado" (409 "CPF já cadastrado para outra pessoa."). Cadastro novo, ficha e inscrição pública no site não exigem e-mail (no site aparece "(opcional)"); telefone continua obrigatório. Onde o e-mail aparece (listas, contatos públicos, inscrições, PDFs) sem e-mail não mostra nada ou "—", e `mailto:` só sai quando há e-mail.
 - **Inscrições de curso**: selos "Associado" (situação ativa e validade em dia), "Parceira" (vínculo com empresa parceira ativa), cargo na diretoria e cargo de contato público; o CSV traz as mesmas colunas.
+- **Presença e "Concluído"** (set/2026): o curso inicia mesmo com inscrição não confirmada. Depois que começou (em andamento, concluído ou chegou o dia do início), cada inscrição confirmada tem os botões "Presente"/"Faltou" (clicar de novo desmarca), "Todos presentes" e a contagem "X presentes · Y faltas · Z sem marcar". **Certificados só para inscrição confirmada que não foi marcada como falta.** "Lista de presença" gera o PDF para assinar. O CSV de inscrições tem a coluna "Presença". Status `COMPLETED` ("Concluído") é sempre manual ("Concluir curso" num curso em andamento; a edição permite voltar): fora da lista do site, página abre pelo link e nunca aceita inscrição (bloqueio "ended", como curso terminado).
 - **Página do curso** (`/cursos/$id`): prazo de inscrição vale até o fim do dia em Brasília, ou até a hora quando o painel informou (`registrationDeadlineTime`, "HH:MM"; 00:00/null = dia inteiro; a página mostra "Inscrições até DD/MM/AAAA às HH:MM") e o curso aceita inscrição até o último dia; status `IN_PROGRESS`, curso terminado, prazo vencido ou lotado desligam "Inscrever-se" com o motivo — regra em `utils/course-status.ts`, a mesma do backend e do card. "Não existe" só com 404; outra falha mostra "Tentar de novo". No celular há barra presa ao pé (sticky) com preço e botão. CPF é conferido (dígitos) antes de seguir; formulário com algo digitado não fecha tocando fora/Esc (o X pede confirmação); menor de idade ganha link do `/termo-autorizacao-menor.pdf`. Depois de inscrever (ou se já estava inscrito, 409 "User already registered…" vira tela amigável): resumo, "Adicionar à agenda" (.ics + Google Agenda), "Enviar para meu WhatsApp" e telefone do sindicato.
 - **Home**: os números (associados, cursos realizados, anos, alunos) saíram. As galerias de fotos (História do Sindicato, FAEP, Patrulha Rural) ficam só na página Sobre (#galeria) — o usuário pediu para NÃO ter seção de galerias na home.
 - **Configurações do site** (`/admin/configuracoes`): centraliza o que é do site público — Dados do sindicato (telefone, e-mail, endereço, horário, busca do mapa e texto do Sobre; usados no rodapé, Contato, Sobre e convênios via `useOrgInfo`), Redes sociais, Galerias, Parceiros da home (adicionar empresa, logo, link, ordem, tirar) e Contatos públicos ("Nossa Equipe": qualquer pessoa do cadastro, com cargo e ordem). Permissões: Dados/Redes/Galerias `*_BANNER`; Parceiros e Contatos `*_USER`. A empresa não tem mais aba Parceria e o diálogo de admin não marca mais contato público — ambos apontam para cá.

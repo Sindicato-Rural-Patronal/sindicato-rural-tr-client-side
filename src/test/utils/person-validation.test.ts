@@ -15,9 +15,10 @@ describe('validatePersonFields', () => {
     })).toEqual({})
   })
 
-  it('nome, e-mail, telefone e CPF são obrigatórios', () => {
+  it('nome, telefone e CPF são obrigatórios; e-mail não', () => {
     const errors = validatePersonFields({ name: '  ', email: '', phone: '', cpf: '' })
-    expect(Object.keys(errors).sort()).toEqual(['cpf', 'email', 'name', 'phone'])
+    expect(Object.keys(errors).sort()).toEqual(['cpf', 'name', 'phone'])
+    expect(validatePersonFields({ email: '   ' })).toEqual({})
   })
 
   it('confere formato de e-mail, telefones, CPF, RG e CNH', () => {

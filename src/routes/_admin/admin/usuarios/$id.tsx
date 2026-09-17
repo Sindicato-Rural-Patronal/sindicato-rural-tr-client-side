@@ -446,8 +446,8 @@ function DadosTab({ userId, user, completeMode, onCompleteModeEnd, hasNoProperti
 
   async function handleSave() {
     // Valida só o que mudou (o que vai no corpo): um dado antigo fora do padrão
-    // que ninguém mexeu não trava a edição. Apagar nome, e-mail, telefone ou CPF
-    // conta como mudança — e esses são obrigatórios.
+    // que ninguém mexeu não trava a edição. Apagar nome, telefone ou CPF conta
+    // como mudança — e esses são obrigatórios (o e-mail pode ficar em branco).
     const changed: Partial<Record<PersonField, string>> = {}
     for (const f of VALIDATED_FIELDS) {
       if (form[f] !== saved[f]) changed[f] = form[f]
@@ -463,7 +463,8 @@ function DadosTab({ userId, user, completeMode, onCompleteModeEnd, hasNoProperti
     // Corpo completo a partir de um snapshot do form (mesmo mapeamento do backend)
     const buildBody = (f: DadosForm): Parameters<typeof updateWorker.mutateAsync>[0] => ({
       name: f.name.trim() || undefined,
-      email: f.email.trim() || undefined,
+      // Opcional: apagar o e-mail grava null (null ≠ e-mail antigo, então vai no corpo).
+      email: f.email.trim() || null,
       phone: f.phone.replace(/\D/g, '') || undefined,
       cpf: cpfDigits(f.cpf) || undefined,
       nickname: f.nickname || null,
@@ -512,7 +513,7 @@ function DadosTab({ userId, user, completeMode, onCompleteModeEnd, hasNoProperti
         return {
           ...old,
           name: form.name.trim(),
-          email: form.email.trim(),
+          email: form.email.trim() || null,
           phone: form.phone.replace(/\D/g, ''),
           cpf: cpfDigits(form.cpf) || null,
           rg: form.rg || null,
@@ -571,7 +572,7 @@ function DadosTab({ userId, user, completeMode, onCompleteModeEnd, hasNoProperti
       const msg = apiErrorMessage(e, 'Erro ao salvar.')
       // CPF/RG de outro cadastro: aponta o campo, além do aviso.
       const conflictField: PersonField | null = e instanceof ApiError && e.status === 409
-        ? (e.message === 'CPF already in use' ? 'cpf' : e.message === 'RG already in use' ? 'rg' : null)
+        ? (e.message.includes('CPF') ? 'cpf' : e.message === 'RG already in use' ? 'rg' : null)
         : null
       if (conflictField) {
         setFieldErrors({ [conflictField]: msg })
@@ -682,7 +683,7 @@ function DadosTab({ userId, user, completeMode, onCompleteModeEnd, hasNoProperti
           <FieldRow label="Nome *" htmlFor={fieldId('name')} error={fieldErrors.name}>
             <Input className={inp} disabled={d} {...invalidProps('name')} value={form.name} onChange={e => set('name', upperNoAccents(e.target.value))} />
           </FieldRow>
-          <FieldRow label="E-mail *" htmlFor={fieldId('email')} error={fieldErrors.email}>
+          <FieldRow label="E-mail" htmlFor={fieldId('email')} error={fieldErrors.email}>
             <Input className={inp} disabled={d} {...invalidProps('email')} type="email" value={form.email} onChange={e => set('email', e.target.value)} />
           </FieldRow>
           <FieldRow label="Apelido" htmlFor="pessoa-nickname">
@@ -1258,7 +1259,7 @@ function RouteComponent() {
         <div className="flex-1 min-w-0">
           <h1 className="text-2xl font-bold tracking-tight text-foreground truncate">{user.name}</h1>
           <div className="flex flex-wrap items-center gap-2 mt-1">
-            <span className="text-sm text-muted-foreground">{user.email}</span>
+            {user.email && <span className="text-sm text-muted-foreground">{user.email}</span>}
             {user.cpf && <span className="text-xs font-mono text-muted-foreground">CPF: {maskCPF(user.cpf)}</span>}
             {isIncomplete && !completeMode && (
               <Badge variant="outline" className="text-xs gap-1 border-amber-300 text-amber-700 dark:text-amber-400">

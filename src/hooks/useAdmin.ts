@@ -40,11 +40,13 @@ export type Registration = {
   courseId: string
   userDataId: string
   confirmed: boolean
+  /** Presença: true = presente, false = faltou, null = sem marcar. */
+  attended: boolean | null
   createdAt: string
   userData: {
     id: string
     name: string
-    email: string
+    email: string | null
     phone: string
     cpf: string | null
     avatar: string | null
@@ -110,7 +112,8 @@ export function useAdminStats() {
 export type UserData = {
   id: string
   name: string
-  email: string
+  // Opcional e pode repetir entre pessoas (só o CPF é único).
+  email: string | null
   phone: string
   cpf: string | null
   avatar: string | null
@@ -228,7 +231,7 @@ export type UserAdmin = {
   rulesId: string
   createdAt: string
   updatedAt: string
-  userData: { name: string; email: string; cpf: string | null; avatar: string | null }
+  userData: { name: string; email: string | null; cpf: string | null; avatar: string | null }
   rules: { name: string; permissions: string[] }
 }
 
@@ -391,7 +394,7 @@ export function useRevokeAdminInvite() {
 
 export type UpdateWorkerBody = {
   name?: string
-  email?: string
+  email?: string | null
   phone?: string
   cpf?: string | null
   nickname?: string | null
@@ -733,7 +736,7 @@ export type PublicContactItem = {
   publicTitle: string | null
   userData: {
     name: string
-    email: string
+    email: string | null
     phone: string
     avatar: string | null
   }
@@ -835,46 +838,3 @@ export function useSendContactMessage() {
   })
 }
 
-export type AuditLog = {
-  id: string
-  actorId: string | null
-  actorName: string
-  method: string
-  path: string
-  entity: string
-  targetLabel: string | null
-  statusCode: number
-  createdAt: string
-}
-
-export type AuditFilters = {
-  page?: number
-  limit?: number
-  action?: 'create' | 'edit' | 'delete' | 'export' | ''
-  entity?: string
-  actorId?: string
-  from?: string
-  to?: string
-  q?: string
-}
-
-export function useAuditLogs(
-  params: AuditFilters = {},
-  opts: { enabled?: boolean } = {},
-) {
-  const { page = 1, limit = 30, action, entity, actorId, from, to, q } = params
-  const search = new URLSearchParams()
-  search.set('page', String(page))
-  search.set('limit', String(limit))
-  if (action) search.set('action', action)
-  if (entity) search.set('entity', entity)
-  if (actorId) search.set('actorId', actorId)
-  if (from) search.set('from', from)
-  if (to) search.set('to', to)
-  if (q) search.set('q', q)
-  return useQuery<PaginatedResponse<AuditLog>>({
-    queryKey: ['admin', 'audit-logs', page, limit, action, entity, actorId, from, to, q],
-    queryFn: () => apiFetch(`/admin/audit-logs?${search}`).then(r => r.json()),
-    enabled: opts.enabled ?? true,
-  })
-}

@@ -265,15 +265,16 @@ function RegistrationDialog({
     const phoneDigitsValue = f.phone.replace(/\D/g, '')
     if (!f.name.trim()) { setError('Informe o nome.'); return }
     if (![10, 11].includes(phoneDigitsValue.length)) { setError('Telefone inválido.'); return }
-    if (!f.email.trim()) { setError('Informe o e-mail.'); return }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(f.email.trim())) { setError('Informe um e-mail válido.'); return }
+    // E-mail é opcional (muita gente não tem); se preencher, precisa ser válido.
+    const email = f.email.trim()
+    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { setError('Informe um e-mail válido ou deixe o campo em branco.'); return }
     if (!f.terms) { setError('É preciso aceitar os termos.'); return }
     setLoading(true); setError(null)
     try {
       await registerFull.mutateAsync({
         name: f.name.trim(),
         phone: phoneDigitsValue,
-        email: f.email.trim(),
+        email: email || undefined,
         cpf: cpfDigits,
         rg: f.rg || undefined,
         birthDate: f.birthDate || undefined,
@@ -429,7 +430,7 @@ function RegistrationDialog({
                     />
                   </Field>
                 </div>
-                <Field label="E-mail">
+                <Field label="E-mail" optional>
                   <Input
                     type="email"
                     inputMode="email"

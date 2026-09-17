@@ -7,7 +7,7 @@ export type CreateCourseBody = {
   name: string
   description: string
   roomId: string
-  status?: 'PUBLIC' | 'PRIVATE' | 'UNPUBLISHED' | 'IN_PROGRESS'
+  status?: 'PUBLIC' | 'PRIVATE' | 'UNPUBLISHED' | 'IN_PROGRESS' | 'COMPLETED'
   startTime: string
   endTime: string
   price?: number
@@ -37,7 +37,7 @@ export type UpdateCourseBody = Partial<CreateCourseBody> & {
 
 export type CourseCardItem = {
   id: string
-  status: 'PUBLIC' | 'PRIVATE' | 'UNPUBLISHED' | 'IN_PROGRESS'
+  status: 'PUBLIC' | 'PRIVATE' | 'UNPUBLISHED' | 'IN_PROGRESS' | 'COMPLETED'
   title: string
   eventNumber: string | null
   startDate: string
@@ -69,7 +69,7 @@ export type PaginatedCourses = {
 export function useAdminCourses(params: {
   page: number
   limit: number
-  status?: 'PUBLIC' | 'PRIVATE' | 'UNPUBLISHED' | 'IN_PROGRESS'
+  status?: 'PUBLIC' | 'PRIVATE' | 'UNPUBLISHED' | 'IN_PROGRESS' | 'COMPLETED'
   search?: string
 }) {
   const { page, limit, status, search } = params
@@ -217,7 +217,7 @@ export function useRegisterByCpf(courseId: string) {
 export type RegisterFullBody = {
   name: string
   phone: string
-  email: string
+  email?: string
   cpf: string
   rg?: string
   birthDate?: string
@@ -318,5 +318,78 @@ export function useConfirmAllRegistrations(courseId: string) {
     mutationFn: (): Promise<{ confirmed: number }> =>
       apiFetch(`/admin/courses/${courseId}/registrations/confirm-all`, { method: 'PATCH' }).then(r => r.json()),
     onSuccess: () => invalidateRegistrations(queryClient, courseId),
+  })
+}
+
+// ─── presença e conclusão ────────────────────────────────────────────────────
+
+// No cache as inscrições ficam como página ({ data }) ou lista completa (array).
+type RegistrationsCache = { data?: Registration[] } | Registration[] | undefined
+
+function patchCachedRegistration(cache: RegistrationsCache, id: string, attended: boolean | null): RegistrationsCache {
+  const patch = (list: Registration[]) => list.map(r => (r.id === id ? { ...r, attended } : r))
+  if (Array.isArray(cache)) return patch(cache)
+  if (cache?.data) return { ...cache, data: patch(cache.data) }
+  return cache
+}
+
+/**
+ * Presença de uma inscrição: true = presente, false = faltou, null = desmarcar.
+ * O botão muda na hora (sem esperar a lista recarregar), para ninguém clicar de
+ * novo achando que não foi — o segundo clique desmarcaria.
+ */
+export function useSetRegistrationAttendance(courseId: string) {
+  const queryClient = useQueryClient()
+  const registrationsKey = ['admin', 'courses', courseId, 'registrations']
+  const mutationKey = ['registration-attendance', courseId]
+  return useMutation({
+    mutationKey,
+    mutationFn: ({ id, attended }: { id: string; attended: boolean | null }): Promise<{ id: string; attended: boolean | null }> =>
+      apiFetch(`/admin/registrations/${id}/attendance`, {
+        method: 'PATCH',
+        body: JSON.stringify({ attended }),
+      }).then(r => r.json()),
+    onMutate: async ({ id, attended }) => {
+      await queryClient.cancelQueries({ queryKey: registrationsKey })
+      const previous = queryClient.getQueriesData<RegistrationsCache>({ queryKey: registrationsKey })
+      queryClient.setQueriesData<RegistrationsCache>({ queryKey: registrationsKey }, old => patchCachedRegistration(old, id, attended))
+      return { previous }
+    },
+    onError: (_e, _vars, context) => {
+      context?.previous.forEach(([key, data]) => queryClient.setQueryData(key, data))
+    },
+    onSettled: () => {
+      // Várias marcações seguidas: recarrega só depois da última, senão a lista
+      // volta ao estado antigo enquanto as outras ainda estão sendo gravadas.
+      if (queryClient.isMutating({ mutationKey }) === 1) {
+        queryClient.invalidateQueries({ queryKey: registrationsKey })
+      }
+    },
+  })
+}
+
+/** "Todos presentes": marca as inscrições confirmadas ainda sem marcar; devolve quantas mudaram. */
+export function useMarkUnmarkedAttendance(courseId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (attended: boolean): Promise<{ updated: number }> =>
+      apiFetch(`/admin/courses/${courseId}/registrations/attendance`, {
+        method: 'PATCH',
+        body: JSON.stringify({ attended }),
+      }).then(r => r.json()),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['admin', 'courses', courseId, 'registrations'] }),
+  })
+}
+
+/** Conclui um curso em andamento (status COMPLETED). */
+export function useCompleteCourse() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (courseId: string): Promise<{ id: string; status: 'COMPLETED' }> =>
+      apiFetch(`/admin/courses/${courseId}/complete`, { method: 'PATCH' }).then(r => r.json()),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'courses'] })
+      queryClient.invalidateQueries({ queryKey: ['courses'] })
+    },
   })
 }

@@ -13,7 +13,7 @@ import {
 
 // t() devolve a própria chave: dá para conferir qual texto/link apareceu.
 vi.mock('react-i18next', () => ({
-  useTranslation: () => ({ t: (k: string) => k, i18n: { language: 'pt-BR', changeLanguage: vi.fn() } }),
+  useTranslation: () => ({ t: (k: string) => k }),
 }))
 
 // Mesma forma da árvore de arquivos: layouts sem caminho /_public e /_admin.

@@ -1,14 +1,13 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { useRef, useState } from 'react'
 import { toast } from 'sonner'
-import { UserCog, Shield, Languages, Palette, Camera } from 'lucide-react'
+import { UserCog, Shield, Palette, Camera } from 'lucide-react'
 import { useMe, useUpdateMe, useUploadMyAvatar, type AdminMe } from '@/hooks/useAdmin'
 import { apiErrorMessage } from '@/lib/api-error-message'
 import { resizeToSquare } from '@/utils/resize-image'
 import { upperNoAccents } from '@/utils/text-format'
 import { InitialsAvatar } from '@/components/InitialsAvatar'
 import { PasswordInput } from '@/components/PasswordInput'
-import { LanguageToggle } from '@/components/LanguageToggle'
 import { ThemeSetting } from '@/components/ThemeSetting'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -155,16 +154,10 @@ function PerfilForm({ me }: { me: AdminMe }) {
 
 function PreferenciasTab() {
   return (
-    <div className="flex flex-col gap-6">
-      <div className="flex flex-col gap-2">
-        <Label className="flex items-center gap-2"><Languages className="size-4 text-muted-foreground" /> Idioma</Label>
-        <LanguageToggle variant="outline" />
-      </div>
-      <div className="flex flex-col gap-2">
-        <Label className="flex items-center gap-2"><Palette className="size-4 text-muted-foreground" /> Tema</Label>
-        <ThemeSetting />
-        <p className="text-xs text-muted-foreground">"Sistema" acompanha o tema do seu dispositivo.</p>
-      </div>
+    <div className="flex flex-col gap-2">
+      <Label className="flex items-center gap-2"><Palette className="size-4 text-muted-foreground" /> Tema</Label>
+      <ThemeSetting />
+      <p className="text-xs text-muted-foreground">"Sistema" acompanha o tema do seu dispositivo.</p>
     </div>
   )
 }

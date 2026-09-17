@@ -1,27 +1,27 @@
 import i18n from 'i18next'
 import { initReactI18next } from 'react-i18next'
-import LanguageDetector from 'i18next-browser-languagedetector'
 import ptBR from './locales/pt-BR'
-import en from './locales/en'
 
+// O site é só em português: os textos ficam em locales/pt-BR.ts e são lidos
+// com t(). Não há troca de idioma nem detecção pelo navegador.
 i18n
-  .use(LanguageDetector)
   .use(initReactI18next)
   .init({
     resources: {
       'pt-BR': { translation: ptBR },
-      en: { translation: en },
     },
+    lng: 'pt-BR',
     fallbackLng: 'pt-BR',
-    supportedLngs: ['pt-BR', 'en'],
-    detection: {
-      order: ['localStorage', 'navigator'],
-      caches: ['localStorage'],
-      lookupLocalStorage: 'sindicato-lang',
-    },
     interpolation: {
       escapeValue: false,
     },
   })
+
+// Limpa o idioma que o seletor antigo guardava no navegador.
+try {
+  localStorage.removeItem('sindicato-lang')
+} catch {
+  // localStorage indisponível (modo privado, bloqueado): nada a limpar.
+}
 
 export default i18n

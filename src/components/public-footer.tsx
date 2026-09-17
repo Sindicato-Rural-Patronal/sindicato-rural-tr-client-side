@@ -3,7 +3,6 @@ import { Clock, Phone, Mail, MapPin } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { FaFacebook, FaInstagram, FaWhatsapp } from 'react-icons/fa'
 import { useTranslation } from 'react-i18next'
-import { LanguageToggle } from '@/components/LanguageToggle'
 import { useOrgInfo, usePublicSiteSettings } from '@/hooks/useSiteSettings'
 import { orgAddressLines, phoneDigits } from '@/lib/org-contact'
 import { safeUrl } from '@/utils/safe-url'
@@ -126,13 +125,11 @@ export function PublicFooter() {
 
         <div className="mt-10 flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-t border-white/20 pt-6 text-xs text-brand-foreground/60">
           <span>{t('footer.copyright', { year: new Date().getFullYear() })}</span>
-          <div className="-ml-2 flex items-center gap-2 sm:ml-0">
-            {/* Acesso da equipe: link discreto, sem competir com o "Entrar em contato". */}
-            <Link to="/login" className="inline-flex min-h-11 items-center px-2 underline-offset-4 transition-colors hover:text-white hover:underline sm:min-h-0">
-              {t('footer.adminPanel')}
-            </Link>
-            <LanguageToggle variant="ghost" className="h-11 text-white/70 hover:bg-white/10 hover:text-white sm:h-8" />
-          </div>
+          {/* Acesso da equipe: link discreto, sem competir com o "Entrar em contato".
+              A margem negativa compensa o px-2, alinhando o texto à borda. */}
+          <Link to="/login" className="-mx-2 inline-flex min-h-11 items-center px-2 underline-offset-4 transition-colors hover:text-white hover:underline sm:min-h-0">
+            {t('footer.adminPanel')}
+          </Link>
         </div>
       </div>
     </footer>
