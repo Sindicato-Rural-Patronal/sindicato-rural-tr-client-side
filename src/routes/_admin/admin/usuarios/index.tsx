@@ -28,7 +28,7 @@ import {
   Table, TableHeader, TableBody,
   TableRow, TableHead, TableCell,
 } from '@/components/ui/table'
-import { AlertCircle, Plus, Shield, Users, Pencil, Trash2, ExternalLink, Globe, ChevronDown, X, SlidersHorizontal, Building2 } from 'lucide-react'
+import { AlertCircle, Plus, Shield, Users, Pencil, Trash2, ExternalLink, Globe, ChevronDown, X, SlidersHorizontal, Building2, Download, Loader2 } from 'lucide-react'
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
@@ -42,6 +42,9 @@ import { STICKY_ACTIONS_CELL, STICKY_ACTIONS_ROW } from '@/lib/table-sticky-acti
 import { CompaniesList } from '@/components/cadastro/CompaniesList'
 import { useAdminCompanies } from '@/hooks/useCompanies'
 import { MEMBER_TYPES } from '@/lib/member-types'
+import { downloadExport, type ExportDataset, type ExportParams } from '@/lib/export'
+import { useRowSelection } from '@/hooks/useRowSelection'
+import { ExportMenu, SelectCheckbox, SelectionInfo } from '@/components/export/ExportMenu'
 
 export const Route = createFileRoute('/_admin/admin/usuarios/')({
   // Filtros principais na URL (sobrevivem a voltar/atualizar/compartilhar).
@@ -724,6 +727,9 @@ function RouteComponent() {
   const [deleteAssociadoTarget, setDeleteAssociadoTarget] = useState<UserData | null>(null)
   const [editAdmin, setEditAdmin] = useState<UserAdmin | null>(null)
   const [deleteAdminTarget, setDeleteAdminTarget] = useState<UserAdmin | null>(null)
+  const userSelection = useRowSelection()
+  const adminSelection = useRowSelection()
+  const [exportingRow, setExportingRow] = useState<string | null>(null)
 
   // Espelha os filtros principais na URL (só o estado → URL; não há loop de volta).
   useEffect(() => {
@@ -779,6 +785,34 @@ function RouteComponent() {
   const { data: companiesCount } = useAdminCompanies({ page: 1, limit: 1 })
   const companyTotal = companiesCount?.total ?? 0
   const adminPages = adminsData?.totalPages   ?? 1
+
+  const userPageIds = usuarios.map(u => u.id)
+  const userPageState = userSelection.pageState(userPageIds)
+  const adminPageIds = admins.map(a => a.id)
+  const adminPageState = adminSelection.pageState(adminPageIds)
+  // Mesmos filtros da listagem, sem página/limite.
+  const usersExportFilters: ExportParams = {
+    search: usersSearch.trim() || undefined,
+    incompleteRegistration: incompleteOnly ? true : undefined,
+    gender: genderFilter || undefined,
+    ethnicity: ethnicityFilter || undefined,
+    educationLevel: educationFilter || undefined,
+    memberType: memberTypeFilter || undefined,
+    memberClassification: memberClassFilter || undefined,
+  }
+  const usersFiltered = !!usersSearch.trim() || incompleteOnly || activeFiltersCount > 0
+
+  async function handleExportRow(dataset: ExportDataset, id: string) {
+    setExportingRow(id)
+    try {
+      await downloadExport(dataset, { ids: [id] })
+      toast.success('Planilha baixada.')
+    } catch (e) {
+      toast.error(apiErrorMessage(e, 'Erro ao exportar.'))
+    } finally {
+      setExportingRow(null)
+    }
+  }
 
   function handleTabChange(tab: string) {
     setActiveTab(tab)
@@ -1007,7 +1041,7 @@ function RouteComponent() {
           )}
 
           {/* Incomplete registration toggle */}
-          <div className="flex items-center gap-3 mb-4">
+          <div className="flex flex-wrap items-center gap-3 mb-4">
             <button
               type="button"
               onClick={() => { setIncompleteOnly(v => !v); setUsersPage(1) }}
@@ -1028,6 +1062,23 @@ function RouteComponent() {
             {incompleteOnly && userTotal === 0 && !loadingUsers && (
               <span className="text-xs text-emerald-600 font-medium">Todos os cadastros estão completos</span>
             )}
+            <div className="ml-auto flex items-center gap-2">
+              <SelectionInfo count={userSelection.count} onClear={userSelection.clear} />
+              <ExportMenu
+                dataset="people"
+                filters={usersExportFilters}
+                selectedIds={userSelection.ids}
+                total={usuariosData?.total}
+                filtered={usersFiltered}
+                extra={[{
+                  label: 'Propriedades dos selecionados',
+                  dataset: 'properties',
+                  params: { ownerIds: userSelection.ids },
+                  disabled: userSelection.count === 0,
+                }]}
+                className="h-9"
+              />
+            </div>
           </div>
 
           {loadingUsers && (
@@ -1058,6 +1109,14 @@ function RouteComponent() {
                 <Table>
                   <TableHeader>
                     <TableRow>
+                      <TableHead className="w-10">
+                        <SelectCheckbox
+                          checked={userPageState === 'all'}
+                          indeterminate={userPageState === 'some'}
+                          onChange={() => userSelection.togglePage(userPageIds)}
+                          label="Selecionar todos desta página"
+                        />
+                      </TableHead>
                       <TableHead>Nome</TableHead>
                       <TableHead className="hidden md:table-cell">Email</TableHead>
                       <TableHead className="hidden lg:table-cell">Telefone</TableHead>
@@ -1069,6 +1128,13 @@ function RouteComponent() {
                   <TableBody>
                     {usuarios.map(u => (
                       <TableRow key={u.id} className={STICKY_ACTIONS_ROW}>
+                        <TableCell className="w-10">
+                          <SelectCheckbox
+                            checked={userSelection.isSelected(u.id)}
+                            onChange={() => userSelection.toggle(u.id)}
+                            label={`Selecionar ${u.name}`}
+                          />
+                        </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-3">
                             <InitialsAvatar name={u.name} avatar={u.avatar} size="sm" />
@@ -1090,6 +1156,15 @@ function RouteComponent() {
                               <Link to="/admin/usuarios/$id" params={{ id: u.id }} aria-label="Ver associado" title="Ver associado">
                                 <ExternalLink className="size-3.5" />
                               </Link>
+                            </Button>
+                            <Button
+                              variant="ghost" size="icon"
+                              className="size-7"
+                              disabled={exportingRow === u.id}
+                              onClick={() => handleExportRow('people', u.id)}
+                              aria-label="Exportar associado" title="Exportar associado"
+                            >
+                              {exportingRow === u.id ? <Loader2 className="size-3.5 animate-spin" /> : <Download className="size-3.5" />}
                             </Button>
                             <PermissionButton
                               allowed={can('DELETE_USER')}
@@ -1139,6 +1214,17 @@ function RouteComponent() {
                 ))}
               </SelectContent>
             </Select>
+            <div className="flex items-center gap-2 sm:ml-auto">
+              <SelectionInfo count={adminSelection.count} onClear={adminSelection.clear} />
+              <ExportMenu
+                dataset="admins"
+                filters={{ rulesId: rulesFilter || undefined }}
+                selectedIds={adminSelection.ids}
+                total={adminsData?.total}
+                filtered={!!rulesFilter}
+                className="h-9"
+              />
+            </div>
           </div>
           {loadingAdmins && (
             <div className="flex flex-col gap-3">
@@ -1168,15 +1254,30 @@ function RouteComponent() {
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead className="w-10">
+                      <SelectCheckbox
+                        checked={adminPageState === 'all'}
+                        indeterminate={adminPageState === 'some'}
+                        onChange={() => adminSelection.togglePage(adminPageIds)}
+                        label="Selecionar todos desta página"
+                      />
+                    </TableHead>
                     <TableHead>Administrador</TableHead>
                     <TableHead className="hidden md:table-cell">Email</TableHead>
                     <TableHead>Regra</TableHead>
-                    <TableHead className={`w-20 text-right ${STICKY_ACTIONS_CELL}`}>Ações</TableHead>
+                    <TableHead className={`w-28 text-right ${STICKY_ACTIONS_CELL}`}>Ações</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {admins.map(a => (
                     <TableRow key={a.id} className={STICKY_ACTIONS_ROW}>
+                      <TableCell className="w-10">
+                        <SelectCheckbox
+                          checked={adminSelection.isSelected(a.id)}
+                          onChange={() => adminSelection.toggle(a.id)}
+                          label={`Selecionar ${a.userData.name}`}
+                        />
+                      </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-3">
                           <InitialsAvatar name={a.userData.name} avatar={a.userData.avatar} size="sm" />
@@ -1204,6 +1305,15 @@ function RouteComponent() {
                           >
                             <Pencil className="size-3.5" />
                           </PermissionButton>
+                          <Button
+                            variant="ghost" size="icon"
+                            className="size-7"
+                            disabled={exportingRow === a.id}
+                            onClick={() => handleExportRow('admins', a.id)}
+                            aria-label="Exportar administrador" title="Exportar administrador"
+                          >
+                            {exportingRow === a.id ? <Loader2 className="size-3.5 animate-spin" /> : <Download className="size-3.5" />}
+                          </Button>
                           <PermissionButton
                             allowed={can('DELETE_USER_ADMIN')}
                             noPermissionMessage="Sem permissão para excluir administradores"

@@ -49,7 +49,8 @@ const sampleUser = {
   userInstructor: null,
 } as unknown as UserDataDetail
 
-describe('ficha inscrição pdf', () => {
+// Gerar PDF é lento; com a suíte inteira rodando em paralelo passa dos 5 s padrão.
+describe('ficha inscrição pdf', { timeout: 30_000 }, () => {
   it('renders a valid PDF', async () => {
     const buf = await renderToBuffer(
       <FichaInscricaoDocument

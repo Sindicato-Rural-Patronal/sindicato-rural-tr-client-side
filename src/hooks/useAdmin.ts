@@ -886,7 +886,7 @@ export type AuditLog = {
 export type AuditFilters = {
   page?: number
   limit?: number
-  action?: 'create' | 'edit' | 'delete' | ''
+  action?: 'create' | 'edit' | 'delete' | 'export' | ''
   entity?: string
   actorId?: string
   from?: string

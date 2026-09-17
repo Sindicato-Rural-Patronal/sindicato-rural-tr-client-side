@@ -1,8 +1,11 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { useEffect, useState } from 'react'
+import { toast } from 'sonner'
 import { useAuditLogs, useAdminAdmins } from '@/hooks/useAdmin'
 import { usePermissions } from '@/hooks/usePermissions'
-import { ScrollText, Plus, Pencil, Trash2, Dot, Search, X } from 'lucide-react'
+import { ScrollText, Plus, Pencil, Trash2, Dot, Search, X, Download, Loader2 } from 'lucide-react'
+import { apiErrorMessage } from '@/lib/api-error-message'
+import { downloadExport } from '@/lib/export'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -18,14 +21,14 @@ import { useDebouncedValue } from '@/hooks/useDebouncedValue'
 
 type AuditSearch = {
   page?: number
-  action?: 'create' | 'edit' | 'delete'
+  action?: 'create' | 'edit' | 'delete' | 'export'
   entity?: string
   actorId?: string
   from?: string
   to?: string
   q?: string
 }
-const ACTIONS: AuditSearch['action'][] = ['create', 'edit', 'delete']
+const ACTIONS: AuditSearch['action'][] = ['create', 'edit', 'delete', 'export']
 function str(v: unknown): string | undefined {
   return typeof v === 'string' && v.trim() ? v : undefined
 }
@@ -47,7 +50,7 @@ export const Route = createFileRoute('/_admin/admin/auditoria/')({
 })
 
 // Transforma método+entidade em frase legível pra qualquer pessoa.
-const VERB: Record<string, string> = { POST: 'Criou', PATCH: 'Editou', PUT: 'Editou', DELETE: 'Excluiu' }
+const VERB: Record<string, string> = { POST: 'Criou', PATCH: 'Editou', PUT: 'Editou', DELETE: 'Excluiu', EXPORT: 'Exportou' }
 const ENTITY: Record<string, { n: string; g: 'm' | 'f' }> = {
   'Curso': { n: 'curso', g: 'm' },
   'Cotação': { n: 'cotação', g: 'f' },
@@ -69,6 +72,7 @@ const ENTITY: Record<string, { n: string; g: 'm' | 'f' }> = {
   'Comprovante': { n: 'comprovante', g: 'm' },
   'Empresa': { n: 'empresa', g: 'f' },
   'Convênio': { n: 'convênio', g: 'm' },
+  'Exportação': { n: 'planilha', g: 'f' },
   'Outro': { n: 'registro', g: 'm' },
 }
 function acaoLegivel(method: string, entity: string, label: string | null): string {
@@ -77,18 +81,20 @@ function acaoLegivel(method: string, entity: string, label: string | null): stri
   if (label) return `${v} ${e.g === 'f' ? 'a' : 'o'} ${e.n} "${label}"`
   return `${v} ${e.g === 'f' ? 'uma' : 'um'} ${e.n}`
 }
-type ActionKind = 'create' | 'edit' | 'delete' | 'other'
+type ActionKind = 'create' | 'edit' | 'delete' | 'export' | 'other'
 function actionKind(method: string): ActionKind {
   if (method === 'POST') return 'create'
   if (method === 'PATCH' || method === 'PUT') return 'edit'
   if (method === 'DELETE') return 'delete'
+  if (method === 'EXPORT') return 'export'
   return 'other'
 }
-const KIND_ICON = { create: Plus, edit: Pencil, delete: Trash2, other: Dot }
+const KIND_ICON = { create: Plus, edit: Pencil, delete: Trash2, export: Download, other: Dot }
 const KIND_COLOR: Record<ActionKind, string> = {
   create: 'text-emerald-600 dark:text-emerald-400',
   edit: 'text-amber-600 dark:text-amber-400',
   delete: 'text-red-600 dark:text-red-400',
+  export: 'text-blue-600 dark:text-blue-400',
   other: 'text-muted-foreground',
 }
 
@@ -114,10 +120,25 @@ function RouteComponent() {
     navigate({ search: prev => ({ ...prev, ...patch }), replace: true })
   const page = search.page ?? 1
 
+  const filters = { action: search.action, entity: search.entity, actorId: search.actorId, from: search.from, to: search.to, q: search.q }
   const { data, isLoading, isError } = useAuditLogs(
-    { page, limit: 30, action: search.action, entity: search.entity, actorId: search.actorId, from: search.from, to: search.to, q: search.q },
+    // o hook só repassa `action` para a query; 'export' ainda não está no tipo dele
+    { page, limit: 30, ...filters },
     { enabled },
   )
+  const [exporting, setExporting] = useState(false)
+
+  async function handleExport() {
+    setExporting(true)
+    try {
+      const count = await downloadExport('audit-logs', filters)
+      toast.success(count === 1 ? 'Planilha com 1 registro baixada.' : count >= 0 ? `Planilha com ${count} registros baixada.` : 'Planilha baixada.')
+    } catch (e) {
+      toast.error(apiErrorMessage(e, 'Erro ao exportar a auditoria.'))
+    } finally {
+      setExporting(false)
+    }
+  }
   const { data: adminsData } = useAdminAdmins({ page: 1, limit: 200 })
   const admins = adminsData?.data ?? []
 
@@ -150,7 +171,7 @@ function RouteComponent() {
       <div>
         <h1 className="text-2xl font-bold tracking-tight text-foreground">Auditoria</h1>
         <p className="text-sm text-muted-foreground">
-          Registro de criações, edições e exclusões feitas no sistema.
+          Registro de criações, edições, exclusões e exportações feitas no sistema.
         </p>
       </div>
 
@@ -160,7 +181,7 @@ function RouteComponent() {
           <div className="flex flex-col gap-1">
             <Label className="text-[11px] text-muted-foreground">Ação</Label>
             <div className="flex gap-1">
-              {([['', 'Todas'], ['create', 'Criações'], ['edit', 'Edições'], ['delete', 'Exclusões']] as const).map(([a, lbl]) => (
+              {([['', 'Todas'], ['create', 'Criações'], ['edit', 'Edições'], ['delete', 'Exclusões'], ['export', 'Exportações']] as const).map(([a, lbl]) => (
                 <Button
                   key={a || 'all'}
                   size="sm"
@@ -200,6 +221,16 @@ function RouteComponent() {
               <X className="size-4" /> Limpar
             </Button>
           )}
+          <Button
+            variant="outline"
+            className="ml-auto h-9 gap-2"
+            disabled={exporting || total === 0}
+            onClick={handleExport}
+            title={hasFilters ? 'Exportar os registros com os filtros atuais (CSV)' : 'Exportar todos os registros (CSV)'}
+          >
+            {exporting ? <Loader2 className="size-4 animate-spin" /> : <Download className="size-4" />}
+            Exportar{total > 0 ? ` (${total})` : ''}
+          </Button>
         </div>
         <div className="relative max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />

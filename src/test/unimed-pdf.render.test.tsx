@@ -87,7 +87,8 @@ function pageCount(buf: Uint8Array): string | undefined {
   return new TextDecoder('latin1').decode(buf).match(/\/Count\s+(\d+)/)?.[1]
 }
 
-describe('unimed pdfs', () => {
+// Gerar PDF é lento; com a suíte inteira rodando em paralelo passa dos 5 s padrão.
+describe('unimed pdfs', { timeout: 30_000 }, () => {
   it('ficha renders a valid single-page PDF (titular urbano)', async () => {
     const doc = <FichaUnimedDocument data={{ unimed: base, user: titular }} />
     const buf = await renderToBuffer(doc)

@@ -63,7 +63,10 @@ import { Pagination } from '@/components/ui/pagination'
 import { DeleteConfirmDialog } from '@/components/DeleteConfirmDialog'
 import { NativeSelect } from '@/components/ui/native-select'
 import { useDebouncedValue } from '@/hooks/useDebouncedValue'
+import { useRowSelection } from '@/hooks/useRowSelection'
 import { isActiveMember } from '@/lib/membership'
+import { downloadExport } from '@/lib/export'
+import { ExportMenu, ExportOneButton, SelectCheckbox, SelectionInfo } from '@/components/export/ExportMenu'
 
 function calcDaysUntil(startDate: string) {
   if (!startDate) return 0
@@ -72,11 +75,16 @@ function calcDaysUntil(startDate: string) {
 
 // ─── course card ─────────────────────────────────────────────────────────────
 
-function AdminCourseCard({ course, onClick }: { course: CourseCardItem; onClick: () => void }) {
+function AdminCourseCard({ course, onClick, selected = false, onToggleSelect }: {
+  course: CourseCardItem
+  onClick: () => void
+  selected?: boolean
+  onToggleSelect?: () => void
+}) {
   const { t } = useTranslation()
   return (
     <Card
-      className="group overflow-hidden cursor-pointer hover:shadow-md transition-all duration-200"
+      className={`group overflow-hidden cursor-pointer hover:shadow-md transition-all duration-200 ${selected ? 'ring-2 ring-primary' : ''}`}
       onClick={onClick}
     >
       <div className="relative h-40 bg-muted flex items-center justify-center overflow-hidden">
@@ -89,7 +97,15 @@ function AdminCourseCard({ course, onClick }: { course: CourseCardItem; onClick:
         ) : (
           <BookOpen className="size-12 text-muted-foreground/30" />
         )}
-        <div className="absolute top-2 left-2">
+        <div className="absolute top-2 left-2 flex items-center gap-1.5">
+          {onToggleSelect && (
+            <span
+              className="flex size-7 items-center justify-center rounded-md bg-background/80 backdrop-blur-sm"
+              onClick={e => { e.stopPropagation(); onToggleSelect() }}
+            >
+              <SelectCheckbox checked={selected} onChange={onToggleSelect} label={`Selecionar o curso ${course.title}`} />
+            </span>
+          )}
           <StatusBadge status={course.status} />
         </div>
         {course.eventNumber && (
@@ -444,44 +460,12 @@ function RegistrationsTab({
     }
   }
 
-  // Exporta todas as inscrições como planilha CSV (Excel-friendly: BOM + ';').
+  // Planilha das inscrições gerada no servidor (GET /admin/export/registrations).
   async function exportCsv() {
     setExportingCsv(true)
     try {
-      const regs = await fetchAllRegistrations(courseId)
-      if (regs.length === 0) {
-        toast.error(t('admin.courses.noRegistrations'))
-        return
-      }
-      const headers = ['Nome', 'CPF', 'E-mail', 'Telefone', 'Nascimento', 'Idade', 'Confirmado', 'Associado', 'Empresa parceira', 'Cargo na diretoria', 'Contato público']
-      const rows = regs.map(r => {
-        const age = calcAge(r.userData.birthDate)
-        return [
-          r.userData.name,
-          r.userData.cpf ?? '',
-          r.userData.email ?? '',
-          r.userData.phone ?? '',
-          r.userData.birthDate ? formatDateFromString(r.userData.birthDate) : '',
-          age !== null ? String(age) : '',
-          r.confirmed ? 'Sim' : 'Não',
-          isActiveMember(r.userData.memberStatus, r.userData.membershipValidUntil) ? 'Sim' : 'Não',
-          r.userData.companyMemberships.map(m => m.company.tradeName || m.company.name).join(', '),
-          r.userData.boardPosition ?? '',
-          r.userData.publicContact?.title ?? '',
-        ]
-      })
-      const esc = (v: string) => `"${String(v).replace(/"/g, '""')}"`
-      const csv = '﻿' + [headers, ...rows].map(cols => cols.map(esc).join(';')).join('\r\n')
-      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = `inscricoes-${courseTitle}.csv`.replace(/[^\w.-]+/g, '-')
-      document.body.appendChild(a)
-      a.click()
-      document.body.removeChild(a)
-      // revoga com atraso — revogar imediato pode truncar downloads grandes.
-      setTimeout(() => URL.revokeObjectURL(url), 60_000)
+      const count = await downloadExport('registrations', { courseIds: [courseId] })
+      toast.success(count === 1 ? 'Planilha com 1 inscrição baixada.' : count >= 0 ? `Planilha com ${count} inscrições baixada.` : 'Planilha baixada.')
     } catch (e) {
       toast.error(apiErrorMessage(e, 'Erro ao exportar planilha.'))
     } finally {
@@ -553,7 +537,7 @@ function RegistrationsTab({
             </Button>
           )}
           {total > 0 && (
-            <Button size="sm" variant="outline" className="h-8 gap-1.5" disabled={exportingCsv} onClick={exportCsv}>
+            <Button size="sm" variant="outline" className="h-8 gap-1.5" disabled={exportingCsv} onClick={exportCsv} title="Exportar inscrições (CSV)">
               {exportingCsv ? <Loader2 className="size-3.5 animate-spin" /> : <FileSpreadsheet className="size-3.5" />}
               <span className="hidden sm:inline">Planilha</span>
             </Button>
@@ -1156,14 +1140,17 @@ function ViewDialog({
         </Tabs>
 
         <div className="border-t p-4 flex justify-between gap-2 bg-muted/30 flex-wrap">
-          <PermissionButton
-            allowed={can('UPDATE_COURSE')}
-            noPermissionMessage="Sem permissão para alterar banner"
-            variant="outline"
-            onClick={() => { if (liveCourse) { onEdit(liveCourse); onClose() } }}
-          >
-            <ImageUp className="size-4" /> {t('admin.courses.bannerUpload')}
-          </PermissionButton>
+          <div className="flex gap-2 flex-wrap">
+            <PermissionButton
+              allowed={can('UPDATE_COURSE')}
+              noPermissionMessage="Sem permissão para alterar banner"
+              variant="outline"
+              onClick={() => { if (liveCourse) { onEdit(liveCourse); onClose() } }}
+            >
+              <ImageUp className="size-4" /> {t('admin.courses.bannerUpload')}
+            </PermissionButton>
+            <ExportOneButton dataset="courses" id={course.id} label="Exportar curso" />
+          </div>
           <div className="flex gap-2">
             <Button variant="outline" onClick={onClose}>{t('common.close')}</Button>
             <PermissionButton
@@ -1930,6 +1917,9 @@ function RouteComponent() {
   // Filtragem feita no servidor via `search` — não filtrar de novo no cliente
   // (isso quebrava a busca entre páginas).
   const visible = courses
+  const selection = useRowSelection()
+  const pageIds = visible.map(c => c.id)
+  const pageState = selection.pageState(pageIds)
 
   async function handleDelete(id: string) {
     try {
@@ -1964,8 +1954,8 @@ function RouteComponent() {
         </div>
       </div>
 
-      <div className="flex items-center gap-3">
-        <div className="relative flex-1 max-w-sm">
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="relative flex-1 min-w-48 max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
           <Input
             placeholder={t('admin.courses.searchPlaceholder')}
@@ -1987,6 +1977,32 @@ function RouteComponent() {
               {LIMIT_OPTIONS.map(n => <SelectItem key={n} value={String(n)}>{n}</SelectItem>)}
             </SelectContent>
           </Select>
+        </div>
+        <div className="ml-auto flex items-center gap-2">
+          {visible.length > 0 && (
+            <label className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer select-none">
+              <SelectCheckbox
+                checked={pageState === 'all'}
+                indeterminate={pageState === 'some'}
+                onChange={() => selection.togglePage(pageIds)}
+                label="Selecionar todos desta página"
+              />
+              <span className="hidden md:inline">Selecionar página</span>
+            </label>
+          )}
+          <SelectionInfo count={selection.count} onClear={selection.clear} />
+          <ExportMenu
+            dataset="courses"
+            className="h-9"
+            filters={{ search: debouncedSearch.trim() }}
+            selectedIds={selection.ids}
+            total={data?.total}
+            filtered={!!debouncedSearch.trim()}
+            extra={[
+              { label: 'Inscrições dos cursos selecionados', dataset: 'registrations', params: { courseIds: selection.ids }, disabled: selection.count === 0 },
+              { label: 'Inscrições de todos os cursos', dataset: 'registrations', params: {} },
+            ]}
+          />
         </div>
       </div>
 
@@ -2018,7 +2034,13 @@ function RouteComponent() {
       {!isLoading && total > 0 && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {visible.map(course => (
-            <AdminCourseCard key={course.id} course={course} onClick={() => setViewDialog(course)} />
+            <AdminCourseCard
+              key={course.id}
+              course={course}
+              onClick={() => setViewDialog(course)}
+              selected={selection.isSelected(course.id)}
+              onToggleSelect={() => selection.toggle(course.id)}
+            />
           ))}
         </div>
       )}

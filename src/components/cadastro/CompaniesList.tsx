@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from '@tanstack/react-router'
 import { toast } from 'sonner'
-import { Building2, Eye, Handshake, Search, Trash2 } from 'lucide-react'
+import { Building2, Download, Eye, Handshake, Loader2, Search, Trash2 } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -12,13 +12,16 @@ import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@
 import { EmptyState } from '@/components/EmptyState'
 import { LoadErrorBanner } from '@/components/LoadErrorBanner'
 import { DeleteConfirmDialog } from '@/components/DeleteConfirmDialog'
+import { ExportMenu, SelectCheckbox, SelectionInfo } from '@/components/export/ExportMenu'
 import { usePermissions } from '@/hooks/usePermissions'
 import { useDebouncedValue } from '@/hooks/useDebouncedValue'
+import { useRowSelection } from '@/hooks/useRowSelection'
 import {
   useAdminCompanies, useDeleteCompany, COMPANY_TYPE_LABEL, companyDisplayName,
   type CompanyListItem, type CompanyType,
 } from '@/hooks/useCompanies'
 import { apiErrorMessage } from '@/lib/api-error-message'
+import { downloadExport } from '@/lib/export'
 import { STICKY_ACTIONS_CELL, STICKY_ACTIONS_ROW } from '@/lib/table-sticky-actions'
 import { maskCNPJ, maskPhone } from '@/utils/masks'
 
@@ -33,18 +36,35 @@ export function CompaniesList() {
   const [partner, setPartner] = useState<'' | 'true' | 'false'>('')
   const [page, setPage] = useState(1)
   const [deleteTarget, setDeleteTarget] = useState<CompanyListItem | null>(null)
+  const [exportingId, setExportingId] = useState<string | null>(null)
+  const selection = useRowSelection()
 
   // eslint-disable-next-line react-hooks/set-state-in-effect -- volta pra página 1 ao filtrar
   useEffect(() => { setPage(1) }, [search, type, partner])
 
+  const isPartner = partner === '' ? undefined : partner === 'true'
   const { data, isLoading, isError } = useAdminCompanies({
     page, limit: LIMIT, search,
     type: type || undefined,
-    isPartner: partner === '' ? undefined : partner === 'true',
+    isPartner,
   })
   const deleteM = useDeleteCompany()
   const rows = data?.data ?? []
+  const pageIds = rows.map(c => c.id)
+  const pageState = selection.pageState(pageIds)
   const filtering = !!(search || type || partner)
+
+  async function exportOne(c: CompanyListItem) {
+    setExportingId(c.id)
+    try {
+      await downloadExport('companies', { ids: [c.id] })
+      toast.success('Planilha baixada.')
+    } catch (e) {
+      toast.error(apiErrorMessage(e, 'Erro ao exportar empresa.'))
+    } finally {
+      setExportingId(null)
+    }
+  }
 
   async function handleDelete() {
     if (!deleteTarget) return
@@ -80,6 +100,18 @@ export function CompaniesList() {
           <option value="true">Só parceiras</option>
           <option value="false">Só não parceiras</option>
         </NativeSelect>
+        <div className="flex items-center justify-end gap-2">
+          <SelectionInfo count={selection.count} onClear={selection.clear} />
+          <ExportMenu
+            dataset="companies"
+            className="h-9"
+            filters={{ search, type, isPartner }}
+            selectedIds={selection.ids}
+            total={data?.total}
+            filtered={filtering}
+            extra={[{ label: 'Propriedades das selecionadas', dataset: 'properties', params: { ownerIds: selection.ids }, disabled: selection.count === 0 }]}
+          />
+        </div>
       </div>
 
       {isError && <LoadErrorBanner message="Erro ao carregar empresas." />}
@@ -89,17 +121,26 @@ export function CompaniesList() {
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead className="w-10">
+                  <SelectCheckbox
+                    checked={pageState === 'all'}
+                    indeterminate={pageState === 'some'}
+                    onChange={() => selection.togglePage(pageIds)}
+                    label="Selecionar todos desta página"
+                  />
+                </TableHead>
                 <TableHead>Empresa</TableHead>
                 <TableHead className="hidden md:table-cell">CNPJ</TableHead>
                 <TableHead className="hidden lg:table-cell">Tipo</TableHead>
                 <TableHead className="hidden xl:table-cell">Telefone</TableHead>
                 <TableHead className="hidden sm:table-cell">Pessoas</TableHead>
-                <TableHead className={`w-24 text-right ${STICKY_ACTIONS_CELL}`}>Ações</TableHead>
+                <TableHead className={`w-32 text-right ${STICKY_ACTIONS_CELL}`}>Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {isLoading && Array.from({ length: 5 }).map((_, i) => (
                 <TableRow key={i}>
+                  <TableCell><Skeleton className="size-4" /></TableCell>
                   <TableCell><Skeleton className="h-4 w-48" /></TableCell>
                   <TableCell className="hidden md:table-cell"><Skeleton className="h-4 w-32" /></TableCell>
                   <TableCell className="hidden lg:table-cell"><Skeleton className="h-4 w-16" /></TableCell>
@@ -111,7 +152,7 @@ export function CompaniesList() {
 
               {!isLoading && rows.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={6} className="p-0">
+                  <TableCell colSpan={7} className="p-0">
                     <EmptyState
                       icon={Building2}
                       title={filtering ? 'Nenhuma empresa encontrada' : 'Nenhuma empresa cadastrada'}
@@ -123,6 +164,9 @@ export function CompaniesList() {
 
               {rows.map(c => (
                 <TableRow key={c.id} className={STICKY_ACTIONS_ROW}>
+                  <TableCell className="w-10">
+                    <SelectCheckbox checked={selection.isSelected(c.id)} onChange={() => selection.toggle(c.id)} label={`Selecionar ${companyDisplayName(c)}`} />
+                  </TableCell>
                   <TableCell>
                     <div className="flex min-w-0 items-center gap-2">
                       <Link to="/admin/empresas/$id" params={{ id: c.id }} className="truncate font-medium text-foreground hover:underline">
@@ -154,6 +198,10 @@ export function CompaniesList() {
                         <Link to="/admin/empresas/$id" params={{ id: c.id }} aria-label={`Abrir ${companyDisplayName(c)}`} title="Abrir empresa">
                           <Eye className="size-4" />
                         </Link>
+                      </Button>
+                      <Button size="sm" variant="ghost" className="h-8 px-2" onClick={() => exportOne(c)} disabled={exportingId === c.id}
+                        aria-label={`Exportar ${companyDisplayName(c)}`} title="Exportar">
+                        {exportingId === c.id ? <Loader2 className="size-4 animate-spin" /> : <Download className="size-4" />}
                       </Button>
                       {can('DELETE_USER') && (
                         <Button size="sm" variant="ghost" className="h-8 px-2 text-muted-foreground hover:text-destructive"

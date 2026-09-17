@@ -87,6 +87,8 @@ src/
 │   ├── GalleryLightbox.tsx          # Fotos de uma galeria em tela cheia (página Sobre)
 │   ├── home-cotacoes-section.tsx    # Faixa de cotações (preço, unidade, dia/período, fonte, link histórico)
 │   ├── cotacoes/QuoteHistoryChart.tsx # Gráfico SVG de um produto (linha, crosshair/tooltip, setas do teclado)
+│   ├── export/ExportMenu.tsx        # Exportação CSV: ExportMenu (selecionados / todos com filtros / extras),
+│   │                                #   ExportOneButton (um registro), SelectCheckbox, SelectionInfo
 │   ├── galerias/                    # Admin: GalleryAlbumCard (fotos, legenda, ordem), GalleryAlbumDialog
 │   ├── site-config/                 # Abas de Configurações do site: OrgInfoPanel (dados do sindicato +
 │   │                                #   texto do Sobre), SocialLinksPanel, GalleriesPanel, PartnersPanel
@@ -118,6 +120,7 @@ src/
 │   ├── useNews.ts                   # Hooks de notícias (admin + público)
 │   ├── useBanner.ts                 # Hooks de banners
 │   ├── useRooms.ts                  # useRooms, useCreateRoom
+│   ├── useRowSelection.ts           # Seleção de linhas por id (continua entre páginas) para exportar
 │   ├── usePermissions.ts            # Hook de permissões do usuário logado
 │   ├── use-users.ts                 # authenticateUser(username, password) → POST /api/auth/login
 │   └── use-mobile.ts               # useIsMobile (breakpoint hook)
@@ -127,6 +130,7 @@ src/
 │   ├── query-client.ts              # QueryClient: staleTime 60s, gcTime 5min, retry false, refetchOnWindowFocus false
 │   ├── auth-guard.ts                # Guard de rota admin
 │   ├── schemas.ts                   # Schemas Zod: pessoaSchema, roomSchema, adminSchema, courseBaseSchema
+│   ├── export.ts                    # downloadExport(dataset, params) → GET /admin/export/:dataset (CSV)
 │   ├── member-types.ts              # Tipo de membro (lista fixa) + MEMBER_TYPE_OPTIONS
 │   ├── membership.ts                # isActiveMember (selo "Associado" nas inscrições)
 │   ├── org-contact.ts               # Dados padrão do sindicato (fallback) + phoneDigits
@@ -351,7 +355,12 @@ mapCourses(list: ApiCourse[]): Course[]
 - `POST /api/admin/galleries/:id/photos` (multipart; reduzida p/ 1600px JPEG) · `PATCH /photos/:photoId` `{ caption }` · `DELETE /photos/:photoId` · `PATCH /photos/reorder`
 
 **Auditoria**
-- `GET /api/admin/audit-logs` — trilha de auditoria (paginado)
+- `GET /api/admin/audit-logs` — trilha de auditoria (paginado; `action=create|edit|delete|export`)
+
+**Exportação CSV** — `GET /api/admin/export/:dataset` (planilha `;` com BOM, abre no Excel; cada exportação vai para a auditoria como "Exportou")
+- Datasets: `people`, `companies`, `properties` (`ownerIds`), `unimed` (READ_USER) · `admins` (READ_USER_ADMIN) · `courses`, `registrations` (`courseIds`) (READ_COURSE) · `contact-messages` (READ_CONTACT) · `audit-logs` (READ_AUDIT)
+- `ids=a,b` = selecionados ou um registro; sem `ids` = mesmos filtros da listagem
+- Telas: checkboxes + "Exportar" em Associados, Empresas, Administradores, Unimed, Cursos (cards), Mensagens; ícone de download por linha; "Exportar" no detalhe de pessoa/empresa/curso/mensagem; botão na Auditoria e na aba Inscrições do curso
 
 **Convites de admin**
 - `POST /api/admin/invites` — gera convite (pessoa + regra → token)
@@ -384,6 +393,7 @@ mapCourses(list: ApiCourse[]): Course[]
 - Trilha de auditoria e convites de admin implementados.
 - **Ajustes de cadastro (set/2026)**: tipo de membro é select (Aluno, Produtor rural, Trabalhador rural assalariado/autônomo; o backend recusa valor fora da lista); CAD/PRO até 5; salas com nome de lista fixa; empresa com razão social (`name`), nome fantasia (`tradeName`, exibido quando houver — `companyDisplayName`) e endereço da sede no próprio cadastro (CEP com busca).
 - **Cotações**: produtos fixos; o admin só lança preço (centavos) e período manhã/tarde; a data é a do dia; a unidade de cada produto é escolhida na mesma tela (saca 60/50/40 kg, tonelada, quilo, arroba ou sem unidade). Home mostra preço + unidade + dia/período + fonte (editável no admin de cotações) e linka para `/cotacoes` (histórico em gráfico/tabela).
+- **Exportação** (set/2026): tudo que tem lista no painel exporta em CSV — selecionados, todos com os filtros atuais ou um registro só (ver "Exportação CSV" acima). A planilha de inscrições do curso agora vem do backend.
 - **Inscrições de curso**: selos "Associado" (situação ativa e validade em dia), "Parceira" (vínculo com empresa parceira ativa), cargo na diretoria e cargo de contato público; o CSV traz as mesmas colunas.
 - **Home**: os números (associados, cursos realizados, anos, alunos) saíram. As galerias de fotos (História do Sindicato, FAEP, Patrulha Rural) ficam só na página Sobre (#galeria) — o usuário pediu para NÃO ter seção de galerias na home.
 - **Configurações do site** (`/admin/configuracoes`): centraliza o que é do site público — Dados do sindicato (telefone, e-mail, endereço, horário, busca do mapa e texto do Sobre; usados no rodapé, Contato, Sobre e convênios via `useOrgInfo`), Redes sociais, Galerias, Parceiros da home (adicionar empresa, logo, link, ordem, tirar) e Contatos públicos ("Nossa Equipe": qualquer pessoa do cadastro, com cargo e ordem). Permissões: Dados/Redes/Galerias `*_BANNER`; Parceiros e Contatos `*_USER`. A empresa não tem mais aba Parceria e o diálogo de admin não marca mais contato público — ambos apontam para cá.

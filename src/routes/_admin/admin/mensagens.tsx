@@ -12,7 +12,10 @@ import {
 import { DeleteConfirmDialog } from '@/components/DeleteConfirmDialog'
 import { Pagination } from '@/components/ui/pagination'
 import { useDebouncedValue } from '@/hooks/useDebouncedValue'
-import { Mail, MailOpen, Phone, AtSign, Trash2, Search, X, CheckCheck } from 'lucide-react'
+import { ExportMenu, ExportOneButton } from '@/components/export/ExportMenu'
+import { apiErrorMessage } from '@/lib/api-error-message'
+import { downloadExport } from '@/lib/export'
+import { Mail, MailOpen, Phone, AtSign, Trash2, Search, X, CheckCheck, Download, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Input } from '@/components/ui/input'
 import { useEffect } from 'react'
@@ -74,6 +77,10 @@ function MessageDialog({
             <div className="text-sm text-foreground whitespace-pre-wrap leading-relaxed bg-background rounded-lg border p-4 max-h-60 overflow-y-auto">
               {message.message}
             </div>
+
+            <div className="flex justify-end">
+              <ExportOneButton dataset="contact-messages" id={message.id} size="sm" />
+            </div>
           </div>
         )}
       </DialogContent>
@@ -93,6 +100,7 @@ function RouteComponent() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [bulkBusy, setBulkBusy] = useState(false)
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false)
+  const [exportingId, setExportingId] = useState<string | null>(null)
 
   // reset page when the debounced search changes
   useEffect(() => { setPage(1) }, [search])
@@ -117,6 +125,18 @@ function RouteComponent() {
       if (selected?.id === deleteTarget.id) setSelected(null)
     } catch {
       toast.error('Erro ao excluir mensagem.')
+    }
+  }
+
+  async function exportOne(msg: ContactMessage) {
+    setExportingId(msg.id)
+    try {
+      await downloadExport('contact-messages', { ids: [msg.id] })
+      toast.success('Planilha baixada.')
+    } catch (e) {
+      toast.error(apiErrorMessage(e, 'Erro ao exportar a mensagem.'))
+    } finally {
+      setExportingId(null)
     }
   }
 
@@ -214,6 +234,14 @@ function RouteComponent() {
             </Button>
           ))}
         </div>
+        <ExportMenu
+          dataset="contact-messages"
+          className="shrink-0"
+          filters={{ search: search.trim(), read: readParam ?? undefined }}
+          selectedIds={[...selectedIds]}
+          total={data?.total}
+          filtered={!!search.trim() || readFilter !== 'all'}
+        />
       </div>
 
       {!isLoading && messages.length > 0 && (
@@ -297,6 +325,17 @@ function RouteComponent() {
             <span className="text-xs text-muted-foreground shrink-0 hidden sm:block">
               {formatDate(msg.createdAt)}
             </span>
+
+            <Button
+              variant="ghost" size="icon"
+              className="size-7 shrink-0 text-muted-foreground hover:text-foreground"
+              disabled={exportingId === msg.id}
+              onClick={e => { e.stopPropagation(); exportOne(msg) }}
+              title="Exportar"
+              aria-label={`Exportar mensagem de ${msg.name}`}
+            >
+              {exportingId === msg.id ? <Loader2 className="size-3.5 animate-spin" /> : <Download className="size-3.5" />}
+            </Button>
 
             <Button
               variant="ghost" size="icon"

@@ -2,11 +2,12 @@ import { createFileRoute } from '@tanstack/react-router'
 import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import {
-  HeartPulse, Plus, Pencil, Trash2, Search, User, X, Receipt, ScrollText, FileSignature, Loader2,
+  HeartPulse, Plus, Pencil, Trash2, Search, User, X, Receipt, ScrollText, FileSignature, Loader2, Download,
 } from 'lucide-react'
 import { requirePermission } from '@/lib/auth-guard'
 import { apiFetch } from '@/lib/api'
 import { apiErrorMessage } from '@/lib/api-error-message'
+import { downloadExport } from '@/lib/export'
 import { downloadFichaUnimed } from '@/lib/unimed-ficha-pdf'
 import { downloadTermoUnimed } from '@/lib/unimed-termo-pdf'
 import { downloadContratoUnimed } from '@/lib/unimed-contrato-pdf'
@@ -15,6 +16,7 @@ import { formatDateFromString } from '@/utils/format-data-from-string'
 import { maskCPF } from '@/utils/masks'
 import { STICKY_ACTIONS_CELL, STICKY_ACTIONS_ROW } from '@/lib/table-sticky-actions'
 import { useDebouncedValue } from '@/hooks/useDebouncedValue'
+import { useRowSelection } from '@/hooks/useRowSelection'
 import { useAdminUsers } from '@/hooks/useAdmin'
 import {
   useUnimedList, useUnimed, useCreateUnimed, useUpdateUnimed, useDeleteUnimed,
@@ -35,6 +37,7 @@ import { DeleteConfirmDialog } from '@/components/DeleteConfirmDialog'
 import { ConfirmCloseDialog } from '@/components/confirm-close-dialog'
 import { LoadErrorBanner } from '@/components/LoadErrorBanner'
 import { EmptyState } from '@/components/EmptyState'
+import { ExportMenu, SelectCheckbox, SelectionInfo } from '@/components/export/ExportMenu'
 import { Pagination } from '@/components/ui/pagination'
 
 export const Route = createFileRoute('/_admin/admin/unimed')({
@@ -408,8 +411,12 @@ function RouteComponent() {
   const [fichaBusyId, setFichaBusyId] = useState<string | null>(null)
   const [termoBusyId, setTermoBusyId] = useState<string | null>(null)
   const [contratoBusyId, setContratoBusyId] = useState<string | null>(null)
+  const [exportBusyId, setExportBusyId] = useState<string | null>(null)
+  const selection = useRowSelection()
 
   const rows = data?.data ?? []
+  const pageIds = rows.map(r => r.id)
+  const pageState = selection.pageState(pageIds)
   const total = data?.total ?? 0
   const totalPages = data?.totalPages ?? 1
 
@@ -475,6 +482,18 @@ function RouteComponent() {
     }
   }
 
+  async function exportarLinha(row: UnimedRow) {
+    setExportBusyId(row.id)
+    try {
+      await downloadExport('unimed', { ids: [row.id] })
+      toast.success('Planilha baixada.')
+    } catch (e) {
+      toast.error(apiErrorMessage(e, 'Erro ao exportar o beneficiário.'))
+    } finally {
+      setExportBusyId(null)
+    }
+  }
+
   return (
     <div className="p-6 flex flex-col gap-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
@@ -489,14 +508,26 @@ function RouteComponent() {
         </Button>
       </div>
 
-      <div className="relative max-w-sm">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
-        <Input
-          placeholder="Buscar por nome ou CPF..."
-          className="pl-9"
-          value={searchInput}
-          onChange={e => setSearchInput(e.target.value)}
-        />
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div className="relative w-full sm:max-w-sm">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+          <Input
+            placeholder="Buscar por nome ou CPF..."
+            className="pl-9"
+            value={searchInput}
+            onChange={e => setSearchInput(e.target.value)}
+          />
+        </div>
+        <div className="flex items-center justify-end gap-2">
+          <SelectionInfo count={selection.count} onClear={selection.clear} />
+          <ExportMenu
+            dataset="unimed"
+            filters={{ search }}
+            selectedIds={selection.ids}
+            total={data?.total}
+            filtered={!!search}
+          />
+        </div>
       </div>
 
       {isError && <LoadErrorBanner message="Erro ao carregar os beneficiários." />}
@@ -506,11 +537,19 @@ function RouteComponent() {
           <Table>
             <TableHeader>
               <TableRow>
-                {/* Com a sidebar ocupando ~256px, as 7 colunas só cabem em telas
+                {/* Com a sidebar ocupando ~256px, as 8 colunas só cabem em telas
                     bem largas — as menos essenciais somem por breakpoint. E, se
                     ainda assim sobrar conteúdo (nomes longos em telas estreitas),
                     a coluna de Ações fica presa à direita (STICKY_ACTIONS_CELL) para
                     nunca sair da área visível. */}
+                <TableHead className="w-10">
+                  <SelectCheckbox
+                    checked={pageState === 'all'}
+                    indeterminate={pageState === 'some'}
+                    onChange={() => selection.togglePage(pageIds)}
+                    label="Selecionar todos desta página"
+                  />
+                </TableHead>
                 <TableHead>Nome</TableHead>
                 <TableHead className="hidden sm:table-cell">CPF</TableHead>
                 <TableHead className="hidden 2xl:table-cell">Plano</TableHead>
@@ -523,6 +562,7 @@ function RouteComponent() {
             <TableBody>
               {isLoading && Array.from({ length: 6 }).map((_, i) => (
                 <TableRow key={i}>
+                  <TableCell><Skeleton className="size-4" /></TableCell>
                   <TableCell><Skeleton className="h-4 w-40" /></TableCell>
                   <TableCell className="hidden sm:table-cell"><Skeleton className="h-4 w-28" /></TableCell>
                   <TableCell className="hidden 2xl:table-cell"><Skeleton className="h-4 w-24" /></TableCell>
@@ -534,7 +574,7 @@ function RouteComponent() {
               ))}
               {!isLoading && rows.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={7} className="p-0">
+                  <TableCell colSpan={8} className="p-0">
                     <EmptyState
                       icon={HeartPulse}
                       title="Nenhum beneficiário"
@@ -545,6 +585,9 @@ function RouteComponent() {
               )}
               {rows.map(r => (
                 <TableRow key={r.id} className={STICKY_ACTIONS_ROW}>
+                  <TableCell className="w-10">
+                    <SelectCheckbox checked={selection.isSelected(r.id)} onChange={() => selection.toggle(r.id)} label={`Selecionar ${r.userData.name}`} />
+                  </TableCell>
                   <TableCell className="font-medium text-foreground">{r.userData.name}</TableCell>
                   <TableCell className="hidden sm:table-cell tabular-nums text-muted-foreground">{r.userData.cpf ? maskCPF(r.userData.cpf) : '—'}</TableCell>
                   <TableCell className="hidden 2xl:table-cell text-muted-foreground">{r.plano ?? '—'}</TableCell>
@@ -593,6 +636,19 @@ function RouteComponent() {
                         {contratoBusyId === r.id
                           ? <Loader2 className="size-4 animate-spin" />
                           : <FileSignature className="size-4" />}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-8 px-2"
+                        onClick={() => exportarLinha(r)}
+                        disabled={exportBusyId === r.id}
+                        aria-label="Exportar"
+                        title="Exportar"
+                      >
+                        {exportBusyId === r.id
+                          ? <Loader2 className="size-4 animate-spin" />
+                          : <Download className="size-4" />}
                       </Button>
                       <Button size="sm" variant="ghost" className="h-8 px-2" onClick={() => openEdit(r.id)} aria-label="Editar" title="Editar">
                         <Pencil className="size-4" />

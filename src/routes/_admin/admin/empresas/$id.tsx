@@ -1,9 +1,10 @@
 import { useState } from 'react'
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
 import { toast } from 'sonner'
-import { ArrowLeft, Building2, Handshake, TreePine, Trash2, Users } from 'lucide-react'
+import { ArrowLeft, Building2, Download, Handshake, Loader2, TreePine, Trash2, Users } from 'lucide-react'
 import { requirePermission } from '@/lib/auth-guard'
 import { apiErrorMessage } from '@/lib/api-error-message'
+import { downloadExport, type ExportDataset, type ExportParams } from '@/lib/export'
 import { usePermissions } from '@/hooks/usePermissions'
 import {
   useAdminCompany, useUpdateCompany, useDeleteCompany, useAddCompanyProperty, useRemoveCompanyProperty,
@@ -16,6 +17,9 @@ import { DeleteConfirmDialog } from '@/components/DeleteConfirmDialog'
 import { LoadErrorBanner } from '@/components/LoadErrorBanner'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { maskCNPJ } from '@/utils/masks'
@@ -40,6 +44,7 @@ function EmpresaPage() {
   const removeProp = useRemoveCompanyProperty(id)
   const [tab, setTab] = useState('dados')
   const [confirmDelete, setConfirmDelete] = useState(false)
+  const [exporting, setExporting] = useState(false)
   const readOnly = !can('UPDATE_USER')
 
   if (isLoading) {
@@ -72,6 +77,18 @@ function EmpresaPage() {
     }
   }
 
+  async function handleExport(dataset: ExportDataset, params: ExportParams) {
+    setExporting(true)
+    try {
+      await downloadExport(dataset, params)
+      toast.success('Planilha baixada.')
+    } catch (e) {
+      toast.error(apiErrorMessage(e, 'Erro ao exportar.'))
+    } finally {
+      setExporting(false)
+    }
+  }
+
   return (
     <div className="flex flex-col gap-6 p-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -94,11 +111,27 @@ function EmpresaPage() {
             )}
           </div>
         </div>
-        {can('DELETE_USER') && (
-          <Button variant="outline" size="sm" className="shrink-0 text-destructive hover:text-destructive" onClick={() => setConfirmDelete(true)}>
-            <Trash2 className="size-3.5" /> Excluir
-          </Button>
-        )}
+        <div className="flex shrink-0 items-center gap-2">
+          <DropdownMenu modal={false}>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" disabled={exporting}>
+                {exporting ? <Loader2 className="size-3.5 animate-spin" /> : <Download className="size-3.5" />} Exportar
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">Planilha CSV (abre no Excel)</DropdownMenuLabel>
+              <DropdownMenuItem onSelect={() => handleExport('companies', { ids: [id] })}>Dados da empresa</DropdownMenuItem>
+              <DropdownMenuItem disabled={company.properties.length === 0} onSelect={() => handleExport('properties', { ownerIds: [id] })}>
+                Propriedades ({company.properties.length})
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+          {can('DELETE_USER') && (
+            <Button variant="outline" size="sm" className="text-destructive hover:text-destructive" onClick={() => setConfirmDelete(true)}>
+              <Trash2 className="size-3.5" /> Excluir
+            </Button>
+          )}
+        </div>
       </div>
 
       <Tabs value={tab} onValueChange={setTab}>

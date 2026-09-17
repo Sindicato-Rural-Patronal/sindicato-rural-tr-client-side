@@ -28,13 +28,17 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
+import {
   AlertCircle, ArrowLeft, Camera, CheckCircle2, Save, Plus, Trash2, Building2, Eye,
   User, FileText, Globe, Briefcase, Heart, TreePine,
-  Pencil, X, GraduationCap, ImageUp,
+  Pencil, X, GraduationCap, ImageUp, Download, Loader2,
 } from 'lucide-react'
 import { maskCPF, maskPhone, maskRG, maskCNH, maskMoney } from '@/utils/masks'
 import { AgeHint } from '@/components/AgeHint'
 import { apiErrorMessage } from '@/lib/api-error-message'
+import { downloadExport, type ExportDataset, type ExportParams } from '@/lib/export'
 import { toIso } from '@/utils/dates'
 import { upperNoAccents } from '@/utils/text-format'
 import { MEMBER_TYPE_OPTIONS } from '@/lib/member-types'
@@ -1061,8 +1065,21 @@ function RouteComponent() {
   const [activeTab, setActiveTab] = useState('dados')
   const [completeMode, setCompleteMode] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [exporting, setExporting] = useState(false)
   const deleteWorker = useDeleteWorker()
   const navigate = useNavigate()
+
+  async function handleExport(dataset: ExportDataset, params: ExportParams) {
+    setExporting(true)
+    try {
+      await downloadExport(dataset, params)
+      toast.success('Planilha baixada.')
+    } catch (e) {
+      toast.error(apiErrorMessage(e, 'Erro ao exportar.'))
+    } finally {
+      setExporting(false)
+    }
+  }
 
   async function handleDelete() {
     try {
@@ -1134,6 +1151,21 @@ function RouteComponent() {
               Completar cadastro
             </Button>
           )}
+          <DropdownMenu modal={false}>
+            <DropdownMenuTrigger asChild>
+              <Button size="sm" variant="outline" className="gap-1.5" disabled={exporting} aria-label="Exportar" title="Exportar">
+                {exporting ? <Loader2 className="size-3.5 animate-spin" /> : <Download className="size-3.5" />}
+                <span className="hidden sm:inline">Exportar</span>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">Planilha CSV (abre no Excel)</DropdownMenuLabel>
+              <DropdownMenuItem onSelect={() => handleExport('people', { ids: [id] })}>Ficha completa</DropdownMenuItem>
+              <DropdownMenuItem disabled={propertiesTotal === 0} onSelect={() => handleExport('properties', { ownerIds: [id] })}>
+                Propriedades ({propertiesTotal})
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
           <Button
             size="sm"
             variant="outline"
