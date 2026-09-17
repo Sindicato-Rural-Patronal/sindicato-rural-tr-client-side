@@ -1,7 +1,8 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { Link } from '@tanstack/react-router'
 import { usePublicSiteSettings } from '@/hooks/useSiteSettings'
 import { useMarketQuotes, type MarketQuote } from '@/hooks/useMarketQuotes'
+import { LoadErrorRetry } from '@/components/LoadErrorRetry'
 import { QUOTE_PERIOD_LABEL, quoteProductLabel, trendOf } from '@/lib/quote-utils'
 import { centsToBRL } from '@/utils/masks'
 import { ArrowRight, TrendingUp, TrendingDown, Minus } from 'lucide-react'
@@ -26,10 +27,28 @@ function dayMonth(iso: string): string {
   return `${d}/${m}`
 }
 
+// Rolagem automática só com mouse e tela larga: no toque não dá para pausar
+// (hover não existe) e o preço fica passando enquanto a pessoa tenta ler.
+const AUTO_SCROLL_QUERY = '(hover: hover) and (pointer: fine) and (min-width: 768px)'
+
+function subscribeAutoScroll(onChange: () => void) {
+  const mql = window.matchMedia?.(AUTO_SCROLL_QUERY)
+  mql?.addEventListener('change', onChange)
+  return () => mql?.removeEventListener('change', onChange)
+}
+
+function useCanAutoScroll(): boolean {
+  return useSyncExternalStore(
+    subscribeAutoScroll,
+    () => window.matchMedia?.(AUTO_SCROLL_QUERY).matches ?? false,
+    () => false,
+  )
+}
+
 function QuoteCard({ q }: { q: MarketQuote }) {
   const trend = trendOf(q.variation)
   return (
-    <div className="flex min-w-40 shrink-0 flex-col gap-0.5 rounded-lg border border-border bg-card px-4 py-3">
+    <div className="flex min-w-40 shrink-0 snap-start flex-col gap-0.5 rounded-lg border border-border bg-card px-4 py-3">
       <span className="text-xs font-medium text-muted-foreground">{quoteProductLabel(q.label)}</span>
       <span className="text-lg font-bold tabular-nums text-foreground">
         {q.priceCents != null ? centsToBRL(q.priceCents) : q.value}
@@ -74,27 +93,42 @@ function QuoteCard({ q }: { q: MarketQuote }) {
 const NO_QUOTES: MarketQuote[] = []
 
 export function CotacoesSection() {
-  const { data } = useMarketQuotes()
+  const { data, isError, isFetching, refetch } = useMarketQuotes()
   const { data: settings } = usePublicSiteSettings()
   const source = settings?.quotesSource?.trim()
   const quotes = data ?? NO_QUOTES
+  const canAutoScroll = useCanAutoScroll()
 
   const wrapperRef = useRef<HTMLDivElement>(null)
   const trackRef = useRef<HTMLDivElement>(null)
-  const [shouldScroll, setShouldScroll] = useState(false)
+  const [overflows, setOverflows] = useState(false)
+  const marquee = canAutoScroll && overflows
 
   useEffect(() => {
     function measure() {
       if (!trackRef.current || !wrapperRef.current) return
-      // Quando já está em scroll, o track tem 2 cópias → largura de 1 conjunto
-      // é scrollWidth/2; senão é o próprio scrollWidth. A tolerância evita jitter.
-      const single = shouldScroll ? trackRef.current.scrollWidth / 2 : trackRef.current.scrollWidth
-      setShouldScroll(single > wrapperRef.current.offsetWidth + 4)
+      // Em rolagem o track tem 2 cópias → largura de 1 conjunto é scrollWidth/2;
+      // senão é o próprio scrollWidth. A tolerância evita jitter.
+      const single = marquee ? trackRef.current.scrollWidth / 2 : trackRef.current.scrollWidth
+      setOverflows(single > wrapperRef.current.offsetWidth + 4)
     }
     measure()
     window.addEventListener('resize', measure)
     return () => window.removeEventListener('resize', measure)
-  }, [quotes, shouldScroll])
+  }, [quotes, marquee])
+
+  // A API falhou (e as repetições também): avisa em vez de sumir com a faixa.
+  if (isError && quotes.length === 0) {
+    return (
+      <section className="border-b border-border bg-muted/30">
+        <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-x-3 gap-y-2 px-4 py-3">
+          <TrendingUp className="size-4 text-primary" aria-hidden />
+          <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Cotações</h2>
+          <LoadErrorRetry variant="inline" onRetry={() => void refetch()} retrying={isFetching} />
+        </div>
+      </section>
+    )
+  }
 
   // Sem cotações lançadas → não renderiza a faixa.
   if (quotes.length === 0) return null
@@ -131,24 +165,31 @@ export function CotacoesSection() {
                 Atualizado {timeAgo(lastUpdated)}
               </span>
             )}
-            <Link to="/cotacoes" className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline">
+            <Link
+              to="/cotacoes"
+              className="inline-flex min-h-11 items-center gap-1 text-xs font-medium text-primary hover:underline sm:min-h-0"
+            >
               Ver histórico <ArrowRight className="size-3.5" />
             </Link>
           </div>
         </div>
 
-        <div ref={wrapperRef} className="relative w-full overflow-hidden">
-          {shouldScroll ? (
+        {marquee ? (
+          <div ref={wrapperRef} className="relative w-full overflow-hidden">
             <div ref={trackRef} className="flex w-max gap-3 cotacoes-track-scroll">
               {quotes.map(q => <QuoteCard key={q.id} q={q} />)}
               {quotes.map(q => <QuoteCard key={`dup-${q.id}`} q={q} />)}
             </div>
-          ) : (
-            <div ref={trackRef} className="flex justify-center gap-3 overflow-x-auto pb-1">
+          </div>
+        ) : (
+          // Parada e rolável com o dedo; centralizada quando cabe (w-max + mx-auto),
+          // começando da esquerda quando não cabe (senão a ponta esquerda some).
+          <div ref={wrapperRef} className="relative w-full snap-x overflow-x-auto pb-1">
+            <div ref={trackRef} className="mx-auto flex w-max gap-3">
               {quotes.map(q => <QuoteCard key={q.id} q={q} />)}
             </div>
-          )}
-        </div>
+          </div>
+        )}
       </div>
     </section>
   )

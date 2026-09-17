@@ -1,6 +1,5 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
 import { apiErrorMessage } from '@/lib/api-error-message'
-import { z } from 'zod'
 import { useState, useEffect } from 'react'
 import { toast } from 'sonner'
 import { usePermissions } from '@/hooks/usePermissions'
@@ -45,15 +44,25 @@ import { MEMBER_TYPES } from '@/lib/member-types'
 import { downloadExport, type ExportDataset, type ExportParams } from '@/lib/export'
 import { useRowSelection } from '@/hooks/useRowSelection'
 import { ExportMenu, SelectCheckbox, SelectionInfo } from '@/components/export/ExportMenu'
+import { PersonPicker, type PickedPerson } from '@/components/PersonPicker'
+import { useDebouncedValue } from '@/hooks/useDebouncedValue'
+import { maskCPF } from '@/utils/masks'
+
+const USERS_TABS = ['associados', 'empresas', 'admins'] as const
+type UsersTab = (typeof USERS_TABS)[number]
+type UsersSearch = { incomplete?: true; tab?: UsersTab; page?: number; q?: string }
 
 export const Route = createFileRoute('/_admin/admin/usuarios/')({
   // Filtros principais na URL (sobrevivem a voltar/atualizar/compartilhar).
-  validateSearch: z.object({
-    incomplete: z.boolean().optional(),
-    tab: z.enum(['associados', 'empresas', 'admins']).optional(),
-    page: z.coerce.number().int().min(1).optional(),
-    q: z.string().optional(),
-  }),
+  validateSearch: (s: Record<string, unknown>): UsersSearch => {
+    const page = Number(s.page)
+    return {
+      incomplete: s.incomplete === true || s.incomplete === 'true' ? true : undefined,
+      tab: USERS_TABS.includes(s.tab as UsersTab) ? (s.tab as UsersTab) : undefined,
+      page: Number.isInteger(page) && page >= 1 ? page : undefined,
+      q: typeof s.q === 'string' ? s.q : undefined,
+    }
+  },
   component: RouteComponent,
 })
 
@@ -387,11 +396,13 @@ function RegrasSheet() {
                       <PermSummary permissions={r.permissions} />
                     </div>
                   </div>
-                  <div className="flex shrink-0 items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                  {/* Sempre visíveis: no celular/tablet não existe "passar o mouse". */}
+                  <div className="flex shrink-0 items-center gap-0.5">
                     <Button
                       variant="ghost" size="icon"
                       className="size-7"
                       onClick={() => openDialog({ mode: 'edit', rule: r })}
+                      aria-label="Editar regra" title="Editar regra"
                     >
                       <Pencil className="size-3.5" />
                     </Button>
@@ -401,7 +412,7 @@ function RegrasSheet() {
                         className="size-7 text-muted-foreground hover:text-destructive"
                         disabled={deleteRule.isPending}
                         onClick={() => setDeleteRuleTarget(r)}
-                        title="Excluir regra"
+                        aria-label="Excluir regra" title="Excluir regra"
                       >
                         <Trash2 className="size-3.5" />
                       </Button>
@@ -429,13 +440,15 @@ function RegrasSheet() {
 }
 
 function NovoAdminSheet() {
-  const { data: usuariosData } = useAdminUsers({ limit: 1000 })
   const { data: regrasData } = useAdminRules()
-  const usuarios = usuariosData?.data ?? []
+  // Quem já é administrador aparece desabilitado na busca (a lista cabe numa página).
+  const { data: adminsData } = useAdminAdmins({ limit: 100 })
+  const adminIds = new Set((adminsData?.data ?? []).map(a => a.userDataId))
   const regras = regrasData?.data ?? []
   const createInvite = useCreateAdminInvite()
   const [open, setOpen] = useState(false)
-  const [form, setForm] = useState({ userDataId: '', userRole: '' })
+  const [person, setPerson] = useState<PickedPerson | null>(null)
+  const [userRole, setUserRole] = useState('')
   const [link, setLink] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -444,23 +457,25 @@ function NovoAdminSheet() {
   function handleOpenChange(o: boolean) {
     setOpen(o)
     if (o) {
-      setForm({ userDataId: '', userRole: '' })
+      setPerson(null)
+      setUserRole('')
       setLink(null)
       setError(null)
       setCopied(false)
     }
   }
 
-  function handleChange(e: React.ChangeEvent<HTMLSelectElement>) {
-    setForm(prev => ({ ...prev, [e.target.name]: e.target.value }))
+  function pickPerson(p: PickedPerson | null) {
+    setPerson(p)
     setLink(null)
   }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
+    if (!person) return
     setError(null)
     try {
-      const { token } = await createInvite.mutateAsync({ userDataId: form.userDataId, rulesId: form.userRole })
+      const { token } = await createInvite.mutateAsync({ userDataId: person.id, rulesId: userRole })
       setLink(`${window.location.origin}/convite/${token}`)
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'Erro ao gerar o convite.'
@@ -496,16 +511,28 @@ function NovoAdminSheet() {
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="admin-user">Pessoa (associado) *</Label>
-              <NativeSelect id="admin-user" name="userDataId" value={form.userDataId} onChange={handleChange} required>
-                <option value="">Selecione uma pessoa</option>
-                {usuarios.map(u => (
-                  <option key={u.id} value={u.id}>{u.name} — {u.email}</option>
-                ))}
-              </NativeSelect>
+              {person ? (
+                <div className="flex min-h-9 items-center justify-between gap-2 rounded-md border bg-muted/40 px-3 py-1 text-sm">
+                  <span className="min-w-0">
+                    <span className="block truncate font-medium">{person.name}</span>
+                    {person.cpf && <span className="block text-xs text-muted-foreground">CPF {maskCPF(person.cpf)}</span>}
+                  </span>
+                  <Button type="button" variant="ghost" size="sm" className="h-7 shrink-0 px-2" onClick={() => pickPerson(null)}>
+                    <X className="size-3.5" /> Trocar
+                  </Button>
+                </div>
+              ) : (
+                <PersonPicker
+                  id="admin-user"
+                  onPick={pickPerson}
+                  excludeIds={adminIds}
+                  excludedLabel="já é administrador"
+                />
+              )}
             </div>
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="admin-role">Regra de permissão *</Label>
-              <NativeSelect id="admin-role" name="userRole" value={form.userRole} onChange={handleChange} required>
+              <NativeSelect id="admin-role" value={userRole} onChange={e => { setUserRole(e.target.value); setLink(null) }} required>
                 <option value="">Selecione uma regra</option>
                 {regras.map(r => (
                   <option key={r.id} value={r.id}>{r.name}</option>
@@ -513,7 +540,7 @@ function NovoAdminSheet() {
               </NativeSelect>
             </div>
             {error && <p className="text-sm text-destructive">{error}</p>}
-            <Button type="submit" disabled={!form.userDataId || !form.userRole || createInvite.isPending}>
+            <Button type="submit" disabled={!person || !userRole || createInvite.isPending}>
               {createInvite.isPending ? 'Gerando...' : 'Gerar link de convite'}
             </Button>
           </form>
@@ -712,6 +739,8 @@ function RouteComponent() {
   const [limit, setLimit] = useState<typeof USERS_LIMIT_OPTIONS[number]>(10)
   const [incompleteOnly, setIncompleteOnly] = useState(urlSearch.incomplete ?? false)
   const [usersSearch, setUsersSearch] = useState(urlSearch.q ?? '')
+  // A consulta espera a pessoa parar de digitar (não busca a cada tecla).
+  const usersQuery = useDebouncedValue(usersSearch, 300).trim()
   const [showAdvanced, setShowAdvanced] = useState(false)
   const [genderFilter, setGenderFilter] = useState<'MALE' | 'FEMALE' | 'OTHER' | ''>('')
   const [ethnicityFilter, setEthnicityFilter] = useState<'WHITE' | 'BLACK' | 'MIXED' | 'ASIAN' | 'INDIGENOUS' | ''>('')
@@ -735,12 +764,12 @@ function RouteComponent() {
         tab: activeTab === 'admins' || activeTab === 'empresas' ? activeTab : undefined,
         page: usersPage > 1 ? usersPage : undefined,
         incomplete: incompleteOnly || undefined,
-        q: usersSearch || undefined,
+        q: usersQuery || undefined,
       },
       replace: true,
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeTab, usersPage, incompleteOnly, usersSearch])
+  }, [activeTab, usersPage, incompleteOnly, usersQuery])
 
   const activeFiltersCount = [genderFilter, ethnicityFilter, educationFilter, memberTypeFilter, memberClassFilter].filter(Boolean).length
 
@@ -753,10 +782,10 @@ function RouteComponent() {
     setUsersPage(1)
   }
 
-  const { data: usuariosData, isLoading: loadingUsers, isError: errorUsers } = useAdminUsers({
+  const { data: usuariosData, isLoading: loadingUsers, isError: errorUsers, isPlaceholderData: refreshingUsers } = useAdminUsers({
     page: usersPage,
     limit,
-    search: usersSearch || undefined,
+    search: usersQuery || undefined,
     incompleteRegistration: incompleteOnly ? true : undefined,
     gender: genderFilter || undefined,
     ethnicity: ethnicityFilter || undefined,
@@ -791,7 +820,7 @@ function RouteComponent() {
   const canExportAdmins = can('READ_USER_ADMIN')
   // Mesmos filtros da listagem, sem página/limite.
   const usersExportFilters: ExportParams = {
-    search: usersSearch.trim() || undefined,
+    search: usersQuery || undefined,
     incompleteRegistration: incompleteOnly ? true : undefined,
     gender: genderFilter || undefined,
     ethnicity: ethnicityFilter || undefined,
@@ -799,7 +828,7 @@ function RouteComponent() {
     memberType: memberTypeFilter || undefined,
     memberClassification: memberClassFilter || undefined,
   }
-  const usersFiltered = !!usersSearch.trim() || incompleteOnly || activeFiltersCount > 0
+  const usersFiltered = !!usersQuery || incompleteOnly || activeFiltersCount > 0
 
   async function handleExportRow(dataset: ExportDataset, id: string) {
     setExportingRow(id)
@@ -1101,11 +1130,18 @@ function RouteComponent() {
             </div>
           )}
           {!loadingUsers && !errorUsers && usuarios.length === 0 && (
-            <EmptyState icon={Users} title="Nenhum associado cadastrado" />
+            <EmptyState
+              icon={Users}
+              title={usersFiltered ? 'Nenhum associado encontrado' : 'Nenhum associado cadastrado'}
+              description={usersFiltered ? 'Confira a busca ou limpe os filtros.' : undefined}
+            />
           )}
           {!loadingUsers && usuarios.length > 0 && (
             <>
-              <div className="rounded-lg border border-border bg-card overflow-hidden">
+              <div
+                className={`rounded-lg border border-border bg-card overflow-hidden transition-opacity ${refreshingUsers ? 'opacity-60' : ''}`}
+                aria-busy={refreshingUsers}
+              >
                 <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
@@ -1147,7 +1183,7 @@ function RouteComponent() {
                         </TableCell>
                         <TableCell className="text-muted-foreground text-sm hidden md:table-cell">{u.email}</TableCell>
                         <TableCell className="text-muted-foreground text-sm hidden lg:table-cell">{u.phone}</TableCell>
-                        <TableCell className="text-muted-foreground text-sm font-mono hidden lg:table-cell">{u.cpf ?? '—'}</TableCell>
+                        <TableCell className="text-muted-foreground text-sm font-mono hidden lg:table-cell">{u.cpf ? maskCPF(u.cpf) : '—'}</TableCell>
                         <TableCell className="text-muted-foreground text-sm hidden md:table-cell">
                           {new Date(u.createdAt).toLocaleDateString('pt-BR')}
                         </TableCell>

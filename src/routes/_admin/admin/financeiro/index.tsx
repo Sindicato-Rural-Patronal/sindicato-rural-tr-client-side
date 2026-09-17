@@ -11,15 +11,16 @@ import {
   useCreateFinanceTransfer, fetchFinanceTransactionsForRange,
   useUploadFinanceAttachment, useDeleteFinanceAttachment, openFinanceAttachment, exportFinanceTransactions,
   type FinanceType, type FinanceCategory, type FinanceAccount, type FinanceTransaction, type TransactionFilters, type Empenho,
+  type FinanceAttachment,
 } from '@/hooks/useFinance'
-import { centsToBRL, maskMoney, moneyToCents } from '@/utils/masks'
+import { centsToBRL, maskCPF, maskMoney, moneyToCents } from '@/utils/masks'
 import { upperNoAccents } from '@/utils/text-format'
 import { formatDateFromString } from '@/utils/format-data-from-string'
 import { todayYmd, toYmd } from '@/utils/dates'
 import {
   Wallet, TrendingUp, TrendingDown, Scale, Plus, Pencil, Trash2, Search,
   Tag, ArrowUpCircle, ArrowDownCircle, Paperclip, FileText, X,
-  Download, Landmark, ArrowLeftRight, FileDown, Receipt, ChevronDown, User,
+  Download, Landmark, ArrowLeftRight, FileDown, Receipt, ChevronDown, User, Repeat,
 } from 'lucide-react'
 import { apiFetch } from '@/lib/api'
 import { useAdminUsers, type UserDataDetail } from '@/hooks/useAdmin'
@@ -399,7 +400,7 @@ function empFromUser(u: UserDataDetail): Partial<EmpForm> {
     usuarioNome: u.name,
     razaoSocial: u.name ?? '',
     nomeFantasia: u.nickname ?? u.name ?? '',
-    cnpjCpf: u.cpf ?? '',
+    cnpjCpf: u.cpf ? maskCPF(u.cpf) : '',
     telefone: u.phone ?? '',
     endereco,
     bairro: addr?.neighborhood ?? '',
@@ -481,11 +482,46 @@ function VincularUsuario({ current, onPick, onClear }: {
               className="flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-sm hover:bg-accent disabled:opacity-50"
             >
               <span className="truncate">{u.name}</span>
-              <span className="shrink-0 text-xs text-muted-foreground">{u.cpf ?? ''}</span>
+              <span className="shrink-0 text-xs text-muted-foreground">{u.cpf ? maskCPF(u.cpf) : ''}</span>
             </button>
           ))}
         </div>
       )}
+    </div>
+  )
+}
+
+// Totais de todos os lançamentos que batem com os filtros (todas as páginas),
+// somados no backend — mesma regra do dashboard.
+function FilteredTotals({ totals, loading }: {
+  totals?: { incomeCents: number; expenseCents: number }
+  loading: boolean
+}) {
+  const income = totals?.incomeCents ?? 0
+  const expense = totals?.expenseCents ?? 0
+  const balance = income - expense
+  const items = [
+    { label: 'Entradas', value: income, cls: 'text-emerald-600 dark:text-emerald-400' },
+    { label: 'Saídas', value: expense, cls: 'text-red-600 dark:text-red-400' },
+    { label: 'Saldo', value: balance, cls: balance < 0 ? 'text-red-600 dark:text-red-400' : 'text-foreground' },
+  ]
+  return (
+    <div className="flex flex-col gap-1.5">
+      <div className="grid grid-cols-3 gap-2">
+        {items.map(i => (
+          <div key={i.label} className="flex min-w-0 flex-col rounded-lg border border-border bg-card px-3 py-2">
+            <span className="text-xs text-muted-foreground">{i.label}</span>
+            {loading ? (
+              <Skeleton className="mt-1 h-6 w-24 max-w-full" />
+            ) : (
+              <span className={`truncate text-sm font-semibold tabular-nums sm:text-lg ${i.cls}`}>{centsToBRL(i.value)}</span>
+            )}
+          </div>
+        ))}
+      </div>
+      <p className="text-[11px] text-muted-foreground">
+        Soma de todos os lançamentos com os filtros acima, em todas as páginas. Saldo = entradas − saídas. Transferências entre caixas e "Só nota" não entram.
+      </p>
     </div>
   )
 }
@@ -536,6 +572,11 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
   const [confirmClose, setConfirmClose] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<FinanceTransaction | null>(null)
+  // Comprovante que o usuário pediu para remover, aguardando a confirmação.
+  const [attachmentToDelete, setAttachmentToDelete] = useState<FinanceAttachment | null>(null)
+  // Novo lançamento copiado de outro ("Repetir") — só muda o texto do diálogo.
+  const [repeating, setRepeating] = useState(false)
+  const amountInputRef = useRef<HTMLInputElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const pendingInputRef = useRef<HTMLInputElement>(null)
   // Comprovantes escolhidos antes do lançamento existir (fluxo "Novo") — sobem após o create.
@@ -596,7 +637,35 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
 
   function abrirNovo() {
     setEditId(null)
+    setRepeating(false)
     const f = emptyTxForm()
+    setForm(f)
+    setFormSnapshot(JSON.stringify(f))
+    setPendingFiles([])
+    setError(null)
+    setDialogOpen(true)
+  }
+
+  // "Repetir": novo lançamento com os dados de um existente e a data de hoje.
+  // Comprovantes não vão junto; da Nota de Empenho ficam os dados do fornecedor,
+  // sem os números (empenho, nota fiscal, cheque), que são de cada documento.
+  function abrirRepetir(t: FinanceTransaction) {
+    setEditId(null)
+    setRepeating(true)
+    // Categoria/caixa desativados depois não vão para o lançamento novo.
+    const catOk = !!t.categoryId && (!categories || cats.some(c => c.id === t.categoryId))
+    const accOk = !!t.accountId && (!accounts || accs.some(a => a.id === t.accountId))
+    const f: TxForm = {
+      type: t.type,
+      amount: maskMoney(String(t.amountCents)),
+      date: todayYmd(),
+      description: t.description,
+      method: t.method ?? '',
+      categoryId: catOk ? t.categoryId! : '',
+      accountId: accOk ? t.accountId! : '',
+      notes: t.notes ?? '',
+      empenho: { ...empFromData(t.empenho), numero: '', notaFiscal: '', cheque: '' },
+    }
     setForm(f)
     setFormSnapshot(JSON.stringify(f))
     setPendingFiles([])
@@ -606,6 +675,7 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
 
   function abrirEditar(t: FinanceTransaction) {
     setEditId(t.id)
+    setRepeating(false)
     const f: TxForm = {
       type: t.type,
       amount: maskMoney(String(t.amountCents)),
@@ -630,7 +700,8 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
     else setDialogOpen(false)
   }
 
-  async function handleSubmit() {
+  // `andNew` ("Registrar e novo"): registra e deixa o diálogo aberto para o próximo.
+  async function handleSubmit(andNew = false) {
     setError(null)
     const amountCents = moneyToCents(form.amount)
     if (amountCents <= 0) { setError('Informe um valor maior que zero.'); return }
@@ -661,6 +732,24 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
           }
         }
         toast.success('Lançamento registrado!')
+        if (andNew) {
+          // Mantém data, tipo, categoria, caixa e método; limpa valor, descrição,
+          // observações, comprovantes e Nota de Empenho.
+          const next: TxForm = {
+            ...emptyTxForm(),
+            type: form.type,
+            date: form.date,
+            categoryId: form.categoryId,
+            accountId: form.accountId,
+            method: form.method,
+          }
+          setForm(next)
+          setFormSnapshot(JSON.stringify(next))
+          setPendingFiles([])
+          setRepeating(false)
+          amountInputRef.current?.focus()
+          return
+        }
       }
       setDialogOpen(false)
     } catch (e) {
@@ -693,10 +782,12 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
     if (fileInputRef.current) fileInputRef.current.value = ''
   }
 
-  async function handleDeleteAttachment(id: string) {
+  async function handleDeleteAttachment() {
+    if (!attachmentToDelete) return
     try {
-      await deleteAtt.mutateAsync(id)
+      await deleteAtt.mutateAsync(attachmentToDelete.id)
       toast.success('Comprovante removido.')
+      setAttachmentToDelete(null)
     } catch (err) {
       toast.error(apiErrorMessage(err, 'Erro ao remover o comprovante.'))
     }
@@ -817,6 +908,8 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
 
       {isError && <LoadErrorBanner message="Erro ao carregar os lançamentos." />}
 
+      {(isLoading || data?.totals) && <FilteredTotals totals={data?.totals} loading={isLoading} />}
+
       {/* Mobile: cada lançamento como cartão (tabela só rola de lado, ruim no celular). */}
       <div className="flex flex-col gap-2 md:hidden">
         {isLoading && Array.from({ length: 5 }).map((_, i) => (
@@ -857,6 +950,9 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
               <span className="ml-auto flex items-center gap-1">
                 {!t.transferId && (
                   <Button size="sm" variant="ghost" className="h-7 px-2 text-muted-foreground" disabled={notaBusy === t.id} onClick={() => gerarNota(t)} aria-label="Gerar Nota de Empenho"><Receipt className="size-4" /></Button>
+                )}
+                {canCreate && !t.transferId && (
+                  <Button size="sm" variant="ghost" className="h-7 px-2" onClick={() => abrirRepetir(t)} aria-label="Repetir (novo lançamento igual, com a data de hoje)"><Repeat className="size-4" /></Button>
                 )}
                 {canUpdate && !t.transferId && (
                   <Button size="sm" variant="ghost" className="h-7 px-2" onClick={() => abrirEditar(t)} aria-label="Editar"><Pencil className="size-4" /></Button>
@@ -964,6 +1060,11 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
                           <Receipt className="size-4" />
                         </Button>
                       )}
+                      {canCreate && !t.transferId && (
+                        <Button size="sm" variant="ghost" className="h-8 px-2" onClick={() => abrirRepetir(t)} aria-label="Repetir" title="Repetir (novo lançamento igual, com a data de hoje)">
+                          <Repeat className="size-4" />
+                        </Button>
+                      )}
                       {canUpdate && !t.transferId && (
                         <Button size="sm" variant="ghost" className="h-8 px-2" onClick={() => abrirEditar(t)} aria-label="Editar" title="Editar">
                           <Pencil className="size-4" />
@@ -974,7 +1075,8 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
                           <Trash2 className="size-4" />
                         </Button>
                       )}
-                      {(!canUpdate || t.transferId) && !canDelete && <span className="text-xs text-muted-foreground">—</span>}
+                      {/* Fora de transferência sempre há o botão da nota; o traço é só para transferência sem ação. */}
+                      {t.transferId && !canDelete && <span className="text-xs text-muted-foreground">—</span>}
                     </div>
                   </TableCell>
                 </TableRow>
@@ -1047,7 +1149,11 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
         <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{editId ? 'Editar lançamento' : 'Novo lançamento'}</DialogTitle>
-            <DialogDescription>Entrada ou saída de caixa. Valor em reais.</DialogDescription>
+            <DialogDescription>
+              {repeating
+                ? 'Cópia de um lançamento, com a data de hoje e sem os comprovantes. Confira antes de registrar.'
+                : 'Entrada ou saída de caixa. Valor em reais.'}
+            </DialogDescription>
           </DialogHeader>
           <div className="flex flex-col gap-4">
             <div className="grid grid-cols-3 gap-2">
@@ -1088,7 +1194,7 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
             <div className="grid grid-cols-2 gap-3">
               <div className="flex flex-col gap-1.5">
                 <Label>Valor *</Label>
-                <Input inputMode="numeric" placeholder="R$ 0,00" value={form.amount} onChange={e => setF('amount', maskMoney(e.target.value))} />
+                <Input ref={amountInputRef} inputMode="numeric" placeholder="R$ 0,00" value={form.amount} onChange={e => setF('amount', maskMoney(e.target.value))} />
               </div>
               <div className="flex flex-col gap-1.5">
                 <Label>Data *</Label>
@@ -1150,7 +1256,7 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
                       <button type="button" onClick={() => handleOpenAttachment(a.id)} className="flex-1 truncate text-left text-xs text-foreground hover:underline" title={a.filename}>
                         {a.filename}
                       </button>
-                      <button type="button" onClick={() => handleDeleteAttachment(a.id)} disabled={deleteAtt.isPending} className="text-muted-foreground hover:text-destructive" aria-label="Remover comprovante" title="Remover">
+                      <button type="button" onClick={() => setAttachmentToDelete(a)} disabled={deleteAtt.isPending} className="text-muted-foreground hover:text-destructive" aria-label="Remover comprovante" title="Remover">
                         <X className="size-4" />
                       </button>
                     </div>
@@ -1239,7 +1345,12 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={requestCloseDialog}>Cancelar</Button>
-            <Button onClick={handleSubmit} disabled={saving}>
+            {!editId && (
+              <Button variant="outline" onClick={() => handleSubmit(true)} disabled={saving} title="Registra este e deixa o formulário aberto para o próximo">
+                Registrar e novo
+              </Button>
+            )}
+            <Button onClick={() => handleSubmit()} disabled={saving}>
               {saving ? 'Salvando...' : editId ? 'Salvar' : 'Registrar'}
             </Button>
           </DialogFooter>
@@ -1264,6 +1375,21 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
         }
         onConfirm={handleDelete}
         pending={deleteTx.isPending}
+      />
+
+      <DeleteConfirmDialog
+        open={!!attachmentToDelete}
+        onOpenChange={open => { if (!open) setAttachmentToDelete(null) }}
+        title="Remover comprovante"
+        description={
+          <>
+            Remover o comprovante <strong className="break-all">{attachmentToDelete?.filename}</strong> deste lançamento? O arquivo será apagado e não pode ser recuperado.
+          </>
+        }
+        onConfirm={handleDeleteAttachment}
+        pending={deleteAtt.isPending}
+        confirmLabel="Remover"
+        pendingLabel="Removendo..."
       />
     </div>
   )

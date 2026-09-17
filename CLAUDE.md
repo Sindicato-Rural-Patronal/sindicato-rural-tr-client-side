@@ -39,15 +39,14 @@ Site institucional do **Sindicato Rural de Terra Roxa** (Paraná, Brasil). Plata
 /convenios/$slug            → _public/convenios/$slug.tsx (tabela de valores, documentos, sobre)
 /login                      → login.tsx
 /admin                      → _admin/admin/index.tsx (redirect → /admin/cursos)
-/admin/cursos               → _admin/admin/cursos/index.tsx (CRUD completo)
-/admin/cursos/novo          → _admin/admin/cursos/novo.tsx (form criação)
+/admin/cursos               → _admin/admin/cursos/index.tsx (CRUD completo em diálogos: criar, editar, duplicar, inscrições)
 /admin/noticias             → _admin/admin/noticias/index.tsx
 /admin/usuarios             → _admin/admin/usuarios/index.tsx (abas ?tab=associados|empresas|admins)
-/admin/usuarios/$id         → _admin/admin/usuarios/$id.tsx (detalhe completo; aba "Empresas" = vínculos)
+/admin/usuarios/$id         → _admin/admin/usuarios/$id.tsx (detalhe completo; aba "Empresas" = vínculos; ?completar=1 abre "Completar cadastro")
 /admin/empresas/novo        → _admin/admin/empresas/novo.tsx (criar empresa)
 /admin/empresas/$id         → _admin/admin/empresas/$id.tsx (abas Dados / Pessoas / Propriedades)
-/admin/banners              → _admin/admin/banners.tsx
-/admin/mensagens            → _admin/admin/mensagens.tsx
+/admin/banners              → _admin/admin/banners.tsx (período em dias de Brasília; selo Agendado/No ar/Expirado/Inativo)
+/admin/mensagens            → _admin/admin/mensagens.tsx (responder por e-mail/WhatsApp, marcar como não lida)
 /admin/salas                → _admin/admin/salas/index.tsx (nome = lista fixa de salas)
 /admin/administradores      → _admin/admin/administradores/index.tsx
 /admin/cotacoes             → _admin/admin/cotacoes/index.tsx (lançamento do dia: produtos fixos, preço + manhã/tarde; unidade por produto; fonte)
@@ -77,16 +76,24 @@ src/
 ├── components/
 │   ├── ui/                          # shadcn/ui + pagination.tsx (PaginatedResponse)
 │   ├── cadastro/                    # Empresas: CompaniesList, CompanyForm, CompanyMembersPanel,
-│   │                                #   PersonCompanies; PropertiesManager
-│   │                                #   (propriedades/endereços, compartilhado por pessoa e empresa)
+│   │                                #   PersonCompanies (aba Empresas da pessoa: vincular a empresa/desvincular);
+│   │                                #   PropertiesManager (propriedades/endereços, compartilhado por pessoa e empresa)
 │   ├── PublicHeader.tsx             # Nav pública (sticky; convênios como itens próprios; menu mobile abaixo de lg) — logo-full.png
-│   ├── public-footer.tsx            # Footer: 4 colunas (marca+redes, links, contato via useOrgInfo, chamada)
+│   ├── public-footer.tsx            # Footer: 4 colunas (marca+redes, links, contato via useOrgInfo, chamada); "Acesso ao painel" é link discreto na linha de baixo
+│   ├── WhatsAppFloatingButton.tsx   # Botão flutuante do WhatsApp (layout público; só com WhatsApp nas Configurações; some abaixo de lg em /cursos/$id)
+│   ├── NotFoundPage.tsx             # 404 em português (defaultNotFoundComponent, lazy): com cabeçalho/rodapé quando fora do layout; em /admin leva ao painel
+│   ├── RouteErrorPage.tsx           # defaultErrorComponent: "Tentar de novo" (router.invalidate) + "Ir para o início"
+│   ├── PageLoader.tsx               # defaultPendingComponent (rota demorando a carregar)
+│   ├── LoadErrorRetry.tsx           # Falha de carregamento no site público: mensagem + "Tentar de novo" (nunca "não há nada")
 │   ├── adminSideBar.tsx             # Sidebar admin — usa logo-icon.png; link perfil via userDataId
 │   ├── nav-user.tsx                 # Dropdown do usuário (logout)
 │   ├── home-hero-section.tsx        # Banner hero
 │   ├── GalleryLightbox.tsx          # Fotos de uma galeria em tela cheia (página Sobre)
 │   ├── home-cotacoes-section.tsx    # Faixa de cotações (preço, unidade, dia/período, fonte, link histórico)
 │   ├── cotacoes/QuoteHistoryChart.tsx # Gráfico SVG de um produto (linha, crosshair/tooltip, setas do teclado)
+│   ├── courses/                     # Admin de cursos: CourseFormDialog (criar/editar/duplicar — fora do arquivo
+│   │                                #   da rota para o editor de markdown não ir ao bundle inicial), PhotoGrid
+│   ├── PersonPicker.tsx             # Busca de pessoa do cadastro (lista suspensa; "Cadastrar nova pessoa" em outra aba)
 │   ├── export/ExportMenu.tsx        # Exportação CSV: ExportMenu (selecionados / todos com filtros / extras),
 │   │                                #   ExportOneButton (um registro), SelectCheckbox, SelectionInfo
 │   ├── galerias/                    # Admin: GalleryAlbumCard (fotos, legenda, ordem), GalleryAlbumDialog
@@ -108,10 +115,12 @@ src/
 ├── hooks/
 │   ├── useCourse.ts                 # useAdminCourses, useCourses, useCourse, useCreateCourse,
 │   │                                #   useUpdateCourse, useDeleteCourse, useUploadBanner,
-│   │                                #   useUploadGalleryPhoto, useDeleteGalleryPhoto
+│   │                                #   useUploadGalleryPhoto, useDeleteGalleryPhoto,
+│   │                                #   useAllCourseRegistrations, useAdminRegisterPerson, useConfirmAllRegistrations
 │   ├── useAdmin.ts                  # Ver seção "Hooks — useAdmin.ts" abaixo
 │   ├── useCompanies.ts              # Empresas: useAdminCompanies, useAdminCompany, CRUD, vínculos
-│   │                                #   (members), propriedades, logo de parceira, títulos usados
+│   │                                #   (members; pela pessoa: useLinkPersonToCompany/useUnlinkPersonFromCompany),
+│   │                                #   propriedades, logo de parceira, títulos usados + COMMON_MEMBER_TITLES
 │   ├── useGalleries.ts              # Galerias: pública, admin, CRUD, upload/legenda/ordem das fotos
 │   ├── useMarketQuotes.ts           # Cotações: pública, admin, useSaveDailyQuotes (PUT daily), useQuoteHistory
 │   ├── useSiteSettings.ts           # Configurações do site (pública/admin/salvar), useUpdateQuotesSource,
@@ -127,22 +136,36 @@ src/
 ├── lib/
 │   ├── api.ts                       # ApiError class (com status: number); apiFetch() e apiUpload()
 │   │                                #   injetam Bearer token; 401 → limpa token + redireciona /login
-│   ├── query-client.ts              # QueryClient: staleTime 60s, gcTime 5min, retry false, refetchOnWindowFocus false
+│   ├── query-client.ts              # QueryClient: staleTime 60s, gcTime 5min, retry shouldRetryQuery, refetchOnWindowFocus false
+│   ├── query-retry.ts               # shouldRetryQuery (até 2x em falha de rede/5xx, nunca 4xx) + errorStatus (ApiError ou "HTTP nnn")
+│   ├── site-whatsapp.ts             # siteWhatsappHref (link pronto ou número solto → wa.me/55…) + isCourseDetailPath
 │   ├── auth-guard.ts                # Guard de rota admin
 │   ├── schemas.ts                   # Schemas Zod: pessoaSchema, roomSchema, courseBaseSchema
 │   ├── export.ts                    # downloadExport(dataset, params) → POST /admin/export/:dataset (filtros/ids no corpo; CSV)
 │   ├── member-types.ts              # MEMBER_TYPES (lista fixa {value,label}, também opções do select) + memberTypeLabel
 │   ├── membership.ts                # isActiveMember (selo "Associado" nas inscrições)
+│   ├── person-validation.ts         # validatePersonFields (nome, e-mail, telefones, CPF, RG, CNH — mesmas regras do backend),
+│   │                                #   firstInvalidField, focusFieldById (cadastro novo e edição de pessoa)
 │   ├── org-contact.ts               # Dados padrão do sindicato (fallback) + phoneDigits
 │   ├── room-names.ts                # Nomes fixos das salas + opções do select
+│   ├── calendar-links.ts            # Curso na agenda/WhatsApp: buildCourseIcs (.ics, hora de Brasília → UTC, repete por dia),
+│   │                                #   googleCalendarUrl, whatsappShareUrl (só nome, data, horário, local e link)
 │   ├── quote-utils.ts               # Cotações: período (manhã/tarde), rótulo dos produtos, unidades (QUOTE_UNIT_OPTIONS), trendOf
+│   ├── quote-price-check.ts         # Cotações: findQuoteDeviations (preço >20% diferente do último → confirmação), formatQuoteChange
+│   ├── banner-dates.ts              # Banners: bannerStartIso/bannerEndIso (dia → 00:00 / 23:59:59.999 -03:00), brasiliaYmd
+│   │                                #   (instante → dia em Brasília), bannerState (mesma regra do GET /banners), bannerPeriodLabel
+│   ├── whatsapp-field.ts            # Campo WhatsApp das Redes sociais: telefone digitado ↔ link https://wa.me/55… salvo
 │   └── utils.ts                     # cn() helper (clsx + tailwind-merge)
 ├── routes/                          # File-based routing
 ├── utils/
 │   ├── format-data-from-string.ts   # formatDateFromString (YYYY-MM-DD → DD/MM/YYYY)
 │   ├── dates.ts                     # toIso, toYmd(date) e todayYmd() (YYYY-MM-DD no fuso local)
+│   ├── date-input.ts                # maskDateBr, parseDateBr (dd/mm/aaaa → YYYY-MM-DD, null se inválida), ymdToBr — do DatePicker
 │   ├── download.ts                  # saveBlob, openBlob, fileSlug (downloads de CSV/PDF)
 │   ├── cnpj.ts                      # isValidCnpj
+│   ├── cpf.ts                       # isValidCpf, cpfDigits, sameCpf (compara só dígitos)
+│   ├── course-status.ts             # getCourseSituation (selo do card), getRegistrationBlock (botão Inscrever-se),
+│   │                                #   isRegistrationDeadlinePassed/hasCourseEnded — dia em Brasília, igual ao backend
 │   └── masks.ts                     # maskCPF, maskCNPJ, maskPhone
 └── main.tsx                         # Entry: QueryClientProvider → AuthProvider → RouterProvider
 ```
@@ -170,7 +193,7 @@ ContactMessage          // mensagem de contato recebida
 ```
 useMe                       → GET /api/admin/me
 useAdminStats               → GET /api/admin/dashboard/stats
-useAdminUsers               → GET /api/admin/users (paginado + filtros)
+useAdminUsers               → GET /api/admin/users (paginado + filtros; mantém a lista anterior enquanto carrega; 2º arg { enabled })
 useAdminAdmins              → GET /api/admin/users/admins
 useAdminRules               → GET /api/admin/rules (paginado)
 useCreateRule / useUpdateRule
@@ -214,7 +237,8 @@ Definido em `src/@types/course.ts`. O backend já responde com os campos em ingl
 ```typescript
 id, status: 'PUBLIC' | 'PRIVATE' | 'UNPUBLISHED' | 'IN_PROGRESS',
 title, description, maxStudents, minStudents, enrolled, preEnrolled, waitlist,
-coverImage: string | null, price, startDate, endDate, startTime, endTime,
+coverImage: string | null, coverImageThumb?: string | null (WebP ~640px p/ cards; null → coverImage),
+price, startDate, endDate, startTime, endTime,
 workloadHours, location, instructorName,
 registrationDeadline: string | null, observations: string | null, eventNumber: string | null,
 photoGallery: { id, url, caption }[], instructors: CourseInstructor[]
@@ -232,22 +256,26 @@ photoGallery: { id, url, caption }[], instructors: CourseInstructor[]
 - **`AuthContext`** — token JWT persiste em `localStorage`. Expõe `token`, `baseUrl`, `login(token)`, `logout()`.
 - **`AuthProvider`** wrapa toda a app em `main.tsx`.
 - **`authenticateUser(username, password)`** em `use-users.ts` — POST `/api/auth/login`, retorna JWT.
-- Layout `_admin.tsx` faz parse do JWT e valida expiração; redireciona para `/login` se inválido.
+- Layout `_admin.tsx` faz parse do JWT e valida expiração (`lib/auth-token.ts`); se inválido vai para `/login?redirect=<tela atual>`.
 - `apiFetch()` / `apiUpload()` em `lib/api.ts` injetam `Authorization: Bearer {token}` em toda chamada.
-- Resposta 401 em qualquer chamada → limpa token + redireciona para `/login`.
+- Resposta 401 em qualquer chamada → limpa token + vai para `/login?redirect=<tela atual>`.
 - Erro HTTP é lançado como `ApiError` (com `status: number`) — permite `catch (e) { if (e instanceof ApiError && e.status === 409) ... }`.
-- Login redireciona para `/admin/cursos`. Logout redireciona para `/`.
+- Login volta para o `?redirect` só se for caminho do painel (`safeAdminRedirect`: começa com `/admin`), senão `/admin/dashboard`; já logado, `/login` faz o mesmo. Logout vai para `/login`.
+- Token vale 8h; a renovação só funciona até 24h depois do login (`authTime` no token), depois é preciso entrar de novo. Renovação deslizante: `useSessionRenewal()` (AuthContext, usado no `_admin.tsx`) confere o token a cada clique/tecla (no máx. a cada 30s) e, passada a metade da validade, chama `POST /auth/refresh` (uma por vez) e grava o novo token; falha não faz nada.
+- **Alterações não salvas**: `const allowLeave = useUnsavedGuard(active)` (`hooks/use-unsaved-guard.ts`, `useBlocker` do TanStack Router) pergunta "Sair sem salvar?" (diálogo do app, `<LeaveConfirmHost />` montado no `_admin.tsx`) ao ir para outro caminho; só search params (filtros/abas) não pergunta; fechar/atualizar a aba usa o aviso do navegador. Chame `allowLeave()` logo antes do `navigate()` pós-salvar/criar/excluir.
+- **Busca de telas**: `CommandPalette` (Ctrl+K ou botão "Buscar…" no topo da sidebar, `openCommandPalette()` de `lib/command-palette.ts`); lista `NAV_ITEMS` com permissão; busca ignora acentos/maiúsculas e exige todas as palavras.
 
 ## Backend / Proxy
 
 - **Base da API**: `API_BASE` em `src/lib/api.ts` = `VITE_API_URL` (embutido no build) ou, sem ele, `/api`. `baseUrl` do contexto é esse mesmo valor.
 - **Dev**: sem `VITE_API_URL`, as chamadas vão para `/api/*` e o proxy do Vite encaminha para `VITE_BACKEND_URL` (padrão `http://localhost:3000`), tirando o `/api`.
-- **Prod**: não há proxy. O `Dockerfile` builda com `VITE_API_URL` (padrão `https://sindicatoruraltrbackend.nakaidev.tech`), então o navegador chama o backend direto. O container roda `node server/index.mjs` (Fastify na porta 80): serve o `dist/` como SPA (rota desconhecida → `index.html`; asset em `assets/` que não existe → 404) e, em `/cursos/:id` e `/noticias/:id`, busca o curso/notícia em `BACKEND_URL` (runtime) para injetar as meta OpenGraph no HTML (preview de link em WhatsApp/redes).
+- **Prod**: não há proxy. O `Dockerfile` builda com `VITE_API_URL` (padrão `https://sindicatoruraltrbackend.nakaidev.tech`), então o navegador chama o backend direto. O container roda `node server/index.mjs` (Fastify na porta 80): serve o `dist/` como SPA (rota desconhecida → `index.html`; asset em `assets/` que não existe → 404) e, em `/cursos/:id` e `/noticias/:id`, busca o curso/notícia em `BACKEND_URL` (runtime) para injetar as meta OpenGraph no HTML (preview de link em WhatsApp/redes; descrição sem markdown via `server/markdown-text.mjs`, mesmas regras de `src/lib/markdown-text.ts`). O `index.html` traz uma tela de carregamento (logo + spinner, CSS inline) dentro de `#root`, trocada pelo React no primeiro render.
 
 ## API — Endpoints
 
 **Auth**
-- `POST /api/auth/login` — `{ username, password }` → JWT string
+- `POST /api/auth/login` — `{ username, password }` → `{ token }` (JWT de 8h)
+- `POST /api/auth/refresh` — `Authorization: Bearer <token ainda válido>`, sem corpo → `{ token }` novo de 8h (401 se vencido, admin removido ou login há mais de 24h)
 
 **Cursos (público)**
 - `GET /api/courses` — lista cursos públicos
@@ -256,17 +284,20 @@ photoGallery: { id, url, caption }[], instructors: CourseInstructor[]
 
 **Cursos (admin)**
 - `GET /api/admin/courses` — lista admin
-- `POST /api/courses` — criar
+- `POST /api/courses` — criar (aceita `eventNumber`, `minStudents`). "Duplicar curso" (menu do card e diálogo do curso) abre a criação preenchida (datas, prazo e nº do evento em branco; rascunho) e manda `copyCoverFromCourseId` (o backend copia a capa para um arquivo próprio) e `copyInstructorsFromCourseId` + `instructorAssignmentIds`; resposta `{ id, coverCopied?, instructorsCopied? }` (falhou → aviso para enviar a capa pela edição). Galeria não é copiada
 - `PATCH /api/courses/:id` — atualizar
 - `DELETE /api/courses/:id` — deletar
-- `POST /api/courses/:id/banner` — upload banner (multipart)
+- `POST /api/courses/:id/banner` — upload banner (multipart; gera também a miniatura WebP ~640px → `{ url, thumbUrl }`)
 - `POST /api/courses/:id/gallery` — upload foto (multipart)
 - `DELETE /api/courses/:id/gallery/:photoId` — remover foto
 - `GET /api/admin/courses/:id/registrations` — inscrições do curso (paginado)
 - `DELETE /api/admin/registrations/:id` — cancelar inscrição
+- `POST /api/admin/courses/:id/registrations` — "Inscrever pessoa" `{ userDataId }` (PersonPicker; já confirmada, ignora o prazo; já inscrita → 409; lotado → 409)
+- `PATCH /api/admin/courses/:id/registrations/confirm-all` — "Confirmar todas" → `{ confirmed }`
+- Aba Inscrições: WhatsApp (`wa.me/55…`) e Ligar por linha, "Copiar telefones"/"Copiar e-mails" de todas as inscrições (`lib/contact-links.ts`, `lib/copy-text.ts`)
 
 **Usuários (admin)**
-- `GET /api/admin/users` — lista (paginado + filtros)
+- `GET /api/admin/users` — lista (paginado + filtros; `search` ignora acento e maiúscula — "joao" acha "João" — e aceita CPF com ou sem máscara)
 - `GET /api/admin/users/:id` — detalhe (inclui `userInstructor`)
 - `GET /api/admin/users/admins` — lista admins
 - `PUT /api/admin/users/:id/address` — atualizar endereço
@@ -281,7 +312,7 @@ photoGallery: { id, url, caption }[], instructors: CourseInstructor[]
 - `PATCH /api/admin/users/:id` — atualizar admin/funcionário
 
 **Empresas (admin)** — reusa as permissões `*_USER`; CNPJ guardado só com dígitos, único entre empresas ativas
-- `GET /api/admin/companies` — lista paginada (search nome/e-mail/CNPJ, type PRIVATE|PUBLIC, isPartner)
+- `GET /api/admin/companies` — lista paginada (search nome/e-mail/CNPJ sem diferenciar acento, type PRIVATE|PUBLIC, isPartner)
 - `GET /api/admin/companies/titles` — títulos já usados nos vínculos (sugestões)
 - `GET /api/admin/companies/:id` — detalhe (members com a pessoa + properties)
 - `POST /api/admin/companies` · `PATCH /api/admin/companies/:id` (inclui `tradeName`, `address` da sede — null/vazio remove —, parceria e `primaryPropertyId`) · `DELETE /api/admin/companies/:id` (soft)
@@ -305,6 +336,7 @@ photoGallery: { id, url, caption }[], instructors: CourseInstructor[]
 - `PATCH /api/admin/partners/reorder` — reordenar empresas parceiras `{ order: id[] }`
 - `GET /api/admin/contacts/messages` — mensagens de contato (paginado + filtros)
 - `PATCH /api/admin/contacts/messages/:id` — marcar mensagem como lida
+- `PATCH /api/admin/contacts/messages/:id/unread` — marcar como não lida (rota própria: a auditoria diz qual foi; mande corpo `{}`)
 - `DELETE /api/admin/contacts/messages/:id` — deletar mensagem
 
 **Contato (público)**
@@ -342,7 +374,7 @@ photoGallery: { id, url, caption }[], instructors: CourseInstructor[]
 - `POST /api/admin/galleries/:id/photos` (multipart; reduzida p/ 1600px JPEG) · `PATCH /photos/:photoId` `{ caption }` · `DELETE /photos/:photoId` · `PATCH /photos/reorder`
 
 **Auditoria**
-- `GET /api/admin/audit-logs` — trilha de auditoria (paginado; `action=create|edit|delete|export`)
+- `GET /api/admin/audit-logs` — trilha de auditoria (paginado; `action=create|edit|delete|export`). Cada linha traz `summary`, a frase pronta ("Iniciou o curso "HORTA"", montada no backend); a tela só a exibe. O filtro "Tipo" lista as entidades do backend (`lib/audit-entity.ts`)
 
 **Exportação CSV** — `POST /api/admin/export/:dataset` (corpo JSON; GET com query também existe) (planilha `;` com BOM, abre no Excel; cada exportação vai para a auditoria como "Exportou")
 - Datasets: `people`, `companies`, `properties` (`ownerIds`), `unimed` (READ_USER) · `admins` (READ_USER_ADMIN) · `courses`, `registrations` (`courseIds`) (READ_COURSE) · `contact-messages` (READ_CONTACT) · `audit-logs` (READ_AUDIT)
@@ -357,7 +389,7 @@ photoGallery: { id, url, caption }[], instructors: CourseInstructor[]
 **Financeiro (admin)** — gated por `*_FINANCE`; valor sempre em centavos (Int)
 - `GET /api/admin/finance/categories` (?all=true inclui inativas) · `POST` · `PATCH /:id` · `DELETE /:id`
 - `GET /api/admin/finance/accounts` (caixas; ?all=true) · `POST` · `PATCH /:id` · `DELETE /:id`
-- `GET /api/admin/finance/transactions` — paginado + filtros (from, to, type, categoryId, accountId, search)
+- `GET /api/admin/finance/transactions` — paginado + filtros (from, to, type, categoryId, accountId, search); `totals: { incomeCents, expenseCents }` de todos os filtrados (não só a página; sem transferências nem "só nota", como no summary)
 - `GET /api/admin/finance/transactions/export` — CSV (respeita filtros)
 - `POST /api/admin/finance/transactions` · `PATCH /:id` · `DELETE /:id`
 - `POST /api/admin/finance/transfers` — transferência entre caixas (2 lançamentos ligados)
@@ -373,20 +405,24 @@ photoGallery: { id, url, caption }[], instructors: CourseInstructor[]
 - Auth **funcional** — login/logout integrados com backend real.
 - Cursos **integrados com API real** — CRUD completo (criar, editar, deletar, banner, galeria, instrutores, inscrições).
 - Usuários admin: detalhe completo com propriedades/relacionamentos paginados, upload de avatar, promoção a instrutor.
-- Banners e mensagens de contato implementados.
+- Banners e mensagens de contato implementados. Datas do banner valem no horário de Brasília (entra à 0h do início, sai às 23h59 do término; a migration `20260919120000_banner_dates_brasilia` corrigiu as gravadas em UTC). Criar banner com imagem que falha: um aviso só e o painel reabre na edição do banner.
+- **DatePicker** (`ui/date-picker.tsx`): campo digitável dd/mm/aaaa com botão de calendário ao lado; mesmas props e valor `YYYY-MM-DD` (ou `""` enquanto o texto não é uma data válida — o campo fica vermelho ao sair).
+- **Redes sociais** (Configurações do site): o WhatsApp é digitado como telefone ((44) 99999-9999) e salvo como `https://wa.me/55…`; link colado também serve. "Alterações não salvas" e Salvar só com mudança.
 - Notícias, salas, admins e parceiros implementados.
 - **Empresas separadas de pessoas** (set/2026): `Company` tem vínculos N:N com pessoas (`CompanyMember`, cada um com título livre, ex.: SOCIO, CONTADOR), propriedades próprias (endereços; `Property` pertence a uma pessoa OU a uma empresa) e a parceria (antes flags em `UserData`). Lista na aba "Empresas" de `/admin/usuarios`. O CNPJ saiu do formulário de pessoa; as colunas `cnpj`/`isPartner`/`partner*` de `UserData` foram removidas (valores antigos de CNPJ e de tipo de membro fora da lista foram para as observações do associado). A migration criou uma empresa para cada pessoa ativa que era parceira ou tinha CNPJ, com a pessoa como RESPONSAVEL.
 - Dashboard admin **implementado** — stats + calendário de cursos + lista de cadastros incompletos (não é mais stub).
 - Trilha de auditoria e convites de admin implementados.
 - **Ajustes de cadastro (set/2026)**: tipo de membro é select (Aluno, Produtor rural, Trabalhador rural assalariado/autônomo; o backend recusa valor fora da lista); CAD/PRO até 5; salas com nome de lista fixa; empresa com razão social (`name`), nome fantasia (`tradeName`, exibido quando houver — `companyDisplayName`) e endereço da sede no próprio cadastro (CEP com busca).
-- **Cotações**: produtos fixos; o admin só lança preço (centavos) e período manhã/tarde; a data é a do dia; a unidade de cada produto é escolhida na mesma tela (saca 60/50/40 kg, tonelada, quilo, arroba ou sem unidade). Home mostra preço + unidade + dia/período + fonte (editável no admin de cotações) e linka para `/cotacoes` (histórico em gráfico/tabela).
+- **Cotações**: produtos fixos; o admin só lança preço (centavos) e período manhã/tarde; a data é a do dia; a unidade de cada produto é escolhida na mesma tela (saca 60/50/40 kg, tonelada, quilo, arroba ou sem unidade) e só é salva no "Salvar cotações", junto com os preços (PATCH das unidades alteradas, depois PUT daily se houver preço; erro mostrado por produto). Preço >20% diferente do último lançado abre confirmação ("Corrigir" / "Salvar mesmo assim"); "Repetir último" preenche o preço anterior; Enter no preço vai para o próximo (não envia). Home mostra preço + unidade + dia/período + fonte (editável no admin de cotações) e linka para `/cotacoes` (histórico em gráfico/tabela).
 - **Exportação** (set/2026): tudo que tem lista no painel exporta em CSV — selecionados, todos com os filtros atuais ou um registro só (ver "Exportação CSV" acima). A planilha de inscrições do curso agora vem do backend.
 - **Inscrições de curso**: selos "Associado" (situação ativa e validade em dia), "Parceira" (vínculo com empresa parceira ativa), cargo na diretoria e cargo de contato público; o CSV traz as mesmas colunas.
+- **Página do curso** (`/cursos/$id`): prazo de inscrição vale até o fim do dia em Brasília, ou até a hora quando o painel informou (`registrationDeadlineTime`, "HH:MM"; 00:00/null = dia inteiro; a página mostra "Inscrições até DD/MM/AAAA às HH:MM") e o curso aceita inscrição até o último dia; status `IN_PROGRESS`, curso terminado, prazo vencido ou lotado desligam "Inscrever-se" com o motivo — regra em `utils/course-status.ts`, a mesma do backend e do card. "Não existe" só com 404; outra falha mostra "Tentar de novo". No celular há barra presa ao pé (sticky) com preço e botão. CPF é conferido (dígitos) antes de seguir; formulário com algo digitado não fecha tocando fora/Esc (o X pede confirmação); menor de idade ganha link do `/termo-autorizacao-menor.pdf`. Depois de inscrever (ou se já estava inscrito, 409 "User already registered…" vira tela amigável): resumo, "Adicionar à agenda" (.ics + Google Agenda), "Enviar para meu WhatsApp" e telefone do sindicato.
 - **Home**: os números (associados, cursos realizados, anos, alunos) saíram. As galerias de fotos (História do Sindicato, FAEP, Patrulha Rural) ficam só na página Sobre (#galeria) — o usuário pediu para NÃO ter seção de galerias na home.
 - **Configurações do site** (`/admin/configuracoes`): centraliza o que é do site público — Dados do sindicato (telefone, e-mail, endereço, horário, busca do mapa e texto do Sobre; usados no rodapé, Contato, Sobre e convênios via `useOrgInfo`), Redes sociais, Galerias, Parceiros da home (adicionar empresa, logo, link, ordem, tirar) e Contatos públicos ("Nossa Equipe": qualquer pessoa do cadastro, com cargo e ordem). Permissões: Dados/Redes/Galerias `*_BANNER`; Parceiros e Contatos `*_USER`. A empresa não tem mais aba Parceria e o diálogo de admin não marca mais contato público — ambos apontam para cá.
 - **Convênios**: cada convênio ativo é um item próprio no menu do header público (entre Notícias e Sobre; sem submenu — pedido do usuário, são poucos); cada um tem página em `/convenios/$slug` (tabela de valores por faixa, documentos para adesão, destaques e texto). Conteúdo 100% editável em `/admin/convenios` (`ConvenioEditor` + `ConvenioPageView` compartilhado com a pré-visualização). Hooks em `useConvenios.ts`. Unimed semeado com os dados da página antiga (`ruraltr.com.br/pgs/print_unimed.php`). Regras com `UPDATE_BANNER` receberam as permissões `*_CONVENIO` na migration.
-- **Financeiro** (admin): lançamentos de caixa (valor em centavos Int), categorias, dashboard, comprovantes (anexo em Bytes no banco), export CSV, multi-caixa e transferência entre caixas, relatório PDF do período. Gated por `READ/CREATE/UPDATE/DELETE_FINANCE`. Filtros dos lançamentos vivem na URL (search params).
+- **Financeiro** (admin): lançamentos de caixa (valor em centavos Int), categorias, dashboard, comprovantes (anexo em Bytes no banco), export CSV, multi-caixa e transferência entre caixas, relatório PDF do período. Gated por `READ/CREATE/UPDATE/DELETE_FINANCE`. Filtros dos lançamentos vivem na URL (search params). Aba Lançamentos: totais (Entradas, Saídas, Saldo) dos filtros atuais vindos do backend (`totals`); "Registrar e novo" (mantém data/tipo/categoria/caixa/método); "Repetir" por linha (novo lançamento copiado, data de hoje, sem comprovantes nem números da nota); remover comprovante pede confirmação.
 - Deploy em produção via Docker (Dockerfile + docker-compose.prod.yml; servidor Node/Fastify em `server/index.mjs`).
+- **Conexão fraca / site público (set/2026)**: consultas repetem até 2x em falha de rede/5xx; home, listas, cotações e notícia mostram "Não foi possível carregar" + "Tentar de novo" (nunca "nenhum curso" quando a API falhou; notícia só diz "não existe" em 404); 404/erro/carregamento em português no router; cards de curso usam `coverImageThumb` (cursos antigos: capa inteira) e descrição sem markdown; faixa de cotações parada e rolável no toque; botão flutuante do WhatsApp; alvos de toque de 44px no menu e chamadas do site.
 
 ## Comandos
 
@@ -408,11 +444,14 @@ docker compose -f docker-compose.prod.yml --env-file .env.production up -d --bui
 
 - Alias `@/` aponta para `src/`
 - Componentes shadcn ficam em `src/components/ui/`
+- Arquivo de rota exporta só `Route`: componente ou helper exportado de lá (e `validateSearch` com zod) não é dividido pelo `autoCodeSplitting` e vai para o bundle inicial do site público — coloque em `src/components`/`src/lib`
+- Lista suspensa dentro de `Dialog`: marque o contêiner com `data-escape-owner` enquanto aberta (Esc fecha só a lista; ver `ui/dialog.tsx`)
 - Rotas públicas sob `_public/`, admin sob `_admin/`
 - `routeTree.gen.ts` regenerado automaticamente ao salvar rotas — **nunca editar manualmente**
 - Todas chamadas API passam por `API_BASE` (`/api` com proxy do Vite em dev; `VITE_API_URL` direto em prod)
 - Datas ISO da API → `formatDateFromString()` para exibição
 - Máscaras de input em `src/utils/masks.ts` (CPF, telefone)
+- CPF é gravado só com dígitos (o backend normaliza): para exibir, sempre `maskCPF(cpf)`
 - Formulários: React Hook Form + Zod schemas centralizados em `src/lib/schemas.ts`
 - Erros HTTP: `apiFetch` lança `ApiError` (de `@/lib/api`) — sempre usar `instanceof ApiError` no catch para acessar `e.status`
 - Dados paginados: shape `PaginatedResponse<T>` de `useAdmin.ts` — `{ data, total, page, totalPages, limit }`

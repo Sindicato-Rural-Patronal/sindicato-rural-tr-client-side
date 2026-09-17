@@ -16,8 +16,8 @@ import { formatDateFromString } from '@/utils/format-data-from-string'
 import { maskCPF } from '@/utils/masks'
 import { STICKY_ACTIONS_CELL, STICKY_ACTIONS_ROW } from '@/lib/table-sticky-actions'
 import { useDebouncedValue } from '@/hooks/useDebouncedValue'
+import { PersonPicker, type PickedPerson } from '@/components/PersonPicker'
 import { useRowSelection } from '@/hooks/useRowSelection'
-import { useAdminUsers } from '@/hooks/useAdmin'
 import {
   useUnimedList, useUnimed, useCreateUnimed, useUpdateUnimed, useDeleteUnimed,
   type UnimedRow, type UnimedDetail, type UnimedFields,
@@ -45,57 +45,9 @@ export const Route = createFileRoute('/_admin/admin/unimed')({
   component: RouteComponent,
 })
 
-// Usuário selecionado (beneficiário ou titular) — só o essencial pra exibir/vincular.
-type PickedUser = { id: string; name: string; cpf: string | null }
-
-
-// ── Busca/vínculo de usuário (padrão VincularUsuario do Financeiro) ─────────────
-function UserPicker({ onPick, placeholder }: {
-  onPick: (u: PickedUser) => void
-  placeholder?: string
-}) {
-  const [q, setQ] = useState('')
-  const [open, setOpen] = useState(false)
-  const dq = useDebouncedValue(q, 300).trim()
-  const { data, isFetching } = useAdminUsers({ search: dq, limit: 6 })
-  const results = dq.length >= 2 ? (data?.data ?? []) : []
-
-  return (
-    <div className="relative">
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-        <Input
-          value={q}
-          onChange={e => { setQ(e.target.value); setOpen(true) }}
-          onFocus={() => setOpen(true)}
-          onBlur={() => setTimeout(() => setOpen(false), 150)}
-          placeholder={placeholder ?? 'Buscar usuário (nome, CPF)…'}
-          className="pl-10 text-sm"
-        />
-      </div>
-      {open && dq.length >= 2 && (
-        <div className="absolute z-50 mt-1 w-full overflow-hidden rounded-md border border-border bg-popover shadow-md">
-          {isFetching && <div className="px-3 py-2 text-xs text-muted-foreground">Buscando…</div>}
-          {!isFetching && results.length === 0 && (
-            <div className="px-3 py-2 text-xs text-muted-foreground">Nenhum usuário encontrado.</div>
-          )}
-          {results.map(u => (
-            <button
-              key={u.id}
-              type="button"
-              onMouseDown={e => e.preventDefault()}
-              onClick={() => { onPick({ id: u.id, name: u.name, cpf: u.cpf }); setQ(''); setOpen(false) }}
-              className="flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-sm hover:bg-accent"
-            >
-              <span className="truncate">{u.name}</span>
-              <span className="shrink-0 text-xs text-muted-foreground">{u.cpf ?? ''}</span>
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
-  )
-}
+// Pessoa selecionada (beneficiário ou titular) — só o essencial pra exibir/vincular.
+// A busca é o PersonPicker compartilhado (oferece cadastrar pessoa nova em outra aba).
+type PickedUser = PickedPerson
 
 function LinkedUser({ user, onClear }: { user: PickedUser; onClear?: () => void }) {
   return (
@@ -103,7 +55,7 @@ function LinkedUser({ user, onClear }: { user: PickedUser; onClear?: () => void 
       <span className="inline-flex items-center gap-2 text-muted-foreground min-w-0">
         <User className="size-4 shrink-0" />
         <strong className="text-foreground truncate">{user.name || 'Usuário vinculado'}</strong>
-        {user.cpf && <span className="shrink-0 text-xs text-muted-foreground">{user.cpf}</span>}
+        {user.cpf && <span className="shrink-0 text-xs text-muted-foreground">{maskCPF(user.cpf)}</span>}
       </span>
       {onClear && (
         <Button type="button" size="sm" variant="ghost" className="h-7 gap-1 px-2 shrink-0" onClick={onClear}>
@@ -278,13 +230,13 @@ function UnimedFormDialog({ open, editId, onClose }: {
             <div className="flex flex-col gap-5">
               {/* Beneficiário (usuário vinculado) */}
               <div className="flex flex-col gap-1.5">
-                <Label>Beneficiário {isEdit ? '' : '*'}</Label>
+                <Label htmlFor="unimed-beneficiary">Beneficiário {isEdit ? '' : '*'}</Label>
                 {isEdit && beneficiary ? (
                   <LinkedUser user={beneficiary} />
                 ) : beneficiary ? (
                   <LinkedUser user={beneficiary} onClear={() => setBeneficiary(null)} />
                 ) : (
-                  <UserPicker onPick={setBeneficiary} placeholder="Buscar o usuário beneficiário (nome, CPF)…" />
+                  <PersonPicker id="unimed-beneficiary" onPick={setBeneficiary} limit={6} placeholder="Buscar o beneficiário (nome, e-mail ou CPF)…" />
                 )}
                 {isEdit && (
                   <p className="text-[11px] text-muted-foreground">O usuário vinculado não pode ser alterado.</p>
@@ -336,11 +288,11 @@ function UnimedFormDialog({ open, editId, onClose }: {
                   </div>
                 </div>
                 <div className="flex flex-col gap-1.5">
-                  <Label>Titular da família</Label>
+                  <Label htmlFor="unimed-titular">Titular da família</Label>
                   {titular ? (
                     <LinkedUser user={titular} onClear={() => setTitular(null)} />
                   ) : (
-                    <UserPicker onPick={setTitular} placeholder="Vincular o titular (nome, CPF)…" />
+                    <PersonPicker id="unimed-titular" onPick={setTitular} limit={6} placeholder="Vincular o titular (nome, e-mail ou CPF)…" />
                   )}
                 </div>
               </div>

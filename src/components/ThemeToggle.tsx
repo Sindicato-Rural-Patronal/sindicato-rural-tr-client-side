@@ -10,7 +10,7 @@ function isDark(): boolean {
   return document.documentElement.classList.contains('dark')
 }
 
-export function ThemeToggle() {
+export function ThemeToggle({ className = 'size-9' }: { className?: string }) {
   const [dark, setDark] = useState(isDark)
 
   useEffect(() => {
@@ -40,7 +40,7 @@ export function ThemeToggle() {
     <Button
       variant="ghost"
       size="icon"
-      className="size-9"
+      className={className}
       onClick={toggle}
       aria-label={dark ? 'Mudar para tema claro' : 'Mudar para tema escuro'}
       title={dark ? 'Tema claro' : 'Tema escuro'}

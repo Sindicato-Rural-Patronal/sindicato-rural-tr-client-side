@@ -50,13 +50,15 @@ vi.mock('@/hooks/useRooms', () => ({
   useCreateRoom: () => ({ mutateAsync: vi.fn(), isPending: false }),
 }))
 
+const createMutate = vi.hoisted(() => vi.fn())
+
 vi.mock('@/hooks/useCourse', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/hooks/useCourse')>()
   return {
     ...actual,
     useAdminCourses: () => ({ data: [], isLoading: false, isError: false }),
     useAdminCourse: () => ({ data: null, isLoading: false }),
-    useCreateCourse: () => ({ mutateAsync: vi.fn().mockResolvedValue({}), isPending: false }),
+    useCreateCourse: () => ({ mutateAsync: createMutate, isPending: false }),
     useUpdateCourse: () => ({ mutateAsync: vi.fn().mockResolvedValue({}), isPending: false }),
     useDeleteCourse: () => ({ mutateAsync: vi.fn().mockResolvedValue({}), isPending: false }),
     useUploadBanner: () => ({ mutateAsync: vi.fn(), isPending: false }),
@@ -100,7 +102,7 @@ vi.mock('@tanstack/react-router', async (importOriginal) => {
 })
 
 vi.mock('sonner', () => ({
-  toast: { success: vi.fn(), error: vi.fn() },
+  toast: { success: vi.fn(), error: vi.fn(), warning: vi.fn() },
 }))
 
 function wrapper({ children }: { children: React.ReactNode }) {
@@ -109,7 +111,7 @@ function wrapper({ children }: { children: React.ReactNode }) {
 }
 
 async function renderCourseFormDialog(editing: null | object = null) {
-  const { CourseFormDialog } = await import('@/routes/_admin/admin/cursos/index')
+  const { CourseFormDialog } = await import('@/components/courses/CourseFormDialog')
   render(
     <CourseFormDialog open editing={editing as never} onClose={vi.fn()} />,
     { wrapper }
@@ -150,5 +152,80 @@ describe('CourseFormDialog — criação', () => {
     await user.type(endHour, '17:00')
 
     await waitFor(() => expect(btn).not.toBeDisabled())
+  }, 15000)
+})
+
+describe('CourseFormDialog — duplicar curso', () => {
+  beforeEach(() => { vi.clearAllMocks() })
+
+  const original = {
+    id: 'course-1',
+    status: 'PUBLIC',
+    title: 'MANEJO DE PASTAGEM',
+    description: 'Conteúdo',
+    maxStudents: 30,
+    minStudents: 5,
+    enrolled: 10,
+    preEnrolled: 0,
+    waitlist: 0,
+    coverImage: 'https://storage.example.com/banner.jpg',
+    price: 0,
+    startDate: '2026-08-10',
+    endDate: '2026-08-12',
+    startTime: '08:00',
+    endTime: '17:00',
+    workloadHours: 16,
+    location: 'Sala A',
+    instructorName: 'Fulano',
+    registrationDeadline: '2026-08-05',
+    observations: '',
+    eventNumber: '261676',
+    photoGallery: [],
+    instructors: [
+      { id: 'a1', userDataId: 'u1', title: 'AGRONOMO', category: null, name: 'Fulano', bio: null, avatar: null, linkedin: null, instagram: null, facebook: null },
+      { id: 'a2', userDataId: 'u2', title: null, category: null, name: 'Beltrano', bio: null, avatar: null, linkedin: null, instagram: null, facebook: null },
+    ],
+  }
+
+  it('abre preenchido, sem datas nem nº do evento, e pede a cópia da capa e dos instrutores marcados', async () => {
+    createMutate.mockResolvedValue({ json: () => Promise.resolve({ id: 'new', coverCopied: true, instructorsCopied: 1 }) })
+    const { CourseFormDialog } = await import('@/components/courses/CourseFormDialog')
+    render(
+      <CourseFormDialog open editing={null} duplicateOf={original as never} onClose={vi.fn()} />,
+      { wrapper },
+    )
+
+    expect(screen.getByText('Duplicar curso')).toBeInTheDocument()
+    expect(screen.getByPlaceholderText(/Manejo/i)).toHaveValue('MANEJO DE PASTAGEM')
+    expect(screen.getByPlaceholderText('Ex: 261676')).toHaveValue('')
+    expect(screen.getByText(/Não aparece no site/)).toBeInTheDocument() // dica do status Rascunho
+
+    // tira o Beltrano da cópia
+    fireEvent.click(screen.getByRole('checkbox', { name: /Beltrano/ }))
+
+    const [startDate, endDate] = screen.getAllByTestId('date-picker')
+    fireEvent.change(startDate, { target: { value: '2026-10-01' } })
+    fireEvent.change(endDate, { target: { value: '2026-10-02' } })
+
+    const btn = screen.getByRole('button', { name: 'Criar' })
+    await waitFor(() => expect(btn).not.toBeDisabled())
+    fireEvent.click(btn)
+
+    await waitFor(() => expect(createMutate).toHaveBeenCalled())
+    const body = createMutate.mock.calls[0][0]
+    expect(body).toMatchObject({
+      name: 'MANEJO DE PASTAGEM',
+      status: 'UNPUBLISHED',
+      roomId: 'room-1',
+      startTime: '2026-10-01T08:00:00.000Z',
+      endTime: '2026-10-02T17:00:00.000Z',
+      workloadHours: 16,
+      minStudents: 5,
+      copyCoverFromCourseId: 'course-1',
+      copyInstructorsFromCourseId: 'course-1',
+      instructorAssignmentIds: ['a1'],
+    })
+    expect(body.eventNumber).toBeUndefined()
+    expect(body.registrationDeadline).toBeUndefined()
   }, 15000)
 })

@@ -2,6 +2,7 @@ import { createFileRoute } from '@tanstack/react-router'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { useAuditLogs, useAdminAdmins } from '@/hooks/useAdmin'
+import type { AuditLog } from '@/hooks/useAdmin'
 import { usePermissions } from '@/hooks/usePermissions'
 import { ScrollText, Plus, Pencil, Trash2, Dot, Search, X, Download, Loader2 } from 'lucide-react'
 import { apiErrorMessage } from '@/lib/api-error-message'
@@ -49,37 +50,21 @@ export const Route = createFileRoute('/_admin/admin/auditoria/')({
   component: RouteComponent,
 })
 
-// Transforma método+entidade em frase legível pra qualquer pessoa.
+// Tipos gravados pelo backend (lib/audit-entity.ts), para o filtro "Tipo".
+const ENTITIES = [
+  'Administrador', 'Banner', 'Beneficiário Unimed', 'Caixa', 'Categoria financeira', 'Comprovante',
+  'Configurações do site', 'Contato público', 'Convênio', 'Convite', 'Cotação', 'Curso', 'Empresa',
+  'Endereço', 'Exportação', 'Galeria', 'Inscrição', 'Instrutor', 'Lançamento', 'Mensagem', 'Notícia',
+  'Propriedade', 'Regra', 'Relação', 'Sala', 'Transferência', 'Usuário',
+]
+
+// A frase ("Iniciou o curso "HORTA"") vem pronta do backend (lib/audit-sentence.ts).
+// Sem ela (backend antigo), mostra o básico.
 const VERB: Record<string, string> = { POST: 'Criou', PATCH: 'Editou', PUT: 'Editou', DELETE: 'Excluiu', EXPORT: 'Exportou' }
-const ENTITY: Record<string, { n: string; g: 'm' | 'f' }> = {
-  'Curso': { n: 'curso', g: 'm' },
-  'Cotação': { n: 'cotação', g: 'f' },
-  'Sala': { n: 'sala', g: 'f' },
-  'Usuário': { n: 'usuário', g: 'm' },
-  'Inscrição': { n: 'inscrição', g: 'f' },
-  'Notícia': { n: 'notícia', g: 'f' },
-  'Banner': { n: 'banner', g: 'm' },
-  'Regra': { n: 'regra', g: 'f' },
-  'Instrutor': { n: 'instrutor', g: 'm' },
-  'Mensagem': { n: 'mensagem', g: 'f' },
-  'Propriedade': { n: 'propriedade', g: 'f' },
-  'Relação': { n: 'relação', g: 'f' },
-  'Endereço': { n: 'endereço', g: 'm' },
-  'Categoria financeira': { n: 'categoria financeira', g: 'f' },
-  'Caixa': { n: 'caixa', g: 'm' },
-  'Lançamento': { n: 'lançamento', g: 'm' },
-  'Transferência': { n: 'transferência', g: 'f' },
-  'Comprovante': { n: 'comprovante', g: 'm' },
-  'Empresa': { n: 'empresa', g: 'f' },
-  'Convênio': { n: 'convênio', g: 'm' },
-  'Exportação': { n: 'planilha', g: 'f' },
-  'Outro': { n: 'registro', g: 'm' },
-}
-function acaoLegivel(method: string, entity: string, label: string | null): string {
-  const v = VERB[method] ?? method
-  const e = ENTITY[entity] ?? { n: entity.toLowerCase(), g: 'm' as const }
-  if (label) return `${v} ${e.g === 'f' ? 'a' : 'o'} ${e.n} "${label}"`
-  return `${v} ${e.g === 'f' ? 'uma' : 'um'} ${e.n}`
+function acaoLegivel(r: AuditLog & { summary?: string }): string {
+  if (r.summary) return r.summary
+  const base = `${VERB[r.method] ?? r.method} · ${r.entity}`
+  return r.targetLabel ? `${base} "${r.targetLabel}"` : base
 }
 type ActionKind = 'create' | 'edit' | 'delete' | 'export' | 'other'
 function actionKind(method: string): ActionKind {
@@ -209,7 +194,7 @@ function RouteComponent() {
             <Label className="text-[11px] text-muted-foreground">Tipo</Label>
             <NativeSelect className="h-9" value={search.entity ?? ''} onChange={e => setSearch({ entity: e.target.value || undefined, page: undefined })}>
               <option value="">Todos</option>
-              {Object.keys(ENTITY).filter(k => k !== 'Outro').map(k => <option key={k} value={k}>{k}</option>)}
+              {ENTITIES.map(k => <option key={k} value={k}>{k}</option>)}
             </NativeSelect>
           </div>
           <div className="flex flex-col gap-1">
@@ -296,7 +281,7 @@ function RouteComponent() {
                     <TableCell>
                       <span className="inline-flex items-center gap-2">
                         <Icon className={`size-4 shrink-0 ${KIND_COLOR[kind]}`} />
-                        <span className="text-foreground">{acaoLegivel(r.method, r.entity, r.targetLabel)}</span>
+                        <span className="text-foreground">{acaoLegivel(r)}</span>
                       </span>
                     </TableCell>
                     <TableCell className="hidden lg:table-cell font-mono text-[11px] text-muted-foreground max-w-xs truncate" title={`${r.method} ${r.path} · ${r.statusCode}`}>

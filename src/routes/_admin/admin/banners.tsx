@@ -8,6 +8,10 @@ import { ImageCropDialog } from '@/components/ImageCropDialog'
 import { requirePermission } from '@/lib/auth-guard'
 import { upperNoAccents } from '@/utils/text-format'
 import {
+  bannerStartIso, bannerEndIso, brasiliaYmd, bannerPeriodLabel, bannerState, BANNER_STATE_LABEL,
+  type BannerState,
+} from '@/lib/banner-dates'
+import {
   useAdminBanners, useCreateBanner, useUpdateBanner,
   useDeleteBanner, useUploadBannerImage, useReorderBanners,
 } from '@/hooks/useBanner'
@@ -22,7 +26,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sh
 import { DeleteConfirmDialog } from '@/components/DeleteConfirmDialog'
 import {
   Plus, Pencil, Trash2, ChevronUp, ChevronDown, ImageUp, X, ExternalLink,
-  Image as ImageIcon,
+  Image as ImageIcon, CalendarRange,
 } from 'lucide-react'
 
 export const Route = createFileRoute('/_admin/admin/banners')({
@@ -114,8 +118,9 @@ function formFromBanner(b: Banner): BannerFormState {
     title: b.title,
     subtitle: b.subtitle ?? '',
     active: b.active,
-    startDate: b.startDate ? b.startDate.slice(0, 10) : '',
-    endDate: b.endDate ? b.endDate.slice(0, 10) : '',
+    // Dia do calendário em Brasília (o término gravado cai no dia seguinte em UTC).
+    startDate: brasiliaYmd(b.startDate),
+    endDate: brasiliaYmd(b.endDate),
     buttons: b.buttons.map(btn => ({ ...btn })),
   }
 }
@@ -123,9 +128,12 @@ function formFromBanner(b: Banner): BannerFormState {
 function BannerSheet({
   mode,
   onClose,
+  onCreatedWithoutImage,
 }: {
   mode: SheetMode | null
   onClose: () => void
+  /** Banner criado mas a imagem falhou: o pai reabre o painel na edição desse banner. */
+  onCreatedWithoutImage: (banner: Banner) => void
 }) {
   const isEdit = mode?.mode === 'edit'
   const banner = isEdit ? mode.banner : null
@@ -141,6 +149,8 @@ function BannerSheet({
   const [cropSrc, setCropSrc] = useState<string | null>(null)
   // imagem recortada antes do banner existir (modo criação) — sobe após o create
   const [stagedImage, setStagedImage] = useState<{ file: File; url: string } | null>(null)
+  // Prévia na edição: troca assim que a nova imagem sobe.
+  const [imageUrl, setImageUrl] = useState<string | null>(banner?.imageUrl ?? null)
   const queryClient = useQueryClient()
 
   // Libera as URLs de prévia ao trocá-las ou ao desmontar (na reabertura).
@@ -170,10 +180,11 @@ function BannerSheet({
     }
     try {
       const res = await uploadImage.mutateAsync(file)
-      if (!res.ok) { toast.error('Erro ao fazer upload.'); return }
+      const data = await res.json().catch(() => null) as { imageUrl?: string } | null
+      if (data?.imageUrl) setImageUrl(data.imageUrl)
       toast.success('Imagem atualizada!')
-    } catch {
-      toast.error('Erro ao fazer upload da imagem.')
+    } catch (err) {
+      toast.error(apiErrorMessage(err, 'Erro ao enviar a imagem.'))
     }
   }, [banner, uploadImage])
 
@@ -181,6 +192,10 @@ function BannerSheet({
     e.preventDefault()
     setError(null)
     if (!form.title.trim()) { setError('Título é obrigatório.'); return }
+    if (form.startDate && form.endDate && form.endDate < form.startDate) {
+      setError('O término não pode ser antes do início.')
+      return
+    }
     const validBtns = form.buttons.filter(b => b.label.trim() && b.url.trim())
 
     const body: CreateBannerBody = {
@@ -188,28 +203,30 @@ function BannerSheet({
       subtitle: form.subtitle || null,
       active: form.active,
       buttons: validBtns as BannerButton[],
-      startDate: form.startDate ? `${form.startDate}T00:00:00.000Z` : null,
-      endDate: form.endDate ? `${form.endDate}T23:59:59.999Z` : null,
+      // Dias no horário de Brasília: entra no ar à 0h do início e sai às 23h59 do término.
+      startDate: bannerStartIso(form.startDate),
+      endDate: bannerEndIso(form.endDate),
     }
 
     try {
       if (isEdit && banner) {
-        const res = await updateBanner.mutateAsync(body)
-        if (!res.ok) { const d = await res.json().catch(() => null); setError(d?.error ?? 'Erro ao salvar.'); return }
+        await updateBanner.mutateAsync(body)
         toast.success('Banner atualizado!')
       } else {
         const res = await createBanner.mutateAsync(body)
-        if (!res.ok) { const d = await res.json().catch(() => null); setError(apiErrorMessage(d?.error ?? '', 'Erro ao criar.')); return }
         if (stagedImage) {
-          const created = await res.json().catch(() => null) as { id?: string } | null
-          if (created?.id) {
-            try {
-              await apiUpload(`/admin/banners/${created.id}/image`, stagedImage.file)
-              queryClient.invalidateQueries({ queryKey: ['banners'] })
-              queryClient.invalidateQueries({ queryKey: ['admin', 'banners'] })
-            } catch {
-              toast.error('Banner criado, mas o upload da imagem falhou. Adicione pela edição.')
-            }
+          const created = await res.json().catch(() => null) as Banner | null
+          try {
+            if (!created?.id) throw new Error('Banner criado sem id na resposta')
+            await apiUpload(`/admin/banners/${created.id}/image`, stagedImage.file)
+            queryClient.invalidateQueries({ queryKey: ['banners'] })
+            queryClient.invalidateQueries({ queryKey: ['admin', 'banners'] })
+          } catch {
+            // Um aviso só; o painel continua aberto, já na edição do banner criado.
+            toast.warning('Banner criado, mas a imagem não foi enviada. Tente enviar de novo.')
+            if (created?.id) onCreatedWithoutImage(created)
+            else onClose()
+            return
           }
         }
         toast.success('Banner criado!')
@@ -233,8 +250,8 @@ function BannerSheet({
           {isEdit && banner && (
             <div className="flex flex-col gap-2">
               <Label className="text-xs font-semibold">Imagem</Label>
-              {banner.imageUrl && (
-                <img src={banner.imageUrl} alt={banner.title} className="w-full h-32 object-cover rounded-lg border" />
+              {imageUrl && (
+                <img src={imageUrl} alt={banner.title} className="w-full h-32 object-cover rounded-lg border" />
               )}
               <div className="flex items-center gap-2 flex-wrap">
                 <input ref={imageInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileSelect} />
@@ -244,7 +261,7 @@ function BannerSheet({
                   onClick={() => imageInputRef.current?.click()}
                 >
                   <ImageUp className="size-3.5" />
-                  {uploadImage.isPending ? 'Enviando...' : banner.imageUrl ? 'Trocar imagem' : 'Adicionar imagem'}
+                  {uploadImage.isPending ? 'Enviando...' : imageUrl ? 'Trocar imagem' : 'Adicionar imagem'}
                 </Button>
                 <span className="text-[11px] text-muted-foreground">Proporção ideal: 1440 × 600 px</span>
               </div>
@@ -293,15 +310,20 @@ function BannerSheet({
             <Input id="bn-subtitle" value={form.subtitle} onChange={e => set('subtitle', upperNoAccents(e.target.value))} placeholder="Texto de apoio abaixo do título" />
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="bn-start">Início (opcional)</Label>
-              <DatePicker id="bn-start" value={form.startDate} onChange={v => set('startDate', v)} placeholder="Início" />
+          <div className="flex flex-col gap-1.5">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="bn-start">Início (opcional)</Label>
+                <DatePicker id="bn-start" value={form.startDate} onChange={v => set('startDate', v)} />
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="bn-end">Término (opcional)</Label>
+                <DatePicker id="bn-end" value={form.endDate} onChange={v => set('endDate', v)} />
+              </div>
             </div>
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="bn-end">Término (opcional)</Label>
-              <DatePicker id="bn-end" value={form.endDate} onChange={v => set('endDate', v)} placeholder="Término" />
-            </div>
+            <p className="text-[11px] text-muted-foreground">
+              Horário de Brasília: entra no ar à 0h do início e sai às 23h59 do término.
+            </p>
           </div>
 
           <label className="flex items-center gap-2 cursor-pointer select-none">
@@ -328,6 +350,27 @@ function BannerSheet({
   )
 }
 
+// ─── Situação no site ─────────────────────────────────────────────────────────
+
+const STATE_BADGE_CLASS: Record<BannerState, string> = {
+  live: 'bg-emerald-600 text-white dark:bg-emerald-500',
+  scheduled: 'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300',
+  expired: 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300',
+  inactive: '',
+}
+
+// Mesma regra do site (GET /banners): ativo e dentro do período.
+function BannerStateBadge({ state }: { state: BannerState }) {
+  return (
+    <Badge
+      variant={state === 'inactive' ? 'secondary' : 'default'}
+      className={`text-[10px] py-0 shrink-0 ${STATE_BADGE_CLASS[state]}`}
+    >
+      {BANNER_STATE_LABEL[state]}
+    </Badge>
+  )
+}
+
 // ─── Route component ──────────────────────────────────────────────────────────
 
 function RouteComponent() {
@@ -346,6 +389,7 @@ function RouteComponent() {
   }
 
   const sorted = [...(banners ?? [])].sort((a, b) => a.order - b.order)
+  const now = new Date()
 
   async function handleDelete() {
     if (!deleteTarget) return
@@ -421,12 +465,15 @@ function RouteComponent() {
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
                 <p className="font-semibold text-sm truncate">{banner.title}</p>
-                <Badge variant={banner.active ? 'default' : 'secondary'} className="text-[10px] py-0 shrink-0">
-                  {banner.active ? 'Ativo' : 'Inativo'}
-                </Badge>
+                <BannerStateBadge state={bannerState(banner, now)} />
               </div>
               {banner.subtitle && (
                 <p className="text-xs text-muted-foreground truncate mt-0.5">{banner.subtitle}</p>
+              )}
+              {bannerPeriodLabel(banner) && (
+                <p className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1">
+                  <CalendarRange className="size-3 shrink-0" /> {bannerPeriodLabel(banner)}
+                </p>
               )}
               {banner.buttons.length > 0 && (
                 <div className="flex gap-1 mt-1 flex-wrap">
@@ -484,7 +531,12 @@ function RouteComponent() {
         ))}
       </div>
 
-      <BannerSheet key={sheetKey} mode={sheet} onClose={() => setSheet(null)} />
+      <BannerSheet
+        key={sheetKey}
+        mode={sheet}
+        onClose={() => setSheet(null)}
+        onCreatedWithoutImage={created => openSheet({ mode: 'edit', banner: created })}
+      />
 
       <DeleteConfirmDialog
         open={!!deleteTarget}

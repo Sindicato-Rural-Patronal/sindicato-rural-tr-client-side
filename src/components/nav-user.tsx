@@ -6,6 +6,7 @@ import {
 } from '@/components/ui/sidebar'
 import { useAuth } from '@/context/AuthContext'
 import { useMe } from '@/hooks/useAdmin'
+import { allowLeave, hasUnsavedChanges, requestLeaveConfirm } from '@/hooks/use-unsaved-guard'
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
 
@@ -15,7 +16,10 @@ export function NavUser({ user }: { user: { name: string; email: string; avatar:
   const queryClient = useQueryClient()
   const { data: me } = useMe()
 
-  function handleLogout() {
+  async function handleLogout() {
+    // Com alterações não salvas na tela, pergunta antes (se ficar, não desloga).
+    if (hasUnsavedChanges() && !(await requestLeaveConfirm())) return
+    allowLeave()
     logout()
     queryClient.clear()
     window.location.replace('/login')

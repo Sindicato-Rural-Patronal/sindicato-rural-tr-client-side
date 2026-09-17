@@ -1,21 +1,26 @@
 import { createFileRoute, useNavigate, Link } from '@tanstack/react-router'
-import { useQueryClient } from '@tanstack/react-query'
-import { useState } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { cloneElement, isValidElement, useId, useState } from 'react'
 import { toast } from 'sonner'
-import { apiFetch } from '@/lib/api'
+import { ApiError, apiFetch } from '@/lib/api'
 import { apiErrorMessage } from '@/lib/api-error-message'
-import { useCEPLookup, invalidateUserViews } from '@/hooks/useAdmin'
+import { useCEPLookup, invalidateUserViews, type PaginatedResponse, type UserData } from '@/hooks/useAdmin'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { NativeSelect } from '@/components/ui/native-select'
 import { Label } from '@/components/ui/label'
 import { DatePicker } from '@/components/ui/date-picker'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { ArrowLeft, User, FileText, Globe, MapPin, Briefcase, Save } from 'lucide-react'
+import { AlertCircle, ArrowLeft, User, FileText, Globe, MapPin, Briefcase, Save } from 'lucide-react'
 import { maskCPF, maskPhone, maskCEP, maskRG, maskCNH, maskMoney } from '@/utils/masks'
 import { AgeHint } from '@/components/AgeHint'
-import { useUnsavedGuard, confirmLeaveIfDirty } from '@/hooks/use-unsaved-guard'
+import { useUnsavedGuard } from '@/hooks/use-unsaved-guard'
 import { CadproFields } from '@/components/CadproFields'
+import {
+  validatePersonFields, firstInvalidField, focusFieldById,
+  type PersonField, type PersonFieldErrors,
+} from '@/lib/person-validation'
+import { cpfDigits, isValidCpf, sameCpf } from '@/utils/cpf'
 import { toIso } from '@/utils/dates'
 import { upperNoAccents } from '@/utils/text-format'
 import { MEMBER_TYPES } from '@/lib/member-types'
@@ -30,18 +35,33 @@ export const Route = createFileRoute('/_admin/admin/usuarios/novo')({
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
 
-function FieldRow({ label, required, children }: { label: string; required?: boolean; children: React.ReactNode }) {
+// Liga o rótulo ao campo (clique no rótulo, leitor de tela): injeta um id no
+// filho, ou usa `htmlFor` quando o campo está dentro de um wrapper.
+function FieldRow({ label, required, htmlFor, error, children }: {
+  label: string
+  required?: boolean
+  htmlFor?: string
+  error?: string
+  children: React.ReactNode
+}) {
+  const autoId = useId()
+  const id = htmlFor ?? autoId
+  const control = !htmlFor && isValidElement<{ id?: string }>(children) && !children.props.id
+    ? cloneElement(children, { id })
+    : children
   return (
     <div className="flex flex-col gap-1.5">
-      <Label className="text-xs font-medium text-muted-foreground">
+      <Label htmlFor={id} className="text-xs font-medium text-muted-foreground">
         {label}{required && <span className="ml-1 text-destructive">*</span>}
       </Label>
-      {children}
+      {control}
+      {error && <p id={`${id}-erro`} className="text-xs text-destructive" role="alert">{error}</p>}
     </div>
   )
 }
 
-function SelectField({ value, onChange, options, placeholder }: {
+function SelectField({ id, value, onChange, options, placeholder }: {
+  id?: string
   value: string
   onChange: (v: string) => void
   options: readonly { value: string; label: string }[]
@@ -49,6 +69,7 @@ function SelectField({ value, onChange, options, placeholder }: {
 }) {
   return (
     <NativeSelect
+      id={id}
       value={value}
       onChange={e => onChange(e.target.value)}
       className="h-9"
@@ -60,6 +81,10 @@ function SelectField({ value, onChange, options, placeholder }: {
 }
 
 const inp = 'h-9'
+
+// Campos validados antes de enviar, na ordem em que aparecem na tela.
+const VALIDATED_FIELDS: readonly PersonField[] = ['cpf', 'name', 'email', 'phone', 'phone2', 'phone3', 'rg', 'driverLicense']
+const fieldId = (f: PersonField) => `novo-${f}`
 
 type Form = {
   name: string; nickname: string; email: string
@@ -108,8 +133,8 @@ function buildPatchBody(f: Form): Record<string, unknown> {
   const b: Record<string, unknown> = {}
   const put = (k: string, v: unknown) => { if (v !== '' && v !== null && v !== undefined) b[k] = v }
   put('nickname', f.nickname)
-  put('phone2', f.phone2)
-  put('phone3', f.phone3)
+  put('phone2', f.phone2.replace(/\D/g, ''))
+  put('phone3', f.phone3.replace(/\D/g, ''))
   put('rg', f.rg)
   put('rgIssuer', f.rgIssuer)
   put('rgIssuedAt', f.rgIssuedAt ? toIso(f.rgIssuedAt) : '')
@@ -152,6 +177,28 @@ function buildAddressBody(a: Form['address']): Record<string, unknown> | null {
   return hasValue ? body : null
 }
 
+type ExistingPerson = { id: string; name: string }
+
+// Cadastro ativo com o mesmo CPF (a busca da lista acha o CPF pelos dígitos).
+async function findPersonByCpf(digits: string): Promise<ExistingPerson | null> {
+  const qs = new URLSearchParams({ page: '1', limit: '5', search: digits })
+  const res = await apiFetch(`/admin/users?${qs}`)
+  const data = (await res.json()) as PaginatedResponse<UserData>
+  const hit = data.data.find(u => sameCpf(u.cpf, digits))
+  return hit ? { id: hit.id, name: hit.name } : null
+}
+
+// E-mail é único no banco: outro cadastro com exatamente o mesmo e-mail.
+async function findPersonByEmail(email: string): Promise<ExistingPerson | null> {
+  const qs = new URLSearchParams({ page: '1', limit: '5', search: email })
+  const res = await apiFetch(`/admin/users?${qs}`)
+  const data = (await res.json()) as PaginatedResponse<UserData>
+  const hit = data.data.find(u => u.email === email)
+  return hit ? { id: hit.id, name: hit.name } : null
+}
+
+const cpfCheckKey = (digits: string | null) => ['admin', 'users', 'cpf-check', digits] as const
+
 // ─── página ──────────────────────────────────────────────────────────────────
 
 function RouteComponent() {
@@ -159,18 +206,49 @@ function RouteComponent() {
   const queryClient = useQueryClient()
   const cepLookup = useCEPLookup()
   const [form, setForm] = useState<Form>(emptyForm)
-  const [error, setError] = useState<string | null>(null)
+  const [errors, setErrors] = useState<PersonFieldErrors>({})
+  const [formMessage, setFormMessage] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
 
   // Guard de não-salvo: dirty se o form mudou e não está salvando.
   const dirty = !saving && JSON.stringify(form) !== JSON.stringify(emptyForm)
-  useUnsavedGuard(dirty)
+  const allowLeave = useUnsavedGuard(dirty)
+
+  // CPF repetido: consulta ao completar um CPF válido (ou ao sair do campo).
+  const [cpfToCheck, setCpfToCheck] = useState<string | null>(null)
+  const cpfCheck = useQuery({
+    queryKey: cpfCheckKey(cpfToCheck),
+    queryFn: () => findPersonByCpf(cpfToCheck!),
+    enabled: !!cpfToCheck,
+  })
+  const currentCpf = cpfDigits(form.cpf)
+  const checkingThisCpf = !!cpfToCheck && cpfToCheck === currentCpf
+  const duplicate = checkingThisCpf ? (cpfCheck.data ?? null) : null
 
   function set<K extends keyof Form>(key: K, value: Form[K]) {
     setForm(prev => ({ ...prev, [key]: value }))
+    // Mexeu no campo: some o erro dele até a próxima tentativa de salvar.
+    if (errors[key as PersonField]) setErrors(prev => ({ ...prev, [key]: undefined }))
   }
   function setAddr(k: keyof Form['address'], v: string) {
     setForm(prev => ({ ...prev, address: { ...prev.address, [k]: v } }))
+  }
+
+  function handleCpfChange(raw: string) {
+    const masked = maskCPF(raw)
+    set('cpf', masked)
+    const d = cpfDigits(masked)
+    if (isValidCpf(d)) setCpfToCheck(d)
+  }
+
+  function handleCpfBlur() {
+    const d = cpfDigits(form.cpf)
+    if (!d) return
+    if (!isValidCpf(d)) {
+      setErrors(prev => ({ ...prev, cpf: 'CPF inválido. Confira os números.' }))
+      return
+    }
+    setCpfToCheck(d)
   }
 
   async function handleCEP() {
@@ -192,67 +270,132 @@ function RouteComponent() {
     }
   }
 
+  function showProblems(problems: PersonFieldErrors, message: string) {
+    setErrors(problems)
+    setFormMessage(message)
+    toast.error(message)
+    const first = firstInvalidField(problems, VALIDATED_FIELDS)
+    if (first) focusFieldById(fieldId(first))
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    setError(null)
-    const cpfDigits = form.cpf.replace(/\D/g, '')
-    const phoneDigits = form.phone.replace(/\D/g, '')
-    if (!form.name.trim()) { setError('Nome é obrigatório.'); return }
-    if (!form.email.trim()) { setError('E-mail é obrigatório.'); return }
-    if (cpfDigits.length !== 11) { setError('CPF inválido.'); return }
-    if (![10, 11].includes(phoneDigits.length)) { setError('Telefone inválido.'); return }
+    if (saving) return
+    setFormMessage(null)
 
+    // 1. Tudo o que o backend confere, antes de qualquer requisição: assim não
+    //    fica cadastro pela metade por causa de um RG ou CNH inválido.
+    const problems = validatePersonFields({
+      cpf: form.cpf, name: form.name, email: form.email,
+      phone: form.phone, phone2: form.phone2, phone3: form.phone3,
+      rg: form.rg, driverLicense: form.driverLicense,
+    })
+    if (firstInvalidField(problems, VALIDATED_FIELDS)) {
+      showProblems(problems, 'Corrija os campos destacados em vermelho.')
+      return
+    }
+
+    const cpf = cpfDigits(form.cpf)
+    const email = form.email.trim()
     setSaving(true)
+
+    // 2. CPF e e-mail já usados por outro cadastro (confere de novo aqui caso
+    //    não tenha saído do campo). Se a busca falhar, o backend ainda recusa.
     try {
-      // 1. cria o associado (campos base)
+      const [byCpf, byEmail] = await Promise.all([
+        queryClient.fetchQuery({ queryKey: cpfCheckKey(cpf), queryFn: () => findPersonByCpf(cpf) }),
+        findPersonByEmail(email),
+      ])
+      setCpfToCheck(cpf)
+      if (byCpf) {
+        setSaving(false)
+        showProblems({}, 'Já existe um cadastro com este CPF.')
+        focusFieldById(fieldId('cpf'))
+        return
+      }
+      if (byEmail) {
+        setSaving(false)
+        showProblems({ email: `Este e-mail já está no cadastro de ${byEmail.name}.` }, 'Este e-mail já está em outro cadastro.')
+        return
+      }
+    } catch { /* segue: o backend faz a checagem definitiva */ }
+
+    // 3. Cria a pessoa. Falhou aqui: nada foi gravado, dá para corrigir e tentar de novo.
+    let newId: string
+    try {
       const res = await apiFetch('/users', {
         method: 'POST',
-        body: JSON.stringify({ name: form.name.trim(), email: form.email.trim(), phone: phoneDigits, cpf: cpfDigits }),
+        body: JSON.stringify({ name: form.name.trim(), email, phone: form.phone.replace(/\D/g, ''), cpf }),
       })
       const created = await res.json()
-      const newId: string = created.id
+      newId = created.id
+    } catch (err) {
+      const msg = err instanceof ApiError && err.status === 409
+        ? `${apiErrorMessage(err)} Confira CPF, e-mail e telefone: algum deles já está em outro cadastro.`
+        : apiErrorMessage(err, 'Erro ao cadastrar associado.')
+      setFormMessage(msg)
+      toast.error(msg)
+      setSaving(false)
+      return
+    }
 
-      // 2. preenche o resto da ficha
-      const patchBody = buildPatchBody(form)
-      if (Object.keys(patchBody).length > 0) {
+    // 4. Resto da ficha e propriedade. A pessoa já existe: se algo falhar,
+    //    abre o cadastro criado e avisa o que faltou (tentar de novo aqui
+    //    daria "já cadastrado").
+    const failed: string[] = []
+    const patchBody = buildPatchBody(form)
+    if (Object.keys(patchBody).length > 0) {
+      try {
         await apiFetch(`/users/${newId}`, { method: 'PATCH', body: JSON.stringify(patchBody) })
+      } catch (err) {
+        failed.push(`documentos, perfil e associação (${apiErrorMessage(err, 'erro ao salvar')})`)
       }
+    }
 
-      // 3. endereço → vira a propriedade principal do associado
-      const addressBody = buildAddressBody(form.address)
-      if (addressBody) {
+    // endereço → vira a propriedade principal do associado
+    const addressBody = buildAddressBody(form.address)
+    if (addressBody) {
+      try {
         const propRes = await apiFetch(`/admin/users/${newId}/properties`, {
           method: 'POST',
           body: JSON.stringify({ name: form.propertyName.trim() || 'Principal', address: addressBody }),
         })
         const prop = await propRes.json()
-        // marca a propriedade recém-criada como principal
-        await apiFetch(`/users/${newId}`, {
-          method: 'PATCH',
-          body: JSON.stringify({ primaryPropertyId: prop.id }),
-        })
+        try {
+          await apiFetch(`/users/${newId}`, { method: 'PATCH', body: JSON.stringify({ primaryPropertyId: prop.id }) })
+        } catch {
+          failed.push('marcar a propriedade como principal')
+        }
+      } catch (err) {
+        failed.push(`propriedade principal (${apiErrorMessage(err, 'erro ao salvar')})`)
       }
-
-      // Novas listagens (associados/instrutores/etc.) precisam refletir o cadastro.
-      invalidateUserViews(queryClient)
-      toast.success('Associado cadastrado com sucesso!')
-      navigate({ to: '/admin/usuarios/$id', params: { id: newId } })
-    } catch (err) {
-      const msg = apiErrorMessage(err, 'Erro ao cadastrar associado.')
-      setError(msg)
-      toast.error(msg)
-    } finally {
-      setSaving(false)
     }
+
+    // Novas listagens (associados/instrutores/etc.) precisam refletir o cadastro.
+    invalidateUserViews(queryClient)
+    if (failed.length === 0) {
+      toast.success('Associado cadastrado com sucesso!')
+    } else {
+      toast.warning(`Associado cadastrado, mas não foi possível salvar: ${failed.join('; ')}. Complete nesta ficha.`, { duration: 20000 })
+    }
+    allowLeave()
+    navigate({ to: '/admin/usuarios/$id', params: { id: newId } })
   }
 
   const isUrban = form.address.type === 'URBAN'
+  // "Abrir cadastro" do CPF repetido: se só o CPF foi digitado, sai sem perguntar.
+  const onlyCpfTyped = JSON.stringify({ ...form, cpf: '' }) === JSON.stringify(emptyForm)
+  const invalid = (f: PersonField) => ({
+    id: fieldId(f),
+    'aria-invalid': errors[f] ? true : undefined,
+    'aria-describedby': errors[f] ? `${fieldId(f)}-erro` : undefined,
+  })
 
   return (
     <div className="p-6 max-w-4xl mx-auto">
       <div className="flex items-center gap-3 mb-6">
         <Button variant="ghost" size="icon" className="size-8" asChild>
-          <Link to="/admin/usuarios" onClick={e => confirmLeaveIfDirty(dirty, e)} aria-label="Voltar"><ArrowLeft className="size-4" /></Link>
+          <Link to="/admin/usuarios" aria-label="Voltar"><ArrowLeft className="size-4" /></Link>
         </Button>
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-foreground">Novo associado</h1>
@@ -260,33 +403,70 @@ function RouteComponent() {
         </div>
       </div>
 
-      <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+      <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-5">
         {/* Dados pessoais */}
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-sm flex items-center gap-2"><User className="size-4" /> Dados pessoais</CardTitle>
           </CardHeader>
           <CardContent className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            <FieldRow label="Nome" required>
-              <Input className={inp} value={form.name} onChange={e => set('name', upperNoAccents(e.target.value))} />
+            {/* CPF primeiro: já avisa se a pessoa tem cadastro antes de preencher o resto */}
+            <div className="sm:col-span-2 lg:col-span-3 flex flex-col gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                <FieldRow label="CPF" required htmlFor={fieldId('cpf')} error={errors.cpf}>
+                  <Input
+                    className={inp}
+                    {...invalid('cpf')}
+                    autoFocus
+                    inputMode="numeric"
+                    autoComplete="off"
+                    value={form.cpf}
+                    onChange={e => handleCpfChange(e.target.value)}
+                    onBlur={handleCpfBlur}
+                    placeholder="000.000.000-00"
+                  />
+                </FieldRow>
+              </div>
+              {checkingThisCpf && cpfCheck.isFetching && !duplicate && (
+                <p className="text-xs text-muted-foreground">Verificando se o CPF já tem cadastro…</p>
+              )}
+              {duplicate && (
+                <div role="alert" className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-md border border-destructive/40 bg-destructive/5 px-3 py-2 text-sm">
+                  <span className="flex items-center gap-1.5 text-destructive">
+                    <AlertCircle className="size-4 shrink-0" />
+                    Já existe um cadastro com este CPF: <strong>{duplicate.name}</strong>
+                  </span>
+                  <Link
+                    to="/admin/usuarios/$id"
+                    params={{ id: duplicate.id }}
+                    onClick={() => { if (onlyCpfTyped) allowLeave() }}
+                    className="font-medium text-primary hover:underline"
+                  >
+                    Abrir cadastro
+                  </Link>
+                </div>
+              )}
+            </div>
+            <FieldRow label="Nome" required htmlFor={fieldId('name')} error={errors.name}>
+              <Input className={inp} {...invalid('name')} value={form.name} onChange={e => set('name', upperNoAccents(e.target.value))} />
             </FieldRow>
             <FieldRow label="Apelido">
               <Input className={inp} value={form.nickname} onChange={e => set('nickname', upperNoAccents(e.target.value))} />
             </FieldRow>
-            <FieldRow label="E-mail" required>
-              <Input className={inp} type="email" value={form.email} onChange={e => set('email', e.target.value)} />
+            <FieldRow label="E-mail" required htmlFor={fieldId('email')} error={errors.email}>
+              <Input className={inp} {...invalid('email')} type="email" value={form.email} onChange={e => set('email', e.target.value)} />
             </FieldRow>
-            <FieldRow label="Telefone" required>
-              <Input className={inp} value={form.phone} onChange={e => set('phone', maskPhone(e.target.value))} placeholder="(00) 00000-0000" />
+            <FieldRow label="Telefone" required htmlFor={fieldId('phone')} error={errors.phone}>
+              <Input className={inp} {...invalid('phone')} inputMode="tel" value={form.phone} onChange={e => set('phone', maskPhone(e.target.value))} placeholder="(00) 00000-0000" />
             </FieldRow>
-            <FieldRow label="Telefone 2">
-              <Input className={inp} value={form.phone2} onChange={e => set('phone2', maskPhone(e.target.value))} placeholder="(00) 00000-0000" />
+            <FieldRow label="Telefone 2" htmlFor={fieldId('phone2')} error={errors.phone2}>
+              <Input className={inp} {...invalid('phone2')} inputMode="tel" value={form.phone2} onChange={e => set('phone2', maskPhone(e.target.value))} placeholder="(00) 00000-0000" />
             </FieldRow>
-            <FieldRow label="Telefone 3">
-              <Input className={inp} value={form.phone3} onChange={e => set('phone3', maskPhone(e.target.value))} placeholder="(00) 00000-0000" />
+            <FieldRow label="Telefone 3" htmlFor={fieldId('phone3')} error={errors.phone3}>
+              <Input className={inp} {...invalid('phone3')} inputMode="tel" value={form.phone3} onChange={e => set('phone3', maskPhone(e.target.value))} placeholder="(00) 00000-0000" />
             </FieldRow>
-            <FieldRow label="Data nascimento">
-              <DatePicker value={form.birthDate} onChange={v => set('birthDate', v)} />
+            <FieldRow label="Data nascimento" htmlFor="novo-birthDate">
+              <DatePicker id="novo-birthDate" value={form.birthDate} onChange={v => set('birthDate', v)} />
               <AgeHint birthDate={form.birthDate} />
             </FieldRow>
             <FieldRow label="Naturalidade">
@@ -313,11 +493,8 @@ function RouteComponent() {
             <CardTitle className="text-sm flex items-center gap-2"><FileText className="size-4" /> Documentos</CardTitle>
           </CardHeader>
           <CardContent className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            <FieldRow label="CPF" required>
-              <Input className={inp} value={form.cpf} onChange={e => set('cpf', maskCPF(e.target.value))} placeholder="000.000.000-00" />
-            </FieldRow>
-            <FieldRow label="RG">
-              <Input className={inp} value={form.rg} onChange={e => set('rg', maskRG(e.target.value))} placeholder="00.000.000-0" maxLength={12} />
+            <FieldRow label="RG" htmlFor={fieldId('rg')} error={errors.rg}>
+              <Input className={inp} {...invalid('rg')} value={form.rg} onChange={e => set('rg', maskRG(e.target.value))} placeholder="00.000.000-0" maxLength={12} />
             </FieldRow>
             <FieldRow label="Órgão emissor RG">
               <Input className={inp} value={form.rgIssuer} onChange={e => set('rgIssuer', upperNoAccents(e.target.value))} />
@@ -325,8 +502,8 @@ function RouteComponent() {
             <FieldRow label="Data emissão RG">
               <DatePicker value={form.rgIssuedAt} onChange={v => set('rgIssuedAt', v)} />
             </FieldRow>
-            <FieldRow label="CNH">
-              <Input className={inp} value={form.driverLicense} onChange={e => {
+            <FieldRow label="CNH" htmlFor={fieldId('driverLicense')} error={errors.driverLicense}>
+              <Input className={inp} {...invalid('driverLicense')} value={form.driverLicense} onChange={e => {
                 const v = maskCNH(e.target.value)
                 set('driverLicense', v)
                 if (!v) set('driverLicenseCategory', '')
@@ -383,9 +560,9 @@ function RouteComponent() {
             </FieldRow>
             {isUrban ? (
               <>
-                <FieldRow label="CEP">
+                <FieldRow label="CEP" htmlFor="novo-cep">
                   <div className="flex gap-2">
-                    <Input className={inp} value={form.address.zipCode} onChange={e => setAddr('zipCode', maskCEP(e.target.value))} placeholder="00000-000" />
+                    <Input id="novo-cep" className={inp} inputMode="numeric" value={form.address.zipCode} onChange={e => setAddr('zipCode', maskCEP(e.target.value))} placeholder="00000-000" />
                     <Button type="button" size="sm" variant="outline" disabled={!form.address.zipCode || cepLookup.isPending} onClick={handleCEP} className="shrink-0">
                       {cepLookup.isPending ? '...' : 'Buscar'}
                     </Button>
@@ -444,11 +621,15 @@ function RouteComponent() {
           </CardContent>
         </Card>
 
-        {error && <p className="text-sm text-destructive">{error}</p>}
+        {formMessage && (
+          <p className="flex items-center gap-1.5 text-sm text-destructive" role="alert">
+            <AlertCircle className="size-4 shrink-0" /> {formMessage}
+          </p>
+        )}
 
         <div className="flex items-center justify-end gap-2 pb-4">
           <Button type="button" variant="outline" asChild>
-            <Link to="/admin/usuarios" onClick={e => confirmLeaveIfDirty(dirty, e)}>Cancelar</Link>
+            <Link to="/admin/usuarios">Cancelar</Link>
           </Button>
           <Button type="submit" disabled={saving}>
             <Save className="size-4" />

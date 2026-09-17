@@ -87,6 +87,9 @@ export type FinanceTransactionsPage = {
   page: number
   limit: number
   totalPages: number
+  /** Entradas e saídas de todos os lançamentos filtrados (não só da página);
+   *  transferências entre caixas e "só nota" não contam. */
+  totals?: { incomeCents: number; expenseCents: number }
 }
 
 export type FinanceSummary = {

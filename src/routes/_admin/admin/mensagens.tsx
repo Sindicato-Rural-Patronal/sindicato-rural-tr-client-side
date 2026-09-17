@@ -1,5 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { useState } from 'react'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { requirePermission } from '@/lib/auth-guard'
 import { useContactMessages, useMarkContactMessageRead, useDeleteContactMessage } from '@/hooks/useAdmin'
 import type { ContactMessage } from '@/hooks/useAdmin'
@@ -16,7 +17,10 @@ import { useRowSelection } from '@/hooks/useRowSelection'
 import { ExportMenu, ExportOneButton } from '@/components/export/ExportMenu'
 import { apiErrorMessage } from '@/lib/api-error-message'
 import { downloadExport } from '@/lib/export'
-import { Mail, MailOpen, Phone, AtSign, Trash2, Search, X, CheckCheck, Download, Loader2 } from 'lucide-react'
+import { apiFetch } from '@/lib/api'
+import { whatsappUrl } from '@/lib/contact-links'
+import { Mail, MailOpen, Phone, AtSign, Trash2, Search, X, CheckCheck, Download, Loader2, Reply, MailX } from 'lucide-react'
+import { FaWhatsapp } from 'react-icons/fa'
 import { toast } from 'sonner'
 import { Input } from '@/components/ui/input'
 
@@ -32,13 +36,50 @@ function formatDate(iso: string) {
   }).format(new Date(iso))
 }
 
+/** Resposta por e-mail já com o assunto "Re: …". */
+function replyMailto(message: ContactMessage): string {
+  const subject = message.subject?.trim()
+  return subject
+    ? `mailto:${message.email}?subject=${encodeURIComponent(`Re: ${subject}`)}`
+    : `mailto:${message.email}`
+}
+
+// Volta a mensagem para "não lida". Rota própria para a auditoria registrar qual foi.
+function useMarkContactMessageUnread() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (messageId: string) =>
+      apiFetch(`/admin/contacts/messages/${messageId}/unread`, { method: 'PATCH', body: '{}' }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'contacts', 'messages'] })
+    },
+  })
+}
+
 function MessageDialog({
   message,
   onClose,
+  readPending,
 }: {
   message: ContactMessage | null
   onClose: () => void
+  /** Ainda marcando como lida (ao abrir): espera antes de deixar voltar para não lida. */
+  readPending: boolean
 }) {
+  const markUnread = useMarkContactMessageUnread()
+  const whatsapp = message ? whatsappUrl(message.phone) : null
+
+  async function handleMarkUnread() {
+    if (!message) return
+    try {
+      await markUnread.mutateAsync(message.id)
+      toast.success('Mensagem marcada como não lida.')
+      onClose()
+    } catch (e) {
+      toast.error(apiErrorMessage(e, 'Erro ao marcar como não lida.'))
+    }
+  }
+
   return (
     <Dialog open={!!message} onOpenChange={open => !open && onClose()}>
       <DialogContent className="sm:max-w-lg">
@@ -78,8 +119,26 @@ function MessageDialog({
               {message.message}
             </div>
 
-            <div className="flex justify-end">
-              <ExportOneButton dataset="contact-messages" id={message.id} size="sm" />
+            <div className="flex flex-wrap items-center gap-2">
+              <Button asChild size="sm" className="gap-1.5">
+                <a href={replyMailto(message)}>
+                  <Reply className="size-4" /> Responder por e-mail
+                </a>
+              </Button>
+              {whatsapp && (
+                <Button asChild size="sm" variant="outline" className="gap-1.5">
+                  <a href={whatsapp} target="_blank" rel="noopener noreferrer">
+                    <FaWhatsapp className="size-4" /> Responder no WhatsApp
+                  </a>
+                </Button>
+              )}
+              {message.read && (
+                <Button size="sm" variant="outline" className="gap-1.5" disabled={markUnread.isPending || readPending} onClick={handleMarkUnread}>
+                  {markUnread.isPending ? <Loader2 className="size-4 animate-spin" /> : <MailX className="size-4" />}
+                  Marcar como não lida
+                </Button>
+              )}
+              <ExportOneButton dataset="contact-messages" id={message.id} size="sm" className="ml-auto" />
             </div>
           </div>
         )}
@@ -145,7 +204,8 @@ function RouteComponent() {
   }
 
   function openMessage(msg: ContactMessage) {
-    setSelected(msg)
+    // Abrir marca como lida: o diálogo já mostra assim (e oferece "Marcar como não lida").
+    setSelected(msg.read ? msg : { ...msg, read: true })
     if (!msg.read) {
       markRead.mutate({ messageId: msg.id, read: true })
     }
@@ -290,8 +350,17 @@ function RouteComponent() {
       {!isLoading && !isError && messages.length === 0 && (
         <div className="flex flex-col items-center justify-center py-20 border-2 border-dashed rounded-xl text-center">
           <Mail className="size-10 text-muted-foreground/30 mb-3" />
-          <p className="text-sm font-medium">Nenhuma mensagem recebida</p>
-          <p className="text-xs text-muted-foreground mt-1">As mensagens do formulário de contato aparecerão aqui.</p>
+          {search.trim() || readFilter !== 'all' ? (
+            <>
+              <p className="text-sm font-medium">Nenhuma mensagem encontrada</p>
+              <p className="text-xs text-muted-foreground mt-1">Tente outra busca ou mude o filtro.</p>
+            </>
+          ) : (
+            <>
+              <p className="text-sm font-medium">Nenhuma mensagem recebida</p>
+              <p className="text-xs text-muted-foreground mt-1">As mensagens do formulário de contato aparecerão aqui.</p>
+            </>
+          )}
         </div>
       )}
 
@@ -374,7 +443,7 @@ function RouteComponent() {
         </div>
       )}
 
-      <MessageDialog message={selected} onClose={() => setSelected(null)} />
+      <MessageDialog message={selected} onClose={() => setSelected(null)} readPending={markRead.isPending} />
 
       <DeleteConfirmDialog
         open={bulkDeleteOpen}

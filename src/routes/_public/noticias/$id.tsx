@@ -8,6 +8,8 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Button } from '@/components/ui/button'
 import { ArrowLeft, Newspaper } from 'lucide-react'
 import { formatDateFromString } from '@/utils/format-data-from-string'
+import { LoadErrorRetry } from '@/components/LoadErrorRetry'
+import { errorStatus } from '@/lib/query-retry'
 
 export const Route = createFileRoute('/_public/noticias/$id')({
   component: RouteComponent,
@@ -27,6 +29,8 @@ function ImageBlock({ url, caption }: { url: string; caption?: string }) {
       <img
         src={url}
         alt={caption ?? ''}
+        loading="lazy"
+        decoding="async"
         className="w-full rounded-xl object-cover max-h-[480px]"
       />
       {caption && (
@@ -58,6 +62,8 @@ function ImageTextBlock({
       <img
         src={url}
         alt={text.trim() || newsTitle}
+        loading="lazy"
+        decoding="async"
         className="w-full md:w-2/5 rounded-xl object-cover max-h-64"
       />
       <p className="flex-1 min-w-0 text-base leading-relaxed text-foreground/90 whitespace-pre-line wrap-break-word">
@@ -85,7 +91,7 @@ function BlockRenderer({ block, newsTitle }: { block: ContentBlock; newsTitle: s
 function RouteComponent() {
   const { id } = Route.useParams()
   const { t } = useTranslation()
-  const { data: news, isLoading, isError } = useNewsDetail(id)
+  const { data: news, isLoading, isError, error, isFetching, refetch } = useNewsDetail(id)
 
   useSeo({
     title: news?.title,
@@ -109,13 +115,32 @@ function RouteComponent() {
     )
   }
 
+  // Só 404 é "não existe": outra falha (sem internet, servidor fora) pede para tentar de novo.
+  if (isError && errorStatus(error) !== 404) {
+    return (
+      <main className="container mx-auto max-w-3xl px-4 py-16">
+        <LoadErrorRetry
+          message={t('newsPage.detailLoadError')}
+          hint
+          onRetry={() => void refetch()}
+          retrying={isFetching}
+        />
+        <div className="flex justify-center">
+          <Button asChild variant="link" className="h-11">
+            <Link to="/noticias">{t('newsPage.backToNews')}</Link>
+          </Button>
+        </div>
+      </main>
+    )
+  }
+
   if (isError || !news) {
     return (
       <main className="container mx-auto max-w-3xl px-4 py-16 text-center">
         <Newspaper className="mx-auto size-16 text-muted-foreground/40" />
-        <h2 className="mt-4 text-xl font-semibold">{t('newsPage.notFound')}</h2>
-        <p className="mt-2 text-sm text-muted-foreground">{t('newsPage.notFoundHint')}</p>
-        <Button asChild className="mt-6">
+        <h2 className="mt-4 text-xl font-semibold">{t('newsPage.detailNotFound')}</h2>
+        <p className="mt-2 text-sm text-muted-foreground">{t('newsPage.detailNotFoundDesc')}</p>
+        <Button asChild className="mt-6 h-11">
           <Link to="/noticias">{t('newsPage.backToNews')}</Link>
         </Button>
       </main>

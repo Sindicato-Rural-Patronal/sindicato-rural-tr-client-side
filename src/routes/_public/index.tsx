@@ -21,6 +21,10 @@ function PartnerItem({ partner }: { partner: { id: string; name: string; partner
       <img
         src={partner.partnerLogoUrl}
         alt={partner.name}
+        width={300}
+        height={150}
+        loading="lazy"
+        decoding="async"
         className="h-10 w-auto max-w-35 object-contain md:h-12 md:max-w-40"
       />
     </div>

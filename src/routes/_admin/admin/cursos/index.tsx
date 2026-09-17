@@ -1,87 +1,96 @@
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, Link } from '@tanstack/react-router'
 import { useQueryClient } from '@tanstack/react-query'
 import { apiErrorMessage } from '@/lib/api-error-message'
-import { apiFetch, apiUpload } from '@/lib/api'
-import { useEffect, useState, useRef } from 'react'
+import { apiFetch } from '@/lib/api'
+import { useState, useRef } from 'react'
+import type { ComponentProps } from 'react'
 import { toast } from 'sonner'
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
+import { FaWhatsapp } from 'react-icons/fa'
 import { usePermissions } from '@/hooks/usePermissions'
 import { PermissionButton } from '@/components/PermissionButton'
-import MDEditor from '@uiw/react-md-editor'
-import '@uiw/react-md-editor/markdown-editor.css'
-import { useForm } from 'react-hook-form'
-import { zodResolver } from '@hookform/resolvers/zod'
 import { useTranslation } from 'react-i18next'
-import {
-  useAdminCourses, useAdminCourse, useCreateCourse, useUpdateCourse, useDeleteCourse,
-  useUploadBanner, useUploadGalleryPhoto, useDeleteGalleryPhoto,
-  useAssignInstructor, useRemoveInstructorAssignment,
-} from '@/hooks/useCourse'
+import { useAdminCourses, useAdminCourse, useDeleteCourse, useUploadGalleryPhoto, useAssignInstructor, useRemoveInstructorAssignment, adminCourseQuery, fetchAllCourseRegistrations, useAllCourseRegistrations, useAdminRegisterPerson, useConfirmAllRegistrations } from '@/hooks/useCourse'
 import type { CourseCardItem } from '@/hooks/useCourse'
-import { useRooms, useCreateRoom } from '@/hooks/useRooms'
 import { useCourseRegistrations, useCancelRegistration, useInstructors, useConfirmRegistration, useStartCourse, useUploadRegistrationFicha, useDeleteRegistrationFicha, openRegistrationFicha } from '@/hooks/useAdmin'
 import type { UserDataDetail, Registration } from '@/hooks/useAdmin'
 import { formatDateFromString } from '@/utils/format-data-from-string'
 import { formatBRL } from '@/utils/format-currency'
 import { calcAge } from '@/utils/age'
 import { upperNoAccents } from '@/utils/text-format'
-import { roomSchema, courseBaseSchema } from '@/lib/schemas'
-import type { RoomFormData, CourseFormData } from '@/lib/schemas'
-import { roomNameOptions } from '@/lib/room-names'
-import { Label } from '@/components/ui/label'
-import {
-  Plus, Building2, GraduationCap, Calendar, Search,
-  BookOpen, Images, ChevronLeft, ChevronRight, X, Pencil, Trash2,
-  Clock, MapPin, User, ImageUp, ImagePlus, Upload, UserCheck, UserX,
-  FileDown, Loader2, CheckCircle2, Circle, PlayCircle, Paperclip, Eye, FileSpreadsheet, Award,
-} from 'lucide-react'
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
-import {
-  Dialog, DialogContent, DialogHeader, DialogTitle,
-} from '@/components/ui/dialog'
+import { maskCPF, maskPhone } from '@/utils/masks'
+import { markdownToPlainText } from '@/lib/markdown-text'
+import { whatsappUrl, telHref, uniqueContactLines, phoneKey } from '@/lib/contact-links'
+import { copyText } from '@/lib/copy-text'
+import { cn } from '@/lib/utils'
+import { Plus, Building2, GraduationCap, Calendar, Search, BookOpen, Images, ChevronLeft, ChevronRight, X, Pencil, Trash2, Clock, MapPin, User, ImageUp, ImagePlus, UserCheck, UserX, FileDown, Loader2, CheckCircle2, Circle, PlayCircle, Paperclip, Eye, FileSpreadsheet, Award, CopyPlus, MoreVertical, CheckCheck, UserPlus, Mail, Phone, ExternalLink, Link2 } from 'lucide-react'
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { DatePicker } from '@/components/ui/date-picker'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Card, CardContent } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from '@/components/ui/select'
-import {
-  Table, TableHeader, TableBody, TableRow, TableHead, TableCell,
-} from '@/components/ui/table'
-import {
-  Form, FormField, FormItem, FormLabel, FormControl, FormMessage,
-} from '@/components/ui/form'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import type { Course } from '@/@types/course'
 import { StatusBadge } from '@/components/StatusBadge'
 import { ErrorAlert } from '@/components/ErrorAlert'
 import { EmptyState } from '@/components/EmptyState'
-import { ConfirmCloseDialog } from '@/components/confirm-close-dialog'
 import { Pagination } from '@/components/ui/pagination'
 import { DeleteConfirmDialog } from '@/components/DeleteConfirmDialog'
 import { NativeSelect } from '@/components/ui/native-select'
+import { PersonPicker } from '@/components/PersonPicker'
+import type { PickedPerson } from '@/components/PersonPicker'
 import { useDebouncedValue } from '@/hooks/useDebouncedValue'
 import { useRowSelection } from '@/hooks/useRowSelection'
 import { isActiveMember } from '@/lib/membership'
 import { downloadExport } from '@/lib/export'
 import { ExportMenu, ExportOneButton, SelectCheckbox, SelectionInfo } from '@/components/export/ExportMenu'
+import { CourseFormDialog } from '@/components/courses/CourseFormDialog'
+import { PhotoGrid } from '@/components/courses/PhotoGrid'
+import { useConfirmDeletePhoto, photoCountLabel } from '@/hooks/useConfirmDeletePhoto'
 
 function calcDaysUntil(startDate: string) {
   if (!startDate) return 0
   return Math.ceil((new Date(startDate).getTime() - Date.now()) / 86_400_000)
 }
 
+
+// Botão pequeno de ação com dica e nome para leitor de tela; o texto ao lado do
+// ícone só aparece em telas largas (no celular fica só o ícone).
+function RowAction({ label, className, ...props }: { label: string } & ComponentProps<typeof Button>) {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Button
+          size="sm"
+          variant="ghost"
+          aria-label={label}
+          className={cn('h-9 min-w-9 gap-1 px-2 text-xs lg:h-7 lg:min-w-7', className)}
+          {...props}
+        />
+      </TooltipTrigger>
+      <TooltipContent>{label}</TooltipContent>
+    </Tooltip>
+  )
+}
+
 // ─── course card ─────────────────────────────────────────────────────────────
 
-function AdminCourseCard({ course, onClick, selected = false, onToggleSelect }: {
+function AdminCourseCard({ course, onClick, onEdit, onDuplicate, selected = false, onToggleSelect }: {
   course: CourseCardItem
   onClick: () => void
+  onEdit?: () => void
+  onDuplicate?: () => void
   selected?: boolean
   onToggleSelect?: () => void
 }) {
   const { t } = useTranslation()
+  const summary = markdownToPlainText(course.description)
   return (
     <Card
       className={`group overflow-hidden cursor-pointer hover:shadow-md transition-all duration-200 ${selected ? 'ring-2 ring-primary' : ''}`}
@@ -90,8 +99,10 @@ function AdminCourseCard({ course, onClick, selected = false, onToggleSelect }: 
       <div className="relative h-40 bg-muted flex items-center justify-center overflow-hidden">
         {course.coverImage ? (
           <img
-            src={course.coverImage}
+            src={course.coverImageThumb ?? course.coverImage}
             alt={course.title}
+            loading="lazy"
+            decoding="async"
             className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-300"
           />
         ) : (
@@ -122,9 +133,36 @@ function AdminCourseCard({ course, onClick, selected = false, onToggleSelect }: 
       </div>
 
       <CardContent className="p-4">
-        <h3 className="font-semibold text-foreground line-clamp-2 mb-1.5 leading-snug">{course.title}</h3>
-        {course.description && (
-          <p className="text-xs text-muted-foreground line-clamp-2 mb-3 leading-relaxed">{course.description}</p>
+        <div className="flex items-start gap-1 mb-1.5">
+          <h3 className="flex-1 font-semibold text-foreground line-clamp-2 leading-snug">{course.title}</h3>
+          {/* stopPropagation: o menu (e o conteúdo dele, que fica num portal) não abre o card */}
+          <div className="-mr-2 -mt-1.5 shrink-0" onClick={e => e.stopPropagation()}>
+            <DropdownMenu modal={false}>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="size-8" aria-label={`Ações do curso ${course.title}`}>
+                  <MoreVertical className="size-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onSelect={onClick}>
+                  <Eye className="size-4" /> Ver detalhes
+                </DropdownMenuItem>
+                {onEdit && (
+                  <DropdownMenuItem onSelect={onEdit}>
+                    <Pencil className="size-4" /> {t('common.edit')}
+                  </DropdownMenuItem>
+                )}
+                {onDuplicate && (
+                  <DropdownMenuItem onSelect={onDuplicate}>
+                    <CopyPlus className="size-4" /> Duplicar curso
+                  </DropdownMenuItem>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        </div>
+        {summary && (
+          <p className="text-xs text-muted-foreground line-clamp-2 mb-3 leading-relaxed">{summary}</p>
         )}
 
         <div className="flex flex-col gap-1.5 text-xs text-muted-foreground mb-3">
@@ -192,26 +230,15 @@ function CourseCardSkeleton() {
   )
 }
 
+
 // ─── gallery manager ──────────────────────────────────────────────────────────
 
 function GalleryManager({ course }: { course: Course }) {
   const uploadPhoto = useUploadGalleryPhoto(course.id)
-  const deletePhoto = useDeleteGalleryPhoto(course.id)
+  const removePhoto = useConfirmDeletePhoto(course.id)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [uploadError, setUploadError] = useState<string | null>(null)
-  const [deletePhotoId, setDeletePhotoId] = useState<string | null>(null)
   const { t } = useTranslation()
-
-  async function handleDeletePhoto() {
-    if (!deletePhotoId) return
-    try {
-      await deletePhoto.mutateAsync(deletePhotoId)
-      toast.success('Foto removida.')
-      setDeletePhotoId(null)
-    } catch {
-      toast.error('Erro ao remover foto.')
-    }
-  }
 
   async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
@@ -233,7 +260,7 @@ function GalleryManager({ course }: { course: Course }) {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
-        <p className="text-sm text-muted-foreground">{photos.length} photo{photos.length !== 1 ? 's' : ''}</p>
+        <p className="text-sm text-muted-foreground">{photoCountLabel(photos.length)}</p>
         <Button
           size="sm"
           variant="outline"
@@ -254,59 +281,19 @@ function GalleryManager({ course }: { course: Course }) {
           <p className="text-sm">{t('admin.courses.galleryEmpty')}</p>
         </div>
       ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-          {photos.map(photo => (
-            <div key={photo.id} className="relative aspect-video rounded-xl overflow-hidden bg-muted group">
-              <img src={photo.url} alt={photo.caption || 'Photo'} className="h-full w-full object-cover" />
-              <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                <button
-                  onClick={() => setDeletePhotoId(photo.id)}
-                  disabled={deletePhoto.isPending}
-                  className="size-8 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center"
-                >
-                  <Trash2 className="size-4" />
-                </button>
-              </div>
-              {photo.caption && (
-                <div className="absolute bottom-0 left-0 right-0 bg-black/60 p-1.5">
-                  <p className="text-white text-xs truncate">{photo.caption}</p>
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
+        <PhotoGrid
+          photos={photos.map(p => ({ key: p.id, url: p.url, caption: p.caption }))}
+          onRemove={removePhoto.ask}
+          disabled={removePhoto.pending}
+        />
       )}
 
-      <DeleteConfirmDialog
-        open={!!deletePhotoId}
-        onOpenChange={open => { if (!open) setDeletePhotoId(null) }}
-        title="Remover foto"
-        description="Tem certeza que deseja remover esta foto da galeria? Esta ação não pode ser desfeita."
-        onConfirm={handleDeletePhoto}
-        pending={deletePhoto.isPending}
-        confirmLabel="Remover"
-        pendingLabel="Removendo..."
-      />
+      {removePhoto.dialog}
     </div>
   )
 }
 
 // ─── registrations tab ───────────────────────────────────────────────────────
-
-// Busca TODAS as inscrições paginando (não trunca em 1000).
-async function fetchAllRegistrations(courseId: string): Promise<Registration[]> {
-  const limit = 500
-  const acc: Registration[] = []
-  for (let page = 1; ; page++) {
-    const resp: { data?: Registration[]; totalPages?: number } = await apiFetch(
-      `/admin/courses/${courseId}/registrations?page=${page}&limit=${limit}`,
-    ).then(r => r.json())
-    const batch = resp.data ?? []
-    acc.push(...batch)
-    if (batch.length < limit || page >= (resp.totalPages ?? 1)) break
-  }
-  return acc
-}
 
 // Mapeia com concorrência limitada para não inundar a API (preserva a ordem).
 async function mapWithConcurrency<T, R>(
@@ -326,6 +313,79 @@ async function mapWithConcurrency<T, R>(
   return results
 }
 
+function plural(n: number, one: string, many: string) {
+  return n === 1 ? `1 ${one}` : `${n} ${many}`
+}
+
+// Inscrição feita pela equipe: escolhe a pessoa do cadastro.
+function AddRegistrationDialog({ courseId, open, onClose, registeredIds }: {
+  courseId: string
+  open: boolean
+  onClose: () => void
+  registeredIds?: Set<string>
+}) {
+  const register = useAdminRegisterPerson(courseId)
+  const [picked, setPicked] = useState<PickedPerson | null>(null)
+
+  function close() {
+    setPicked(null)
+    onClose()
+  }
+
+  async function submit() {
+    if (!picked) return
+    try {
+      await register.mutateAsync(picked.id)
+      toast.success(`${picked.name} foi inscrito(a) no curso.`)
+      close()
+    } catch (e) {
+      toast.error(apiErrorMessage(e, 'Não foi possível inscrever a pessoa.'))
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={isOpen => { if (!isOpen && !register.isPending) close() }}>
+      <DialogContent className="sm:max-w-lg">
+        <DialogHeader>
+          <DialogTitle>Inscrever pessoa</DialogTitle>
+          <DialogDescription>
+            Busque a pessoa no cadastro. A inscrição já entra confirmada, mesmo depois do prazo de inscrição.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="min-h-72">
+          {picked ? (
+            <div className="flex items-center justify-between gap-3 rounded-lg border border-border bg-muted/30 p-3">
+              <div className="min-w-0">
+                <p className="font-medium wrap-break-word">{picked.name}</p>
+                {picked.cpf && <p className="text-xs text-muted-foreground font-mono">{maskCPF(picked.cpf)}</p>}
+              </div>
+              <Button variant="outline" size="sm" onClick={() => setPicked(null)} disabled={register.isPending}>
+                Trocar
+              </Button>
+            </div>
+          ) : (
+            <PersonPicker
+              onPick={setPicked}
+              excludeIds={registeredIds}
+              excludedLabel="já inscrita"
+              autoFocus
+            />
+          )}
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={close} disabled={register.isPending}>Cancelar</Button>
+          <Button onClick={submit} disabled={!picked || register.isPending}>
+            {register.isPending ? <Loader2 className="size-4 animate-spin" /> : <UserPlus className="size-4" />}
+            {register.isPending ? 'Inscrevendo...' : 'Inscrever'}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
 function RegistrationsTab({
   courseId,
   eventNumber,
@@ -343,22 +403,37 @@ function RegistrationsTab({
   const registrations = resp?.data ?? []
   const total = resp?.total ?? 0
   const totalPages = resp ? Math.ceil(total / limit) : 1
+  // Todas as inscrições (não só a página): quem já está inscrito, pendentes e contatos.
+  const allRegs = useAllCourseRegistrations(courseId)
   const cancelReg = useCancelRegistration(courseId)
   const confirmReg = useConfirmRegistration(courseId)
+  const confirmAll = useConfirmAllRegistrations(courseId)
   const startCourse = useStartCourse()
   const uploadFicha = useUploadRegistrationFicha(courseId)
   const deleteFicha = useDeleteRegistrationFicha(courseId)
   const [fichaBusyId, setFichaBusyId] = useState<string | null>(null)
-  const [confirmId, setConfirmId] = useState<string | null>(null)
+  const [cancelTarget, setCancelTarget] = useState<Registration | null>(null)
+  const [addOpen, setAddOpen] = useState(false)
+  const [confirmAllOpen, setConfirmAllOpen] = useState(false)
+  const [copying, setCopying] = useState<'phones' | 'emails' | null>(null)
   const [fichaId, setFichaId] = useState<string | null>(null)
   const [exportingAll, setExportingAll] = useState(false)
   const [exportingCsv, setExportingCsv] = useState(false)
   const [certId, setCertId] = useState<string | null>(null)
   const [exportingCerts, setExportingCerts] = useState(false)
   const { data: courseDetail } = useAdminCourse(courseId)
+  const { can } = usePermissions()
+  const canManage = can('UPDATE_COURSE')
   const { t } = useTranslation()
 
   const inProgress = courseStatus === 'IN_PROGRESS'
+  const registeredIds = allRegs.data ? new Set(allRegs.data.map(r => r.userDataId)) : undefined
+  const pendingCount = allRegs.data?.filter(r => !r.confirmed).length ?? 0
+
+  // Cancelar a última inscrição de uma página > 1 deixaria a lista vazia.
+  if (resp && total > 0 && page > totalPages) {
+    setPage(totalPages)
+  }
 
   async function handleStart() {
     try {
@@ -366,6 +441,67 @@ function RegistrationsTab({
       toast.success('Curso iniciado! Status: Em andamento.')
     } catch (e) {
       toast.error(apiErrorMessage(e, 'Não foi possível iniciar o curso.'))
+    }
+  }
+
+  function toggleConfirmed(reg: Registration) {
+    confirmReg.mutate(
+      { id: reg.id, confirmed: !reg.confirmed },
+      {
+        onError: e => toast.error(apiErrorMessage(
+          e,
+          reg.confirmed ? 'Não foi possível desmarcar a confirmação.' : 'Não foi possível confirmar a inscrição.',
+        )),
+      },
+    )
+  }
+
+  async function handleCancel() {
+    if (!cancelTarget) return
+    try {
+      await cancelReg.mutateAsync(cancelTarget.id)
+      toast.success('Inscrição cancelada.')
+    } catch (e) {
+      toast.error(apiErrorMessage(e, 'Não foi possível cancelar a inscrição.'))
+    } finally {
+      setCancelTarget(null)
+    }
+  }
+
+  async function handleConfirmAll() {
+    try {
+      const { confirmed } = await confirmAll.mutateAsync()
+      toast.success(confirmed === 1 ? '1 inscrição confirmada.' : `${confirmed} inscrições confirmadas.`)
+    } catch (e) {
+      toast.error(apiErrorMessage(e, 'Não foi possível confirmar as inscrições.'))
+    } finally {
+      setConfirmAllOpen(false)
+    }
+  }
+
+  // Todos os telefones ou e-mails das inscrições do curso, um por linha.
+  async function copyContacts(kind: 'phones' | 'emails') {
+    setCopying(kind)
+    try {
+      const regs = allRegs.data ?? await fetchAllCourseRegistrations(courseId)
+      const lines = kind === 'phones'
+        ? uniqueContactLines(regs.map(r => r.userData.phone), phoneKey)
+        : uniqueContactLines(regs.map(r => r.userData.email))
+      if (lines.length === 0) {
+        toast.error(kind === 'phones' ? 'Nenhuma inscrição tem telefone.' : 'Nenhuma inscrição tem e-mail.')
+        return
+      }
+      if (!await copyText(lines.join('\n'))) {
+        toast.error('Não foi possível copiar. Tente de novo.')
+        return
+      }
+      toast.success(kind === 'phones'
+        ? `${plural(lines.length, 'telefone copiado', 'telefones copiados')}.`
+        : `${plural(lines.length, 'e-mail copiado', 'e-mails copiados')}.`)
+    } catch (e) {
+      toast.error(apiErrorMessage(e, 'Erro ao buscar as inscrições.'))
+    } finally {
+      setCopying(null)
     }
   }
 
@@ -438,7 +574,7 @@ function RegistrationsTab({
     setExportingAll(true)
     try {
       const { downloadFichaPdf } = await import('@/lib/ficha-inscricao-pdf')
-      const regs = await fetchAllRegistrations(courseId)
+      const regs = await fetchAllCourseRegistrations(courseId)
       if (regs.length === 0) {
         toast.error(t('admin.courses.noRegistrations'))
         return
@@ -500,7 +636,7 @@ function RegistrationsTab({
     setExportingCerts(true)
     try {
       const { downloadCertificadoPdf } = await import('@/lib/certificado-pdf')
-      const regs = await fetchAllRegistrations(courseId)
+      const regs = await fetchAllCourseRegistrations(courseId)
       const confirmed = regs.filter(r => r.confirmed)
       if (confirmed.length === 0) {
         toast.error('Nenhuma inscrição confirmada para emitir certificado.')
@@ -520,47 +656,67 @@ function RegistrationsTab({
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between gap-2">
-        <p className="text-sm text-muted-foreground">
-          {resp ? `${total} ${t('admin.courses.registrations').toLowerCase()}` : t('common.loading')}
-        </p>
-        <div className="flex items-center gap-2">
-          {total > 0 && (
+      <div className="flex flex-col gap-2">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <p className="text-sm text-muted-foreground">
+            {resp ? `${total} ${t('admin.courses.registrations').toLowerCase()}` : t('common.loading')}
+          </p>
+          <div className="flex flex-wrap items-center gap-2">
+            {canManage && can('READ_USER') && (
+              <Button size="sm" className="h-8 gap-1.5" onClick={() => setAddOpen(true)}>
+                <UserPlus className="size-3.5" /> Inscrever pessoa
+              </Button>
+            )}
+            {canManage && pendingCount > 0 && (
+              <Button size="sm" variant="outline" className="h-8 gap-1.5" onClick={() => setConfirmAllOpen(true)}>
+                <CheckCheck className="size-3.5" /> Confirmar todas ({pendingCount})
+              </Button>
+            )}
+            {total > 0 && !inProgress && (
+              <Button size="sm" className="h-8 gap-1.5" disabled={startCourse.isPending} onClick={handleStart}>
+                {startCourse.isPending ? <Loader2 className="size-3.5 animate-spin" /> : <PlayCircle className="size-3.5" />}
+                {t('admin.courses.startCourse')}
+              </Button>
+            )}
+            {inProgress && (
+              <span className="inline-flex items-center gap-1 rounded-full border border-blue-200 bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700 dark:border-blue-900 dark:bg-blue-950/40 dark:text-blue-400">
+                <PlayCircle className="size-3" /> {t('admin.courses.form.statusInProgress')}
+              </span>
+            )}
+          </div>
+        </div>
+
+        {total > 0 && (
+          <div className="flex flex-wrap items-center gap-2">
+            <Button size="sm" variant="outline" className="h-8 gap-1.5" disabled={copying === 'phones'} onClick={() => copyContacts('phones')}>
+              {copying === 'phones' ? <Loader2 className="size-3.5 animate-spin" /> : <Phone className="size-3.5" />}
+              Copiar telefones
+            </Button>
+            <Button size="sm" variant="outline" className="h-8 gap-1.5" disabled={copying === 'emails'} onClick={() => copyContacts('emails')}>
+              {copying === 'emails' ? <Loader2 className="size-3.5 animate-spin" /> : <Mail className="size-3.5" />}
+              Copiar e-mails
+            </Button>
             <Button size="sm" variant="outline" className="h-8 gap-1.5" disabled={exportingAll} onClick={exportAll}>
               {exportingAll ? <Loader2 className="size-3.5 animate-spin" /> : <FileDown className="size-3.5" />}
               {t('admin.courses.exportAllFichas')}
             </Button>
-          )}
-          {total > 0 && (
             <Button size="sm" variant="outline" className="h-8 gap-1.5" disabled={exportingCsv} onClick={exportCsv} title="Exportar inscrições (CSV)">
               {exportingCsv ? <Loader2 className="size-3.5 animate-spin" /> : <FileSpreadsheet className="size-3.5" />}
-              <span className="hidden sm:inline">Planilha</span>
+              Planilha
             </Button>
-          )}
-          {total > 0 && (
             <Button size="sm" variant="outline" className="h-8 gap-1.5" disabled={exportingCerts} onClick={certAll} title="Certificados dos confirmados">
               {exportingCerts ? <Loader2 className="size-3.5 animate-spin" /> : <Award className="size-3.5" />}
-              <span className="hidden sm:inline">Certificados</span>
+              Certificados
             </Button>
-          )}
-          {total > 0 && !inProgress && (
-            <Button size="sm" className="h-8 gap-1.5" disabled={startCourse.isPending} onClick={handleStart}>
-              {startCourse.isPending ? <Loader2 className="size-3.5 animate-spin" /> : <PlayCircle className="size-3.5" />}
-              {t('admin.courses.startCourse')}
-            </Button>
-          )}
-          {inProgress && (
-            <span className="inline-flex items-center gap-1 rounded-full border border-blue-200 bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700 dark:border-blue-900 dark:bg-blue-950/40 dark:text-blue-400">
-              <PlayCircle className="size-3" /> {t('admin.courses.form.statusInProgress')}
-            </span>
-          )}
-        </div>
+          </div>
+        )}
+
+        {total > 0 && !inProgress && (
+          <p className="text-xs text-muted-foreground">
+            {t('admin.courses.startCourseHint')}
+          </p>
+        )}
       </div>
-      {total > 0 && !inProgress && (
-        <p className="text-xs text-muted-foreground -mt-2">
-          {t('admin.courses.startCourseHint')}
-        </p>
-      )}
 
       {isLoading && (
         <div className="flex flex-col gap-2">
@@ -580,181 +736,208 @@ function RegistrationsTab({
         </div>
       )}
 
-      {registrations.map(reg => (
-        <div key={reg.id} className="flex items-center gap-3 rounded-lg border border-border bg-card p-3">
-          <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary font-semibold text-sm">
-            {reg.userData.name.charAt(0).toUpperCase()}
-          </div>
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-1.5 flex-wrap">
-              <p className="text-sm font-medium text-foreground truncate">{reg.userData.name}</p>
-              {(() => {
-                const age = calcAge(reg.userData.birthDate)
-                return age !== null && age < 18 ? (
-                  <span
-                    className="inline-flex items-center rounded-full border border-red-300 bg-red-100 px-1.5 text-[10px] font-semibold text-red-700 dark:border-red-900 dark:bg-red-950/40 dark:text-red-400"
-                    title="Menor de idade — precisa da assinatura do responsável na ficha"
-                  >
-                    Menor · {age} anos
-                  </span>
-                ) : null
-              })()}
-              {isActiveMember(reg.userData.memberStatus, reg.userData.membershipValidUntil) && (
-                <span className="inline-flex items-center rounded-full border border-amber-200 bg-amber-100 px-1.5 text-[10px] font-medium text-amber-700 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-400" title="Associado em dia">Associado</span>
-              )}
-              {reg.userData.companyMemberships.length > 0 && (
-                <span
-                  className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-100 px-1.5 text-[10px] font-medium text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-400"
-                  title={`Vinculado a empresa parceira: ${reg.userData.companyMemberships.map(m => m.company.tradeName || m.company.name).join(', ')}`}
-                >
-                  Parceira
-                </span>
-              )}
-              {reg.userData.boardPosition && (
-                <span className="inline-flex items-center rounded-full border border-blue-200 bg-blue-100 px-1.5 text-[10px] font-medium text-blue-700 dark:border-blue-900 dark:bg-blue-950/40 dark:text-blue-400">{reg.userData.boardPosition}</span>
-              )}
-              {reg.userData.publicContact?.title && (
-                <span className="inline-flex items-center rounded-full border border-purple-200 bg-purple-100 px-1.5 text-[10px] font-medium text-purple-700 dark:border-purple-900 dark:bg-purple-950/40 dark:text-purple-400">{reg.userData.publicContact.title}</span>
-              )}
+      {registrations.map(reg => {
+        const age = calcAge(reg.userData.birthDate)
+        const minor = age !== null && age < 18
+        const whatsapp = whatsappUrl(reg.userData.phone)
+        const tel = telHref(reg.userData.phone)
+        return (
+          // Celular: dados da pessoa em cima e botões (só ícones) embaixo, para o
+          // nome não ficar cortado. Tela larga: tudo na mesma linha.
+          <div key={reg.id} className="flex flex-col gap-2 rounded-lg border border-border bg-card p-3 lg:flex-row lg:items-center lg:gap-3">
+            <div className="flex min-w-0 flex-1 items-center gap-3">
+              <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary font-semibold text-sm">
+                {reg.userData.name.charAt(0).toUpperCase()}
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <p className="text-sm font-medium text-foreground wrap-break-word lg:truncate">{reg.userData.name}</p>
+                  {minor && (
+                    <span
+                      className="inline-flex items-center rounded-full border border-red-300 bg-red-100 px-1.5 text-[10px] font-semibold text-red-700 dark:border-red-900 dark:bg-red-950/40 dark:text-red-400"
+                      title="Menor de idade — precisa da assinatura do responsável na ficha"
+                    >
+                      Menor · {age} anos
+                    </span>
+                  )}
+                  {isActiveMember(reg.userData.memberStatus, reg.userData.membershipValidUntil) && (
+                    <span className="inline-flex items-center rounded-full border border-amber-200 bg-amber-100 px-1.5 text-[10px] font-medium text-amber-700 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-400" title="Associado em dia">Associado</span>
+                  )}
+                  {reg.userData.companyMemberships.length > 0 && (
+                    <span
+                      className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-100 px-1.5 text-[10px] font-medium text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-400"
+                      title={`Vinculado a empresa parceira: ${reg.userData.companyMemberships.map(m => m.company.tradeName || m.company.name).join(', ')}`}
+                    >
+                      Parceira
+                    </span>
+                  )}
+                  {reg.userData.boardPosition && (
+                    <span className="inline-flex items-center rounded-full border border-blue-200 bg-blue-100 px-1.5 text-[10px] font-medium text-blue-700 dark:border-blue-900 dark:bg-blue-950/40 dark:text-blue-400">{reg.userData.boardPosition}</span>
+                  )}
+                  {reg.userData.publicContact?.title && (
+                    <span className="inline-flex items-center rounded-full border border-purple-200 bg-purple-100 px-1.5 text-[10px] font-medium text-purple-700 dark:border-purple-900 dark:bg-purple-950/40 dark:text-purple-400">{reg.userData.publicContact.title}</span>
+                  )}
+                </div>
+                <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
+                  <span className="break-all">{reg.userData.email}</span>
+                  {reg.userData.phone && <span>{maskPhone(reg.userData.phone)}</span>}
+                  {reg.userData.cpf && <span className="font-mono">{maskCPF(reg.userData.cpf)}</span>}
+                </div>
+              </div>
             </div>
-            <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
-              <span>{reg.userData.email}</span>
-              {reg.userData.phone && <span>{reg.userData.phone}</span>}
-              {reg.userData.cpf && <span className="font-mono">{reg.userData.cpf}</span>}
-            </div>
-          </div>
-          <div className="flex items-center gap-2 shrink-0">
-            <span className="text-xs text-muted-foreground hidden sm:inline">
-              {new Date(reg.createdAt).toLocaleDateString('pt-BR')}
-            </span>
-            <Button
-              size="sm"
-              variant={reg.confirmed ? 'ghost' : 'outline'}
-              className={`h-7 gap-1 px-2 text-xs ${reg.confirmed ? 'text-emerald-600 hover:text-emerald-700' : ''}`}
-              disabled={confirmReg.isPending}
-              onClick={() => confirmReg.mutate({ id: reg.id, confirmed: !reg.confirmed })}
-              title={reg.confirmed ? 'Desmarcar confirmação' : 'Confirmar inscrição'}
-            >
-              {reg.confirmed ? <CheckCircle2 className="size-3.5" /> : <Circle className="size-3.5" />}
-              <span className="hidden sm:inline">{reg.confirmed ? t('admin.courses.confirmed') : t('admin.courses.confirm')}</span>
-            </Button>
-            <Button
-              size="sm"
-              variant="ghost"
-              className="h-7 gap-1 px-2 text-xs"
-              disabled={fichaId === reg.userDataId}
-              onClick={() => exportOne(reg.userDataId)}
-            >
-              {fichaId === reg.userDataId ? <Loader2 className="size-3.5 animate-spin" /> : <FileDown className="size-3.5" />}
-              <span className="hidden sm:inline">{t('admin.courses.ficha')}</span>
-            </Button>
-            {reg.confirmed && (
-              <Button
-                size="sm"
-                variant="ghost"
-                className="h-7 gap-1 px-2 text-xs text-amber-600 hover:text-amber-700 hover:bg-amber-50 dark:hover:bg-amber-950/30"
-                disabled={certId === reg.id}
-                onClick={() => certOne(reg)}
-                title="Emitir certificado de conclusão"
+
+            <div className="flex flex-wrap items-center gap-1 lg:shrink-0 lg:justify-end">
+              <span className="text-xs text-muted-foreground hidden lg:inline mr-1">
+                {new Date(reg.createdAt).toLocaleDateString('pt-BR')}
+              </span>
+              {whatsapp && (
+                <RowAction label="Conversar no WhatsApp" asChild className="text-emerald-600 hover:text-emerald-700">
+                  <a href={whatsapp} target="_blank" rel="noopener noreferrer">
+                    <FaWhatsapp className="size-4" />
+                  </a>
+                </RowAction>
+              )}
+              {tel && (
+                <RowAction label="Ligar" asChild>
+                  <a href={tel}>
+                    <Phone className="size-3.5" />
+                  </a>
+                </RowAction>
+              )}
+              <RowAction
+                label={reg.confirmed ? 'Desmarcar confirmação' : 'Confirmar inscrição'}
+                variant={reg.confirmed ? 'ghost' : 'outline'}
+                className={reg.confirmed ? 'text-emerald-600 hover:text-emerald-700' : ''}
+                disabled={confirmReg.isPending}
+                onClick={() => toggleConfirmed(reg)}
               >
-                {certId === reg.id ? <Loader2 className="size-3.5 animate-spin" /> : <Award className="size-3.5" />}
-                <span className="hidden sm:inline">Certificado</span>
-              </Button>
-            )}
-            {(() => {
-              const age = calcAge(reg.userData.birthDate)
-              return age !== null && age < 18 ? (
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  className="h-7 gap-1 px-2 text-xs text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/30"
+                {reg.confirmed ? <CheckCircle2 className="size-3.5" /> : <Circle className="size-3.5" />}
+                <span>{reg.confirmed ? t('admin.courses.confirmed') : t('admin.courses.confirm')}</span>
+              </RowAction>
+              <RowAction
+                label="Baixar ficha de inscrição"
+                disabled={fichaId === reg.userDataId}
+                onClick={() => exportOne(reg.userDataId)}
+              >
+                {fichaId === reg.userDataId ? <Loader2 className="size-3.5 animate-spin" /> : <FileDown className="size-3.5" />}
+                <span className="hidden lg:inline">{t('admin.courses.ficha')}</span>
+              </RowAction>
+              {reg.confirmed && (
+                <RowAction
+                  label="Emitir certificado de conclusão"
+                  className="text-amber-600 hover:text-amber-700 hover:bg-amber-50 dark:hover:bg-amber-950/30"
+                  disabled={certId === reg.id}
+                  onClick={() => certOne(reg)}
+                >
+                  {certId === reg.id ? <Loader2 className="size-3.5 animate-spin" /> : <Award className="size-3.5" />}
+                  <span className="hidden lg:inline">Certificado</span>
+                </RowAction>
+              )}
+              {minor && (
+                <RowAction
+                  label="Baixar termo de autorização do responsável (menor de idade)"
+                  className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/30"
                   onClick={baixarAutorizacao}
-                  title="Baixar termo de autorização do responsável (menor de idade)"
                 >
                   <FileDown className="size-3.5" />
-                  <span className="hidden sm:inline">Autorização</span>
-                </Button>
-              ) : null
-            })()}
-            {reg.ficha ? (
-              <>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  className="h-7 gap-1 px-2 text-xs text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-950/30"
-                  disabled={fichaBusyId === reg.id}
-                  onClick={() => verFicha(reg.id)}
-                  title={`Ver ficha anexada (${reg.ficha.filename})`}
-                >
-                  {fichaBusyId === reg.id ? <Loader2 className="size-3.5 animate-spin" /> : <Eye className="size-3.5" />}
-                  <span className="hidden sm:inline">Ver ficha</span>
-                </Button>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  className="h-7 px-2 text-xs text-muted-foreground hover:text-destructive"
-                  disabled={fichaBusyId === reg.id}
-                  onClick={() => removerFicha(reg.id)}
-                  title="Remover ficha anexada"
-                >
-                  <X className="size-3.5" />
-                </Button>
-              </>
-            ) : (
-              <Button asChild size="sm" variant="ghost" className="h-7 gap-1 px-2 text-xs">
-                <label className={fichaBusyId === reg.id ? 'pointer-events-none opacity-60' : 'cursor-pointer'}>
-                  {fichaBusyId === reg.id ? <Loader2 className="size-3.5 animate-spin" /> : <Paperclip className="size-3.5" />}
-                  <span className="hidden sm:inline">Anexar ficha</span>
-                  <input
-                    type="file"
-                    accept="application/pdf"
-                    className="hidden"
-                    onChange={e => {
-                      const input = e.currentTarget
-                      const f = input.files?.[0]
-                      input.value = ''
-                      anexarFicha(reg.id, f)
-                    }}
-                  />
-                </label>
-              </Button>
-            )}
-            {confirmId === reg.id ? (
-              <div className="flex items-center gap-1">
-                <Button
-                  size="sm"
-                  variant="destructive"
-                  className="h-7 px-2 text-xs"
-                  disabled={cancelReg.isPending}
-                  onClick={async () => {
-                    await cancelReg.mutateAsync(reg.id)
-                    toast.success('Inscrição cancelada.')
-                    setConfirmId(null)
-                  }}
-                >
-                  {t('admin.courses.cancelRegistrationConfirm')}
-                </Button>
-                <Button size="sm" variant="ghost" className="h-7 px-2" onClick={() => setConfirmId(null)}>
-                  <X className="size-3" />
-                </Button>
-              </div>
-            ) : (
-              <Button
-                size="sm"
-                variant="ghost"
-                className="h-7 px-2 text-destructive hover:text-destructive hover:bg-destructive/10"
-                onClick={() => setConfirmId(reg.id)}
+                  <span className="hidden lg:inline">Autorização</span>
+                </RowAction>
+              )}
+              {reg.ficha ? (
+                <>
+                  <RowAction
+                    label={`Ver ficha anexada (${reg.ficha.filename})`}
+                    className="text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-950/30"
+                    disabled={fichaBusyId === reg.id}
+                    onClick={() => verFicha(reg.id)}
+                  >
+                    {fichaBusyId === reg.id ? <Loader2 className="size-3.5 animate-spin" /> : <Eye className="size-3.5" />}
+                    <span className="hidden lg:inline">Ver ficha</span>
+                  </RowAction>
+                  <RowAction
+                    label="Remover ficha anexada"
+                    className="text-muted-foreground hover:text-destructive"
+                    disabled={fichaBusyId === reg.id}
+                    onClick={() => removerFicha(reg.id)}
+                  >
+                    <X className="size-3.5" />
+                  </RowAction>
+                </>
+              ) : (
+                <RowAction label="Anexar ficha preenchida (PDF)" asChild>
+                  <label className={fichaBusyId === reg.id ? 'pointer-events-none opacity-60' : 'cursor-pointer'}>
+                    {fichaBusyId === reg.id ? <Loader2 className="size-3.5 animate-spin" /> : <Paperclip className="size-3.5" />}
+                    <span className="hidden lg:inline">Anexar ficha</span>
+                    <input
+                      type="file"
+                      accept="application/pdf"
+                      className="hidden"
+                      onChange={e => {
+                        const input = e.currentTarget
+                        const f = input.files?.[0]
+                        input.value = ''
+                        anexarFicha(reg.id, f)
+                      }}
+                    />
+                  </label>
+                </RowAction>
+              )}
+              <RowAction
+                label="Cancelar inscrição"
+                className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                onClick={() => setCancelTarget(reg)}
               >
                 <UserX className="size-3.5" />
-              </Button>
-            )}
+              </RowAction>
+            </div>
           </div>
-        </div>
-      ))}
+        )
+      })}
 
       {totalPages > 1 && (
         <Pagination page={page} totalPages={totalPages} total={total} limit={limit} onPageChange={setPage} />
       )}
+
+      <AddRegistrationDialog
+        courseId={courseId}
+        open={addOpen}
+        onClose={() => setAddOpen(false)}
+        registeredIds={registeredIds}
+      />
+
+      <DeleteConfirmDialog
+        open={!!cancelTarget}
+        onOpenChange={open => { if (!open && !cancelReg.isPending) setCancelTarget(null) }}
+        title="Cancelar inscrição"
+        description={<>Cancelar a inscrição de <strong>{cancelTarget?.userData.name}</strong> neste curso?</>}
+        onConfirm={handleCancel}
+        pending={cancelReg.isPending}
+        confirmLabel={t('admin.courses.cancelRegistrationConfirm')}
+        pendingLabel="Cancelando..."
+        cancelLabel="Voltar"
+      />
+
+      <AlertDialog open={confirmAllOpen} onOpenChange={open => { if (!confirmAll.isPending) setConfirmAllOpen(open) }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmar todas as inscrições</AlertDialogTitle>
+            <AlertDialogDescription>
+              {pendingCount === 1
+                ? '1 inscrição ainda não confirmada será confirmada.'
+                : `${pendingCount} inscrições ainda não confirmadas serão confirmadas.`}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={confirmAll.isPending}>Voltar</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={confirmAll.isPending}
+              onClick={e => { e.preventDefault(); handleConfirmAll() }}
+            >
+              {confirmAll.isPending ? 'Confirmando...' : `Confirmar ${pendingCount}`}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }
@@ -765,11 +948,13 @@ function ViewDialog({
   course,
   onClose,
   onEdit,
+  onDuplicate,
   onDelete,
 }: {
   course: CourseCardItem | null
   onClose: () => void
   onEdit: (c: Course) => void
+  onDuplicate: (c: Course) => void
   onDelete: (id: string, title: string) => void
 }) {
   const [galleryIndex, setGalleryIndex] = useState(0)
@@ -819,6 +1004,21 @@ function ViewDialog({
 
   if (!course) return null
 
+  // Cabeçalho com os dados ao vivo (status muda ao iniciar o curso; contagem ao
+  // cancelar/inscrever) — o card aberto é só uma foto do momento do clique.
+  const status = liveCourse?.status ?? course.status
+  const title = liveCourse?.title ?? course.title
+  const eventNumber = liveCourse ? liveCourse.eventNumber : course.eventNumber
+  const enrolled = liveCourse?.enrolled ?? course.enrolled
+  const photoCount = liveCourse ? (liveCourse.photoGallery?.length ?? 0) : (course.photoCount ?? 0)
+  const publicPath = `/cursos/${course.id}`
+
+  async function copyPublicLink() {
+    const ok = await copyText(`${window.location.origin}${publicPath}`)
+    if (ok) toast.success('Link do curso copiado.')
+    else toast.error('Não foi possível copiar o link.')
+  }
+
   const coverImage = liveCourse?.coverImage ?? course.coverImage
   const allImages = [
     ...(coverImage ? [{ url: coverImage, caption: '' }] : []),
@@ -837,7 +1037,7 @@ function ViewDialog({
             <>
               <img
                 src={allImages[galleryIndex]?.url}
-                alt={course.title}
+                alt={title}
                 className="h-full w-full object-cover"
               />
               {totalImages > 1 && (
@@ -889,28 +1089,45 @@ function ViewDialog({
         <Tabs defaultValue="details">
           <div className="px-6 pt-4">
             <div className="flex items-center gap-2 mb-1">
-              <StatusBadge status={course.status} />
-              {course.eventNumber && (
-                <span className="text-sm text-muted-foreground font-mono">#{course.eventNumber}</span>
+              <StatusBadge status={status} />
+              {eventNumber && (
+                <span className="text-sm text-muted-foreground font-mono">#{eventNumber}</span>
               )}
             </div>
-            <DialogTitle className="text-2xl font-bold text-foreground mb-0.5">{course.title}</DialogTitle>
+            <DialogTitle className="text-2xl font-bold text-foreground mb-2">{title}</DialogTitle>
+
+            <div className="flex flex-wrap items-center gap-2 mb-3">
+              {status === 'UNPUBLISHED' ? (
+                <p className="text-xs text-muted-foreground">Rascunho: a página deste curso não abre no site.</p>
+              ) : (
+                <>
+                  <Button asChild variant="outline" size="sm" className="h-8 gap-1.5">
+                    <a href={publicPath} target="_blank" rel="noopener noreferrer">
+                      <ExternalLink className="size-3.5" /> Ver no site
+                    </a>
+                  </Button>
+                  <Button variant="outline" size="sm" className="h-8 gap-1.5" onClick={copyPublicLink}>
+                    <Link2 className="size-3.5" /> Copiar link
+                  </Button>
+                </>
+              )}
+            </div>
 
             <TabsList className="mb-0">
               <TabsTrigger value="details">{t('admin.courses.tabs.info')}</TabsTrigger>
               <TabsTrigger value="registrations">
                 {t('admin.courses.registrations')}
-                {course.enrolled > 0 && (
+                {enrolled > 0 && (
                   <span className="ml-1.5 rounded-full bg-muted px-1.5 py-0.5 text-[10px]">
-                    {course.enrolled}
+                    {enrolled}
                   </span>
                 )}
               </TabsTrigger>
               <TabsTrigger value="gallery">
                 {t('admin.courses.tabs.images')}
-                {(course.photoCount ?? 0) > 0 && (
+                {photoCount > 0 && (
                   <span className="ml-1.5 rounded-full bg-muted px-1.5 py-0.5 text-[10px]">
-                    {course.photoCount}
+                    {photoCount}
                   </span>
                 )}
               </TabsTrigger>
@@ -934,8 +1151,8 @@ function ViewDialog({
                 </div>
                 <Skeleton className="h-4 w-2/3" />
                 <Skeleton className="h-4 w-1/2" />
-                <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
-                  {Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-16 rounded-xl" />)}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-16 rounded-xl" />)}
                 </div>
               </div>
             ) : liveCourse ? (
@@ -979,13 +1196,11 @@ function ViewDialog({
                   )}
                 </div>
 
-                <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 mb-6">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-6">
                   {[
                     { label: t('admin.courses.registrations'), value: liveCourse.enrolled, cls: 'bg-primary/10 text-primary' },
-                    { label: 'Pré-insc.', value: liveCourse.preEnrolled ?? 0, cls: 'bg-amber-500/10 text-amber-600' },
                     { label: t('admin.courses.form.minStudents'), value: liveCourse.minStudents ?? '—', cls: 'bg-muted text-foreground' },
                     { label: 'Máx.', value: liveCourse.maxStudents, cls: 'bg-muted text-foreground' },
-                    { label: 'Espera', value: liveCourse.waitlist ?? 0, cls: 'bg-muted text-foreground' },
                     { label: 'Dias', value: daysUntil, cls: `bg-muted ${daysUntil < 0 ? 'text-destructive' : 'text-foreground'}` },
                   ].map(({ label, value, cls }) => (
                     <div key={label} className={`${cls} rounded-xl p-3 text-center`}>
@@ -1002,8 +1217,11 @@ function ViewDialog({
                     <h4 className="font-semibold mb-3 text-foreground flex items-center gap-2">
                       <BookOpen className="size-4" /> {t('admin.courses.form.fullDescription')}
                     </h4>
-                    <div className="bg-muted/30 p-4 rounded-xl text-sm text-muted-foreground whitespace-pre-line leading-relaxed overflow-hidden wrap-anywhere">
-                      {liveCourse.description}
+                    {/* Mesmo markdown da página pública do curso */}
+                    <div className="bg-muted/30 p-4 rounded-xl overflow-hidden wrap-anywhere prose prose-sm dark:prose-invert max-w-none text-muted-foreground prose-headings:text-foreground prose-headings:font-semibold prose-strong:text-foreground prose-a:text-primary">
+                      <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                        {liveCourse.description}
+                      </ReactMarkdown>
                     </div>
                   </div>
                 )}
@@ -1027,7 +1245,7 @@ function ViewDialog({
           </TabsContent>
 
           <TabsContent value="registrations" className="px-6 pb-4 mt-4">
-            <RegistrationsTab courseId={course.id} eventNumber={course.eventNumber} courseTitle={course.title} courseStatus={liveCourse?.status ?? course.status} />
+            <RegistrationsTab courseId={course.id} eventNumber={eventNumber} courseTitle={title} courseStatus={status} />
           </TabsContent>
 
           <TabsContent value="gallery" className="px-6 pb-4 mt-4">
@@ -1137,6 +1355,15 @@ function ViewDialog({
             >
               <ImageUp className="size-4" /> {t('admin.courses.bannerUpload')}
             </PermissionButton>
+            <PermissionButton
+              allowed={can('CREATE_COURSE')}
+              noPermissionMessage="Sem permissão para criar cursos"
+              variant="outline"
+              disabled={!liveCourse}
+              onClick={() => { if (liveCourse) { onDuplicate(liveCourse); onClose() } }}
+            >
+              <CopyPlus className="size-4" /> Duplicar
+            </PermissionButton>
             <ExportOneButton dataset="courses" id={course.id} label="Exportar curso" />
           </div>
           <div className="flex gap-2">
@@ -1145,7 +1372,7 @@ function ViewDialog({
               allowed={can('DELETE_COURSE')}
               noPermissionMessage="Sem permissão para excluir cursos"
               variant="outline"
-              onClick={() => onDelete(course.id, course.title)}
+              onClick={() => onDelete(course.id, title)}
             >
               <Trash2 className="size-4 text-destructive" /> {t('common.delete')}
             </PermissionButton>
@@ -1175,707 +1402,6 @@ function ViewDialog({
   )
 }
 
-// ─── create / edit form dialog ────────────────────────────────────────────────
-
-const emptyFormDefaults: CourseFormData = {
-  name: '', description: '', roomId: '', status: 'UNPUBLISHED',
-  startDate: '', startHour: '', endDate: '', endHour: '',
-  price: undefined, workloadHours: undefined,
-  regDeadlineDate: '', regDeadlineHour: '', observations: '', eventNumber: '', minStudents: undefined,
-}
-
-function courseToForm(c: Course): CourseFormData {
-  return {
-    name: c.title,
-    description: c.description ?? '',
-    roomId: '',
-    status: c.status,
-    startDate: c.startDate ? c.startDate.slice(0, 10) : '',
-    startHour: c.startTime ?? '',
-    endDate: c.endDate ? c.endDate.slice(0, 10) : '',
-    endHour: c.endTime ?? '',
-    price: c.price ?? undefined,
-    workloadHours: c.workloadHours ?? undefined,
-    regDeadlineDate: c.registrationDeadline ? c.registrationDeadline.slice(0, 10) : '',
-    regDeadlineHour: c.registrationDeadline ? c.registrationDeadline.slice(11, 16) : '',
-    observations: c.observations ?? '',
-    eventNumber: c.eventNumber ?? '',
-    minStudents: c.minStudents ?? undefined,
-  }
-}
-
-function toISO(date: string, hour: string) {
-  if (!date) return undefined
-  // Hora "de parede", sem fuso: envia como se fosse UTC porque o backend devolve
-  // a hora fatiando o ISO em UTC. Converter do fuso local (new Date(...).toISOString())
-  // deslocava a hora no round-trip — digitava 08:00 e voltava 11:00.
-  return `${date}T${hour || '00:00'}:00.000Z`
-}
-
-function BannerTab({ courseId }: { courseId: string | null }) {
-  const { data: editing } = useAdminCourse(courseId ?? '')
-  const uploadBanner = useUploadBanner(courseId ?? '')
-  const uploadPhoto = useUploadGalleryPhoto(courseId ?? '')
-  const deletePhoto = useDeleteGalleryPhoto(courseId ?? '')
-  const bannerRef = useRef<HTMLInputElement>(null)
-  const photoRef = useRef<HTMLInputElement>(null)
-  const [bannerError, setBannerError] = useState<string | null>(null)
-  const [photoError, setPhotoError] = useState<string | null>(null)
-  const [bannerCacheBust, setBannerCacheBust] = useState(0)
-  const { t } = useTranslation()
-
-  if (!courseId || !editing) {
-    return (
-      <div className="flex flex-col items-center justify-center py-12 text-center border-2 border-dashed rounded-xl">
-        <Upload className="size-10 text-muted-foreground/30 mb-3" />
-        <p className="text-sm font-medium text-foreground">{t('admin.courses.form.save')}</p>
-        <p className="text-xs text-muted-foreground mt-1">{t('common.loading')}</p>
-      </div>
-    )
-  }
-
-  async function handleBanner(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0]
-    if (!file) return
-    setBannerError(null)
-    try {
-      await uploadBanner.mutateAsync(file)
-      setBannerCacheBust(v => v + 1)
-      toast.success('Banner atualizado!')
-    } catch (err: unknown) {
-      const msg = apiErrorMessage(err, 'Upload error.')
-      setBannerError(msg)
-      toast.error(msg)
-    }
-    e.target.value = ''
-  }
-
-  async function handlePhoto(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0]
-    if (!file) return
-    setPhotoError(null)
-    try {
-      await uploadPhoto.mutateAsync(file)
-      toast.success('Foto adicionada!')
-    } catch (err: unknown) {
-      const msg = apiErrorMessage(err, 'Upload error.')
-      setPhotoError(msg)
-      toast.error(msg)
-    }
-    e.target.value = ''
-  }
-
-  const photos = editing.photoGallery ?? []
-
-  return (
-    <div className="flex flex-col gap-6">
-      {/* Banner */}
-      <div className="flex flex-col gap-3">
-        <Label>{t('admin.courses.bannerUpload')}</Label>
-        <div
-          className="relative h-40 rounded-xl overflow-hidden bg-muted flex items-center justify-center border border-border group cursor-pointer"
-          onClick={() => bannerRef.current?.click()}
-        >
-          {editing.coverImage
-            ? <img src={`${editing.coverImage}${bannerCacheBust ? `?v=${bannerCacheBust}` : ''}`} alt="Banner" className="h-full w-full object-cover" />
-            : <div className="flex flex-col items-center gap-2 text-muted-foreground/40">
-                <ImageUp className="size-10" />
-              </div>
-          }
-          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-            <Button variant="secondary" size="sm" type="button" disabled={uploadBanner.isPending}>
-              <ImageUp className="size-4" />
-              {t('admin.courses.bannerUpload')}
-            </Button>
-          </div>
-        </div>
-        <input ref={bannerRef} type="file" accept="image/*" className="hidden" onChange={handleBanner} />
-        <ErrorAlert message={bannerError} />
-      </div>
-
-      {/* Gallery */}
-      <div className="flex flex-col gap-3 border-t pt-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <Label className="flex items-center gap-2"><Images className="size-4" /> {t('admin.courses.tabs.images')}</Label>
-            <p className="text-xs text-muted-foreground mt-0.5">{photos.length} photo{photos.length !== 1 ? 's' : ''}</p>
-          </div>
-          <Button size="sm" variant="outline" type="button" onClick={() => photoRef.current?.click()} disabled={uploadPhoto.isPending}>
-            <ImagePlus className="size-4" />
-            {t('admin.courses.galleryUpload')}
-          </Button>
-        </div>
-        <input ref={photoRef} type="file" accept="image/*" className="hidden" onChange={handlePhoto} />
-        <ErrorAlert message={photoError} />
-
-        {photos.length === 0
-          ? <div className="border-2 border-dashed rounded-xl p-8 text-center text-muted-foreground">
-              <Images className="size-10 mx-auto mb-2 opacity-40" />
-              <p className="text-sm">{t('admin.courses.galleryEmpty')}</p>
-            </div>
-          : <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-              {photos.map(photo => (
-                <div key={photo.id} className="relative aspect-video rounded-xl overflow-hidden bg-muted group">
-                  <img src={photo.url} alt={photo.caption || 'Photo'} className="h-full w-full object-cover" />
-                  <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                    <button
-                      type="button"
-                      onClick={() => deletePhoto.mutate(photo.id)}
-                      disabled={deletePhoto.isPending}
-                      className="size-8 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center"
-                    >
-                      <Trash2 className="size-4" />
-                    </button>
-                  </div>
-                  {photo.caption && (
-                    <div className="absolute bottom-0 left-0 right-0 bg-black/60 p-1.5">
-                      <p className="text-white text-xs truncate">{photo.caption}</p>
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-        }
-      </div>
-    </div>
-  )
-}
-
-// Imagens escolhidas antes do curso existir — sobem logo após o create.
-export type StagedImage = { file: File; url: string }
-
-function StagedImagesTab({
-  stagedBanner, onBannerChange, stagedPhotos, onPhotosChange,
-}: {
-  stagedBanner: StagedImage | null
-  onBannerChange: (img: StagedImage | null) => void
-  stagedPhotos: StagedImage[]
-  onPhotosChange: (imgs: StagedImage[]) => void
-}) {
-  const bannerRef = useRef<HTMLInputElement>(null)
-  const photoRef = useRef<HTMLInputElement>(null)
-  const { t } = useTranslation()
-
-  function pickBanner(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0]
-    if (!file) return
-    if (stagedBanner) URL.revokeObjectURL(stagedBanner.url)
-    onBannerChange({ file, url: URL.createObjectURL(file) })
-    e.target.value = ''
-  }
-
-  function pickPhotos(e: React.ChangeEvent<HTMLInputElement>) {
-    const files = Array.from(e.target.files ?? [])
-    if (!files.length) return
-    onPhotosChange([...stagedPhotos, ...files.map(file => ({ file, url: URL.createObjectURL(file) }))])
-    e.target.value = ''
-  }
-
-  function removePhoto(url: string) {
-    URL.revokeObjectURL(url)
-    onPhotosChange(stagedPhotos.filter(p => p.url !== url))
-  }
-
-  return (
-    <div className="flex flex-col gap-6">
-      <p className="text-xs text-muted-foreground bg-muted/50 rounded-lg px-3 py-2">
-        As imagens serão enviadas automaticamente assim que o curso for criado.
-      </p>
-
-      {/* Banner */}
-      <div className="flex flex-col gap-3">
-        <Label>{t('admin.courses.bannerUpload')}</Label>
-        <div
-          className="relative h-40 rounded-xl overflow-hidden bg-muted flex items-center justify-center border border-border group cursor-pointer"
-          onClick={() => bannerRef.current?.click()}
-        >
-          {stagedBanner
-            ? <img src={stagedBanner.url} alt="Banner" className="h-full w-full object-cover" />
-            : <div className="flex flex-col items-center gap-2 text-muted-foreground/40">
-                <ImageUp className="size-10" />
-              </div>
-          }
-          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-            <Button variant="secondary" size="sm" type="button">
-              <ImageUp className="size-4" />
-              {t('admin.courses.bannerUpload')}
-            </Button>
-          </div>
-        </div>
-        <input ref={bannerRef} type="file" accept="image/*" className="hidden" onChange={pickBanner} />
-      </div>
-
-      {/* Gallery */}
-      <div className="flex flex-col gap-3 border-t pt-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <Label className="flex items-center gap-2"><Images className="size-4" /> {t('admin.courses.tabs.images')}</Label>
-            <p className="text-xs text-muted-foreground mt-0.5">{stagedPhotos.length} photo{stagedPhotos.length !== 1 ? 's' : ''}</p>
-          </div>
-          <Button size="sm" variant="outline" type="button" onClick={() => photoRef.current?.click()}>
-            <ImagePlus className="size-4" />
-            {t('admin.courses.galleryUpload')}
-          </Button>
-        </div>
-        <input ref={photoRef} type="file" accept="image/*" multiple className="hidden" onChange={pickPhotos} />
-        {stagedPhotos.length === 0
-          ? <div className="border-2 border-dashed rounded-xl p-8 text-center text-muted-foreground">
-              <Images className="size-10 mx-auto mb-2 opacity-40" />
-              <p className="text-sm">{t('admin.courses.galleryEmpty')}</p>
-            </div>
-          : <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-              {stagedPhotos.map(photo => (
-                <div key={photo.url} className="relative aspect-video rounded-xl overflow-hidden bg-muted group">
-                  <img src={photo.url} alt={photo.file.name} className="h-full w-full object-cover" />
-                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                    <button
-                      type="button"
-                      onClick={() => removePhoto(photo.url)}
-                      className="size-8 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center"
-                    >
-                      <Trash2 className="size-4" />
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-        }
-      </div>
-    </div>
-  )
-}
-
-type CourseFormDialogProps = {
-  open: boolean
-  editing: Course | null
-  onClose: () => void
-}
-
-export function CourseFormDialog(props: CourseFormDialogProps) {
-  // Cada abertura é uma sessão nova (formulário com os dados do curso ou vazio,
-  // sem imagens pendentes). Fechar não troca a chave, então a animação de saída
-  // continua com o mesmo conteúdo.
-  const [session, setSession] = useState(0)
-  const [wasOpen, setWasOpen] = useState(props.open)
-  if (props.open !== wasOpen) {
-    setWasOpen(props.open)
-    if (props.open) setSession(s => s + 1)
-  }
-  return <CourseFormDialogSession key={session} {...props} />
-}
-
-function CourseFormDialogSession({ open, editing, onClose }: CourseFormDialogProps) {
-  const { data: rooms, isLoading: roomsLoading } = useRooms()
-  const createCourse = useCreateCourse()
-  const updateCourse = useUpdateCourse(editing?.id ?? '')
-  const { t } = useTranslation()
-
-  const isCreating = !editing
-  const queryClient = useQueryClient()
-
-  // imagens escolhidas antes do curso existir (modo criação)
-  const [stagedBanner, setStagedBanner] = useState<StagedImage | null>(null)
-  const [stagedPhotos, setStagedPhotos] = useState<StagedImage[]>([])
-  // Libera as prévias (object URLs) quando esta sessão do formulário sai da tela.
-  const stagedRef = useRef({ stagedBanner, stagedPhotos })
-  useEffect(() => { stagedRef.current = { stagedBanner, stagedPhotos } }, [stagedBanner, stagedPhotos])
-  useEffect(() => () => {
-    const { stagedBanner: banner, stagedPhotos: photos } = stagedRef.current
-    if (banner) URL.revokeObjectURL(banner.url)
-    for (const photo of photos) URL.revokeObjectURL(photo.url)
-  }, [])
-  const [uploadingStaged, setUploadingStaged] = useState(false)
-  const [confirmClose, setConfirmClose] = useState(false)
-
-  const form = useForm<CourseFormData>({
-    resolver: zodResolver(courseBaseSchema),
-    mode: 'onTouched',
-    defaultValues: editing ? courseToForm(editing) : emptyFormDefaults,
-  })
-
-  const isPending = createCourse.isPending || updateCourse.isPending || uploadingStaged
-
-  // Guard de alterações não salvas ao fechar.
-  const formDirty = form.formState.isDirty || !!stagedBanner || stagedPhotos.length > 0
-  function requestClose() {
-    if (formDirty && !isPending) setConfirmClose(true)
-    else onClose()
-  }
-
-  async function onSubmit(data: CourseFormData) {
-    if (isCreating && !data.roomId) {
-      form.setError('roomId', { message: t('validation.roomRequired') })
-      return
-    }
-    const body = {
-      name: data.name,
-      description: data.description ?? '',
-      status: data.status,
-      startTime: toISO(data.startDate, data.startHour)!,
-      endTime: toISO(data.endDate, data.endHour)!,
-      ...(data.roomId ? { roomId: data.roomId } : {}),
-      ...(data.price != null ? { price: data.price } : {}),
-      ...(data.workloadHours != null ? { workloadHours: data.workloadHours } : {}),
-      ...(data.regDeadlineDate ? { registrationDeadline: toISO(data.regDeadlineDate, data.regDeadlineHour ?? '') } : {}),
-      ...(data.observations ? { observations: data.observations } : {}),
-      ...(data.eventNumber ? { eventNumber: data.eventNumber } : {}),
-      ...(data.minStudents != null ? { minStudents: data.minStudents } : {}),
-    }
-    try {
-      if (editing) {
-        await updateCourse.mutateAsync(body)
-      } else {
-        const res = await createCourse.mutateAsync({ ...body, roomId: data.roomId! })
-        const created = await res.json().catch(() => null) as { id?: string } | null
-
-        // sobe as imagens escolhidas antes do curso existir
-        if (created?.id && (stagedBanner || stagedPhotos.length > 0)) {
-          setUploadingStaged(true)
-          const failed: string[] = []
-          if (stagedBanner) {
-            try { await apiUpload(`/courses/${created.id}/banner`, stagedBanner.file) }
-            catch { failed.push('banner') }
-          }
-          for (const photo of stagedPhotos) {
-            try { await apiUpload(`/courses/${created.id}/gallery`, photo.file) }
-            catch { failed.push(photo.file.name) }
-          }
-          setUploadingStaged(false)
-          queryClient.invalidateQueries({ queryKey: ['admin', 'courses'] })
-          queryClient.invalidateQueries({ queryKey: ['courses'] })
-          if (failed.length) {
-            // upload parcial: avisa e NÃO dispara o toast de sucesso
-            toast.error(`Curso criado, mas falhou o upload de: ${failed.join(', ')}. Adicione pela edição.`)
-            onClose()
-            return
-          }
-        }
-      }
-      toast.success(editing ? 'Curso atualizado com sucesso!' : 'Curso criado com sucesso!')
-      onClose()
-    } catch (e: unknown) {
-      setUploadingStaged(false)
-      const msg = apiErrorMessage(e, t('common.error'))
-      form.setError('root', { message: msg })
-      toast.error(msg)
-    }
-  }
-
-  return (
-    <>
-    <Dialog open={open} onOpenChange={isOpen => { if (!isOpen) requestClose() }}>
-      <DialogContent className="sm:max-w-3xl max-h-[90vh] overflow-hidden flex flex-col" showCloseButton={false}>
-        <DialogHeader className="px-6 pt-6 pb-4 border-b shrink-0">
-          <DialogTitle className="text-xl">
-            {editing ? t('admin.courses.editCourse') : t('admin.courses.newCourse')}
-          </DialogTitle>
-        </DialogHeader>
-
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="flex-1 overflow-hidden flex flex-col">
-            <Tabs defaultValue="info" className="flex-1 overflow-hidden flex flex-col">
-              <TabsList className="grid w-full grid-cols-3 mx-6 mt-4 max-w-[calc(100%-3rem)]">
-                <TabsTrigger value="info">{t('admin.courses.tabs.info')}</TabsTrigger>
-                <TabsTrigger value="description">{t('admin.courses.tabs.description')}</TabsTrigger>
-                <TabsTrigger value="images">{t('admin.courses.tabs.images')}</TabsTrigger>
-              </TabsList>
-
-              <TabsContent value="info" className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <FormField control={form.control} name="status" render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>{t('admin.courses.form.status')}</FormLabel>
-                      <Select value={field.value} onValueChange={field.onChange}>
-                        <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
-                        <SelectContent>
-                          <SelectItem value="UNPUBLISHED">{t('admin.courses.form.statusDraft')}</SelectItem>
-                          <SelectItem value="PRIVATE">{t('admin.courses.form.statusPrivate')}</SelectItem>
-                          <SelectItem value="PUBLIC">{t('admin.courses.form.statusPublic')}</SelectItem>
-                          {field.value === 'IN_PROGRESS' && (
-                            <SelectItem value="IN_PROGRESS">{t('admin.courses.form.statusInProgress')}</SelectItem>
-                          )}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )} />
-                  <FormField control={form.control} name="eventNumber" render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>{t('admin.courses.form.eventNumber')}</FormLabel>
-                      <FormControl><Input {...field} placeholder="Ex: 261676" /></FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )} />
-                </div>
-
-                <FormField control={form.control} name="name" render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>{t('admin.courses.form.title')}</FormLabel>
-                    <FormControl><Input {...field} onChange={e => field.onChange(upperNoAccents(e.target.value))} placeholder="Ex: Manejo Integrado de Pragas no Milho" /></FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )} />
-
-                <FormField control={form.control} name="roomId" render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>{t('admin.courses.form.room')}</FormLabel>
-                    <Select value={field.value ?? ''} onValueChange={field.onChange}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder={roomsLoading ? t('common.loading') : t('admin.courses.form.selectRoom')} />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {rooms?.map(r => (
-                          <SelectItem key={r.id} value={r.id}>{r.name} (cap. {r.maxCapacity})</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )} />
-
-                <div className="grid grid-cols-2 gap-4">
-                  <FormItem>
-                    <FormLabel>{t('admin.courses.form.startDate')}</FormLabel>
-                    <div className="grid grid-cols-[1fr_auto] gap-2">
-                      <FormField control={form.control} name="startDate" render={({ field }) => (
-                        <DatePicker value={field.value ?? ''} onChange={field.onChange} />
-                      )} />
-                      <FormField control={form.control} name="startHour" render={({ field }) => (
-                        <FormControl><Input type="time" {...field} className="w-27.5" /></FormControl>
-                      )} />
-                    </div>
-                    <FormMessage>{form.formState.errors.startDate?.message ?? form.formState.errors.startHour?.message}</FormMessage>
-                  </FormItem>
-                  <FormItem>
-                    <FormLabel>{t('admin.courses.form.endDate')}</FormLabel>
-                    <div className="grid grid-cols-[1fr_auto] gap-2">
-                      <FormField control={form.control} name="endDate" render={({ field }) => (
-                        <DatePicker value={field.value ?? ''} onChange={field.onChange} />
-                      )} />
-                      <FormField control={form.control} name="endHour" render={({ field }) => (
-                        <FormControl><Input type="time" {...field} className="w-27.5" /></FormControl>
-                      )} />
-                    </div>
-                    <FormMessage>{form.formState.errors.endDate?.message ?? form.formState.errors.endHour?.message}</FormMessage>
-                  </FormItem>
-                </div>
-
-                <FormItem>
-                  <FormLabel>{t('admin.courses.form.regDeadlineDate')}</FormLabel>
-                  <div className="grid grid-cols-[1fr_auto] gap-2">
-                    <FormField control={form.control} name="regDeadlineDate" render={({ field }) => (
-                      <DatePicker value={field.value ?? ''} onChange={field.onChange} />
-                    )} />
-                    <FormField control={form.control} name="regDeadlineHour" render={({ field }) => (
-                      <FormControl><Input type="time" {...field} className="w-27.5" /></FormControl>
-                    )} />
-                  </div>
-                </FormItem>
-
-                <div className="grid grid-cols-3 gap-4">
-                  <FormField control={form.control} name="price" render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>{t('admin.courses.form.price')}</FormLabel>
-                      <FormControl><Input type="number" min="0" step="0.01" placeholder="0" value={field.value ?? ''} onChange={e => field.onChange(e.target.value === '' ? undefined : e.target.valueAsNumber)} onBlur={field.onBlur} ref={field.ref} /></FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )} />
-                  <FormField control={form.control} name="workloadHours" render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>{t('admin.courses.form.workload')}</FormLabel>
-                      <FormControl><Input type="number" min="0" placeholder="0" value={field.value ?? ''} onChange={e => field.onChange(e.target.value === '' ? undefined : e.target.valueAsNumber)} onBlur={field.onBlur} ref={field.ref} /></FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )} />
-                  <FormField control={form.control} name="minStudents" render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>{t('admin.courses.form.minStudents')}</FormLabel>
-                      <FormControl><Input type="number" min="0" placeholder="0" value={field.value ?? ''} onChange={e => field.onChange(e.target.value === '' ? undefined : e.target.valueAsNumber)} onBlur={field.onBlur} ref={field.ref} /></FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )} />
-                </div>
-
-                <FormField control={form.control} name="observations" render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>{t('admin.courses.form.observations')}</FormLabel>
-                    <FormControl><Input {...field} onChange={e => field.onChange(upperNoAccents(e.target.value))} placeholder="Ex: Maiores de 18 anos" /></FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )} />
-              </TabsContent>
-
-              <TabsContent value="description" className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
-                <FormField control={form.control} name="description" render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>{t('admin.courses.form.fullDescription')}</FormLabel>
-                    <FormControl>
-                      <div data-color-mode="light" className="rounded-md overflow-hidden border border-input">
-                        <MDEditor
-                          value={field.value ?? ''}
-                          onChange={val => field.onChange(val ?? '')}
-                          onBlur={field.onBlur}
-                          height={380}
-                          preview="live"
-                          visibleDragbar={false}
-                        />
-                      </div>
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )} />
-              </TabsContent>
-
-              <TabsContent value="images" className="flex-1 overflow-y-auto px-6 py-4">
-                {isCreating
-                  ? <StagedImagesTab
-                      stagedBanner={stagedBanner}
-                      onBannerChange={setStagedBanner}
-                      stagedPhotos={stagedPhotos}
-                      onPhotosChange={setStagedPhotos}
-                    />
-                  : <BannerTab courseId={editing?.id ?? null} />}
-              </TabsContent>
-            </Tabs>
-
-            {form.formState.errors.root && (
-              <div className="px-6"><ErrorAlert message={form.formState.errors.root.message ?? null} /></div>
-            )}
-
-            <div className="px-6 py-4 border-t bg-muted/30 flex justify-end gap-2 shrink-0">
-              <Button type="button" variant="outline" onClick={requestClose}>{t('common.cancel')}</Button>
-              <Button type="submit" disabled={!form.formState.isValid || isPending}>
-                {isPending
-                  ? (isCreating ? t('admin.courses.form.creating') : t('admin.courses.form.saving'))
-                  : (isCreating ? t('admin.courses.form.create') : t('admin.courses.form.save'))}
-              </Button>
-            </div>
-          </form>
-        </Form>
-      </DialogContent>
-    </Dialog>
-    <ConfirmCloseDialog
-      open={confirmClose}
-      onConfirm={() => { setConfirmClose(false); onClose() }}
-      onCancel={() => setConfirmClose(false)}
-    />
-    </>
-  )
-}
-
-// ─── rooms sheet ─────────────────────────────────────────────────────────────
-
-function RoomsSheet() {
-  const { data: rooms, isLoading } = useRooms()
-  const createRoom = useCreateRoom()
-  const [success, setSuccess] = useState(false)
-  const { t } = useTranslation()
-
-  const form = useForm<RoomFormData>({
-    resolver: zodResolver(roomSchema),
-    mode: 'onTouched',
-    defaultValues: { name: '', description: '', maxCapacity: 1 },
-  })
-
-  async function onSubmit(data: RoomFormData) {
-    setSuccess(false)
-    try {
-      await createRoom.mutateAsync(data)
-      form.reset()
-      setSuccess(true)
-      toast.success('Sala criada com sucesso!')
-    } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : t('common.error')
-      form.setError('root', { message: msg })
-      toast.error(msg)
-    }
-  }
-
-  return (
-    <Sheet>
-      <SheetTrigger asChild>
-        <Button variant="outline"><Building2 className="size-4" /> {t('admin.rooms.title')}</Button>
-      </SheetTrigger>
-      <SheetContent className="w-full sm:max-w-md overflow-y-auto">
-        <SheetHeader><SheetTitle>{t('admin.rooms.title')}</SheetTitle></SheetHeader>
-        <div className="flex flex-col gap-6 p-4">
-          <div>
-            <h3 className="text-sm font-semibold mb-2">{t('admin.rooms.title')}</h3>
-            {isLoading && <p className="text-sm text-muted-foreground">{t('common.loading')}</p>}
-            {rooms && (
-              <div className="rounded-lg border overflow-hidden">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Name</TableHead>
-                      <TableHead>Cap.</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {rooms.map(r => (
-                      <TableRow key={r.id}>
-                        <TableCell>
-                          <p className="font-medium">{r.name}</p>
-                          <p className="text-xs text-muted-foreground">{r.description}</p>
-                        </TableCell>
-                        <TableCell className="text-muted-foreground">{r.maxCapacity}</TableCell>
-                      </TableRow>
-                    ))}
-                    {rooms.length === 0 && (
-                      <TableRow><TableCell colSpan={2} className="py-6 text-center text-muted-foreground">{t('common.error')}</TableCell></TableRow>
-                    )}
-                  </TableBody>
-                </Table>
-              </div>
-            )}
-          </div>
-          <div className="border-t pt-4">
-            <h3 className="text-sm font-semibold mb-3">{t('admin.rooms.newRoom')}</h3>
-            <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col gap-3">
-                <FormField control={form.control} name="name" render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>{t('admin.rooms.name')}</FormLabel>
-                    <FormControl>
-                      <NativeSelect {...field} className="h-9">
-                        <option value="">Selecione a sala</option>
-                        {roomNameOptions((rooms ?? []).map(r => r.name)).map(o => (
-                          <option key={o.value} value={o.value} disabled={o.disabled}>{o.label}</option>
-                        ))}
-                      </NativeSelect>
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )} />
-                <FormField control={form.control} name="description" render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>{t('admin.rooms.description')}</FormLabel>
-                    <FormControl><Input {...field} onChange={e => field.onChange(upperNoAccents(e.target.value))} /></FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )} />
-                <FormField control={form.control} name="maxCapacity" render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>{t('admin.rooms.maxCapacity')}</FormLabel>
-                    <FormControl><Input type="number" min="1" value={field.value} onChange={e => field.onChange(e.target.valueAsNumber)} onBlur={field.onBlur} ref={field.ref} /></FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )} />
-                {form.formState.errors.root && <ErrorAlert message={form.formState.errors.root.message ?? null} />}
-                {success && <p className="text-sm text-emerald-600">Room created!</p>}
-                <Button type="submit" disabled={createRoom.isPending}>
-                  {createRoom.isPending ? t('admin.rooms.saving') : t('admin.rooms.save')}
-                </Button>
-              </form>
-            </Form>
-          </div>
-        </div>
-      </SheetContent>
-    </Sheet>
-  )
-}
 
 // ─── route ────────────────────────────────────────────────────────────────────
 
@@ -1885,6 +1411,8 @@ export const Route = createFileRoute('/_admin/admin/cursos/')({
 
 const LIMIT_OPTIONS = [8, 16, 24, 32] as const
 
+type FormDialogState = { open: boolean; editing: Course | null; duplicateOf: Course | null }
+const closedForm: FormDialogState = { open: false, editing: null, duplicateOf: null }
 
 function RouteComponent() {
   const [page, setPage] = useState(1)
@@ -1900,8 +1428,9 @@ function RouteComponent() {
   }
   const { data, isLoading, isError } = useAdminCourses({ page, limit, search: debouncedSearch })
   const deleteCourse = useDeleteCourse()
+  const queryClient = useQueryClient()
   const [viewDialog, setViewDialog] = useState<CourseCardItem | null>(null)
-  const [formDialog, setFormDialog] = useState<{ open: boolean; editing: Course | null }>({ open: false, editing: null })
+  const [formDialog, setFormDialog] = useState<FormDialogState>(closedForm)
   const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; title: string } | null>(null)
   const { t } = useTranslation()
   const { can } = usePermissions()
@@ -1937,6 +1466,18 @@ function RouteComponent() {
     }
   }
 
+  // Editar/duplicar pelo menu do card: o card só tem o resumo, busca o curso completo.
+  async function openFormFromCard(courseId: string, mode: 'edit' | 'duplicate') {
+    try {
+      const course = await queryClient.fetchQuery(adminCourseQuery(courseId))
+      setFormDialog(mode === 'edit'
+        ? { open: true, editing: course, duplicateOf: null }
+        : { open: true, editing: null, duplicateOf: course })
+    } catch (e) {
+      toast.error(apiErrorMessage(e, 'Não foi possível abrir o curso.'))
+    }
+  }
+
   return (
     <div className="p-6 flex flex-col gap-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
@@ -1947,11 +1488,15 @@ function RouteComponent() {
           </p>
         </div>
         <div className="flex gap-2 shrink-0">
-          {can('CREATE_COURSE') && <RoomsSheet />}
+          {can('READ_COURSE') && (
+            <Button asChild variant="outline">
+              <Link to="/admin/salas"><Building2 className="size-4" /> {t('admin.rooms.title')}</Link>
+            </Button>
+          )}
           <PermissionButton
             allowed={can('CREATE_COURSE')}
             noPermissionMessage="Sem permissão para criar cursos"
-            onClick={() => setFormDialog({ open: true, editing: null })}
+            onClick={() => setFormDialog({ open: true, editing: null, duplicateOf: null })}
           >
             <Plus className="size-4" /> {t('admin.courses.newCourse')}
           </PermissionButton>
@@ -2028,7 +1573,7 @@ function RouteComponent() {
           title={search ? t('courses.notFound') : t('admin.courses.empty')}
           description={search ? t('courses.notFoundHint') : t('admin.courses.emptyHint')}
           action={!search ? (
-            <Button onClick={() => setFormDialog({ open: true, editing: null })}>
+            <Button onClick={() => setFormDialog({ open: true, editing: null, duplicateOf: null })}>
               <Plus className="size-4" /> {t('admin.courses.newCourse')}
             </Button>
           ) : undefined}
@@ -2042,6 +1587,8 @@ function RouteComponent() {
               key={course.id}
               course={course}
               onClick={() => setViewDialog(course)}
+              onEdit={can('UPDATE_COURSE') ? () => openFormFromCard(course.id, 'edit') : undefined}
+              onDuplicate={can('CREATE_COURSE') ? () => openFormFromCard(course.id, 'duplicate') : undefined}
               selected={selection.isSelected(course.id)}
               onToggleSelect={() => selection.toggle(course.id)}
             />
@@ -2066,14 +1613,16 @@ function RouteComponent() {
         key={viewDialog?.id ?? ''}
         course={viewDialog}
         onClose={() => setViewDialog(null)}
-        onEdit={c => setFormDialog({ open: true, editing: c })}
+        onEdit={c => setFormDialog({ open: true, editing: c, duplicateOf: null })}
+        onDuplicate={c => setFormDialog({ open: true, editing: null, duplicateOf: c })}
         onDelete={(id, title) => setDeleteConfirm({ id, title })}
       />
 
       <CourseFormDialog
         open={formDialog.open}
         editing={formDialog.editing}
-        onClose={() => setFormDialog({ open: false, editing: null })}
+        duplicateOf={formDialog.duplicateOf}
+        onClose={() => setFormDialog(closedForm)}
       />
 
       <DeleteConfirmDialog

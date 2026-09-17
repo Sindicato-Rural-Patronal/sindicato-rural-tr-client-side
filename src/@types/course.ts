@@ -23,6 +23,8 @@ export type Course = {
   preEnrolled: number
   waitlist: number
   coverImage: string | null
+  /** Miniatura WebP (~640px) da capa, para cards; null/ausente → usar coverImage. */
+  coverImageThumb?: string | null
   price: number
   startDate: string
   endDate: string
@@ -31,7 +33,10 @@ export type Course = {
   workloadHours: number
   location: string
   instructorName: string
+  /** Dia do prazo de inscrição, "YYYY-MM-DD". */
   registrationDeadline: string | null
+  /** Hora do prazo "HH:MM" (Brasília) quando informada; null/ausente = vale o dia inteiro. */
+  registrationDeadlineTime?: string | null
   observations: string | null
   eventNumber: string | null
   photoGallery: { id: string; url: string; caption: string }[]

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
 import { toast } from 'sonner'
 import { ArrowLeft, Building2, Download, Handshake, Loader2, TreePine, Trash2, Users } from 'lucide-react'
@@ -46,6 +46,8 @@ function EmpresaPage() {
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [exporting, setExporting] = useState(false)
   const readOnly = !can('UPDATE_USER')
+  // allowLeave do formulário de dados: excluir a empresa sai sem o aviso de não salvo.
+  const allowLeaveRef = useRef<(() => void) | null>(null)
 
   if (isLoading) {
     return (
@@ -71,6 +73,7 @@ function EmpresaPage() {
     try {
       await deleteM.mutateAsync(id)
       toast.success('Empresa excluída.')
+      allowLeaveRef.current?.()
       navigate({ to: '/admin/usuarios', search: { tab: 'empresas' } })
     } catch (e) {
       toast.error(apiErrorMessage(e, 'Erro ao excluir empresa.'))
@@ -148,6 +151,7 @@ function EmpresaPage() {
             company={company}
             readOnly={readOnly}
             saving={updateM.isPending}
+            allowLeaveRef={allowLeaveRef}
             onSubmit={async input => {
               try {
                 await updateM.mutateAsync(input)

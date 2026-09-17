@@ -11,9 +11,10 @@ const linkClass = {
   active: 'max-w-40 truncate px-3 py-1.5 text-sm font-semibold text-primary border-b-2 border-primary',
   idle: 'max-w-40 truncate px-3 py-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors',
 }
+// Celular: cada item com pelo menos 44px de altura (alvo de toque confortável).
 const mobileClass = {
-  active: 'px-4 py-2 text-sm font-semibold bg-primary/10 text-primary rounded-lg',
-  idle: 'px-4 py-2 text-sm font-medium hover:bg-muted text-foreground rounded-lg transition-colors',
+  active: 'flex min-h-11 items-center px-4 py-2 text-base font-semibold bg-primary/10 text-primary rounded-lg',
+  idle: 'flex min-h-11 items-center px-4 py-2 text-base font-medium hover:bg-muted text-foreground rounded-lg transition-colors',
 }
 
 export function PublicHeader() {
@@ -44,6 +45,8 @@ export function PublicHeader() {
           <img
             src="/logo-full.png"
             alt="Sindicato Rural de Terra Roxa"
+            width={40}
+            height={40}
             className="object-contain h-10 w-auto"
           />
         </Link>
@@ -62,11 +65,11 @@ export function PublicHeader() {
 
         {/* Mobile: theme + menu button */}
         <div className="flex lg:hidden items-center gap-1">
-          <ThemeToggle />
+          <ThemeToggle className="size-11" />
           <Button
             variant="ghost"
             size="icon"
-            className="size-9"
+            className="size-11"
             onClick={() => setMenuOpen(!menuOpen)}
             aria-label={menuOpen ? t('nav.closeMenu') : t('nav.openMenu')}
           >

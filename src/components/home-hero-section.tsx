@@ -12,26 +12,28 @@ import { safeUrl } from '@/utils/safe-url'
 
 function BannerBtn({ btn, index }: { btn: BannerButton; index: number }) {
   const isPrimary = index === 0
+  // h-11 + px-5: alvo de toque de 44px no celular. asChild: o próprio link é o
+  // botão (antes era <button> dentro de <a>).
   const cls = isPrimary
-    ? 'bg-white font-semibold text-primary hover:bg-white/90'
-    : 'border-2 border-white bg-transparent font-semibold text-white hover:bg-white hover:text-primary'
+    ? 'h-11 px-5 bg-white font-semibold text-primary hover:bg-white/90'
+    : 'h-11 px-5 border-2 border-white bg-transparent font-semibold text-white hover:bg-white hover:text-primary'
 
   if (btn.external) {
     return (
-      <a href={safeUrl(btn.url)} target="_blank" rel="noopener noreferrer">
-        <Button size="lg" variant={isPrimary ? 'default' : 'outline'} className={cls}>
+      <Button asChild size="lg" variant={isPrimary ? 'default' : 'outline'} className={cls}>
+        <a href={safeUrl(btn.url)} target="_blank" rel="noopener noreferrer">
           {btn.label}
-        </Button>
-      </a>
+        </a>
+      </Button>
     )
   }
 
   return (
-    <Link to={safeUrl(btn.url) as never}>
-      <Button size="lg" variant={isPrimary ? 'default' : 'outline'} className={cls}>
+    <Button asChild size="lg" variant={isPrimary ? 'default' : 'outline'} className={cls}>
+      <Link to={safeUrl(btn.url) as never}>
         {btn.label}
-      </Button>
-    </Link>
+      </Link>
+    </Button>
   )
 }
 
@@ -53,13 +55,14 @@ export function HeroSection() {
       className="relative w-full"
     >
       <CarouselContent>
-        {banners.map((banner) => (
+        {banners.map((banner, i) => (
           <CarouselItem key={banner.id}>
             <section className="relative h-100 w-full overflow-hidden md:h-125">
               {banner.imageUrl ? (
                 <img
                   src={banner.imageUrl}
                   alt={banner.title}
+                  decoding={i === 0 ? 'auto' : 'async'}
                   className="absolute inset-0 h-full w-full object-cover"
                 />
               ) : (
@@ -91,8 +94,8 @@ export function HeroSection() {
       </CarouselContent>
       {banners.length > 1 && (
         <>
-          <CarouselPrevious className="left-4 md:left-8" />
-          <CarouselNext className="right-4 md:right-8" />
+          <CarouselPrevious className="left-4 size-11 md:left-8 md:size-7" />
+          <CarouselNext className="right-4 size-11 md:right-8 md:size-7" />
         </>
       )}
     </Carousel>

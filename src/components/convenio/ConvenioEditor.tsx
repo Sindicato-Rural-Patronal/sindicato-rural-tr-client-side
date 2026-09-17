@@ -17,7 +17,7 @@ import { slugify, SLUG_PATTERN } from '@/lib/convenio-utils'
 import { maskMoney, moneyToCents } from '@/utils/masks'
 import { usePermissions } from '@/hooks/usePermissions'
 import { useOrgInfo } from '@/hooks/useSiteSettings'
-import { useUnsavedGuard, confirmLeaveIfDirty } from '@/hooks/use-unsaved-guard'
+import { useUnsavedGuard } from '@/hooks/use-unsaved-guard'
 import {
   useAdminConvenio, useCreateConvenio, useUpdateConvenio, useUploadConvenioLogo,
   type Convenio, type ConvenioInput,
@@ -250,7 +250,7 @@ export function ConvenioEditor({ id }: { id?: string }) {
   const input = useMemo(() => toInput(form), [form])
   const dirty = JSON.stringify(input) !== snapshot || !!stagedLogo
   const saving = createM.isPending || updateM.isPending
-  useUnsavedGuard(dirty && !saving)
+  const allowLeave = useUnsavedGuard(dirty && !saving)
 
   function set<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm(f => ({ ...f, [key]: value }))
@@ -313,6 +313,7 @@ export function ConvenioEditor({ id }: { id?: string }) {
         }
         setSnapshot(JSON.stringify(input))
         toast.success('Convênio criado.')
+        allowLeave()
         navigate({ to: '/admin/convenios/$id', params: { id: created.id }, replace: true })
       } else {
         const saved = await updateM.mutateAsync({ id: id!, body: input })
@@ -356,7 +357,6 @@ export function ConvenioEditor({ id }: { id?: string }) {
         <div className="min-w-0">
           <Link
             to="/admin/convenios"
-            onClick={e => confirmLeaveIfDirty(dirty, e)}
             className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
           >
             <ArrowLeft className="size-4" /> Convênios
@@ -535,7 +535,7 @@ export function ConvenioEditor({ id }: { id?: string }) {
         <div className="flex items-center justify-end gap-2 px-6 py-3">
           {dirty && !readOnly && <span className="mr-auto text-sm text-muted-foreground">Alterações não salvas</span>}
           <Button asChild variant="ghost">
-            <Link to="/admin/convenios" onClick={e => confirmLeaveIfDirty(dirty, e)}>Cancelar</Link>
+            <Link to="/admin/convenios">Cancelar</Link>
           </Button>
           <Button type="button" onClick={handleSave} disabled={readOnly || saving || (!dirty && !isNew)}>
             {saving ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}

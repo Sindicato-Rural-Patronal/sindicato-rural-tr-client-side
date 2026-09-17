@@ -74,6 +74,14 @@ export type CompanyInput = Partial<Omit<Company, 'id' | 'partnerLogo' | 'address
   address?: CompanyAddress | null
 }
 
+/** Títulos mais comuns no vínculo pessoa ↔ empresa (maiúsculas sem acento, como o cadastro). */
+export const COMMON_MEMBER_TITLES = ['SOCIO', 'PROPRIETARIO', 'ADMINISTRADOR', 'DIRETOR', 'GERENTE', 'FUNCIONARIO', 'CONTADOR', 'RESPONSAVEL']
+
+/** Sugestões de título: os já usados + os comuns, sem repetir, em ordem alfabética. */
+export function memberTitleSuggestions(used: string[] | undefined): string[] {
+  return Array.from(new Set([...(used ?? []), ...COMMON_MEMBER_TITLES])).sort()
+}
+
 /** Nome para exibir: o fantasia, quando houver; senão a razão social. */
 export function companyDisplayName(c: { name: string; tradeName?: string | null }): string {
   return c.tradeName || c.name
@@ -180,6 +188,26 @@ export function useRemoveCompanyMember(companyId: string) {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (memberId: string) =>
+      apiFetch(`/admin/companies/${companyId}/members/${memberId}`, { method: 'DELETE' }),
+    onSuccess: () => { invalidateCompanyViews(qc) },
+  })
+}
+
+// Pelo cadastro da pessoa a empresa é escolhida na hora: o id vai na chamada.
+// A invalidação cobre ['admin','users'], então a aba Empresas da pessoa atualiza.
+export function useLinkPersonToCompany() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ companyId, ...body }: { companyId: string; userDataId: string; title: string }) =>
+      apiFetch(`/admin/companies/${companyId}/members`, { method: 'POST', body: JSON.stringify(body) }),
+    onSuccess: () => { invalidateCompanyViews(qc) },
+  })
+}
+
+export function useUnlinkPersonFromCompany() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ companyId, memberId }: { companyId: string; memberId: string }) =>
       apiFetch(`/admin/companies/${companyId}/members/${memberId}`, { method: 'DELETE' }),
     onSuccess: () => { invalidateCompanyViews(qc) },
   })

@@ -37,8 +37,15 @@ import {
 } from 'lucide-react'
 import { maskCPF, maskPhone, maskRG, maskCNH, maskMoney } from '@/utils/masks'
 import { AgeHint } from '@/components/AgeHint'
+import { ApiError } from '@/lib/api'
 import { apiErrorMessage } from '@/lib/api-error-message'
 import { downloadExport, type ExportDataset, type ExportParams } from '@/lib/export'
+import {
+  validatePersonFields, firstInvalidField, focusFieldById,
+  type PersonField, type PersonFieldErrors,
+} from '@/lib/person-validation'
+import { cn } from '@/lib/utils'
+import { cpfDigits } from '@/utils/cpf'
 import { toIso } from '@/utils/dates'
 import { upperNoAccents } from '@/utils/text-format'
 import { MEMBER_TYPES } from '@/lib/member-types'
@@ -48,6 +55,11 @@ import {
 } from '@/lib/user-form-options'
 
 export const Route = createFileRoute('/_admin/admin/usuarios/$id')({
+  // ?completar=1 abre direto o modo "Completar cadastro" (link dos cadastros incompletos).
+  validateSearch: (s: Record<string, unknown>): { completar?: number } => {
+    const completar = Number(s.completar)
+    return { completar: Number.isInteger(completar) ? completar : undefined }
+  },
   component: RouteComponent,
 })
 
@@ -58,16 +70,32 @@ function toDateInput(iso: string | null | undefined): string {
   return iso.slice(0, 10)
 }
 
-function FieldRow({ label, children, highlight }: { label: string; children: React.ReactNode; highlight?: boolean }) {
+function FieldRow({ label, children, highlight, htmlFor, error }: {
+  label: string
+  children: React.ReactNode
+  highlight?: boolean
+  /** id do campo — liga o rótulo e a mensagem de erro a ele. */
+  htmlFor?: string
+  error?: string
+}) {
   return (
     <div className={`flex flex-col gap-1.5 ${highlight ? 'rounded-lg p-2.5 -mx-2.5 bg-amber-50 dark:bg-amber-950/20 ring-1 ring-amber-300 dark:ring-amber-700' : ''}`}>
-      <Label className={`text-xs font-medium ${highlight ? 'text-amber-700 dark:text-amber-400' : 'text-muted-foreground'}`}>
+      <Label htmlFor={htmlFor} className={`text-xs font-medium ${highlight ? 'text-amber-700 dark:text-amber-400' : 'text-muted-foreground'}`}>
         {label}{highlight && <span className="ml-1 text-amber-500">*</span>}
       </Label>
       {children}
+      {error && <p id={htmlFor ? `${htmlFor}-erro` : undefined} className="text-xs text-destructive" role="alert">{error}</p>}
     </div>
   )
 }
+
+// Modo leitura: os campos ficam desabilitados, mas com o texto nítido (o padrão
+// do Input é 50% de opacidade, difícil de ler) e um fundo leve.
+const READ_MODE_FIELD = 'disabled:opacity-100 disabled:cursor-default disabled:bg-muted/40 dark:disabled:bg-muted/40'
+
+// Campos validados antes de salvar, na ordem em que aparecem na tela.
+const VALIDATED_FIELDS: readonly PersonField[] = ['name', 'email', 'phone', 'phone2', 'phone3', 'cpf', 'rg', 'driverLicense']
+const fieldId = (f: PersonField) => `pessoa-${f}`
 
 type MissingField = { key: string; label: string }
 
@@ -96,7 +124,7 @@ function SelectField({
       value={value}
       onChange={e => onChange(e.target.value)}
       disabled={disabled}
-      className="h-9 disabled:opacity-50 disabled:cursor-not-allowed"
+      className={cn('h-9', disabled && 'disabled:cursor-default disabled:bg-muted/40')}
     >
       {placeholder && <option value="">{placeholder}</option>}
       {options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
@@ -125,10 +153,11 @@ function dadosFromDetail(u: UserDataDetail): DadosForm {
     email: u.email ?? '',
     nickname: u.nickname ?? '',
     maritalStatus: u.maritalStatus ?? '',
-    phone: u.phone ?? '',
-    phone2: u.phone2 ?? '',
-    phone3: u.phone3 ?? '',
-    cpf: u.cpf ?? '',
+    // Backend guarda só dígitos: o formulário mostra com máscara.
+    phone: maskPhone(u.phone ?? ''),
+    phone2: maskPhone(u.phone2 ?? ''),
+    phone3: maskPhone(u.phone3 ?? ''),
+    cpf: maskCPF(u.cpf ?? ''),
     rg: u.rg ?? '',
     rgIssuer: u.rgIssuer ?? '',
     rgIssuedAt: toDateInput(u.rgIssuedAt),
@@ -269,12 +298,16 @@ function CameraDialog({ open, onClose, onCapture }: {
   )
 }
 
-function DadosTab({ userId, user, completeMode, onCompleteModeEnd, hasNoProperties }: {
+function DadosTab({ userId, user, completeMode, onCompleteModeEnd, hasNoProperties, visible, allowLeaveRef }: {
   userId: string
   user: UserDataDetail
   completeMode: boolean
   onCompleteModeEnd: () => void
   hasNoProperties: boolean
+  /** A aba fica montada (para não perder a edição ao trocar de aba); a barra de salvar só aparece com ela visível. */
+  visible: boolean
+  /** Recebe o allowLeave do aviso de não salvo — a exclusão da pessoa navega sem perguntar. */
+  allowLeaveRef: React.RefObject<(() => void) | null>
 }) {
   const queryClient = useQueryClient()
   const updateWorker = useUpdateWorker(userId)
@@ -286,6 +319,7 @@ function DadosTab({ userId, user, completeMode, onCompleteModeEnd, hasNoProperti
   const editing = manualEditing || completeMode
   const [form, setForm] = useState<DadosForm>(() => dadosFromDetail(user))
   const [saved, setSaved] = useState<DadosForm>(() => dadosFromDetail(user))
+  const [fieldErrors, setFieldErrors] = useState<PersonFieldErrors>({})
 
   const promote = usePromoteInstructor(userId)
   const demote = useRemoveInstructor(userId)
@@ -303,6 +337,7 @@ function DadosTab({ userId, user, completeMode, onCompleteModeEnd, hasNoProperti
     const d = dadosFromDetail(user)
     setForm(d)
     setSaved(d)
+    setFieldErrors({})
     setInstrBio(user.userInstructor?.bio ?? '')
     setInstrLinkedin(user.userInstructor?.linkedin ?? '')
     setInstrInstagram(user.userInstructor?.instagram ?? '')
@@ -334,10 +369,16 @@ function DadosTab({ userId, user, completeMode, onCompleteModeEnd, hasNoProperti
     instrLinkedin !== (user.userInstructor?.linkedin ?? '') ||
     instrInstagram !== (user.userInstructor?.instagram ?? '') ||
     instrFacebook !== (user.userInstructor?.facebook ?? '')
-  useUnsavedGuard(editing && (JSON.stringify(form) !== JSON.stringify(saved) || instrDirty))
+  const dirty = editing && (JSON.stringify(form) !== JSON.stringify(saved) || instrDirty)
+  const allowLeave = useUnsavedGuard(dirty)
+  useEffect(() => {
+    allowLeaveRef.current = allowLeave
+  }, [allowLeaveRef, allowLeave])
 
   function set(k: keyof DadosForm, v: string | boolean) {
     setForm(prev => ({ ...prev, [k]: v }))
+    // Mexeu no campo: some o erro dele até a próxima tentativa de salvar.
+    if (fieldErrors[k as PersonField]) setFieldErrors(prev => ({ ...prev, [k]: undefined }))
   }
 
   function resizeToSquare(file: File, size = 400): Promise<File> {
@@ -393,6 +434,7 @@ function DadosTab({ userId, user, completeMode, onCompleteModeEnd, hasNoProperti
 
   function handleCancel() {
     setForm(saved)
+    setFieldErrors({})
     setWantInstructor(false)
     setInstrBio(user.userInstructor?.bio ?? '')
     setInstrLinkedin(user.userInstructor?.linkedin ?? '')
@@ -403,26 +445,31 @@ function DadosTab({ userId, user, completeMode, onCompleteModeEnd, hasNoProperti
   }
 
   async function handleSave() {
-    const rgDigits = form.rg.replace(/\D/g, '')
-    if (form.rg && rgDigits.length < 7) {
-      toast.error('RG inválido — mínimo 7 dígitos.')
-      return
+    // Valida só o que mudou (o que vai no corpo): um dado antigo fora do padrão
+    // que ninguém mexeu não trava a edição. Apagar nome, e-mail, telefone ou CPF
+    // conta como mudança — e esses são obrigatórios.
+    const changed: Partial<Record<PersonField, string>> = {}
+    for (const f of VALIDATED_FIELDS) {
+      if (form[f] !== saved[f]) changed[f] = form[f]
     }
-    const cnhDigits = form.driverLicense.replace(/\D/g, '')
-    if (form.driverLicense && cnhDigits.length !== 11) {
-      toast.error('CNH inválida — deve ter 11 dígitos.')
+    const problems = validatePersonFields(changed)
+    const first = firstInvalidField(problems, VALIDATED_FIELDS)
+    setFieldErrors(problems)
+    if (first) {
+      toast.error('Corrija os campos destacados antes de salvar.')
+      focusFieldById(fieldId(first))
       return
     }
     // Corpo completo a partir de um snapshot do form (mesmo mapeamento do backend)
     const buildBody = (f: DadosForm): Parameters<typeof updateWorker.mutateAsync>[0] => ({
-      name: f.name || undefined,
-      email: f.email || undefined,
-      phone: f.phone || undefined,
-      cpf: f.cpf || undefined,
+      name: f.name.trim() || undefined,
+      email: f.email.trim() || undefined,
+      phone: f.phone.replace(/\D/g, '') || undefined,
+      cpf: cpfDigits(f.cpf) || undefined,
       nickname: f.nickname || null,
       maritalStatus: (f.maritalStatus as UserDataDetail['maritalStatus']) || null,
-      phone2: f.phone2 || null,
-      phone3: f.phone3 || null,
+      phone2: f.phone2.replace(/\D/g, '') || null,
+      phone3: f.phone3.replace(/\D/g, '') || null,
       rg: f.rg || null,
       rgIssuer: f.rgIssuer || null,
       rgIssuedAt: f.rgIssuedAt ? toIso(f.rgIssuedAt) : null,
@@ -464,18 +511,18 @@ function DadosTab({ userId, user, completeMode, onCompleteModeEnd, hasNoProperti
         if (!old) return old
         return {
           ...old,
-          name: form.name,
-          email: form.email,
-          phone: form.phone,
-          cpf: form.cpf || null,
+          name: form.name.trim(),
+          email: form.email.trim(),
+          phone: form.phone.replace(/\D/g, ''),
+          cpf: cpfDigits(form.cpf) || null,
           rg: form.rg || null,
           birthDate: form.birthDate ? toIso(form.birthDate) : null,
           gender: (form.gender as UserDataDetail['gender']) || null,
           avatar: form.avatar || null,
           nickname: form.nickname || null,
           maritalStatus: (form.maritalStatus as UserDataDetail['maritalStatus']) || null,
-          phone2: form.phone2 || null,
-          phone3: form.phone3 || null,
+          phone2: form.phone2.replace(/\D/g, '') || null,
+          phone3: form.phone3.replace(/\D/g, '') || null,
           rgIssuer: form.rgIssuer || null,
           rgIssuedAt: form.rgIssuedAt ? toIso(form.rgIssuedAt) : null,
           driverLicense: form.driverLicense || null,
@@ -521,12 +568,31 @@ function DadosTab({ userId, user, completeMode, onCompleteModeEnd, hasNoProperti
       setEditing(false)
       if (completeMode) onCompleteModeEnd()
     } catch (e) {
-      toast.error(apiErrorMessage(e, 'Erro ao salvar.'))
+      const msg = apiErrorMessage(e, 'Erro ao salvar.')
+      // CPF/RG de outro cadastro: aponta o campo, além do aviso.
+      const conflictField: PersonField | null = e instanceof ApiError && e.status === 409
+        ? (e.message === 'CPF already in use' ? 'cpf' : e.message === 'RG already in use' ? 'rg' : null)
+        : null
+      if (conflictField) {
+        setFieldErrors({ [conflictField]: msg })
+        focusFieldById(fieldId(conflictField))
+      }
+      toast.error(msg)
     }
   }
 
-  const inp = 'h-9'
   const d = !editing
+  const inp = cn('h-9', d && READ_MODE_FIELD)
+  const textareaCls = cn(
+    'rounded-md border border-input px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring bg-background w-full resize-none',
+    d && READ_MODE_FIELD,
+  )
+  // Liga rótulo, campo e mensagem de erro dos campos validados.
+  const invalidProps = (f: PersonField) => ({
+    id: fieldId(f),
+    'aria-invalid': fieldErrors[f] ? true : undefined,
+    'aria-describedby': fieldErrors[f] ? `${fieldId(f)}-erro` : undefined,
+  })
 
   // campos faltando (calculados em tempo real a partir do form atual)
   const missing = {
@@ -549,7 +615,8 @@ function DadosTab({ userId, user, completeMode, onCompleteModeEnd, hasNoProperti
   const hi = (key: keyof typeof missing) => completeMode && missing[key]
 
   return (
-    <div className="flex flex-col gap-6">
+    // Em edição, espaço no fim para a barra fixa de salvar não cobrir os últimos campos.
+    <div className={cn('flex flex-col gap-6', editing && 'pb-24')}>
       {/* Banner modo completar cadastro */}
       {completeMode && (
         <div className="rounded-lg border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/30 p-4 flex flex-col gap-3">
@@ -612,14 +679,14 @@ function DadosTab({ userId, user, completeMode, onCompleteModeEnd, hasNoProperti
           <CardTitle className="text-sm flex items-center gap-2"><User className="size-4" /> Identificação</CardTitle>
         </CardHeader>
         <CardContent className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          <FieldRow label="Nome *">
-            <Input className={inp} disabled={d} value={form.name} onChange={e => set('name', upperNoAccents(e.target.value))} />
+          <FieldRow label="Nome *" htmlFor={fieldId('name')} error={fieldErrors.name}>
+            <Input className={inp} disabled={d} {...invalidProps('name')} value={form.name} onChange={e => set('name', upperNoAccents(e.target.value))} />
           </FieldRow>
-          <FieldRow label="E-mail *">
-            <Input className={inp} disabled={d} type="email" value={form.email} onChange={e => set('email', e.target.value)} />
+          <FieldRow label="E-mail *" htmlFor={fieldId('email')} error={fieldErrors.email}>
+            <Input className={inp} disabled={d} {...invalidProps('email')} type="email" value={form.email} onChange={e => set('email', e.target.value)} />
           </FieldRow>
-          <FieldRow label="Apelido">
-            <Input className={inp} disabled={d} value={form.nickname} onChange={e => set('nickname', upperNoAccents(e.target.value))} />
+          <FieldRow label="Apelido" htmlFor="pessoa-nickname">
+            <Input id="pessoa-nickname" className={inp} disabled={d} value={form.nickname} onChange={e => set('nickname', upperNoAccents(e.target.value))} />
           </FieldRow>
           <FieldRow label="Foto de perfil" highlight={hi('avatar')}>
             <div className="flex items-center gap-3">
@@ -641,17 +708,17 @@ function DadosTab({ userId, user, completeMode, onCompleteModeEnd, hasNoProperti
             </div>
             <CameraDialog open={showCamera} onClose={() => setShowCamera(false)} onCapture={handleCameraCapture} />
           </FieldRow>
-          <FieldRow label="Telefone *">
-            <Input className={inp} disabled={d} value={form.phone} onChange={e => set('phone', maskPhone(e.target.value))} placeholder="(00) 00000-0000" />
+          <FieldRow label="Telefone *" htmlFor={fieldId('phone')} error={fieldErrors.phone}>
+            <Input className={inp} disabled={d} {...invalidProps('phone')} inputMode="tel" value={form.phone} onChange={e => set('phone', maskPhone(e.target.value))} placeholder="(00) 00000-0000" />
           </FieldRow>
           {(form.phone || form.phone2) && (
-            <FieldRow label="Telefone 2">
-              <Input className={inp} disabled={d} value={form.phone2} onChange={e => set('phone2', maskPhone(e.target.value))} placeholder="(00) 00000-0000" />
+            <FieldRow label="Telefone 2" htmlFor={fieldId('phone2')} error={fieldErrors.phone2}>
+              <Input className={inp} disabled={d} {...invalidProps('phone2')} inputMode="tel" value={form.phone2} onChange={e => set('phone2', maskPhone(e.target.value))} placeholder="(00) 00000-0000" />
             </FieldRow>
           )}
           {(form.phone2 || form.phone3) && (
-            <FieldRow label="Telefone 3">
-              <Input className={inp} disabled={d} value={form.phone3} onChange={e => set('phone3', maskPhone(e.target.value))} placeholder="(00) 00000-0000" />
+            <FieldRow label="Telefone 3" htmlFor={fieldId('phone3')} error={fieldErrors.phone3}>
+              <Input className={inp} disabled={d} {...invalidProps('phone3')} inputMode="tel" value={form.phone3} onChange={e => set('phone3', maskPhone(e.target.value))} placeholder="(00) 00000-0000" />
             </FieldRow>
           )}
           <FieldRow label="Estado civil">
@@ -666,24 +733,24 @@ function DadosTab({ userId, user, completeMode, onCompleteModeEnd, hasNoProperti
           <CardTitle className="text-sm flex items-center gap-2"><FileText className="size-4" /> Documentos</CardTitle>
         </CardHeader>
         <CardContent className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          <FieldRow label="CPF" highlight={hi('cpf')}>
-            <Input className={inp} disabled={d} value={form.cpf} onChange={e => set('cpf', maskCPF(e.target.value))} placeholder="000.000.000-00" />
+          <FieldRow label="CPF" highlight={hi('cpf')} htmlFor={fieldId('cpf')} error={fieldErrors.cpf}>
+            <Input className={inp} disabled={d} {...invalidProps('cpf')} inputMode="numeric" value={form.cpf} onChange={e => set('cpf', maskCPF(e.target.value))} placeholder="000.000.000-00" />
           </FieldRow>
-          <FieldRow label="RG" highlight={hi('rg')}>
-            <Input className={inp} disabled={d} value={form.rg} onChange={e => set('rg', maskRG(e.target.value))} placeholder="00.000.000-0" maxLength={12} />
+          <FieldRow label="RG" highlight={hi('rg')} htmlFor={fieldId('rg')} error={fieldErrors.rg}>
+            <Input className={inp} disabled={d} {...invalidProps('rg')} value={form.rg} onChange={e => set('rg', maskRG(e.target.value))} placeholder="00.000.000-0" maxLength={12} />
           </FieldRow>
           <FieldRow label="Órgão emissor RG">
             <Input className={inp} disabled={d} value={form.rgIssuer} onChange={e => set('rgIssuer', upperNoAccents(e.target.value))} />
           </FieldRow>
           <FieldRow label="Data emissão RG">
-            <DatePicker disabled={d} value={form.rgIssuedAt} onChange={v => set('rgIssuedAt', v)} />
+            <DatePicker disabled={d} className={cn(d && READ_MODE_FIELD)} value={form.rgIssuedAt} onChange={v => set('rgIssuedAt', v)} />
           </FieldRow>
           <FieldRow label="Data nascimento" highlight={hi('birthDate')}>
-            <DatePicker disabled={d} value={form.birthDate} onChange={v => set('birthDate', v)} />
+            <DatePicker disabled={d} className={cn(d && READ_MODE_FIELD)} value={form.birthDate} onChange={v => set('birthDate', v)} />
             <AgeHint birthDate={form.birthDate} />
           </FieldRow>
-          <FieldRow label="CNH">
-            <Input className={inp} disabled={d} value={form.driverLicense} onChange={e => {
+          <FieldRow label="CNH" htmlFor={fieldId('driverLicense')} error={fieldErrors.driverLicense}>
+            <Input className={inp} disabled={d} {...invalidProps('driverLicense')} value={form.driverLicense} onChange={e => {
               const v = maskCNH(e.target.value)
               set('driverLicense', v)
               if (!v) set('driverLicenseCategory', '')
@@ -722,14 +789,17 @@ function DadosTab({ userId, user, completeMode, onCompleteModeEnd, hasNoProperti
             <Input className={inp} disabled={d} value={form.functionalCategory} onChange={e => set('functionalCategory', upperNoAccents(e.target.value))} />
           </FieldRow>
           <FieldRow label="CAD/PRO (até 5)">
-            <CadproFields value={form.cadPro} onChange={v => setForm(p => ({ ...p, cadPro: v }))} disabled={d} />
+            {/* CadproFields não recebe classe: o modo leitura legível vem do seletor no wrapper */}
+            <div className={cn(d && '[&_input:disabled]:opacity-100 [&_input:disabled]:bg-muted/40')}>
+              <CadproFields value={form.cadPro} onChange={v => setForm(p => ({ ...p, cadPro: v }))} disabled={d} />
+            </div>
           </FieldRow>
           <FieldRow label="Renda familiar">
             <Input className={inp} disabled={d} value={form.familyIncome} onChange={e => set('familyIncome', maskMoney(e.target.value))} placeholder="R$ 0,00" inputMode="numeric" />
           </FieldRow>
           <div className="flex items-center gap-2 pt-5">
-            <input type="checkbox" id="specialNeeds" disabled={d} checked={form.specialNeeds} onChange={e => set('specialNeeds', e.target.checked)} className="accent-primary disabled:opacity-50 disabled:cursor-not-allowed" />
-            <Label htmlFor="specialNeeds" className={`text-sm ${d ? 'opacity-50' : 'cursor-pointer'}`}>Necessidades especiais</Label>
+            <input type="checkbox" id="specialNeeds" disabled={d} checked={form.specialNeeds} onChange={e => set('specialNeeds', e.target.checked)} className="accent-primary disabled:cursor-default" />
+            <Label htmlFor="specialNeeds" className={`text-sm ${d ? '' : 'cursor-pointer'}`}>Necessidades especiais</Label>
           </div>
         </CardContent>
       </Card>
@@ -747,17 +817,17 @@ function DadosTab({ userId, user, completeMode, onCompleteModeEnd, hasNoProperti
             <SelectField disabled={d} value={form.memberType} onChange={v => set('memberType', v)} placeholder="Selecione" options={MEMBER_TYPES} />
           </FieldRow>
           <FieldRow label="Associado desde">
-            <DatePicker disabled={d} value={form.memberSince} onChange={v => set('memberSince', v)} />
+            <DatePicker disabled={d} className={cn(d && READ_MODE_FIELD)} value={form.memberSince} onChange={v => set('memberSince', v)} />
           </FieldRow>
           <FieldRow label="Validade da associação">
-            <DatePicker disabled={d} value={form.membershipValidUntil} onChange={v => set('membershipValidUntil', v)} />
+            <DatePicker disabled={d} className={cn(d && READ_MODE_FIELD)} value={form.membershipValidUntil} onChange={v => set('membershipValidUntil', v)} />
           </FieldRow>
           <FieldRow label="Nº observação">
             <Input className={inp} disabled={d} value={form.memberNotesNumber} onChange={e => set('memberNotesNumber', e.target.value)} />
           </FieldRow>
           <div className="flex items-center gap-2 pt-5">
-            <input type="checkbox" id="boardMember" disabled={d} checked={form.boardMember} onChange={e => set('boardMember', e.target.checked)} className="accent-primary disabled:opacity-50 disabled:cursor-not-allowed" />
-            <Label htmlFor="boardMember" className={`text-sm ${d ? 'opacity-50' : 'cursor-pointer'}`}>Membro da diretoria</Label>
+            <input type="checkbox" id="boardMember" disabled={d} checked={form.boardMember} onChange={e => set('boardMember', e.target.checked)} className="accent-primary disabled:cursor-default" />
+            <Label htmlFor="boardMember" className={`text-sm ${d ? '' : 'cursor-pointer'}`}>Membro da diretoria</Label>
           </div>
           {form.boardMember && (
             <FieldRow label="Cargo na diretoria">
@@ -771,7 +841,7 @@ function DadosTab({ userId, user, completeMode, onCompleteModeEnd, hasNoProperti
                 value={form.memberNotes}
                 onChange={e => set('memberNotes', upperNoAccents(e.target.value))}
                 rows={3}
-                className="rounded-md border border-input px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring bg-background w-full resize-none disabled:opacity-50 disabled:cursor-not-allowed"
+                className={textareaCls}
               />
             </FieldRow>
           </div>
@@ -794,7 +864,7 @@ function DadosTab({ userId, user, completeMode, onCompleteModeEnd, hasNoProperti
                     disabled={d}
                     onChange={e => setInstrBio(e.target.value)}
                     rows={3}
-                    className="rounded-md border border-input px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring bg-background w-full resize-none disabled:opacity-50 disabled:cursor-not-allowed"
+                    className={textareaCls}
                   />
                 </FieldRow>
                 <FieldRow label="LinkedIn">
@@ -870,6 +940,33 @@ function DadosTab({ userId, user, completeMode, onCompleteModeEnd, hasNoProperti
           )}
         </CardContent>
       </Card>
+
+      {/* Barra de salvar fixa no rodapé da tela durante a edição: Salvar/Cancelar
+          sempre à mão, mesmo rolando a ficha. Fixa (não sticky) porque o <main>
+          do layout tem overflow; o recuo à esquerda acompanha a largura da
+          sidebar e o conteúdo fica à esquerda, longe dos avisos (canto direito). */}
+      {editing && visible && (
+        <div
+          role="region"
+          aria-label="Salvar alterações"
+          className="fixed inset-x-0 bottom-0 z-5 border-t bg-background/95 px-4 py-3 shadow-[0_-4px_12px_rgba(0,0,0,0.06)] backdrop-blur supports-backdrop-filter:bg-background/85 md:pl-[calc(var(--sidebar-width)+1.5rem)] md:group-has-data-[collapsible=icon]/sidebar-wrapper:pl-[calc(var(--sidebar-width-icon)+1.5rem)]"
+        >
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+            {dirty && (
+              <span className="flex w-full items-center gap-1.5 text-sm font-medium text-amber-700 dark:text-amber-400 sm:w-auto">
+                <AlertCircle className="size-4 shrink-0" /> Alterações não salvas
+              </span>
+            )}
+            <Button variant="outline" onClick={handleCancel} disabled={saving} className="gap-1.5">
+              <X className="size-4" /> Cancelar
+            </Button>
+            <Button onClick={handleSave} disabled={saving} className="gap-1.5">
+              <Save className="size-4" />
+              {saving ? 'Salvando...' : 'Salvar dados'}
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -998,7 +1095,7 @@ function RelacoesTab({ userId }: { userId: string }) {
                       className={`w-full text-left px-3 py-2 text-sm hover:bg-muted transition-colors ${form.targetId === u.id ? 'bg-muted' : ''}`}
                     >
                       <span className="font-medium">{u.name}</span>
-                      {u.cpf && <span className="text-xs text-muted-foreground ml-2">{u.cpf}</span>}
+                      {u.cpf && <span className="text-xs text-muted-foreground ml-2">{maskCPF(u.cpf)}</span>}
                     </button>
                   ))}
                 </div>
@@ -1027,7 +1124,7 @@ function RelacoesTab({ userId }: { userId: string }) {
               <p className="font-medium text-sm">{rel.target.name}</p>
               <div className="flex items-center gap-2 mt-0.5">
                 {rel.label && <Badge variant="secondary" className="text-xs">{rel.label}</Badge>}
-                {rel.target.cpf && <span className="text-xs text-muted-foreground font-mono">{rel.target.cpf}</span>}
+                {rel.target.cpf && <span className="text-xs text-muted-foreground font-mono">{maskCPF(rel.target.cpf)}</span>}
               </div>
             </div>
             <div className="flex items-center gap-1">
@@ -1069,6 +1166,7 @@ function RelacoesTab({ userId }: { userId: string }) {
 
 function RouteComponent() {
   const { id } = Route.useParams()
+  const { completar } = Route.useSearch()
   const { data: user, isLoading, error } = useAdminUser(id)
   const { data: propsResp } = useUserProperties(id, { page: 1, limit: 10 })
   const { data: relsResp } = useUserRelations(id, { page: 1, limit: 20 })
@@ -1076,10 +1174,14 @@ function RouteComponent() {
   const relationsTotal = relsResp?.total ?? 0
   const [activeTab, setActiveTab] = useState('dados')
   const [completeMode, setCompleteMode] = useState(false)
+  // ?completar=1 é conferido uma vez, com cadastro e propriedades carregados.
+  const [completarPending, setCompletarPending] = useState(completar === 1)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [exporting, setExporting] = useState(false)
   const deleteWorker = useDeleteWorker()
   const navigate = useNavigate()
+  // allowLeave do formulário de dados: excluir a pessoa sai sem o aviso de não salvo.
+  const allowLeaveRef = useRef<(() => void) | null>(null)
 
   async function handleExport(dataset: ExportDataset, params: ExportParams) {
     setExporting(true)
@@ -1093,10 +1195,19 @@ function RouteComponent() {
     }
   }
 
+  function endCompleteMode() {
+    setCompleteMode(false)
+    // Tira o ?completar=1 da URL: atualizar a página não reabre o modo.
+    if (completar !== undefined) {
+      navigate({ to: '/admin/usuarios/$id', params: { id }, search: {}, replace: true })
+    }
+  }
+
   async function handleDelete() {
     try {
       await deleteWorker.mutateAsync(id)
       toast.success(`Associado "${user?.name}" excluído.`)
+      allowLeaveRef.current?.()
       navigate({ to: '/admin/usuarios' })
     } catch {
       toast.error('Erro ao excluir associado.')
@@ -1128,6 +1239,12 @@ function RouteComponent() {
 
   const missingFields = getMissingFields(user, propertiesTotal === 0)
   const isIncomplete = missingFields.length > 0
+  // Link com ?completar=1: só abre o modo se ainda falta algo (o cadastro pode
+  // ter sido completado depois que a lista foi carregada).
+  if (completarPending && propsResp) {
+    setCompletarPending(false)
+    if (isIncomplete) setCompleteMode(true)
+  }
 
   return (
     <div className="p-6 flex flex-col gap-6">
@@ -1142,7 +1259,7 @@ function RouteComponent() {
           <h1 className="text-2xl font-bold tracking-tight text-foreground truncate">{user.name}</h1>
           <div className="flex flex-wrap items-center gap-2 mt-1">
             <span className="text-sm text-muted-foreground">{user.email}</span>
-            {user.cpf && <span className="text-xs font-mono text-muted-foreground">CPF: {user.cpf}</span>}
+            {user.cpf && <span className="text-xs font-mono text-muted-foreground">CPF: {maskCPF(user.cpf)}</span>}
             {isIncomplete && !completeMode && (
               <Badge variant="outline" className="text-xs gap-1 border-amber-300 text-amber-700 dark:text-amber-400">
                 <AlertCircle className="size-3" />
@@ -1214,20 +1331,23 @@ function RouteComponent() {
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="dados">
+        {/* Fica montada (só escondida) para não perder uma edição ao trocar de aba */}
+        <TabsContent value="dados" forceMount className="data-[state=inactive]:hidden">
           <DadosTab
             userId={id}
             user={user}
             completeMode={completeMode}
-            onCompleteModeEnd={() => setCompleteMode(false)}
+            onCompleteModeEnd={endCompleteMode}
             hasNoProperties={propertiesTotal === 0}
+            visible={activeTab === 'dados'}
+            allowLeaveRef={allowLeaveRef}
           />
         </TabsContent>
         <TabsContent value="propriedades">
           <PropriedadesTab userId={id} />
         </TabsContent>
         <TabsContent value="empresas">
-          <PersonCompanies memberships={user.companyMemberships ?? []} />
+          <PersonCompanies userId={id} personName={user.name} memberships={user.companyMemberships ?? []} />
         </TabsContent>
         <TabsContent value="relacoes">
           <RelacoesTab userId={id} />

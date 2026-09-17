@@ -26,13 +26,21 @@ export type DailyQuotesInput = {
   prices: { id: string; priceCents: number }[]
 }
 
+// Resposta das rotas públicas (fetch cru): erro HTTP vira `Error("HTTP nnn")`,
+// que o query-client entende (repete 5xx, não repete 4xx).
+function publicJson<T>(r: Response): Promise<T> {
+  if (!r.ok) throw new Error(`HTTP ${r.status}`)
+  return r.json() as Promise<T>
+}
+
 // Público (home): produtos com preço lançado, ordenados. Usa fetch cru (sem
 // token / sem handleUnauthorized) pra não deslogar um visitante com token velho.
 export function useMarketQuotes() {
   return useQuery<MarketQuote[]>({
     queryKey: ['market-quotes'],
-    // Erro (429/500) vira lista vazia: a home faz reduce/map na lista
-    queryFn: () => fetch(`${API_BASE}/market-quotes`).then(r => (r.ok ? r.json() : [])),
+    // Erro (429/500) lança "HTTP nnn": a faixa mostra "Tentar de novo" em vez de sumir
+    // como se não houvesse cotação (5xx/rede ainda são repetidos pelo query-client).
+    queryFn: () => fetch(`${API_BASE}/market-quotes`).then(r => publicJson<MarketQuote[]>(r)),
   })
 }
 
@@ -91,7 +99,7 @@ export type QuoteHistorySeries = {
 export function useQuoteHistory(days: number) {
   return useQuery<QuoteHistorySeries[]>({
     queryKey: ['market-quotes', 'history', days],
-    queryFn: () => fetch(`${API_BASE}/market-quotes/history?days=${days}`).then(r => (r.ok ? r.json() : [])),
+    queryFn: () => fetch(`${API_BASE}/market-quotes/history?days=${days}`).then(r => publicJson<QuoteHistorySeries[]>(r)),
     placeholderData: keepPreviousData,
   })
 }

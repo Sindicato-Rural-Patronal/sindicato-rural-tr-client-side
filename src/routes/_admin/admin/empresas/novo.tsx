@@ -30,10 +30,12 @@ function NovaEmpresaPage() {
       <CompanyForm
         saving={createM.isPending}
         submitLabel="Criar empresa"
-        onSubmit={async input => {
+        onSubmit={async (input, allowLeave) => {
           try {
             const created = await createM.mutateAsync(input)
             toast.success('Empresa criada.')
+            // Já salvou: sai sem o aviso de alterações não salvas.
+            allowLeave()
             navigate({ to: '/admin/empresas/$id', params: { id: created.id }, replace: true })
             return true
           } catch (e) {

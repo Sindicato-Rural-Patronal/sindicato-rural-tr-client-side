@@ -92,9 +92,12 @@ function BlockUploadButton({
     }
     try {
       const res = await upload.mutateAsync(file)
-      const data = await res.json()
-      if (data.url) onUploaded(data.url)
-    } catch { /* silent */ }
+      const data = await res.json().catch(() => null)
+      if (data?.url) onUploaded(data.url)
+      else toast.error('Erro ao enviar a imagem. Tente de novo.')
+    } catch (e) {
+      toast.error(apiErrorMessage(e, 'Erro ao enviar a imagem. Tente de novo.'))
+    }
     if (ref.current) ref.current.value = ''
   }
 
@@ -115,6 +118,13 @@ function BlockUploadButton({
     </>
   )
 }
+
+// Botão "Trocar imagem" sobre a foto: com mouse, escurece e aparece ao passar por
+// cima; no toque (sem hover) fica sempre visível no canto, sem cobrir a foto.
+const IMAGE_OVERLAY =
+  'absolute inset-0 flex items-end justify-end p-2 rounded-xl transition-opacity ' +
+  '[@media(hover:hover)]:items-center [@media(hover:hover)]:justify-center [@media(hover:hover)]:bg-black/40 ' +
+  '[@media(hover:hover)]:opacity-0 group-hover/img:opacity-100 focus-within:opacity-100'
 
 // ─── Sortable block wrapper ───────────────────────────────────────────────────
 
@@ -142,7 +152,8 @@ function SortableBlockWrapper({
       }}
       className="relative group/block flex items-start gap-2"
     >
-      <div className="flex flex-col items-center gap-0.5 mt-1 shrink-0 w-6 opacity-0 group-hover/block:opacity-100 transition-opacity">
+      {/* Some só onde há mouse (aparece ao passar por cima); no toque fica sempre visível. */}
+      <div className="flex flex-col items-center gap-0.5 mt-1 shrink-0 w-6 [@media(hover:hover)]:opacity-0 group-hover/block:opacity-100 focus-within:opacity-100 transition-opacity">
         <button
           {...attributes}
           {...listeners}
@@ -153,9 +164,11 @@ function SortableBlockWrapper({
           <GripVertical className="size-4 text-muted-foreground" />
         </button>
         <button
+          type="button"
           onClick={onRemove}
           className="p-0.5 rounded hover:bg-destructive/10 text-destructive/40 hover:text-destructive transition-colors"
           aria-label="Remover bloco"
+          title="Remover bloco"
         >
           <X className="size-3.5" />
         </button>
@@ -209,7 +222,7 @@ function ImageEdit({
             alt={block.caption ?? ''}
             className="w-full rounded-xl object-cover max-h-120"
           />
-          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/img:opacity-100 flex items-center justify-center rounded-xl transition-opacity">
+          <div className={IMAGE_OVERLAY}>
             {(!isPending || staged) && (
               <BlockUploadButton
                 newsId={newsId}
@@ -269,7 +282,7 @@ function ImageTextEdit({
         {block.url ? (
           <div className="relative group/img">
             <img src={block.url} alt="" className="w-full rounded-xl object-cover max-h-64" />
-            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/img:opacity-100 flex items-center justify-center rounded-xl transition-opacity">
+            <div className={IMAGE_OVERLAY}>
               {(!isPending || staged) && (
                 <BlockUploadButton
                   newsId={newsId}
@@ -378,9 +391,28 @@ function NewsEditor({
     setSaved(false)
   }
 
+  // Remove na hora e oferece "Desfazer" (volta para a mesma posição).
   function removeBlock(id: string) {
+    const index = blockItems.findIndex(i => i._id === id)
+    if (index < 0) return
+    const removed = blockItems[index]
     setBlockItems(items => items.filter(i => i._id !== id))
     setSaved(false)
+    toast('Bloco removido.', {
+      duration: 8000,
+      action: {
+        label: 'Desfazer',
+        onClick: () => {
+          setBlockItems(items => {
+            if (items.some(i => i._id === removed._id)) return items
+            const next = [...items]
+            next.splice(Math.min(index, next.length), 0, removed)
+            return next
+          })
+          setSaved(false)
+        },
+      },
+    })
   }
 
   function addBlock(type: ContentBlock['type']) {
@@ -521,9 +553,12 @@ function NewsEditor({
     }
     try {
       const res = await uploadBanner.mutateAsync(file)
-      const data = await res.json()
+      const data = await res.json().catch(() => null)
       if (data?.url) setBannerUrl(data.url)
-    } catch { /* silent */ }
+      else toast.error('Erro ao enviar o banner. Tente de novo.')
+    } catch (e) {
+      toast.error(apiErrorMessage(e, 'Erro ao enviar o banner. Tente de novo.'))
+    }
   }
 
   function tryClose() {

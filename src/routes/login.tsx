@@ -3,28 +3,20 @@ import { apiErrorMessage } from '@/lib/api-error-message'
 import { useState } from 'react'
 import { useAuth } from '@/context/AuthContext'
 import { authenticateUser } from '@/hooks/use-users'
+import { afterLoginPath, isTokenValid, safeAdminRedirect } from '@/lib/auth-token'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { ArrowLeft, Leaf, Lock, User } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
-function isTokenValid(token: string): boolean {
-  try {
-    const parts = token.split('.')
-    if (parts.length !== 3) return false
-    const payload = JSON.parse(atob(parts[1])) as { exp?: number }
-    if (payload.exp === undefined) return true
-    return payload.exp * 1000 > Date.now()
-  } catch {
-    return false
-  }
-}
-
 export const Route = createFileRoute('/login')({
-  beforeLoad: () => {
-    const token = localStorage.getItem('token')
-    if (token && isTokenValid(token)) {
-      throw redirect({ to: '/admin' })
+  // ?redirect=/admin/... → tela para onde voltar depois de entrar (só telas do painel).
+  validateSearch: (search: Record<string, unknown>): { redirect?: string } => ({
+    redirect: safeAdminRedirect(search.redirect),
+  }),
+  beforeLoad: ({ search }) => {
+    if (isTokenValid(localStorage.getItem('token'))) {
+      throw redirect({ href: afterLoginPath(search.redirect) })
     }
   },
   component: LoginPage,
@@ -32,6 +24,7 @@ export const Route = createFileRoute('/login')({
 
 function LoginPage() {
   const { login } = useAuth()
+  const { redirect: redirectTo } = Route.useSearch()
   const { t } = useTranslation()
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
@@ -45,7 +38,7 @@ function LoginPage() {
     try {
       const token = await authenticateUser(username, password)
       login(token)
-      window.location.replace('/admin/dashboard')
+      window.location.replace(afterLoginPath(redirectTo))
     } catch (err) {
       setError(apiErrorMessage(err, t('login.errorDefault')))
     } finally {

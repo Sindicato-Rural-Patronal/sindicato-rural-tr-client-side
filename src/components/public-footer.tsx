@@ -7,6 +7,7 @@ import { LanguageToggle } from '@/components/LanguageToggle'
 import { useOrgInfo, usePublicSiteSettings } from '@/hooks/useSiteSettings'
 import { orgAddressLines, phoneDigits } from '@/lib/org-contact'
 import { safeUrl } from '@/utils/safe-url'
+import { siteWhatsappHref } from '@/lib/site-whatsapp'
 
 // Quatro colunas sempre preenchidas (marca + redes, links, contato, chamada),
 // distribuídas na largura toda; as redes ficam sob a marca, então a grade não
@@ -17,10 +18,11 @@ export function PublicFooter() {
   const org = useOrgInfo()
   const address = orgAddressLines(org)
   const socials = [
-    { label: 'Facebook', url: social?.facebook, Icon: FaFacebook },
-    { label: 'Instagram', url: social?.instagram, Icon: FaInstagram },
-    { label: 'WhatsApp', url: social?.whatsapp, Icon: FaWhatsapp },
-  ].filter(s => !!s.url && s.url.trim() !== '')
+    { label: 'Facebook', href: social?.facebook?.trim() ? safeUrl(social.facebook) : null, Icon: FaFacebook },
+    { label: 'Instagram', href: social?.instagram?.trim() ? safeUrl(social.instagram) : null, Icon: FaInstagram },
+    // Número solto (cadastro antigo) vira https://wa.me/55… em vez de "https://44999…".
+    { label: 'WhatsApp', href: siteWhatsappHref(social?.whatsapp), Icon: FaWhatsapp },
+  ].flatMap(s => (s.href && s.href !== '#' ? [{ ...s, href: s.href }] : []))
 
   const links = [
     { to: '/', label: t('nav.home') },
@@ -51,10 +53,10 @@ export function PublicFooter() {
                   {socials.map(s => (
                     <a
                       key={s.label}
-                      href={safeUrl(s.url || '')}
+                      href={s.href}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="flex size-10 items-center justify-center rounded-full bg-white/20 transition-colors hover:bg-white/30"
+                      className="flex size-11 items-center justify-center rounded-full bg-white/20 transition-colors hover:bg-white/30"
                       aria-label={s.label}
                     >
                       <s.Icon className="size-5" />
@@ -68,9 +70,9 @@ export function PublicFooter() {
           {/* Links */}
           <div>
             <h4 className="mb-4 text-sm font-semibold">{t('footer.quickLinks')}</h4>
-            <nav className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm text-brand-foreground/90 sm:grid-cols-1">
+            <nav className="grid grid-cols-2 gap-x-6 text-sm text-brand-foreground/90 sm:grid-cols-1 sm:gap-y-2">
               {links.map(l => (
-                <Link key={l.to} to={l.to} className="w-fit transition-colors hover:text-white">{l.label}</Link>
+                <Link key={l.to} to={l.to} className="flex min-h-11 w-fit items-center transition-colors hover:text-white sm:min-h-0">{l.label}</Link>
               ))}
             </nav>
           </div>
@@ -116,22 +118,21 @@ export function PublicFooter() {
           <div className="space-y-3">
             <h4 className="text-sm font-semibold">{t('footer.contactUs')}</h4>
             <p className="text-sm text-brand-foreground/80">{t('footer.contactCta')}</p>
-            <Button asChild className="w-full bg-white text-sm font-semibold text-brand hover:bg-white/90">
+            <Button asChild className="h-11 w-full bg-white text-sm font-semibold text-brand hover:bg-white/90">
               <Link to="/contato">{t('footer.contactButton')}</Link>
-            </Button>
-            <Button
-              asChild
-              variant="outline"
-              className="w-full border border-white/60 bg-transparent text-sm text-white transition-colors hover:bg-white hover:text-brand"
-            >
-              <Link to="/login">{t('footer.adminPanel')}</Link>
             </Button>
           </div>
         </div>
 
-        <div className="mt-10 flex items-center justify-between border-t border-white/20 pt-6 text-xs text-brand-foreground/60">
+        <div className="mt-10 flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-t border-white/20 pt-6 text-xs text-brand-foreground/60">
           <span>{t('footer.copyright', { year: new Date().getFullYear() })}</span>
-          <LanguageToggle variant="ghost" className="text-white/70 hover:bg-white/10 hover:text-white" />
+          <div className="-ml-2 flex items-center gap-2 sm:ml-0">
+            {/* Acesso da equipe: link discreto, sem competir com o "Entrar em contato". */}
+            <Link to="/login" className="inline-flex min-h-11 items-center px-2 underline-offset-4 transition-colors hover:text-white hover:underline sm:min-h-0">
+              {t('footer.adminPanel')}
+            </Link>
+            <LanguageToggle variant="ghost" className="h-11 text-white/70 hover:bg-white/10 hover:text-white sm:h-8" />
+          </div>
         </div>
       </div>
     </footer>

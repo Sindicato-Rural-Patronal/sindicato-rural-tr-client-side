@@ -1,4 +1,5 @@
 import { useEffect } from 'react'
+import { markdownToPlainText } from '@/lib/markdown-text'
 
 const SITE = 'Sindicato Rural de Terra Roxa'
 
@@ -27,8 +28,9 @@ export function useSeo(opts: { title?: string; description?: string; image?: str
     document.title = fullTitle
     setMeta('property', 'og:title', fullTitle)
     setMeta('name', 'twitter:title', fullTitle)
-    if (description) {
-      const clean = description.replace(/\s+/g, ' ').trim().slice(0, 200)
+    // Descrição de curso é markdown: a prévia leva só o texto.
+    const clean = markdownToPlainText(description).slice(0, 200)
+    if (clean) {
       setMeta('name', 'description', clean)
       setMeta('property', 'og:description', clean)
       setMeta('name', 'twitter:description', clean)

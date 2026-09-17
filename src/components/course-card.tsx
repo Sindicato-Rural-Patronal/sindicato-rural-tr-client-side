@@ -7,6 +7,7 @@ import { getCourseSituation, type CourseSituation } from '@/utils/course-status'
 import { Link } from '@tanstack/react-router'
 import { useTranslation } from 'react-i18next'
 import type { Course } from '@/@types/course'
+import { markdownToPlainText } from '@/lib/markdown-text'
 
 const situationClass: Record<CourseSituation, string> = {
   open: 'bg-emerald-600 text-white',
@@ -31,14 +32,18 @@ export function CourseCard({ course }: { course: Course }) {
   // Encerrado fica esmaecido pra os cursos ativos saltarem à vista; volta ao
   // normal no hover pra continuar legível.
   const dim = situation === 'closed' ? 'opacity-65 transition-opacity hover:opacity-100' : ''
+  // Miniatura (~640px WebP) quando existe; cursos antigos só têm a capa inteira.
+  const cover = course.coverImageThumb || course.coverImage
   return (
     <Link to="/cursos/$id" params={{ id: course.id }} className={`group block h-full ${dim}`}>
       <Card className="flex h-full flex-col overflow-hidden transition-all group-hover:shadow-lg">
         <div className="relative aspect-video overflow-hidden bg-muted">
-          {course.coverImage ? (
+          {cover ? (
             <img
-              src={course.coverImage}
+              src={cover}
               alt={course.title}
+              width={640}
+              height={360}
               loading="lazy"
               decoding="async"
               className="h-full w-full object-cover transition-transform group-hover:scale-105"
@@ -55,7 +60,8 @@ export function CourseCard({ course }: { course: Course }) {
         </div>
         <CardContent className="flex grow flex-col gap-2 p-4">
           <h3 className="line-clamp-2 font-semibold text-foreground">{course.title}</h3>
-          <p className="line-clamp-2 grow text-xs text-muted-foreground">{course.description}</p>
+          {/* Descrição é markdown: no card vai só o texto, sem "##"/"**". */}
+          <p className="line-clamp-2 grow text-xs text-muted-foreground">{markdownToPlainText(course.description)}</p>
           <div className="flex flex-col gap-1 text-xs text-muted-foreground">
             <span className="flex items-center gap-1.5">
               <MapPin className="size-3 shrink-0" />

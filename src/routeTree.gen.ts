@@ -49,7 +49,6 @@ import { Route as AdminAdminUsuariosNovoRouteImport } from './routes/_admin/admi
 import { Route as AdminAdminUsuariosIdRouteImport } from './routes/_admin/admin/usuarios/$id'
 import { Route as AdminAdminEmpresasNovoRouteImport } from './routes/_admin/admin/empresas/novo'
 import { Route as AdminAdminEmpresasIdRouteImport } from './routes/_admin/admin/empresas/$id'
-import { Route as AdminAdminCursosNovoRouteImport } from './routes/_admin/admin/cursos/novo'
 import { Route as AdminAdminConveniosNovoRouteImport } from './routes/_admin/admin/convenios/novo'
 import { Route as AdminAdminConveniosIdRouteImport } from './routes/_admin/admin/convenios/$id'
 
@@ -256,11 +255,6 @@ const AdminAdminEmpresasIdRoute = AdminAdminEmpresasIdRouteImport.update({
   path: '/admin/empresas/$id',
   getParentRoute: () => AdminRoute,
 } as any)
-const AdminAdminCursosNovoRoute = AdminAdminCursosNovoRouteImport.update({
-  id: '/novo',
-  path: '/novo',
-  getParentRoute: () => AdminAdminCursosRoute,
-} as any)
 const AdminAdminConveniosNovoRoute = AdminAdminConveniosNovoRouteImport.update({
   id: '/admin/convenios/novo',
   path: '/admin/convenios/novo',
@@ -299,7 +293,6 @@ export interface FileRoutesByFullPath {
   '/noticias/': typeof PublicNoticiasIndexRoute
   '/admin/convenios/$id': typeof AdminAdminConveniosIdRoute
   '/admin/convenios/novo': typeof AdminAdminConveniosNovoRoute
-  '/admin/cursos/novo': typeof AdminAdminCursosNovoRoute
   '/admin/empresas/$id': typeof AdminAdminEmpresasIdRoute
   '/admin/empresas/novo': typeof AdminAdminEmpresasNovoRoute
   '/admin/usuarios/$id': typeof AdminAdminUsuariosIdRoute
@@ -337,7 +330,6 @@ export interface FileRoutesByTo {
   '/noticias': typeof PublicNoticiasIndexRoute
   '/admin/convenios/$id': typeof AdminAdminConveniosIdRoute
   '/admin/convenios/novo': typeof AdminAdminConveniosNovoRoute
-  '/admin/cursos/novo': typeof AdminAdminCursosNovoRoute
   '/admin/empresas/$id': typeof AdminAdminEmpresasIdRoute
   '/admin/empresas/novo': typeof AdminAdminEmpresasNovoRoute
   '/admin/usuarios/$id': typeof AdminAdminUsuariosIdRoute
@@ -383,7 +375,6 @@ export interface FileRoutesById {
   '/_public/noticias/': typeof PublicNoticiasIndexRoute
   '/_admin/admin/convenios/$id': typeof AdminAdminConveniosIdRoute
   '/_admin/admin/convenios/novo': typeof AdminAdminConveniosNovoRoute
-  '/_admin/admin/cursos/novo': typeof AdminAdminCursosNovoRoute
   '/_admin/admin/empresas/$id': typeof AdminAdminEmpresasIdRoute
   '/_admin/admin/empresas/novo': typeof AdminAdminEmpresasNovoRoute
   '/_admin/admin/usuarios/$id': typeof AdminAdminUsuariosIdRoute
@@ -428,7 +419,6 @@ export interface FileRouteTypes {
     | '/noticias/'
     | '/admin/convenios/$id'
     | '/admin/convenios/novo'
-    | '/admin/cursos/novo'
     | '/admin/empresas/$id'
     | '/admin/empresas/novo'
     | '/admin/usuarios/$id'
@@ -466,7 +456,6 @@ export interface FileRouteTypes {
     | '/noticias'
     | '/admin/convenios/$id'
     | '/admin/convenios/novo'
-    | '/admin/cursos/novo'
     | '/admin/empresas/$id'
     | '/admin/empresas/novo'
     | '/admin/usuarios/$id'
@@ -511,7 +500,6 @@ export interface FileRouteTypes {
     | '/_public/noticias/'
     | '/_admin/admin/convenios/$id'
     | '/_admin/admin/convenios/novo'
-    | '/_admin/admin/cursos/novo'
     | '/_admin/admin/empresas/$id'
     | '/_admin/admin/empresas/novo'
     | '/_admin/admin/usuarios/$id'
@@ -817,13 +805,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminAdminEmpresasIdRouteImport
       parentRoute: typeof AdminRoute
     }
-    '/_admin/admin/cursos/novo': {
-      id: '/_admin/admin/cursos/novo'
-      path: '/novo'
-      fullPath: '/admin/cursos/novo'
-      preLoaderRoute: typeof AdminAdminCursosNovoRouteImport
-      parentRoute: typeof AdminAdminCursosRoute
-    }
     '/_admin/admin/convenios/novo': {
       id: '/_admin/admin/convenios/novo'
       path: '/admin/convenios/novo'
@@ -856,12 +837,10 @@ const AdminAdminAdministradoresRouteWithChildren =
   )
 
 interface AdminAdminCursosRouteChildren {
-  AdminAdminCursosNovoRoute: typeof AdminAdminCursosNovoRoute
   AdminAdminCursosIndexRoute: typeof AdminAdminCursosIndexRoute
 }
 
 const AdminAdminCursosRouteChildren: AdminAdminCursosRouteChildren = {
-  AdminAdminCursosNovoRoute: AdminAdminCursosNovoRoute,
   AdminAdminCursosIndexRoute: AdminAdminCursosIndexRoute,
 }
 

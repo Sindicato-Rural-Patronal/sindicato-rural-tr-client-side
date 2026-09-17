@@ -49,6 +49,7 @@ function DialogContent({
   className,
   children,
   showCloseButton = true,
+  onEscapeKeyDown,
   ...props
 }: React.ComponentProps<typeof DialogPrimitive.Content> & {
   showCloseButton?: boolean
@@ -63,6 +64,11 @@ function DialogContent({
           className
         )}
         {...props}
+        onEscapeKeyDown={e => {
+          // Lista suspensa aberta dentro do diálogo ([data-escape-owner]) fecha primeiro.
+          if ((e.target as Element | null)?.closest?.("[data-escape-owner]")) e.preventDefault()
+          onEscapeKeyDown?.(e)
+        }}
       >
         {children}
         {showCloseButton && (

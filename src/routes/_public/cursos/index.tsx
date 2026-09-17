@@ -13,6 +13,7 @@ import type { Course } from '@/@types/course'
 import { CourseCard } from '@/components/course-card'
 import { getCourseSituation } from '@/utils/course-status'
 import { Skeleton } from '@/components/ui/skeleton'
+import { LoadErrorRetry } from '@/components/LoadErrorRetry'
 import { useSeo } from '@/hooks/useSeo'
 
 const PAGE_SIZE = 12
@@ -63,7 +64,7 @@ function RouteComponent() {
 
   // Puxa um lote amplo e faz busca/filtro/ordenação/paginação no cliente —
   // o backend de cursos não expõe busca e o volume total é pequeno.
-  const { data: result, isLoading, isError } = useCourses({ limit: 100 })
+  const { data: result, isLoading, isError, isFetching, refetch } = useCourses({ limit: 100 })
   const courses = result?.data ?? NO_COURSES
 
   // Merge na URL; muda filtro → volta pra página 1; remove defaults pra URL curta.
@@ -197,9 +198,13 @@ function RouteComponent() {
               </div>
             )}
             {isError && (
-              <div className="flex justify-center py-16">
-                <p className="text-destructive">{t('courses.error')}</p>
-              </div>
+              <LoadErrorRetry
+                message={t('courses.error')}
+                hint
+                onRetry={() => void refetch()}
+                retrying={isFetching}
+                className="py-16"
+              />
             )}
             {!isLoading && !isError && (
               processed.length === 0 ? (
@@ -208,7 +213,7 @@ function RouteComponent() {
                   <h3 className="mt-4 text-lg font-semibold">{t('courses.notFound')}</h3>
                   <p className="mt-2 text-sm text-muted-foreground">{t('courses.notFoundHint')}</p>
                   {hasFilters && (
-                    <Button variant="outline" className="mt-4" onClick={clearFilters}>
+                    <Button variant="outline" className="mt-4 h-11" onClick={clearFilters}>
                       {t('courses.clearFilters')}
                     </Button>
                   )}
@@ -220,7 +225,7 @@ function RouteComponent() {
                       {t('courses.resultsCount', { count: processed.length })}
                     </p>
                     {hasFilters && (
-                      <Button variant="ghost" size="sm" className="h-auto text-xs" onClick={clearFilters}>
+                      <Button variant="ghost" size="sm" className="h-11 text-xs sm:h-auto" onClick={clearFilters}>
                         {t('courses.clearFilters')}
                       </Button>
                     )}

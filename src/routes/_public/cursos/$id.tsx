@@ -4,15 +4,29 @@ import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { useState, useId, Children, cloneElement, isValidElement } from 'react'
 import { useTranslation } from 'react-i18next'
+import type { Course } from '@/@types/course'
 import { useCourse, useRegisterByCpf, useRegisterFull } from '@/hooks/useCourse'
 import { useSeo } from '@/hooks/useSeo'
-import { apiFetch } from '@/lib/api'
+import { useOrgInfo } from '@/hooks/useSiteSettings'
+import { apiFetch, ApiError } from '@/lib/api'
+import {
+  buildCourseIcs, googleCalendarUrl, icsFileName, whatsappShareUrl, type CourseEvent,
+} from '@/lib/calendar-links'
+import { phoneDigits } from '@/lib/org-contact'
+import { cn } from '@/lib/utils'
 import { formatDateFromString } from '@/utils/format-data-from-string'
 import { formatBRL } from '@/utils/format-currency'
 import { maskCPF, maskPhone, maskCEP } from '@/utils/masks'
 import { escapeHtml } from '@/utils/escape-html'
 import { safeUrl } from '@/utils/safe-url'
+import { isValidCpf } from '@/utils/cpf'
+import { calcAge } from '@/utils/age'
+import { saveBlob } from '@/utils/download'
+import {
+  deadlineTimeOf, getCourseSituation, getRegistrationBlock, isRegistrationDeadlinePassed, type RegistrationBlock,
+} from '@/utils/course-status'
 import { AgeHint } from '@/components/AgeHint'
+import { ConfirmCloseDialog } from '@/components/confirm-close-dialog'
 import { ErrorAlert } from '@/components/ErrorAlert'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -23,29 +37,48 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from '@/components/ui/dialog'
 import {
-  ArrowLeft, Calendar, CheckCircle2, Clock, GraduationCap, MapPin, User, Users, Search, UserCheck,
+  ArrowLeft, Calendar, CalendarPlus, CheckCircle2, Clock, FileDown, GraduationCap, MapPin, RefreshCw,
+  User, Users, Search, UserCheck, WifiOff,
 } from 'lucide-react'
-import { FaLinkedin, FaInstagram, FaFacebook } from 'react-icons/fa'
+import { FaLinkedin, FaInstagram, FaFacebook, FaWhatsapp } from 'react-icons/fa'
 
 export const Route = createFileRoute('/_public/cursos/$id')({
   component: RouteComponent,
 })
 
-type Step = 'cpf' | 'confirm' | 'form' | 'success'
+type Step = 'cpf' | 'confirm' | 'form' | 'success' | 'already'
 
 const emptyFullForm = {
   name: '', rg: '', birthDate: '', phone: '', email: '',
   street: '', number: '', neighborhood: '', zipCode: '', city: '', terms: false,
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+// Campos do diálogo com pelo menos 44px de altura (toque no celular).
+const inputCls = 'h-11'
+
+// Mensagem do backend para inscrição repetida (CourseRegistrationAlreadyExistsError).
+const ALREADY_REGISTERED = 'User already registered for this course'
+
+function isAlreadyRegistered(e: unknown) {
+  return e instanceof ApiError && e.status === 409 && e.message === ALREADY_REGISTERED
+}
+
+function Field({ label, optional, className, children }: {
+  label: string
+  optional?: boolean
+  className?: string
+  children: React.ReactNode
+}) {
   const id = useId()
   const items = Children.toArray(children)
   const control = items[0]
   const rest = items.slice(1)
   return (
-    <div className="flex flex-col gap-1.5">
-      <Label htmlFor={id} className="text-xs font-medium text-muted-foreground">{label}</Label>
+    <div className={cn('flex flex-col gap-1.5', className)}>
+      <Label htmlFor={id} className="text-sm font-medium text-muted-foreground">
+        {label}
+        {optional && <span className="font-normal"> (opcional)</span>}
+      </Label>
       {isValidElement(control)
         ? cloneElement(control as React.ReactElement<{ id?: string }>, { id })
         : control}
@@ -54,42 +87,162 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   )
 }
 
+/** Tela final: inscrição feita (ou já existente) com resumo, agenda, WhatsApp e telefone. */
+function RegisteredView({ course, already, onClose }: { course: Course; already: boolean; onClose: () => void }) {
+  const { t } = useTranslation()
+  const org = useOrgInfo()
+
+  const event: CourseEvent = {
+    id: course.id,
+    title: course.title,
+    startDate: course.startDate,
+    endDate: course.endDate,
+    startTime: course.startTime,
+    endTime: course.endTime,
+    location: course.location,
+    url: `${window.location.origin}/cursos/${course.id}`,
+  }
+  const googleUrl = googleCalendarUrl(event)
+  const days = course.startDate === course.endDate
+    ? formatDateFromString(course.startDate)
+    : `${formatDateFromString(course.startDate)} ${t('courseDetail.until')} ${formatDateFromString(course.endDate)}`
+
+  function downloadIcs() {
+    const ics = buildCourseIcs(event)
+    if (ics) saveBlob(new Blob([ics], { type: 'text/calendar;charset=utf-8' }), icsFileName(course.title))
+  }
+
+  return (
+    <>
+      <div className="flex flex-col items-center gap-3 pt-4 text-center">
+        <div className={cn(
+          'flex size-16 items-center justify-center rounded-full',
+          already ? 'bg-primary/10' : 'bg-emerald-100 dark:bg-emerald-950/40',
+        )}>
+          {already
+            ? <UserCheck className="size-8 text-primary" />
+            : <CheckCircle2 className="size-8 text-emerald-600" />}
+        </div>
+        <DialogTitle className="text-xl">
+          {already ? t('registration.alreadyTitle') : t('registration.successTitle')}
+        </DialogTitle>
+        {already
+          ? <DialogDescription className="sr-only">{course.title}</DialogDescription>
+          : <DialogDescription dangerouslySetInnerHTML={{ __html: t('registration.successMessage', { courseName: escapeHtml(course.title) }) }} />}
+      </div>
+
+      <div className="flex flex-col gap-2.5 rounded-lg border bg-muted/30 p-4 text-sm">
+        <p className="font-semibold text-foreground">{course.title}</p>
+        <div className="flex items-start gap-2.5">
+          <Calendar className="mt-0.5 size-4 shrink-0 text-primary" />
+          <p><span className="text-muted-foreground">{t('courseDetail.period')}: </span>{days}</p>
+        </div>
+        <div className="flex items-start gap-2.5">
+          <Clock className="mt-0.5 size-4 shrink-0 text-primary" />
+          <p><span className="text-muted-foreground">{t('courseDetail.schedule')}: </span>{course.startTime} – {course.endTime}</p>
+        </div>
+        {course.location && (
+          <div className="flex items-start gap-2.5">
+            <MapPin className="mt-0.5 size-4 shrink-0 text-primary" />
+            <p><span className="text-muted-foreground">{t('courseDetail.location')}: </span>{course.location}</p>
+          </div>
+        )}
+      </div>
+
+      <div className="flex flex-col gap-2">
+        {googleUrl && (
+          <>
+            <Button type="button" variant="outline" className="h-11 w-full gap-2 text-base" onClick={downloadIcs}>
+              <CalendarPlus className="size-5" /> {t('registration.addToCalendar')}
+            </Button>
+            <a
+              href={googleUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex min-h-11 items-center justify-center text-sm font-medium text-primary underline underline-offset-4"
+            >
+              {t('registration.googleCalendar')}
+            </a>
+          </>
+        )}
+        <Button asChild variant="outline" className="h-11 w-full gap-2 text-base">
+          <a href={whatsappShareUrl(event)} target="_blank" rel="noreferrer">
+            <FaWhatsapp className="size-5 text-[#25D366]" /> {t('registration.sendWhatsapp')}
+          </a>
+        </Button>
+        {org.phone && (
+          <p className="pt-1 text-center text-sm text-muted-foreground">
+            {t('registration.callUs')}{' '}
+            <a
+              href={`tel:${phoneDigits(org.phone)}`}
+              className="inline-flex min-h-11 items-center font-semibold text-primary underline underline-offset-4"
+            >
+              {org.phone}
+            </a>
+          </p>
+        )}
+      </div>
+
+      <DialogFooter>
+        <Button className="h-11 w-full text-base" onClick={onClose}>{t('registration.close')}</Button>
+      </DialogFooter>
+    </>
+  )
+}
+
 function RegistrationDialog({
   open,
-  courseId,
-  courseName,
+  course,
   onClose,
 }: {
   open: boolean
-  courseId: string
-  courseName: string
+  course: Course
   onClose: () => void
 }) {
   const { t } = useTranslation()
-  const registerByCpf = useRegisterByCpf(courseId)
-  const registerFull = useRegisterFull(courseId)
+  const registerByCpf = useRegisterByCpf(course.id)
+  const registerFull = useRegisterFull(course.id)
   const [step, setStep] = useState<Step>('cpf')
   const [cpf, setCpf] = useState('')
   const [lookupName, setLookupName] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [f, setF] = useState(emptyFullForm)
+  const [confirmDiscard, setConfirmDiscard] = useState(false)
 
   const cpfDigits = cpf.replace(/\D/g, '')
+  const cpfOk = isValidCpf(cpfDigits)
+  // Só acusa depois dos 11 números — enquanto digita não aparece erro.
+  const cpfInvalid = cpfDigits.length === 11 && !cpfOk
+
+  const age = calcAge(f.birthDate)
+  const isMinor = age !== null && age < 18
+
+  // Formulário com algo digitado (mesmo se voltou para o CPF): toque fora/Esc não
+  // fecham, e o X/Cancelar pedem confirmação antes de apagar.
+  const formDirty = step !== 'success' && step !== 'already' && (
+    f.terms || Object.values(f).some(v => typeof v === 'string' && v.trim() !== '')
+  )
 
   function handleClose() {
-    setStep('cpf'); setCpf(''); setLookupName(''); setError(null); setF(emptyFullForm)
+    setStep('cpf'); setCpf(''); setLookupName(''); setError(null); setF(emptyFullForm); setConfirmDiscard(false)
     onClose()
+  }
+
+  function requestClose() {
+    if (formDirty) setConfirmDiscard(true)
+    else handleClose()
   }
 
   // Etapa 1: busca por CPF
   async function handleLookup() {
-    if (cpfDigits.length !== 11) { setError('CPF inválido.'); return }
+    if (cpfDigits.length !== 11) { setError('Digite os 11 números do CPF.'); return }
+    if (!cpfOk) return // a mensagem já aparece embaixo do campo
     setLoading(true); setError(null)
     try {
       const res = await apiFetch(`/users/lookup-cpf/${cpfDigits}`).then(r => r.json())
       if (res.found) { setLookupName(res.name ?? ''); setStep('confirm') }
-      else { setF({ ...emptyFullForm }); setStep('form') }
+      else setStep('form') // mantém o que já tinha sido digitado se a pessoa voltou para corrigir o CPF
     } catch (e) {
       setError(apiErrorMessage(e, t('registration.errorDefault')))
     } finally { setLoading(false) }
@@ -102,23 +255,24 @@ function RegistrationDialog({
       await registerByCpf.mutateAsync(cpfDigits)
       setStep('success')
     } catch (e) {
-      setError(apiErrorMessage(e, t('registration.errorDefault')))
+      if (isAlreadyRegistered(e)) setStep('already')
+      else setError(apiErrorMessage(e, t('registration.errorDefault')))
     } finally { setLoading(false) }
   }
 
   // Etapa 2b: não existe → cadastro simples + inscrição
   async function submitFull() {
-    const phoneDigits = f.phone.replace(/\D/g, '')
+    const phoneDigitsValue = f.phone.replace(/\D/g, '')
     if (!f.name.trim()) { setError('Informe o nome.'); return }
+    if (![10, 11].includes(phoneDigitsValue.length)) { setError('Telefone inválido.'); return }
     if (!f.email.trim()) { setError('Informe o e-mail.'); return }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(f.email.trim())) { setError('Informe um e-mail válido.'); return }
-    if (![10, 11].includes(phoneDigits.length)) { setError('Telefone inválido.'); return }
     if (!f.terms) { setError('É preciso aceitar os termos.'); return }
     setLoading(true); setError(null)
     try {
       await registerFull.mutateAsync({
         name: f.name.trim(),
-        phone: phoneDigits,
+        phone: phoneDigitsValue,
         email: f.email.trim(),
         cpf: cpfDigits,
         rg: f.rg || undefined,
@@ -134,164 +288,221 @@ function RegistrationDialog({
       })
       setStep('success')
     } catch (e) {
-      setError(apiErrorMessage(e, t('registration.errorDefault')))
+      if (isAlreadyRegistered(e)) setStep('already')
+      else setError(apiErrorMessage(e, t('registration.errorDefault')))
     } finally { setLoading(false) }
   }
 
   return (
-    <Dialog open={open} onOpenChange={o => { if (!o) handleClose() }}>
-      <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
-        {step === 'success' && (
-          <>
-            <div className="flex flex-col items-center text-center py-4 gap-3">
-              <div className="flex size-16 items-center justify-center rounded-full bg-emerald-100">
-                <CheckCircle2 className="size-8 text-emerald-600" />
-              </div>
-              <DialogTitle className="text-xl">{t('registration.successTitle')}</DialogTitle>
-              <p className="text-sm text-muted-foreground" dangerouslySetInnerHTML={{ __html: t('registration.successMessage', { courseName: escapeHtml(courseName) }) }} />
-            </div>
-            <DialogFooter>
-              <Button className="w-full" onClick={handleClose}>{t('registration.close')}</Button>
-            </DialogFooter>
-          </>
-        )}
+    <>
+      <Dialog open={open} onOpenChange={o => { if (!o) requestClose() }}>
+        <DialogContent
+          className="sm:max-w-md max-h-[90vh] overflow-y-auto"
+          onInteractOutside={e => { if (formDirty) e.preventDefault() }}
+          onEscapeKeyDown={e => { if (formDirty) e.preventDefault() }}
+        >
+          {(step === 'success' || step === 'already') && (
+            <RegisteredView course={course} already={step === 'already'} onClose={handleClose} />
+          )}
 
-        {step === 'cpf' && (
-          <>
-            <DialogHeader>
-              <DialogTitle>{t('registration.title')}</DialogTitle>
-              <DialogDescription dangerouslySetInnerHTML={{ __html: t('registration.description', { courseName: escapeHtml(courseName) }) }} />
-            </DialogHeader>
-            <div className="flex flex-col gap-4">
-              <Field label="CPF">
-                <Input
-                  value={cpf}
-                  onChange={e => { setCpf(maskCPF(e.target.value)); setError(null) }}
-                  onKeyDown={e => { if (e.key === 'Enter' && !loading) handleLookup() }}
-                  placeholder="000.000.000-00"
-                  inputMode="numeric"
-                  autoFocus
-                />
-              </Field>
-              <p className="text-xs text-muted-foreground">Informe seu CPF para começar a inscrição.</p>
-              {error && <ErrorAlert message={error} />}
-              <DialogFooter className="flex-col gap-2 sm:flex-row">
-                <Button type="button" variant="outline" onClick={handleClose} className="sm:flex-none">
-                  {t('registration.cancel')}
-                </Button>
-                <Button className="flex-1 gap-2" disabled={loading || cpfDigits.length !== 11} onClick={handleLookup}>
-                  <Search className="size-4" />
-                  {loading ? 'Buscando...' : 'Continuar'}
-                </Button>
-              </DialogFooter>
-            </div>
-          </>
-        )}
-
-        {step === 'confirm' && (
-          <>
-            <DialogHeader>
-              <DialogTitle>Confirmar identidade</DialogTitle>
-              <DialogDescription>Encontramos um cadastro com esse CPF. É você?</DialogDescription>
-            </DialogHeader>
-            <div className="flex flex-col gap-4">
-              <div className="flex items-center gap-3 rounded-lg border bg-muted/30 p-4">
-                <div className="flex size-10 items-center justify-center rounded-full bg-primary/10 text-primary">
-                  <UserCheck className="size-5" />
-                </div>
-                <div>
-                  <p className="font-semibold">{lookupName}</p>
-                  <p className="text-xs text-muted-foreground font-mono">{cpf}</p>
-                </div>
-              </div>
-              {error && <ErrorAlert message={error} />}
-              <DialogFooter className="flex-col gap-2 sm:flex-row">
-                <Button type="button" variant="outline" onClick={() => { setError(null); setStep('cpf') }} className="sm:flex-none">
-                  Não sou eu
-                </Button>
-                <Button className="flex-1" disabled={loading} onClick={confirmExisting}>
-                  {loading ? t('registration.submitting') : 'Sim, confirmar inscrição'}
-                </Button>
-              </DialogFooter>
-            </div>
-          </>
-        )}
-
-        {step === 'form' && (
-          <>
-            <DialogHeader>
-              <DialogTitle>Cadastro do participante</DialogTitle>
-              <DialogDescription>Não encontramos esse CPF. Preencha seus dados para se inscrever.</DialogDescription>
-            </DialogHeader>
-            <div className="flex flex-col gap-3">
-              <Field label="Nome completo">
-                <Input value={f.name} onChange={e => setF(p => ({ ...p, name: e.target.value }))} placeholder="Ex: Maria da Silva" autoFocus />
-              </Field>
-              <div className="grid grid-cols-2 gap-3">
+          {step === 'cpf' && (
+            <>
+              <DialogHeader>
+                <DialogTitle>{t('registration.title')}</DialogTitle>
+                <DialogDescription dangerouslySetInnerHTML={{ __html: t('registration.description', { courseName: escapeHtml(course.title) }) }} />
+              </DialogHeader>
+              <div className="flex flex-col gap-4">
                 <Field label="CPF">
-                  <Input value={cpf} disabled className="font-mono" />
+                  <Input
+                    value={cpf}
+                    onChange={e => { setCpf(maskCPF(e.target.value)); setError(null) }}
+                    onKeyDown={e => { if (e.key === 'Enter' && !loading) handleLookup() }}
+                    placeholder="000.000.000-00"
+                    inputMode="numeric"
+                    aria-invalid={cpfInvalid || undefined}
+                    className={cn(inputCls, 'text-base')}
+                    autoFocus
+                  />
+                  {cpfInvalid && (
+                    <p className="text-sm text-destructive" role="alert">CPF inválido. Confira os números digitados.</p>
+                  )}
                 </Field>
-                <Field label="RG">
-                  <Input value={f.rg} onChange={e => setF(p => ({ ...p, rg: e.target.value }))} />
-                </Field>
+                <p className="text-sm text-muted-foreground">Informe seu CPF para começar a inscrição.</p>
+                {error && <ErrorAlert message={error} />}
+                <DialogFooter className="flex-col gap-2 sm:flex-row">
+                  <Button type="button" variant="outline" onClick={requestClose} className="h-11 sm:flex-none">
+                    {t('registration.cancel')}
+                  </Button>
+                  <Button className="h-11 flex-1 gap-2" disabled={loading || !cpfOk} onClick={handleLookup}>
+                    <Search className="size-4" />
+                    {loading ? 'Buscando...' : 'Continuar'}
+                  </Button>
+                </DialogFooter>
               </div>
-              <div className="grid grid-cols-2 gap-3">
-                <Field label="Data de nascimento">
-                  <Input type="date" value={f.birthDate} onChange={e => setF(p => ({ ...p, birthDate: e.target.value }))} />
-                  <AgeHint birthDate={f.birthDate} />
-                </Field>
-                <Field label="Telefone">
-                  <Input value={f.phone} onChange={e => setF(p => ({ ...p, phone: maskPhone(e.target.value) }))} placeholder="(44) 99999-9999" />
-                </Field>
+            </>
+          )}
+
+          {step === 'confirm' && (
+            <>
+              <DialogHeader>
+                <DialogTitle>Confirmar identidade</DialogTitle>
+                <DialogDescription>Encontramos um cadastro com esse CPF. É você?</DialogDescription>
+              </DialogHeader>
+              <div className="flex flex-col gap-4">
+                <div className="flex items-center gap-3 rounded-lg border bg-muted/30 p-4">
+                  <div className="flex size-10 items-center justify-center rounded-full bg-primary/10 text-primary">
+                    <UserCheck className="size-5" />
+                  </div>
+                  <div>
+                    <p className="font-semibold">{lookupName}</p>
+                    <p className="text-xs text-muted-foreground font-mono">{cpf}</p>
+                  </div>
+                </div>
+                {error && <ErrorAlert message={error} />}
+                <DialogFooter className="flex-col gap-2 sm:flex-row">
+                  <Button type="button" variant="outline" onClick={() => { setError(null); setStep('cpf') }} className="h-11 sm:flex-none">
+                    Não sou eu
+                  </Button>
+                  <Button className="h-11 flex-1" disabled={loading} onClick={confirmExisting}>
+                    {loading ? t('registration.submitting') : 'Sim, confirmar inscrição'}
+                  </Button>
+                </DialogFooter>
               </div>
-              <Field label="E-mail">
-                <Input type="email" value={f.email} onChange={e => setF(p => ({ ...p, email: e.target.value }))} placeholder="maria@email.com" />
-              </Field>
-              <div className="grid grid-cols-3 gap-3">
-                <div className="col-span-2">
-                  <Field label="Endereço">
-                    <Input value={f.street} onChange={e => setF(p => ({ ...p, street: e.target.value }))} />
+            </>
+          )}
+
+          {step === 'form' && (
+            <>
+              <DialogHeader>
+                <DialogTitle>Cadastro do participante</DialogTitle>
+                <DialogDescription>Não encontramos esse CPF. Preencha seus dados para se inscrever.</DialogDescription>
+              </DialogHeader>
+              <div className="flex flex-col gap-3">
+                <Field label="Nome completo">
+                  <Input
+                    className={inputCls}
+                    value={f.name}
+                    onChange={e => setF(p => ({ ...p, name: e.target.value }))}
+                    placeholder="Ex: Maria da Silva"
+                    autoComplete="name"
+                    autoCapitalize="words"
+                    autoFocus
+                  />
+                </Field>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <Field label="CPF">
+                    <Input value={cpf} disabled className={cn(inputCls, 'font-mono')} />
+                  </Field>
+                  <Field label="RG" optional>
+                    <Input className={inputCls} value={f.rg} onChange={e => setF(p => ({ ...p, rg: e.target.value }))} autoComplete="off" />
                   </Field>
                 </div>
-                <Field label="Nº / KM">
-                  <Input value={f.number} onChange={e => setF(p => ({ ...p, number: e.target.value }))} />
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <Field label="Data de nascimento" optional>
+                    <Input
+                      type="date"
+                      className={inputCls}
+                      value={f.birthDate}
+                      onChange={e => setF(p => ({ ...p, birthDate: e.target.value }))}
+                      autoComplete="bday"
+                    />
+                    <AgeHint birthDate={f.birthDate} />
+                    {isMinor && (
+                      <a
+                        href="/termo-autorizacao-menor.pdf"
+                        download
+                        className="inline-flex min-h-11 items-center gap-1.5 text-sm font-medium text-primary underline underline-offset-4"
+                      >
+                        <FileDown className="size-4" /> Baixar termo de autorização
+                      </a>
+                    )}
+                  </Field>
+                  <Field label="Telefone">
+                    <Input
+                      type="tel"
+                      inputMode="tel"
+                      autoComplete="tel"
+                      className={inputCls}
+                      value={f.phone}
+                      onChange={e => setF(p => ({ ...p, phone: maskPhone(e.target.value) }))}
+                      placeholder="(44) 99999-9999"
+                    />
+                  </Field>
+                </div>
+                <Field label="E-mail">
+                  <Input
+                    type="email"
+                    inputMode="email"
+                    autoComplete="email"
+                    autoCapitalize="none"
+                    className={inputCls}
+                    value={f.email}
+                    onChange={e => setF(p => ({ ...p, email: e.target.value }))}
+                    placeholder="maria@email.com"
+                  />
                 </Field>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                  <Field label="Endereço" optional className="sm:col-span-2">
+                    <Input className={inputCls} value={f.street} onChange={e => setF(p => ({ ...p, street: e.target.value }))} autoComplete="address-line1" />
+                  </Field>
+                  <Field label="Nº / KM" optional>
+                    <Input className={inputCls} value={f.number} onChange={e => setF(p => ({ ...p, number: e.target.value }))} />
+                  </Field>
+                </div>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <Field label="Bairro" optional>
+                    <Input className={inputCls} value={f.neighborhood} onChange={e => setF(p => ({ ...p, neighborhood: e.target.value }))} autoComplete="address-level3" />
+                  </Field>
+                  <Field label="CEP" optional>
+                    <Input
+                      className={inputCls}
+                      value={f.zipCode}
+                      onChange={e => setF(p => ({ ...p, zipCode: maskCEP(e.target.value) }))}
+                      placeholder="00000-000"
+                      inputMode="numeric"
+                      autoComplete="postal-code"
+                    />
+                  </Field>
+                </div>
+                <Field label="Cidade" optional>
+                  <Input className={inputCls} value={f.city} onChange={e => setF(p => ({ ...p, city: e.target.value }))} autoComplete="address-level2" />
+                </Field>
+                <label className="flex min-h-11 cursor-pointer items-start gap-3 pt-1">
+                  <input
+                    type="checkbox"
+                    checked={f.terms}
+                    onChange={e => setF(p => ({ ...p, terms: e.target.checked }))}
+                    className="mt-0.5 size-5 shrink-0 accent-primary"
+                  />
+                  <span className="text-sm text-muted-foreground">Li e aceito os termos de participação e o uso dos meus dados para a realização do curso.</span>
+                </label>
+                {error && <ErrorAlert message={error} />}
+                <DialogFooter className="flex-col gap-2 sm:flex-row">
+                  <Button type="button" variant="outline" onClick={() => { setError(null); setStep('cpf') }} className="h-11 gap-1.5 sm:flex-none">
+                    <ArrowLeft className="size-4" /> {t('registration.back')}
+                  </Button>
+                  <Button className="h-11 flex-1" disabled={loading} onClick={submitFull}>
+                    {loading ? t('registration.submitting') : t('registration.confirm')}
+                  </Button>
+                </DialogFooter>
               </div>
-              <div className="grid grid-cols-2 gap-3">
-                <Field label="Bairro">
-                  <Input value={f.neighborhood} onChange={e => setF(p => ({ ...p, neighborhood: e.target.value }))} />
-                </Field>
-                <Field label="CEP">
-                  <Input value={f.zipCode} onChange={e => setF(p => ({ ...p, zipCode: maskCEP(e.target.value) }))} placeholder="00000-000" />
-                </Field>
-              </div>
-              <Field label="Cidade">
-                <Input value={f.city} onChange={e => setF(p => ({ ...p, city: e.target.value }))} />
-              </Field>
-              <label className="flex items-start gap-2 pt-1 cursor-pointer">
-                <input type="checkbox" checked={f.terms} onChange={e => setF(p => ({ ...p, terms: e.target.checked }))} className="accent-primary mt-0.5" />
-                <span className="text-xs text-muted-foreground">Li e aceito os termos de participação e o uso dos meus dados para a realização do curso.</span>
-              </label>
-              {error && <ErrorAlert message={error} />}
-              <DialogFooter className="flex-col gap-2 sm:flex-row">
-                <Button type="button" variant="outline" onClick={() => { setError(null); setStep('cpf') }} className="sm:flex-none">
-                  {t('registration.cancel')}
-                </Button>
-                <Button className="flex-1" disabled={loading} onClick={submitFull}>
-                  {loading ? t('registration.submitting') : t('registration.confirm')}
-                </Button>
-              </DialogFooter>
-            </div>
-          </>
-        )}
-      </DialogContent>
-    </Dialog>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      <ConfirmCloseDialog
+        open={confirmDiscard}
+        onConfirm={handleClose}
+        onCancel={() => setConfirmDiscard(false)}
+      />
+    </>
   )
 }
 
 function RouteComponent() {
   const { id } = Route.useParams()
-  const { data: course, isLoading, isError } = useCourse(id)
+  const { data: course, isLoading, isError, error, refetch, isFetching } = useCourse(id)
   const [registrationOpen, setRegistrationOpen] = useState(false)
   const { t } = useTranslation()
 
@@ -336,17 +547,34 @@ function RouteComponent() {
     )
   }
 
-  if (isError || !course) {
+  if (!course) {
+    // "Não existe" só quando a API respondeu 404; outra falha (rede, servidor) pede nova tentativa.
+    const notFound = !isError || (error instanceof ApiError && error.status === 404)
+    if (!notFound) {
+      return (
+        <div className="flex flex-col items-center justify-center px-4 py-32 text-center">
+          <WifiOff className="size-16 text-muted-foreground/50" />
+          <h2 className="mt-4 text-xl font-semibold">{t('courseDetail.loadError')}</h2>
+          <p className="mt-2 text-sm text-muted-foreground">{t('courseDetail.loadErrorDesc')}</p>
+          <div className="mt-6 flex flex-col gap-2 sm:flex-row">
+            <Button className="h-11 gap-2" disabled={isFetching} onClick={() => refetch()}>
+              <RefreshCw className={cn('size-4', isFetching && 'animate-spin')} /> {t('courseDetail.tryAgain')}
+            </Button>
+            <Button asChild variant="outline" className="h-11 gap-2">
+              <Link to="/cursos"><ArrowLeft className="size-4" /> {t('courseDetail.viewAll')}</Link>
+            </Button>
+          </div>
+        </div>
+      )
+    }
     return (
-      <div className="flex flex-col items-center justify-center py-32 text-center">
+      <div className="flex flex-col items-center justify-center px-4 py-32 text-center">
         <GraduationCap className="size-16 text-muted-foreground/50" />
         <h2 className="mt-4 text-xl font-semibold">{t('courseDetail.notFound')}</h2>
         <p className="mt-2 text-sm text-muted-foreground">{t('courseDetail.notFoundDesc')}</p>
-        <Link to="/cursos" className="mt-6">
-          <Button variant="outline">
-            <ArrowLeft className="mr-2 size-4" /> {t('courseDetail.viewAll')}
-          </Button>
-        </Link>
+        <Button asChild variant="outline" className="mt-6 h-11 gap-2">
+          <Link to="/cursos"><ArrowLeft className="size-4" /> {t('courseDetail.viewAll')}</Link>
+        </Button>
       </div>
     )
   }
@@ -357,20 +585,34 @@ function RouteComponent() {
     : 100
   const isFull = spotsLeft <= 0
 
-  // O prazo é salvo como hora "de parede" rotulada em UTC (…Z). Comparar direto
-  // com o instante real fecha ~3h cedo em UTC-3; removendo o Z ele é interpretado
-  // como hora local, respeitando o horário que o admin digitou.
-  const registrationClosed = course.registrationDeadline
-    ? new Date(course.registrationDeadline.replace(/Z$/, '')) < new Date()
-    : false
+  // Prazo: até o fim do dia em Brasília, ou até a hora quando o painel informou;
+  // o curso aceita inscrição até o último dia (mesma regra do backend).
+  const registrationClosed = isRegistrationDeadlinePassed(course.registrationDeadline, course.registrationDeadlineTime)
+  const deadlineTime = deadlineTimeOf(course.registrationDeadlineTime)
+  const deadlineLabel = course.registrationDeadline
+    ? deadlineTime
+      ? t('courseDetail.deadlineAt', { date: formatDateFromString(course.registrationDeadline), time: deadlineTime })
+      : formatDateFromString(course.registrationDeadline)
+    : ''
+  const block = getRegistrationBlock(course)
+  const situation = getCourseSituation(course)
+  const enrollDisabled = block !== null
 
-  const enrollDisabled = isFull || registrationClosed
-
-  function enrollBtnLabel() {
-    if (isFull) return t('courseDetail.spotsFull')
-    if (registrationClosed) return t('courseDetail.registrationClosed2')
-    return t('courseDetail.enroll')
+  const blockLabels: Record<NonNullable<RegistrationBlock>, string> = {
+    ended: t('courseDetail.courseEnded'),
+    in_progress: t('courseDetail.courseInProgress'),
+    deadline: t('courseDetail.registrationClosed2'),
+    full: t('courseDetail.spotsFull'),
   }
+  const enrollLabel = block ? blockLabels[block] : t('courseDetail.enroll')
+  // Prazo e lotação já aparecem no card; encerrado/em andamento ganham uma frase.
+  const blockReason = block === 'ended'
+    ? t('courseDetail.reasonEnded')
+    : block === 'in_progress' ? t('courseDetail.reasonInProgress') : null
+  const priceLabel = course.price === 0 ? t('courseDetail.free') : formatBRL(course.price)
+  const instructorNames = (course.instructors?.length ?? 0) > 0
+    ? course.instructors.map(i => i.name).filter(Boolean).join(', ')
+    : (course.instructorName ?? '').trim()
 
   return (
     <div className="bg-background">
@@ -385,9 +627,7 @@ function RouteComponent() {
         )}
         <div className="absolute inset-0 bg-linear-to-t from-black/60 to-transparent" />
         <div className="absolute bottom-0 left-0 p-6">
-          <Badge className="mb-2 bg-white text-neutral-900">
-            {course.price === 0 ? t('courseDetail.free') : formatBRL(course.price)}
-          </Badge>
+          <Badge className="mb-2 bg-white text-neutral-900">{priceLabel}</Badge>
           <h1 className="text-2xl font-bold text-white md:text-3xl">{course.title}</h1>
         </div>
       </div>
@@ -500,16 +740,15 @@ function RouteComponent() {
                   </div>
                 </div>
 
-                <div className="flex items-start gap-2.5">
-                  <User className="mt-0.5 size-4 shrink-0 text-primary" />
-                  <div>
-                    <p className="font-medium">{t('courseDetail.instructor')}</p>
-                    {(course.instructors?.length ?? 0) > 0
-                      ? <p className="text-muted-foreground">{course.instructors.map(i => i.name).join(', ')}</p>
-                      : <p className="text-muted-foreground">{course.instructorName}</p>
-                    }
+                {instructorNames && (
+                  <div className="flex items-start gap-2.5">
+                    <User className="mt-0.5 size-4 shrink-0 text-primary" />
+                    <div>
+                      <p className="font-medium">{t('courseDetail.instructor')}</p>
+                      <p className="text-muted-foreground">{instructorNames}</p>
+                    </div>
                   </div>
-                </div>
+                )}
 
                 <div className="flex items-start gap-2.5">
                   <Users className="mt-0.5 size-4 shrink-0 text-primary" />
@@ -537,7 +776,7 @@ function RouteComponent() {
                     {registrationClosed
                       ? t('courseDetail.registrationClosed')
                       : t('courseDetail.registrationUntil')}
-                    {formatDateFromString(course.registrationDeadline)}
+                    {deadlineLabel}
                   </div>
                 )}
 
@@ -549,15 +788,19 @@ function RouteComponent() {
               </div>
 
               <Button
-                className="w-full"
+                className="h-11 w-full text-base"
                 size="lg"
                 disabled={enrollDisabled}
                 onClick={() => setRegistrationOpen(true)}
               >
-                {enrollBtnLabel()}
+                {enrollLabel}
               </Button>
 
-              {!enrollDisabled && (
+              {blockReason && (
+                <p className="text-center text-sm text-muted-foreground -mt-2">{blockReason}</p>
+              )}
+
+              {!enrollDisabled && course.price === 0 && (
                 <p className="text-center text-xs text-muted-foreground -mt-2">
                   {t('courseDetail.noFees')}
                 </p>
@@ -567,10 +810,36 @@ function RouteComponent() {
         </div>
       </div>
 
+      {/* Celular: o card com "Inscrever-se" fica depois da descrição, então a ação
+          fica numa barra presa ao pé da tela. É sticky no fim da página (não fixed):
+          ao chegar no final ela volta ao seu lugar, sem cobrir o conteúdo nem o rodapé. */}
+      <div
+        className="sticky bottom-0 z-30 border-t bg-background/95 backdrop-blur lg:hidden"
+        style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
+      >
+        <div className="container mx-auto flex items-center gap-3 px-4 py-3">
+          <div className="min-w-0 flex-1">
+            <p className="truncate font-semibold text-foreground">{priceLabel}</p>
+            {/* Bloqueado: o próprio botão diz o motivo. */}
+            {!block && (
+              <p className="truncate text-xs text-muted-foreground">
+                {situation === 'in_progress' ? t('courseCard.inProgress') : t('courseCard.open')}
+              </p>
+            )}
+          </div>
+          <Button
+            className="h-11 shrink-0 px-5 text-base"
+            disabled={enrollDisabled}
+            onClick={() => setRegistrationOpen(true)}
+          >
+            {enrollLabel}
+          </Button>
+        </div>
+      </div>
+
       <RegistrationDialog
         open={registrationOpen}
-        courseId={id}
-        courseName={course.title}
+        course={course}
         onClose={() => setRegistrationOpen(false)}
       />
     </div>

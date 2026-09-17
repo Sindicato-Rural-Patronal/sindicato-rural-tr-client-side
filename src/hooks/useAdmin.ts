@@ -1,4 +1,4 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query'
 import type { QueryClient } from '@tanstack/react-query'
 import { apiFetch, apiUpload, API_BASE } from '@/lib/api'
 import { openBlob } from '@/utils/download'
@@ -261,10 +261,15 @@ export type AdminUsersFilters = {
   incompleteRegistration?: boolean
 }
 
-export function useAdminUsers(filters: AdminUsersFilters = {}) {
+// A busca no backend ignora acento e maiúscula ("joao" acha "João") e aceita CPF
+// com ou sem máscara. `placeholderData` mantém a lista anterior na tela enquanto
+// a nova página/busca carrega (sem piscar skeleton a cada tecla). `enabled: false`
+// não busca (ex.: sem permissão READ_USER).
+export function useAdminUsers(filters: AdminUsersFilters = {}, options: { enabled?: boolean } = {}) {
   const { page = 1, limit = 20, search, memberType, memberClassification, gender, ethnicity, educationLevel, incompleteRegistration } = filters
+  const term = search?.trim() ?? ''
   const params = new URLSearchParams({ page: String(page), limit: String(limit) })
-  if (search?.trim()) params.set('search', search.trim())
+  if (term) params.set('search', term)
   if (memberType) params.set('memberType', memberType)
   if (memberClassification) params.set('memberClassification', memberClassification)
   if (gender) params.set('gender', gender)
@@ -273,8 +278,10 @@ export function useAdminUsers(filters: AdminUsersFilters = {}) {
   if (incompleteRegistration !== undefined) params.set('incompleteRegistration', String(incompleteRegistration))
 
   return useQuery<PaginatedResponse<UserData>>({
-    queryKey: ['admin', 'users', page, limit, search ?? '', memberType ?? '', memberClassification ?? '', gender ?? '', ethnicity ?? '', educationLevel ?? '', incompleteRegistration ?? ''],
+    queryKey: ['admin', 'users', page, limit, term, memberType ?? '', memberClassification ?? '', gender ?? '', ethnicity ?? '', educationLevel ?? '', incompleteRegistration ?? ''],
     queryFn: () => apiFetch(`/admin/users?${params}`).then(r => r.json()),
+    placeholderData: keepPreviousData,
+    enabled: options.enabled ?? true,
   })
 }
 
@@ -773,7 +780,7 @@ type ContactMessagesFilters = {
   search?: string
 }
 
-export function useContactMessages(filters: ContactMessagesFilters = {}) {
+export function useContactMessages(filters: ContactMessagesFilters = {}, options: { refetchInterval?: number } = {}) {
   const { page = 1, limit = 20, read, search } = filters
   const params = new URLSearchParams({ page: String(page), limit: String(limit) })
   if (read !== null && read !== undefined) params.set('read', String(read))
@@ -782,6 +789,7 @@ export function useContactMessages(filters: ContactMessagesFilters = {}) {
   return useQuery<{ data: ContactMessage[]; total: number; page: number; limit: number; totalPages: number }>({
     queryKey: ['admin', 'contacts', 'messages', page, limit, read ?? null, search ?? ''],
     queryFn: () => apiFetch(`/admin/contacts/messages?${params}`).then(r => r.json()),
+    refetchInterval: options.refetchInterval,
   })
 }
 

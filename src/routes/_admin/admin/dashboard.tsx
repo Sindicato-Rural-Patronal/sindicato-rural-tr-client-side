@@ -7,6 +7,8 @@ import { formatDateFromString } from '@/utils/format-data-from-string'
 import type { CourseCardItem, PaginatedCourses } from '@/hooks/useCourse'
 import { useAdminStats, useAdminUsers } from '@/hooks/useAdmin'
 import { useRooms } from '@/hooks/useRooms'
+import { usePermissions } from '@/hooks/usePermissions'
+import { memberTypeLabel } from '@/lib/member-types'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -103,7 +105,13 @@ function RouteComponent() {
   })
   const { data: stats, isError: statsError } = useAdminStats()
   const { data: salas } = useRooms()
-  const { data: incompletosData } = useAdminUsers({ page: 1, limit: 5, incompleteRegistration: true })
+  // Cadastros incompletos só para quem pode ver pessoas (sem READ_USER a API recusa).
+  const { can } = usePermissions()
+  const canReadUsers = can('READ_USER')
+  const { data: incompletosData, isError: incompletosError } = useAdminUsers(
+    { page: 1, limit: 5, incompleteRegistration: true },
+    { enabled: canReadUsers },
+  )
 
   const today = new Date()
   const todayStr = toYmd(today)
@@ -346,8 +354,8 @@ function RouteComponent() {
         </Card>
       </div>
 
-      {/* Cursos públicos + Inscrições abertas */}
-      <div className="grid gap-6 lg:grid-cols-2">
+      {/* Cursos públicos + Cadastros incompletos */}
+      <div className={`grid gap-6 ${canReadUsers ? 'lg:grid-cols-2' : ''}`}>
         <Card>
           <CardHeader>
             <CardTitle className="text-base">Cursos Públicos</CardTitle>
@@ -384,58 +392,71 @@ function RouteComponent() {
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-base flex items-center gap-2">
-                <UserX className="size-4 text-amber-500" />
-                Cadastros Incompletos
-              </CardTitle>
-              {incompletosData !== undefined && incompletosData.total > 0 && (
-                <Badge variant="secondary">{incompletosData.total}</Badge>
-              )}
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="flex flex-col gap-3">
-              {incompletosData === undefined && Array.from({ length: 3 }).map((_, i) => (
-                <Skeleton key={i} className="h-14 w-full rounded-lg" />
-              ))}
-              {incompletosData?.data.map(user => (
-                <div key={user.id} className="flex items-center justify-between rounded-lg border border-border bg-card p-3">
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-medium text-foreground">{user.name}</p>
-                    <p className="text-xs text-muted-foreground">{user.email}</p>
-                  </div>
-                  {user.memberType && (
-                    <span className="ml-3 shrink-0 inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400">
-                      {user.memberType}
-                    </span>
-                  )}
-                </div>
-              ))}
-              {incompletosData !== undefined && incompletosData.total === 0 && (
-                <div className="flex flex-col items-center justify-center py-8 text-center">
-                  <div className="mb-2 rounded-full bg-emerald-50 p-3 dark:bg-emerald-950/30">
-                    <UserX className="size-5 text-emerald-500" />
-                  </div>
-                  <p className="text-sm font-medium text-foreground">Nenhum cadastro incompleto</p>
-                  <p className="text-xs text-muted-foreground">Todos os associados estão com cadastro completo</p>
-                </div>
-              )}
-            </div>
-            {incompletosData !== undefined && incompletosData.total > 0 && (
-              <div className="mt-3 pt-3 border-t">
-                <Link to="/admin/usuarios" search={{ incomplete: true }}>
-                  <Button variant="outline" size="sm" className="w-full gap-1.5">
-                    Ver todos os {incompletosData.total} cadastros incompletos
-                    <ArrowRight className="size-3.5" />
-                  </Button>
-                </Link>
+        {canReadUsers && (
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <UserX className="size-4 text-amber-500" />
+                  Cadastros Incompletos
+                </CardTitle>
+                {incompletosData !== undefined && incompletosData.total > 0 && (
+                  <Badge variant="secondary">{incompletosData.total}</Badge>
+                )}
               </div>
-            )}
-          </CardContent>
-        </Card>
+            </CardHeader>
+            <CardContent>
+              <div className="flex flex-col gap-3">
+                {incompletosData === undefined && !incompletosError && Array.from({ length: 3 }).map((_, i) => (
+                  <Skeleton key={i} className="h-14 w-full rounded-lg" />
+                ))}
+                {incompletosError && (
+                  <p className="py-4 text-center text-sm text-destructive">Erro ao carregar os cadastros incompletos.</p>
+                )}
+                {/* Cada linha abre a ficha da pessoa para completar o cadastro. */}
+                {incompletosData?.data.map(user => (
+                  <Link
+                    key={user.id}
+                    to="/admin/usuarios/$id"
+                    params={{ id: user.id }}
+                    search={{ completar: 1 }}
+                    className="flex items-center justify-between gap-3 rounded-lg border border-border bg-card p-3 transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-medium text-foreground">{user.name}</p>
+                      <p className="truncate text-xs text-muted-foreground">{user.email}</p>
+                    </div>
+                    {user.memberType && (
+                      <span className="shrink-0 inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400">
+                        {memberTypeLabel(user.memberType)}
+                      </span>
+                    )}
+                    <ChevronRight className="size-4 shrink-0 text-muted-foreground" aria-hidden />
+                  </Link>
+                ))}
+                {incompletosData !== undefined && incompletosData.total === 0 && (
+                  <div className="flex flex-col items-center justify-center py-8 text-center">
+                    <div className="mb-2 rounded-full bg-emerald-50 p-3 dark:bg-emerald-950/30">
+                      <UserX className="size-5 text-emerald-500" />
+                    </div>
+                    <p className="text-sm font-medium text-foreground">Nenhum cadastro incompleto</p>
+                    <p className="text-xs text-muted-foreground">Todos os associados estão com cadastro completo</p>
+                  </div>
+                )}
+              </div>
+              {incompletosData !== undefined && incompletosData.total > 0 && (
+                <div className="mt-3 pt-3 border-t">
+                  <Link to="/admin/usuarios" search={{ incomplete: true }}>
+                    <Button variant="outline" size="sm" className="w-full gap-1.5">
+                      Ver todos os {incompletosData.total} cadastros incompletos
+                      <ArrowRight className="size-3.5" />
+                    </Button>
+                  </Link>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
       </div>
     </div>
   )

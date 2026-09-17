@@ -1,83 +1,23 @@
 import { useState } from 'react'
 import { Link } from '@tanstack/react-router'
 import { toast } from 'sonner'
-import { Check, Pencil, Plus, Search, Trash2, UserRound, Users, X } from 'lucide-react'
+import { Check, Pencil, Plus, Trash2, UserRound, Users, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
 import { DeleteConfirmDialog } from '@/components/DeleteConfirmDialog'
-import { useAdminUsers } from '@/hooks/useAdmin'
-import { useDebouncedValue } from '@/hooks/useDebouncedValue'
+import { PersonPicker, type PickedPerson } from '@/components/PersonPicker'
 import {
   useAddCompanyMember, useUpdateCompanyMember, useRemoveCompanyMember, useCompanyMemberTitles,
-  type CompanyMember,
+  memberTitleSuggestions, type CompanyMember,
 } from '@/hooks/useCompanies'
 import { apiErrorMessage } from '@/lib/api-error-message'
 import { maskCPF } from '@/utils/masks'
 import { upperNoAccents } from '@/utils/text-format'
 
 // Pessoas vinculadas à empresa, cada uma com seu título (cargo) naquela empresa.
-
-// Maiúsculas sem acento, como os demais campos de identificação do cadastro.
-const COMMON_TITLES = ['SOCIO', 'PROPRIETARIO', 'ADMINISTRADOR', 'DIRETOR', 'GERENTE', 'FUNCIONARIO', 'CONTADOR', 'RESPONSAVEL']
-
-type Picked = { id: string; name: string; cpf: string | null }
-
-function PersonPicker({ onPick, excludeIds }: { onPick: (p: Picked) => void; excludeIds: Set<string> }) {
-  const [q, setQ] = useState('')
-  const [open, setOpen] = useState(false)
-  const dq = useDebouncedValue(q, 300).trim()
-  const { data, isFetching } = useAdminUsers({ search: dq, limit: 8 })
-  const results = dq.length >= 2 ? (data?.data ?? []) : []
-
-  return (
-    <div
-      className="relative"
-      // Fecha só quando o foco sai do campo e da lista (Tab entra nos resultados)
-      onBlur={e => { if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setOpen(false) }}
-      onKeyDown={e => { if (e.key === 'Escape' && open) { e.stopPropagation(); setOpen(false) } }}
-    >
-      <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-      <Input
-        id="member-person"
-        value={q}
-        onChange={e => { setQ(e.target.value); setOpen(true) }}
-        onFocus={() => setOpen(true)}
-        placeholder="Buscar pessoa por nome, e-mail ou CPF…"
-        className="h-9 pl-9"
-        autoComplete="off"
-      />
-      {open && dq.length >= 2 && (
-        <div className="absolute z-50 mt-1 w-full overflow-hidden rounded-md border border-border bg-popover shadow-md">
-          {isFetching && <div className="px-3 py-2 text-xs text-muted-foreground">Buscando…</div>}
-          {!isFetching && results.length === 0 && (
-            <div className="px-3 py-2 text-xs text-muted-foreground">Nenhuma pessoa encontrada.</div>
-          )}
-          {results.map(u => {
-            const already = excludeIds.has(u.id)
-            return (
-              <button
-                key={u.id}
-                type="button"
-                disabled={already}
-                onMouseDown={e => e.preventDefault()}
-                onClick={() => { onPick({ id: u.id, name: u.name, cpf: u.cpf }); setQ(''); setOpen(false) }}
-                className="flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-sm hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                <span className="truncate">{u.name}</span>
-                <span className="shrink-0 text-xs text-muted-foreground">
-                  {already ? 'já vinculada' : u.cpf ? maskCPF(u.cpf) : ''}
-                </span>
-              </button>
-            )
-          })}
-        </div>
-      )}
-    </div>
-  )
-}
 
 export function CompanyMembersPanel({ companyId, members, readOnly = false }: {
   companyId: string
@@ -88,10 +28,10 @@ export function CompanyMembersPanel({ companyId, members, readOnly = false }: {
   const updateM = useUpdateCompanyMember(companyId)
   const removeM = useRemoveCompanyMember(companyId)
   const { data: usedTitles } = useCompanyMemberTitles()
-  const suggestions = Array.from(new Set([...(usedTitles ?? []), ...COMMON_TITLES])).sort()
+  const suggestions = memberTitleSuggestions(usedTitles)
 
   const [adding, setAdding] = useState(false)
-  const [person, setPerson] = useState<Picked | null>(null)
+  const [person, setPerson] = useState<PickedPerson | null>(null)
   const [title, setTitle] = useState('')
   const [editing, setEditing] = useState<{ id: string; title: string } | null>(null)
   const [removeTarget, setRemoveTarget] = useState<CompanyMember | null>(null)
@@ -163,7 +103,7 @@ export function CompanyMembersPanel({ companyId, members, readOnly = false }: {
                     </Button>
                   </div>
                 ) : (
-                  <PersonPicker onPick={setPerson} excludeIds={linkedIds} />
+                  <PersonPicker id="member-person" onPick={setPerson} excludeIds={linkedIds} autoFocus />
                 )}
               </div>
               <div className="flex flex-col gap-1.5 md:col-span-2">

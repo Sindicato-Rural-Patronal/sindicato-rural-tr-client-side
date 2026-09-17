@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { toast } from 'sonner'
 import { Loader2, Save, Search } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -113,12 +113,15 @@ function Field({ label, htmlFor, children, className = '' }: {
   )
 }
 
-export function CompanyForm({ company, onSubmit, saving, readOnly = false, submitLabel = 'Salvar' }: {
+export function CompanyForm({ company, onSubmit, saving, readOnly = false, submitLabel = 'Salvar', allowLeaveRef }: {
   company?: Company | null
-  onSubmit: (input: CompanyInput) => Promise<boolean>
+  /** `allowLeave` libera a próxima navegação sem o aviso de não salvo (chame antes de navegar). */
+  onSubmit: (input: CompanyInput, allowLeave: () => void) => Promise<boolean>
   saving: boolean
   readOnly?: boolean
   submitLabel?: string
+  /** Recebe o `allowLeave` do aviso de não salvo, para quem navega por fora do formulário (ex.: após excluir). */
+  allowLeaveRef?: React.RefObject<(() => void) | null>
 }) {
   const [form, setForm] = useState<FormState>(() => fromCompany(company))
   const [snapshot, setSnapshot] = useState(() => JSON.stringify(toInput(fromCompany(company))))
@@ -126,7 +129,10 @@ export function CompanyForm({ company, onSubmit, saving, readOnly = false, submi
   const cepLookup = useCEPLookup()
   const input = useMemo(() => toInput(form), [form])
   const dirty = JSON.stringify(input) !== snapshot
-  useUnsavedGuard(dirty && !saving)
+  const allowLeave = useUnsavedGuard(dirty && !saving)
+  useEffect(() => {
+    if (allowLeaveRef) allowLeaveRef.current = allowLeave
+  }, [allowLeaveRef, allowLeave])
 
   const set = <K extends keyof FormState>(k: K, v: FormState[K]) => setForm(f => ({ ...f, [k]: v }))
   const cnpjDigits = form.cnpj.replace(/\D/g, '')
@@ -153,7 +159,7 @@ export function CompanyForm({ company, onSubmit, saving, readOnly = false, submi
     const problem = validate(input)
     setError(problem)
     if (problem) return
-    if (await onSubmit(input)) setSnapshot(JSON.stringify(input))
+    if (await onSubmit(input, allowLeave)) setSnapshot(JSON.stringify(input))
   }
 
   const d = readOnly || saving

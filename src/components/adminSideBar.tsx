@@ -1,28 +1,37 @@
 import * as React from 'react'
-import { BookOpen, DoorOpen, HeartHandshake, HeartPulse, Images, LayoutDashboard, Mail, Newspaper, ScrollText, Settings, TrendingUp, Users, Wallet } from 'lucide-react'
+import { BookOpen, DoorOpen, HeartHandshake, HeartPulse, Images, LayoutDashboard, Mail, Newspaper, ScrollText, Search, Settings, TrendingUp, Users, Wallet } from 'lucide-react'
 import { Link, useRouterState } from '@tanstack/react-router'
 import { useTranslation } from 'react-i18next'
 import { NavUser } from '@/components/nav-user'
 import { useMe, useContactMessages } from '@/hooks/useAdmin'
+import { openCommandPalette } from '@/lib/command-palette'
 import {
   Sidebar, SidebarContent, SidebarFooter, SidebarGroup,
   SidebarGroupContent, SidebarGroupLabel, SidebarHeader,
   SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarMenuBadge, SidebarSeparator,
+  useSidebar,
 } from '@/components/ui/sidebar'
 
 export function AdminSideBar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { location } = useRouterState()
   const { t } = useTranslation()
+  const { isMobile, setOpenMobile } = useSidebar()
   const { data: me, isLoading: loadingMe } = useMe()
   const perms = me?.permissions ?? null
 
   // Contagem global de mensagens de contato não lidas (badge na sidebar).
-  const { data: unreadData } = useContactMessages({ page: 1, limit: 1, read: false })
+  const { data: unreadData } = useContactMessages({ page: 1, limit: 1, read: false }, { refetchInterval: 60_000 })
   const unread = unreadData?.total ?? 0
 
   function can(perm: string) {
     if (loadingMe || !perms) return true // ainda carregando → mostra tudo
     return perms.includes(perm)
+  }
+
+  function openSearch() {
+    // No celular a barra lateral cobre a tela: fecha antes de abrir a busca.
+    if (isMobile) setOpenMobile(false)
+    openCommandPalette()
   }
 
   const user = {
@@ -90,6 +99,23 @@ export function AdminSideBar({ ...props }: React.ComponentProps<typeof Sidebar>)
       </SidebarHeader>
 
       <SidebarContent className="px-2 py-3">
+        {/* Busca de telas (mesma paleta do Ctrl+K). */}
+        <SidebarMenu className="mb-2">
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              onClick={openSearch}
+              tooltip={`${t('admin.sidebar.search')} (Ctrl+K)`}
+              className="h-10 rounded-lg border border-sidebar-border text-muted-foreground"
+            >
+              <Search className="size-4" />
+              <span>{t('admin.sidebar.search')}</span>
+              <kbd className="ml-auto hidden rounded border border-sidebar-border px-1.5 py-0.5 text-[10px] font-medium md:inline group-data-[collapsible=icon]:hidden">
+                Ctrl K
+              </kbd>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
+
         {navSections.map((section, i) => (
           <React.Fragment key={section.label}>
             {i > 0 && <SidebarSeparator className="my-2" />}

@@ -7,6 +7,7 @@ import { readFile } from 'node:fs/promises'
 import { existsSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { dirname, join, normalize } from 'node:path'
+import { markdownToText } from './markdown-text.mjs'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const DIST = join(__dirname, '..', 'dist')
@@ -39,7 +40,7 @@ function inject(html, { title, description, image, url }) {
     else out = out.replace('</head>', `  <meta ${attr}="${key}" content="${esc(val)}" />\n</head>`)
   }
 
-  const desc = description ? String(description).replace(/\s+/g, ' ').trim().slice(0, 200) : null
+  const desc = markdownToText(description).slice(0, 200) || null
   setMeta('property', 'og:title', fullTitle)
   setMeta('name', 'twitter:title', fullTitle)
   setMeta('name', 'description', desc)

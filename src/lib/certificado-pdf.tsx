@@ -1,6 +1,7 @@
 import { Document, Page, View, Text, StyleSheet, pdf } from '@react-pdf/renderer'
 import { formatDateFromString } from '@/utils/format-data-from-string'
 import { fileSlug, saveBlob } from '@/utils/download'
+import { maskCPF } from '@/utils/masks'
 
 export type CertificadoParticipant = {
   course: {
@@ -68,7 +69,7 @@ function CertificadoPage({ course, participant }: CertificadoParticipant) {
 
           <Text style={styles.intro}>Certificamos que</Text>
           <Text style={styles.name}>{participant.name}</Text>
-          {participant.cpf ? <Text style={styles.cpf}>CPF: {participant.cpf}</Text> : null}
+          {participant.cpf ? <Text style={styles.cpf}>CPF: {maskCPF(participant.cpf)}</Text> : null}
 
           <Text style={styles.body}>
             concluiu com aproveitamento o curso{' '}

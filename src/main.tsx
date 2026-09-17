@@ -1,6 +1,6 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
-import { RouterProvider, createRouter } from '@tanstack/react-router';
+import { RouterProvider, createRouter, lazyRouteComponent } from '@tanstack/react-router';
 import { queryClient } from './lib/query-client.ts'; // Importa o cliente de consulta 
 import { QueryClientProvider } from '@tanstack/react-query'; // Importa o provedor de consulta  
 import { routeTree } from './routeTree.gen.ts'; // Arquivo gerado automaticamente
@@ -8,6 +8,8 @@ import { ReactQueryDevtools } from '@tanstack/react-query-devtools'; // Importa 
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { AuthProvider } from '@/context/AuthContext'
 import { Toaster } from 'sonner'
+import { RouteErrorPage } from '@/components/RouteErrorPage'
+import { PageLoader } from '@/components/PageLoader'
 import './index.css';
 import './i18n';
 
@@ -52,8 +54,16 @@ window.addEventListener('vite:preloadError', (e) => {
   reloadForNewChunks()
 })
 
-// Cria o roteador com a árvore de rotas
-const router = createRouter({ routeTree });
+// Cria o roteador com a árvore de rotas. Telas padrão em português para
+// endereço inexistente (404), erro ao abrir a página e carregamento lento.
+// A 404 (com cabeçalho/rodapé do site) só baixa quando alguém cai nela; erro e
+// carregamento ficam no pacote inicial (precisam aparecer mesmo sem internet).
+const router = createRouter({
+  routeTree,
+  defaultNotFoundComponent: lazyRouteComponent(() => import('@/components/NotFoundPage'), 'NotFoundPage'),
+  defaultErrorComponent: RouteErrorPage,
+  defaultPendingComponent: PageLoader,
+});
 
 // Declaração de tipos para TypeScript (opcional, mas recomendada)
 declare module '@tanstack/react-router' {

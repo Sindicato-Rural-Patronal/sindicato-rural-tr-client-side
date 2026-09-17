@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Pagination } from '@/components/ui/pagination'
+import { LoadErrorRetry } from '@/components/LoadErrorRetry'
 import { Newspaper, Search } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useNews } from '@/hooks/useNews'
@@ -35,6 +36,8 @@ function NewsCard({ news }: { news: News }) {
           <img
             src={news.bannerUrl}
             alt={news.title}
+            loading="lazy"
+            decoding="async"
             className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-300"
           />
         ) : (
@@ -60,7 +63,7 @@ function RouteComponent() {
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
   const { t } = useTranslation()
-  const { data: news = [], isLoading, isError } = useNews({ limit: FETCH_LIMIT })
+  const { data: news = [], isLoading, isError, isFetching, refetch } = useNews({ limit: FETCH_LIMIT })
 
   const filtered = news.filter(n =>
     n.title.toLowerCase().includes(search.toLowerCase()) ||
@@ -115,9 +118,13 @@ function RouteComponent() {
               </div>
             )}
             {isError && (
-              <div className="flex justify-center py-16">
-                <p className="text-destructive">{t('newsPage.error')}</p>
-              </div>
+              <LoadErrorRetry
+                message={t('newsPage.error')}
+                hint
+                onRetry={() => void refetch()}
+                retrying={isFetching}
+                className="py-16"
+              />
             )}
             {!isLoading && !isError && filtered.length === 0 && (
               <div className="flex flex-col items-center justify-center py-16 text-center">

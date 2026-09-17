@@ -3,6 +3,7 @@ import { useMemo, useState } from 'react'
 import { LineChart, Minus, Table2, TrendingDown, TrendingUp } from 'lucide-react'
 import { QuoteHistoryChart } from '@/components/cotacoes/QuoteHistoryChart'
 import { Skeleton } from '@/components/ui/skeleton'
+import { LoadErrorRetry } from '@/components/LoadErrorRetry'
 import { useQuoteHistory, type QuoteHistorySeries } from '@/hooks/useMarketQuotes'
 import { usePublicSiteSettings } from '@/hooks/useSiteSettings'
 import { useSeo } from '@/hooks/useSeo'
@@ -35,7 +36,7 @@ function Segmented<T extends string | number>({ label, value, options, onChange 
           aria-checked={o.value === value}
           onClick={() => onChange(o.value)}
           className={cn(
-            'inline-flex h-8 items-center gap-1.5 rounded-md px-3 text-sm transition-colors',
+            'inline-flex h-11 items-center gap-1.5 rounded-md px-3 text-sm transition-colors sm:h-8',
             o.value === value ? 'bg-muted font-semibold text-foreground' : 'text-muted-foreground hover:text-foreground',
           )}
         >
@@ -50,7 +51,7 @@ function CotacoesPage() {
   useSeo({ title: 'Cotações', description: 'Histórico de preços de soja, milho, trigo, mandioca e dólar lançados pelo Sindicato Rural de Terra Roxa.' })
   const [days, setDays] = useState<Range>(90)
   const [view, setView] = useState<View>('chart')
-  const { data: series, isLoading, isPlaceholderData } = useQuoteHistory(days)
+  const { data: series, isLoading, isError, isFetching, refetch, isPlaceholderData } = useQuoteHistory(days)
   const { data: settings } = usePublicSiteSettings()
   const source = settings?.quotesSource?.trim()
 
@@ -97,7 +98,17 @@ function CotacoesPage() {
             </div>
           )}
 
-          {!isLoading && (!series || series.length === 0) && (
+          {/* Falha da API (sem dado nenhum para mostrar) não é "nenhuma cotação". */}
+          {isError && !series && (
+            <LoadErrorRetry
+              hint
+              onRetry={() => void refetch()}
+              retrying={isFetching}
+              className="rounded-xl border bg-card"
+            />
+          )}
+
+          {!isLoading && !isError && (!series || series.length === 0) && (
             <p className="rounded-xl border bg-card p-8 text-center text-muted-foreground">
               Nenhuma cotação lançada neste período.
             </p>

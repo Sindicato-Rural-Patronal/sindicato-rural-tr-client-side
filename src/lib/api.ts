@@ -1,3 +1,5 @@
+import { loginHref } from '@/lib/auth-token'
+
 // Base da API. Em produção aponta pro backend direto (VITE_API_URL, embutido
 // no build). Em dev fica '/api' e o proxy do Vite encaminha pro backend local.
 export const API_BASE = (import.meta.env.VITE_API_URL || '/api').replace(/\/+$/, '')
@@ -11,11 +13,14 @@ export class ApiError extends Error {
   }
 }
 
+// Sessão vencida ou admin removido: limpa o token e vai para o login guardando
+// a tela atual (volta para ela depois de entrar).
 function handleUnauthorized(status: number) {
-  if (status === 401) {
-    localStorage.removeItem('token')
-    window.location.href = '/login'
-  }
+  if (status !== 401) return
+  localStorage.removeItem('token')
+  const { pathname, search } = window.location
+  if (pathname === '/login') return
+  window.location.href = loginHref(pathname + search)
 }
 
 async function throwApiError(res: Response): Promise<never> {

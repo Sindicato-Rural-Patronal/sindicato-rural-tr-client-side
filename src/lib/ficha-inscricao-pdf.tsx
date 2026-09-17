@@ -9,6 +9,7 @@ import {
 import type { UserDataDetail, UserProperty } from '@/hooks/useAdmin'
 import { formatDateFromString } from '@/utils/format-data-from-string'
 import { fileSlug, saveBlob } from '@/utils/download'
+import { maskCPF } from '@/utils/masks'
 
 // Endereço agora vive na propriedade principal do associado (o user.address
 // legado foi descontinuado).
@@ -209,7 +210,7 @@ function FichaPage({ course, user }: FichaParticipant) {
       </View>
       <View style={styles.fieldRow}><Field label="NATURAL DE:" value={user.birthPlace ?? ''} /></View>
       <View style={styles.fieldRow}>
-        <Field label="CPF Nº:" value={user.cpf ?? ''} />
+        <Field label="CPF Nº:" value={user.cpf ? maskCPF(user.cpf) : ''} />
         <Field label="CAD/PRO:" value={(user.cadPro ?? []).join(', ')} />
         <Field label="ESTADO:" value={a?.state ?? ''} flex={0.7} />
       </View>
