@@ -62,7 +62,7 @@ export function AdminSideBar({ ...props }: React.ComponentProps<typeof Sidebar>)
     {
       label: t('admin.sidebar.settings'),
       items: [
-        { title: t('admin.sidebar.settings'), url: '/admin/configuracoes', icon: Settings, perm: ['READ_BANNER', 'READ_USER', 'READ_USER_ADMIN'] },
+        { title: t('admin.sidebar.settings'), url: '/admin/configuracoes', icon: Settings, perm: ['READ_BANNER', 'READ_USER'] },
       ],
     },
   ]

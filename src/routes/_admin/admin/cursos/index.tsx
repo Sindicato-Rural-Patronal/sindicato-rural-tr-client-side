@@ -63,6 +63,7 @@ import { Pagination } from '@/components/ui/pagination'
 import { DeleteConfirmDialog } from '@/components/DeleteConfirmDialog'
 import { NativeSelect } from '@/components/ui/native-select'
 import { useDebouncedValue } from '@/hooks/useDebouncedValue'
+import { isActiveMember } from '@/lib/membership'
 
 function calcDaysUntil(startDate: string) {
   if (!startDate) return 0
@@ -452,7 +453,7 @@ function RegistrationsTab({
         toast.error(t('admin.courses.noRegistrations'))
         return
       }
-      const headers = ['Nome', 'CPF', 'E-mail', 'Telefone', 'Nascimento', 'Idade', 'Confirmado', 'Sócio', 'Cargo', 'Título']
+      const headers = ['Nome', 'CPF', 'E-mail', 'Telefone', 'Nascimento', 'Idade', 'Confirmado', 'Associado', 'Empresa parceira', 'Cargo na diretoria', 'Contato público']
       const rows = regs.map(r => {
         const age = calcAge(r.userData.birthDate)
         return [
@@ -463,9 +464,10 @@ function RegistrationsTab({
           r.userData.birthDate ? formatDateFromString(r.userData.birthDate) : '',
           age !== null ? String(age) : '',
           r.confirmed ? 'Sim' : 'Não',
-          r.userData.isPartner ? 'Sim' : 'Não',
+          isActiveMember(r.userData.memberStatus, r.userData.membershipValidUntil) ? 'Sim' : 'Não',
+          r.userData.companyMemberships.map(m => m.company.tradeName || m.company.name).join(', '),
           r.userData.boardPosition ?? '',
-          r.userData.userAdmin?.publicTitle ?? '',
+          r.userData.publicContact?.title ?? '',
         ]
       })
       const esc = (v: string) => `"${String(v).replace(/"/g, '""')}"`
@@ -618,14 +620,22 @@ function RegistrationsTab({
                   </span>
                 ) : null
               })()}
-              {reg.userData.isPartner && (
-                <span className="inline-flex items-center rounded-full border border-amber-200 bg-amber-100 px-1.5 text-[10px] font-medium text-amber-700 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-400">Sócio</span>
+              {isActiveMember(reg.userData.memberStatus, reg.userData.membershipValidUntil) && (
+                <span className="inline-flex items-center rounded-full border border-amber-200 bg-amber-100 px-1.5 text-[10px] font-medium text-amber-700 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-400" title="Associado em dia">Associado</span>
+              )}
+              {reg.userData.companyMemberships.length > 0 && (
+                <span
+                  className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-100 px-1.5 text-[10px] font-medium text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-400"
+                  title={`Vinculado a empresa parceira: ${reg.userData.companyMemberships.map(m => m.company.tradeName || m.company.name).join(', ')}`}
+                >
+                  Parceira
+                </span>
               )}
               {reg.userData.boardPosition && (
                 <span className="inline-flex items-center rounded-full border border-blue-200 bg-blue-100 px-1.5 text-[10px] font-medium text-blue-700 dark:border-blue-900 dark:bg-blue-950/40 dark:text-blue-400">{reg.userData.boardPosition}</span>
               )}
-              {reg.userData.userAdmin?.isPublic && reg.userData.userAdmin.publicTitle && (
-                <span className="inline-flex items-center rounded-full border border-purple-200 bg-purple-100 px-1.5 text-[10px] font-medium text-purple-700">{reg.userData.userAdmin.publicTitle}</span>
+              {reg.userData.publicContact?.title && (
+                <span className="inline-flex items-center rounded-full border border-purple-200 bg-purple-100 px-1.5 text-[10px] font-medium text-purple-700 dark:border-purple-900 dark:bg-purple-950/40 dark:text-purple-400">{reg.userData.publicContact.title}</span>
               )}
             </div>
             <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-muted-foreground">

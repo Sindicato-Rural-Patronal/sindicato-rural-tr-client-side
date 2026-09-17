@@ -3,7 +3,7 @@ import { toast } from 'sonner'
 import { FaFacebook, FaInstagram, FaWhatsapp } from 'react-icons/fa'
 import type { IconType } from 'react-icons'
 import { useTranslation } from 'react-i18next'
-import { useAdminSocial, useUpdateSocial, type SocialSettings } from '@/hooks/useSiteSettings'
+import { useAdminSiteSettings, useUpdateSiteSettings, type SiteSettings } from '@/hooks/useSiteSettings'
 import { apiErrorMessage } from '@/lib/api-error-message'
 import { LoadErrorBanner } from '@/components/LoadErrorBanner'
 import { Button } from '@/components/ui/button'
@@ -11,10 +11,12 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Skeleton } from '@/components/ui/skeleton'
 
+type SocialSettings = Pick<SiteSettings, 'facebook' | 'instagram' | 'whatsapp'>
+
 // Redes sociais do rodapé do site.
 export function SocialLinksPanel({ canEdit }: { canEdit: boolean }) {
   const { t } = useTranslation()
-  const { data, isLoading, isError } = useAdminSocial()
+  const { data, isLoading, isError } = useAdminSiteSettings()
 
   return (
     <div className="max-w-xl rounded-lg border border-border bg-card p-4 md:p-6">
@@ -40,7 +42,7 @@ export function SocialLinksPanel({ canEdit }: { canEdit: boolean }) {
 // Montado só com os dados carregados: o estado inicial já vem do servidor.
 function SocialForm({ initial, canEdit }: { initial: SocialSettings; canEdit: boolean }) {
   const { t } = useTranslation()
-  const update = useUpdateSocial()
+  const update = useUpdateSiteSettings()
   const [form, setForm] = useState<SocialSettings>({
     facebook: initial.facebook ?? '', instagram: initial.instagram ?? '', whatsapp: initial.whatsapp ?? '',
   })

@@ -37,7 +37,7 @@ import { AgeHint } from '@/components/AgeHint'
 import { apiErrorMessage } from '@/lib/api-error-message'
 import { toIso } from '@/utils/dates'
 import { upperNoAccents } from '@/utils/text-format'
-import { memberTypeOptions } from '@/lib/member-types'
+import { MEMBER_TYPE_OPTIONS } from '@/lib/member-types'
 import {
   GENDER_OPTIONS, ETHNICITY_OPTIONS, EDUCATION_OPTIONS,
   MARITAL_STATUS_OPTIONS, CNH_CATEGORY_OPTIONS,
@@ -728,7 +728,7 @@ function DadosTab({ userId, user, completeMode, onCompleteModeEnd, hasNoProperti
             <Input className={inp} disabled={d} value={form.memberClassification} onChange={e => set('memberClassification', upperNoAccents(e.target.value))} />
           </FieldRow>
           <FieldRow label="Tipo de membro">
-            <SelectField disabled={d} value={form.memberType} onChange={v => set('memberType', v)} placeholder="Selecione" options={memberTypeOptions(form.memberType)} />
+            <SelectField disabled={d} value={form.memberType} onChange={v => set('memberType', v)} placeholder="Selecione" options={MEMBER_TYPE_OPTIONS} />
           </FieldRow>
           <FieldRow label="Associado desde">
             <DatePicker disabled={d} value={form.memberSince} onChange={v => set('memberSince', v)} />

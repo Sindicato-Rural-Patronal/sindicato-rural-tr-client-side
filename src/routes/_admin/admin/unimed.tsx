@@ -85,7 +85,7 @@ function UserPicker({ onPick, placeholder }: {
               className="flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-sm hover:bg-accent"
             >
               <span className="truncate">{u.name}</span>
-              <span className="shrink-0 text-xs text-muted-foreground">{u.cpf ?? u.cnpj ?? ''}</span>
+              <span className="shrink-0 text-xs text-muted-foreground">{u.cpf ?? ''}</span>
             </button>
           ))}
         </div>

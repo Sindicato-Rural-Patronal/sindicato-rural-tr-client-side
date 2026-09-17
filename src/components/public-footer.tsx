@@ -4,13 +4,13 @@ import { Button } from '@/components/ui/button'
 import { FaFacebook, FaInstagram, FaWhatsapp } from 'react-icons/fa'
 import { useTranslation } from 'react-i18next'
 import { LanguageToggle } from '@/components/LanguageToggle'
-import { ORG_CONTACT } from '@/lib/org-contact'
-import { usePublicSocial } from '@/hooks/useSiteSettings'
+import { useOrgInfo, usePublicSiteSettings } from '@/hooks/useSiteSettings'
 import { safeUrl } from '@/utils/safe-url'
 
 export function PublicFooter() {
   const { t } = useTranslation()
-  const { data: social } = usePublicSocial()
+  const { data: social } = usePublicSiteSettings()
+  const org = useOrgInfo()
   const socials = [
     { label: 'Facebook', url: social?.facebook, Icon: FaFacebook },
     { label: 'Instagram', url: social?.instagram, Icon: FaInstagram },
@@ -37,20 +37,20 @@ export function PublicFooter() {
             <div className="space-y-2 text-sm text-brand-foreground/90">
               <p className="flex items-center gap-2">
                 <Phone className="size-4 shrink-0" />
-                {ORG_CONTACT.phone}
+                {org.phone}
               </p>
               <p className="flex items-center gap-2">
                 <Mail className="size-4 shrink-0" />
-                {ORG_CONTACT.email}
+                {org.email}
               </p>
               <p className="flex items-start gap-2">
                 <MapPin className="mt-0.5 size-4 shrink-0" />
                 <span>
-                  {ORG_CONTACT.street}
+                  {org.street}
                   <br />
-                  {ORG_CONTACT.district} - {ORG_CONTACT.zip}
+                  {org.district} - {org.zip}
                   <br />
-                  {ORG_CONTACT.city} - {ORG_CONTACT.state}
+                  {org.city} - {org.state}
                 </span>
               </p>
             </div>

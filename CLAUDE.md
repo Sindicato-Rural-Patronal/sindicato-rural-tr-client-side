@@ -32,7 +32,8 @@ Site institucional do **Sindicato Rural de Terra Roxa** (Paraná, Brasil). Plata
 /cursos/$id                 → _public/cursos/$id.tsx (detalhe + inscrição)
 /noticias                   → _public/noticias/index.tsx
 /noticias/$id               → _public/noticias/$id.tsx
-/sobre                      → _public/sobre.tsx
+/sobre                      → _public/sobre.tsx (texto de Configurações + sede + galeria com todas as fotos em #galeria)
+/cotacoes                   → _public/cotacoes.tsx (histórico: um gráfico por produto, 30/90/180/365 dias, visão tabela)
 /contato                    → _public/contato.tsx
 /convenios                  → _public/convenios/index.tsx (cartões dos convênios ativos)
 /convenios/$slug            → _public/convenios/$slug.tsx (tabela de valores, documentos, sobre)
@@ -51,7 +52,7 @@ Site institucional do **Sindicato Rural de Terra Roxa** (Paraná, Brasil). Plata
 /admin/administradores      → _admin/admin/administradores/index.tsx
 /admin/cotacoes             → _admin/admin/cotacoes/index.tsx (lançamento do dia: produtos fixos, preço + manhã/tarde)
 /admin/galerias             → _admin/admin/galerias/index.tsx (redireciona p/ /admin/configuracoes?tab=galerias)
-/admin/configuracoes        → _admin/admin/configuracoes.tsx (Configurações do site: ?tab=redes|galerias|parceiros|contatos)
+/admin/configuracoes        → _admin/admin/configuracoes.tsx (Configurações do site: ?tab=dados|redes|galerias|parceiros|contatos)
 /admin/convenios            → _admin/admin/convenios/index.tsx (lista de convênios)
 /admin/convenios/novo       → _admin/admin/convenios/novo.tsx (editor, criação)
 /admin/convenios/$id        → _admin/admin/convenios/$id.tsx (editor com pré-visualização)
@@ -83,11 +84,14 @@ src/
 │   ├── adminSideBar.tsx             # Sidebar admin — usa logo-icon.png; link perfil via userDataId
 │   ├── nav-user.tsx                 # Dropdown do usuário (logout)
 │   ├── home-hero-section.tsx        # Banner hero
-│   ├── home-gallery-section.tsx     # Galerias de fotos (no lugar dos números) + lightbox
-│   ├── home-cotacoes-section.tsx    # Faixa de cotações (preço, unidade, dia/período)
+│   ├── home-gallery-section.tsx     # Galerias de fotos (no lugar dos números); link "Ver todas" → /sobre#galeria
+│   ├── GalleryLightbox.tsx          # Fotos de uma galeria em tela cheia (home e Sobre)
+│   ├── home-cotacoes-section.tsx    # Faixa de cotações (preço, unidade, dia/período, fonte, link histórico)
+│   ├── cotacoes/QuoteHistoryChart.tsx # Gráfico SVG de um produto (linha, crosshair/tooltip, setas do teclado)
 │   ├── galerias/                    # Admin: GalleryAlbumCard (fotos, legenda, ordem), GalleryAlbumDialog
-│   ├── site-config/                 # Abas de Configurações do site: SocialLinksPanel, GalleriesPanel,
-│   │                                #   PartnersPanel (+ PartnerEditDialog: logo/link), PublicContactsPanel
+│   ├── site-config/                 # Abas de Configurações do site: OrgInfoPanel (dados do sindicato +
+│   │                                #   texto do Sobre), SocialLinksPanel, GalleriesPanel, PartnersPanel
+│   │                                #   (+ PartnerEditDialog: logo/link), PublicContactsPanel (busca pessoa, cargo, ordem)
 │   ├── home-courses-section.tsx     # Carrossel de cursos (CoursesSection)
 │   ├── home-news-section.tsx        # Seção de notícias na home
 │   ├── course-card.tsx              # CourseCard + CourseCardSimple (carousel-aware)
@@ -108,7 +112,10 @@ src/
 │   ├── useCompanies.ts              # Empresas: useAdminCompanies, useAdminCompany, CRUD, vínculos
 │   │                                #   (members), propriedades, logo de parceira, títulos usados
 │   ├── useGalleries.ts              # Galerias: pública, admin, CRUD, upload/legenda/ordem das fotos
-│   ├── useMarketQuotes.ts           # Cotações: pública, admin, useSaveDailyQuotes (PUT daily)
+│   ├── useMarketQuotes.ts           # Cotações: pública, admin, useSaveDailyQuotes (PUT daily), useQuoteHistory
+│   ├── useSiteSettings.ts           # Configurações do site (pública/admin/salvar), useUpdateQuotesSource,
+│   │                                #   useOrgInfo (dados do sindicato com fallback de lib/org-contact.ts)
+│   ├── usePublicContactsAdmin.ts    # Contatos públicos no admin: listar, adicionar, cargo, tirar, reordenar
 │   ├── useNews.ts                   # Hooks de notícias (admin + público)
 │   ├── useBanner.ts                 # Hooks de banners
 │   ├── useRooms.ts                  # useRooms, useCreateRoom
@@ -121,7 +128,9 @@ src/
 │   ├── query-client.ts              # QueryClient: staleTime 60s, gcTime 5min, retry false, refetchOnWindowFocus false
 │   ├── auth-guard.ts                # Guard de rota admin
 │   ├── schemas.ts                   # Schemas Zod: pessoaSchema, roomSchema, adminSchema, courseBaseSchema
-│   ├── member-types.ts              # Tipo de membro (lista fixa) + opção "valor antigo"
+│   ├── member-types.ts              # Tipo de membro (lista fixa) + MEMBER_TYPE_OPTIONS
+│   ├── membership.ts                # isActiveMember (selo "Associado" nas inscrições)
+│   ├── org-contact.ts               # Dados padrão do sindicato (fallback) + phoneDigits
 │   ├── room-names.ts                # Nomes fixos das salas + opções do select
 │   ├── quote-utils.ts               # Cotações: período (manhã/tarde), rótulo dos produtos, trendOf
 │   └── utils.ts                     # cn() helper (clsx + tailwind-merge)
@@ -148,7 +157,7 @@ UserRelation            // relacionamento (dependente/cônjuge)
 UserInstructor          // { id, bio, linkedin, instagram, facebook }
 UserDataDetail          // UserData & { address, userInstructor, companyMemberships }
 InstructorItem          // { id, bio, linkedin, instagram, facebook, userData: { id, name } }
-PublicContactItem       // { publicTitle, userData: { name, email, phone } }
+PublicContactItem       // { publicTitle, userData: { name, email, phone, avatar } }
 ContactMessage          // mensagem de contato recebida
 ```
 
@@ -309,7 +318,12 @@ mapCourses(list: ApiCourse[]): Course[]
 - `DELETE /api/admin/contacts/messages/:id` — deletar mensagem
 
 **Contato (público)**
-- `GET /api/contacts` — lista contatos públicos
+- `GET /api/contacts` — contatos públicos, na ordem definida no admin
+- `GET /api/site-settings` — redes sociais, dados do sindicato (`org*`), `aboutText`, `quotesSource`
+
+**Configurações do site (admin)**
+- `GET` · `PATCH /api/admin/site-settings` — `*_BANNER`; só grava os campos enviados
+- `GET /api/admin/public-contacts` (READ_USER) · `POST` `{ userDataId, title }` · `PATCH /:id` `{ title }` · `DELETE /:id` · `PATCH /reorder` `{ order: id[] }` (UPDATE_USER) — qualquer pessoa do cadastro, com ou sem login
 - `POST /api/contact` — enviar mensagem de contato
 
 **Salas** — nome precisa ser da lista fixa (AUDITORIO, COZINHA, SALA DE VIDEO CONFERENCIA, SALA 1, SALA 2, SALA APL); repetido → 409
@@ -327,6 +341,8 @@ mapCourses(list: ApiCourse[]): Course[]
 - `GET /api/market-quotes` — produtos com preço lançado (público; `priceCents`, `unit`, `period`, `referenceDate`, `variation`)
 - `GET /api/admin/market-quotes` — os 5 produtos
 - `PUT /api/admin/market-quotes/daily` — `{ period: MORNING|AFTERNOON, prices: [{ id, priceCents }] }`; data = hoje (definida no backend)
+- `GET /api/market-quotes/history?days=30|90|180|365` — `[{ id, label, unit, points: [{ date, period, priceCents }] }]` (público)
+- `PUT /api/admin/market-quotes/source` — `{ source }` (UPDATE_MARKET_QUOTE); vazio esconde a fonte
 
 **Galerias da home** — permissões `*_BANNER`
 - `GET /api/galleries` — ativas com pelo menos uma foto (público)
@@ -356,20 +372,21 @@ mapCourses(list: ApiCourse[]): Course[]
 **Utilitário**
 - `GET /api/address/cep/:cep` — lookup CEP (ViaCEP + cache local)
 
-## Estado Atual (julho/2026)
+## Estado Atual (setembro/2026)
 
 - Auth **funcional** — login/logout integrados com backend real.
 - Cursos **integrados com API real** — CRUD completo (criar, editar, deletar, banner, galeria, instrutores, inscrições).
 - Usuários admin: detalhe completo com propriedades/relacionamentos paginados, upload de avatar, promoção a instrutor.
 - Banners e mensagens de contato implementados.
 - Notícias, salas, admins e parceiros implementados.
-- **Empresas separadas de pessoas** (set/2026): `Company` tem vínculos N:N com pessoas (`CompanyMember`, cada um com título livre, ex.: SOCIO, CONTADOR), propriedades próprias (endereços; `Property` pertence a uma pessoa OU a uma empresa) e a parceria (antes flags em `UserData`). Lista na aba "Empresas" de `/admin/usuarios`. O CNPJ saiu do formulário de pessoa; as colunas `cnpj`/`isPartner`/`partner*` de `UserData` continuam no banco mas não são mais usadas. A migration criou uma empresa para cada pessoa ativa que era parceira ou tinha CNPJ, com a pessoa como RESPONSAVEL.
+- **Empresas separadas de pessoas** (set/2026): `Company` tem vínculos N:N com pessoas (`CompanyMember`, cada um com título livre, ex.: SOCIO, CONTADOR), propriedades próprias (endereços; `Property` pertence a uma pessoa OU a uma empresa) e a parceria (antes flags em `UserData`). Lista na aba "Empresas" de `/admin/usuarios`. O CNPJ saiu do formulário de pessoa; as colunas `cnpj`/`isPartner`/`partner*` de `UserData` foram removidas (valores antigos de CNPJ e de tipo de membro fora da lista foram para as observações do associado). A migration criou uma empresa para cada pessoa ativa que era parceira ou tinha CNPJ, com a pessoa como RESPONSAVEL.
 - Dashboard admin **implementado** — stats + calendário de cursos + lista de cadastros incompletos (não é mais stub).
 - Trilha de auditoria e convites de admin implementados.
-- **Ajustes de cadastro (set/2026)**: tipo de membro é select (Aluno, Produtor rural, Trabalhador rural assalariado/autônomo; valor antigo fora da lista aparece marcado); CAD/PRO até 5; salas com nome de lista fixa; empresa com razão social (`name`), nome fantasia (`tradeName`, exibido quando houver — `companyDisplayName`) e endereço da sede no próprio cadastro (CEP com busca).
-- **Cotações**: produtos fixos; o admin só lança preço (centavos) e período manhã/tarde; a data é a do dia. Home mostra preço + unidade + dia/período.
+- **Ajustes de cadastro (set/2026)**: tipo de membro é select (Aluno, Produtor rural, Trabalhador rural assalariado/autônomo; o backend recusa valor fora da lista); CAD/PRO até 5; salas com nome de lista fixa; empresa com razão social (`name`), nome fantasia (`tradeName`, exibido quando houver — `companyDisplayName`) e endereço da sede no próprio cadastro (CEP com busca).
+- **Cotações**: produtos fixos; o admin só lança preço (centavos) e período manhã/tarde; a data é a do dia. Home mostra preço + unidade + dia/período + fonte (editável no admin de cotações) e linka para `/cotacoes` (histórico em gráfico/tabela).
+- **Inscrições de curso**: selos "Associado" (situação ativa e validade em dia), "Parceira" (vínculo com empresa parceira ativa), cargo na diretoria e cargo de contato público; o CSV traz as mesmas colunas.
 - **Home**: os números (associados, cursos realizados, anos, alunos) saíram; no lugar, galerias de fotos (História do Sindicato, FAEP, Patrulha Rural já criadas, vazias até receber fotos).
-- **Configurações do site** (`/admin/configuracoes`): centraliza o que é do site público — Redes sociais, Galerias, Parceiros da home (adicionar empresa, logo, link, ordem, tirar) e Contatos públicos (administradores em "Nossa Equipe" com cargo). Cada aba segue a permissão da área de origem: `*_BANNER`, `*_USER` (empresas) e `*_USER_ADMIN`. A empresa não tem mais aba Parceria e o diálogo de admin não marca mais contato público — ambos apontam para cá.
+- **Configurações do site** (`/admin/configuracoes`): centraliza o que é do site público — Dados do sindicato (telefone, e-mail, endereço, horário, busca do mapa e texto do Sobre; usados no rodapé, Contato, Sobre e convênios via `useOrgInfo`), Redes sociais, Galerias, Parceiros da home (adicionar empresa, logo, link, ordem, tirar) e Contatos públicos ("Nossa Equipe": qualquer pessoa do cadastro, com cargo e ordem). Permissões: Dados/Redes/Galerias `*_BANNER`; Parceiros e Contatos `*_USER`. A empresa não tem mais aba Parceria e o diálogo de admin não marca mais contato público — ambos apontam para cá.
 - **Convênios**: dropdown "Convênios" no header público lista os convênios ativos; cada um tem página em `/convenios/$slug` (tabela de valores por faixa, documentos para adesão, destaques e texto). Conteúdo 100% editável em `/admin/convenios` (`ConvenioEditor` + `ConvenioPageView` compartilhado com a pré-visualização). Hooks em `useConvenios.ts`. Unimed semeado com os dados da página antiga (`ruraltr.com.br/pgs/print_unimed.php`). Regras com `UPDATE_BANNER` receberam as permissões `*_CONVENIO` na migration.
 - **Financeiro** (admin): lançamentos de caixa (valor em centavos Int), categorias, dashboard, comprovantes (anexo em Bytes no banco), export CSV, multi-caixa e transferência entre caixas, relatório PDF do período. Gated por `READ/CREATE/UPDATE/DELETE_FINANCE`. Filtros dos lançamentos vivem na URL (search params).
 - Deploy em produção via Docker (Dockerfile + docker-compose.prod.yml + nginx).

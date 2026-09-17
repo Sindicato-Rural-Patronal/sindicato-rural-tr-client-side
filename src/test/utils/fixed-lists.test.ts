@@ -1,21 +1,19 @@
 import { describe, it, expect } from 'vitest'
-import { memberTypeLabel, memberTypeOptions } from '@/lib/member-types'
+import { MEMBER_TYPE_OPTIONS, memberTypeLabel } from '@/lib/member-types'
 import { roomNameOptions } from '@/lib/room-names'
 import { currentQuotePeriod, quoteProductLabel, trendOf } from '@/lib/quote-utils'
 import { companyDisplayName } from '@/hooks/useCompanies'
 
 describe('tipo de membro', () => {
   it('tem as quatro opções fixas', () => {
-    expect(memberTypeOptions('').map(o => o.value)).toEqual([
+    expect(MEMBER_TYPE_OPTIONS.map(o => o.value)).toEqual([
       'ALUNO', 'PRODUTOR RURAL', 'TRABALHADOR RURAL ASSALARIADO', 'TRABALHADOR RURAL AUTONOMO',
     ])
   })
 
-  it('mantém valor antigo fora da lista visível, marcado', () => {
-    const opts = memberTypeOptions('SOCIO')
-    expect(opts).toHaveLength(5)
-    expect(opts[4]).toEqual({ value: 'SOCIO', label: 'SOCIO (valor antigo)' })
+  it('mostra o rótulo com acento', () => {
     expect(memberTypeLabel('TRABALHADOR RURAL AUTONOMO')).toBe('Trabalhador rural autônomo')
+    expect(memberTypeLabel(null)).toBe('')
   })
 })
 

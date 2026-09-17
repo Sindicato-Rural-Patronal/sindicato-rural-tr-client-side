@@ -1,16 +1,17 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { Globe, Handshake, Images, Settings, Users } from 'lucide-react'
+import { Building, Globe, Handshake, Images, Settings, Users } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { usePermissions } from '@/hooks/usePermissions'
 import { NoPermission } from '@/components/NoPermission'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { OrgInfoPanel } from '@/components/site-config/OrgInfoPanel'
 import { SocialLinksPanel } from '@/components/site-config/SocialLinksPanel'
 import { GalleriesPanel } from '@/components/site-config/GalleriesPanel'
 import { PartnersPanel } from '@/components/site-config/PartnersPanel'
 import { PublicContactsPanel } from '@/components/site-config/PublicContactsPanel'
 
-const TABS = ['redes', 'galerias', 'parceiros', 'contatos'] as const
+const TABS = ['dados', 'redes', 'galerias', 'parceiros', 'contatos'] as const
 type Tab = (typeof TABS)[number]
 
 export const Route = createFileRoute('/_admin/admin/configuracoes')({
@@ -22,8 +23,8 @@ export const Route = createFileRoute('/_admin/admin/configuracoes')({
 })
 
 // Tudo o que aparece no site público e é ajustado pelo painel. Cada aba segue
-// a permissão da área de origem: conteúdo da home (banners), empresas
-// (usuários) e contatos (administradores).
+// a permissão da área de origem: conteúdo do site (banners) e empresas/pessoas
+// (usuários).
 function ConfiguracoesPage() {
   const { t } = useTranslation()
   const { can, isLoading } = usePermissions()
@@ -31,10 +32,11 @@ function ConfiguracoesPage() {
   const { tab } = Route.useSearch()
 
   const available: Record<Tab, boolean> = {
+    dados: can('READ_BANNER'),
     redes: can('READ_BANNER'),
     galerias: can('READ_BANNER'),
     parceiros: can('READ_USER'),
-    contatos: can('READ_USER_ADMIN'),
+    contatos: can('READ_USER'),
   }
   const visible = TABS.filter(k => available[k])
   const current = tab && available[tab] ? tab : visible[0]
@@ -55,12 +57,16 @@ function ConfiguracoesPage() {
 
       <Tabs value={current} onValueChange={v => navigate({ search: { tab: v as Tab }, replace: true })}>
         <TabsList className="mb-2 h-auto flex-wrap">
+          {available.dados && <TabsTrigger value="dados"><Building className="mr-1.5 size-3.5" /> Dados do sindicato</TabsTrigger>}
           {available.redes && <TabsTrigger value="redes"><Globe className="mr-1.5 size-3.5" /> Redes sociais</TabsTrigger>}
           {available.galerias && <TabsTrigger value="galerias"><Images className="mr-1.5 size-3.5" /> Galerias</TabsTrigger>}
           {available.parceiros && <TabsTrigger value="parceiros"><Handshake className="mr-1.5 size-3.5" /> Parceiros</TabsTrigger>}
           {available.contatos && <TabsTrigger value="contatos"><Users className="mr-1.5 size-3.5" /> Contatos públicos</TabsTrigger>}
         </TabsList>
 
+        {available.dados && (
+          <TabsContent value="dados"><OrgInfoPanel canEdit={can('UPDATE_BANNER')} /></TabsContent>
+        )}
         {available.redes && (
           <TabsContent value="redes"><SocialLinksPanel canEdit={can('UPDATE_BANNER')} /></TabsContent>
         )}
@@ -73,7 +79,7 @@ function ConfiguracoesPage() {
           <TabsContent value="parceiros"><PartnersPanel canEdit={can('UPDATE_USER')} /></TabsContent>
         )}
         {available.contatos && (
-          <TabsContent value="contatos"><PublicContactsPanel canEdit={can('UPDATE_USER_ADMIN')} /></TabsContent>
+          <TabsContent value="contatos"><PublicContactsPanel canEdit={can('UPDATE_USER')} /></TabsContent>
         )}
       </Tabs>
     </div>

@@ -14,25 +14,13 @@ import {
 } from 'lucide-react'
 import { maskPhone } from '@/utils/masks'
 import { useSeo } from '@/hooks/useSeo'
-import { ORG_CONTACT } from '@/lib/org-contact'
+import { phoneDigits } from '@/lib/org-contact'
+import { useOrgInfo } from '@/hooks/useSiteSettings'
 
 export const Route = createFileRoute('/_public/contato')({
   component: ContatoPage,
 })
 
-const INFO = {
-  address: `${ORG_CONTACT.street}, ${ORG_CONTACT.district}`,
-  city: `${ORG_CONTACT.city} – ${ORG_CONTACT.state}, ${ORG_CONTACT.zip}`,
-  phone: ORG_CONTACT.phone,
-  email: ORG_CONTACT.email,
-  hours: [
-    { days: 'Segunda a Sexta', time: '08h às 17h' },
-    { days: 'Sábado', time: '08h às 12h' },
-  ],
-}
-
-const MAPS_SRC =
-  'https://maps.google.com/maps?q=Sindicato+Rural+de+Terra+Roxa+PR+Brasil&output=embed&z=15'
 
 function PublicContacts() {
   const { data: contacts, isLoading, isError } = usePublicContacts()
@@ -70,7 +58,7 @@ function PublicContacts() {
               key={c.userData.email}
               className="flex items-center gap-4 rounded-xl border bg-card p-5 shadow-sm hover:shadow-md transition-shadow"
             >
-              <InitialsAvatar name={c.userData.name} size="lg" className="font-bold border-2 border-border" />
+              <InitialsAvatar name={c.userData.name} avatar={c.userData.avatar} size="lg" className="font-bold border-2 border-border" />
               <div className="flex flex-col gap-1 min-w-0">
                 <p className="font-semibold text-foreground truncate">{c.userData.name}</p>
                 {c.publicTitle && (
@@ -232,6 +220,7 @@ function ContactForm() {
 
 function ContatoPage() {
   useSeo({ title: 'Contato', description: 'Fale com o Sindicato Rural de Terra Roxa: endereço, telefones, e-mail e formulário.' })
+  const org = useOrgInfo()
   return (
     <main>
       {/* Hero */}
@@ -271,8 +260,8 @@ function ContatoPage() {
                   </div>
                   <div>
                     <p className="text-sm font-semibold text-foreground">Endereço</p>
-                    <p className="text-sm text-muted-foreground mt-0.5">{INFO.address}</p>
-                    <p className="text-sm text-muted-foreground">{INFO.city}</p>
+                    <p className="text-sm text-muted-foreground mt-0.5">{org.street}, {org.district}</p>
+                    <p className="text-sm text-muted-foreground">{org.city} – {org.state}, {org.zip}</p>
                   </div>
                 </div>
 
@@ -282,8 +271,8 @@ function ContatoPage() {
                   </div>
                   <div>
                     <p className="text-sm font-semibold text-foreground">Telefone</p>
-                    <a href={`tel:${INFO.phone.replace(/\D/g, '')}`} className="text-sm text-muted-foreground hover:text-foreground transition-colors block mt-0.5">
-                      {INFO.phone}
+                    <a href={`tel:${phoneDigits(org.phone)}`} className="text-sm text-muted-foreground hover:text-foreground transition-colors block mt-0.5">
+                      {org.phone}
                     </a>
                   </div>
                 </div>
@@ -294,8 +283,8 @@ function ContatoPage() {
                   </div>
                   <div>
                     <p className="text-sm font-semibold text-foreground">E-mail</p>
-                    <a href={`mailto:${INFO.email}`} className="text-sm text-muted-foreground hover:text-foreground transition-colors mt-0.5 block break-all">
-                      {INFO.email}
+                    <a href={`mailto:${org.email}`} className="text-sm text-muted-foreground hover:text-foreground transition-colors mt-0.5 block break-all">
+                      {org.email}
                     </a>
                   </div>
                 </div>
@@ -307,9 +296,9 @@ function ContatoPage() {
                   <div>
                     <p className="text-sm font-semibold text-foreground">Horário de atendimento</p>
                     <div className="flex flex-col gap-1 mt-0.5">
-                      {INFO.hours.map(h => (
-                        <div key={h.days} className="flex items-center justify-between gap-4">
-                          <span className="text-sm text-muted-foreground">{h.days}</span>
+                      {org.hours.map(h => (
+                        <div key={h.label} className="flex items-center justify-between gap-4">
+                          <span className="text-sm text-muted-foreground">{h.label}</span>
                           <span className="text-sm font-medium text-foreground tabular-nums">{h.time}</span>
                         </div>
                       ))}
@@ -338,7 +327,7 @@ function ContatoPage() {
       <section className="h-80 md:h-105 w-full border-t">
         <iframe
           title="Localização Sindicato Rural de Terra Roxa"
-          src={MAPS_SRC}
+          src={`https://maps.google.com/maps?q=${encodeURIComponent(org.mapQuery)}&output=embed&z=15`}
           width="100%"
           height="100%"
           style={{ border: 0 }}

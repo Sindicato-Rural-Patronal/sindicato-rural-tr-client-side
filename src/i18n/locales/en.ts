@@ -41,6 +41,16 @@ const en = {
     previous: 'Previous photo',
     next: 'Next photo',
     learnMore: 'Learn more',
+    seeAll: 'See all photos',
+  },
+  aboutPage: {
+    title: 'About the Union',
+    subtitle: 'Terra Roxa Rural Union',
+    seo: 'Meet the Terra Roxa Rural Union: history, work and photos.',
+    whoWeAre: 'Who we are',
+    fallback: 'The Terra Roxa Rural Union represents rural producers and workers in Terra Roxa and the surrounding region, offering courses, health plans and in-person service at our office.',
+    visit: 'Visit our office',
+    contact: 'Contact us',
   },
   home: {
     coursesTitle: 'Our courses',
@@ -173,7 +183,7 @@ const en = {
     },
     settings: {
       title: 'Site settings',
-      subtitle: 'What shows on the public site: social media, home galleries, partners and contacts.',
+      subtitle: 'What shows on the public site: union details, social media, galleries, partners and contacts.',
       socialTitle: 'Social media',
       hint: 'Paste the full URL (with https://). Leave blank to hide it from the footer.',
       save: 'Save',

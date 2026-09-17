@@ -16,6 +16,7 @@ import { apiErrorMessage } from '@/lib/api-error-message'
 import { slugify, SLUG_PATTERN } from '@/lib/convenio-utils'
 import { maskMoney, moneyToCents } from '@/utils/masks'
 import { usePermissions } from '@/hooks/usePermissions'
+import { useOrgInfo } from '@/hooks/useSiteSettings'
 import { useUnsavedGuard, confirmLeaveIfDirty } from '@/hooks/use-unsaved-guard'
 import {
   useAdminConvenio, useCreateConvenio, useUpdateConvenio, useUploadConvenioLogo,
@@ -214,6 +215,7 @@ function ListEditor({ items, onChange, placeholder, addLabel, disabled }: {
 /** Editor de convênio. Sem `id` cria um novo; com `id` edita o existente. */
 export function ConvenioEditor({ id }: { id?: string }) {
   const isNew = !id
+  const org = useOrgInfo()
   const navigate = useNavigate()
   const { can, isLoading: permLoading } = usePermissions()
   const canSave = isNew ? can('CREATE_CONVENIO') : can('UPDATE_CONVENIO')
@@ -550,7 +552,7 @@ export function ConvenioEditor({ id }: { id?: string }) {
             <DialogDescription>Como a página vai aparecer no site com o conteúdo atual (antes de salvar).</DialogDescription>
           </DialogHeader>
           <div className="border-t">
-            <ConvenioPageView convenio={previewData} />
+            <ConvenioPageView convenio={previewData} orgPhone={org.phone} />
           </div>
         </DialogContent>
       </Dialog>

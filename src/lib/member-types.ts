@@ -12,14 +12,5 @@ export function memberTypeLabel(value: string | null | undefined): string {
   return MEMBER_TYPES.find(t => t.value === value)?.label ?? value
 }
 
-/**
- * Opções do select. Cadastro antigo com um tipo fora da lista (ex.: "SOCIO")
- * continua mostrando o valor dele, marcado como antigo, até alguém trocar.
- */
-export function memberTypeOptions(current: string | null | undefined): { value: string; label: string }[] {
-  const options: { value: string; label: string }[] = MEMBER_TYPES.map(t => ({ value: t.value, label: t.label }))
-  if (current && !MEMBER_TYPES.some(t => t.value === current)) {
-    options.push({ value: current, label: `${current} (valor antigo)` })
-  }
-  return options
-}
+/** Opções do select. Tipos antigos (ex.: "SOCIO") foram para as observações na migration. */
+export const MEMBER_TYPE_OPTIONS: { value: string; label: string }[] = MEMBER_TYPES.map(t => ({ value: t.value, label: t.label }))

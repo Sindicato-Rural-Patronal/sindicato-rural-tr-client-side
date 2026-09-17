@@ -19,10 +19,11 @@ const NAV: NavItem[] = [
   { label: 'Mensagens', to: '/admin/mensagens', perm: 'READ_CONTACT', hint: 'contato' },
   { label: 'Auditoria', to: '/admin/auditoria', perm: 'READ_AUDIT' },
   { label: 'Financeiro', to: '/admin/financeiro', perm: 'READ_FINANCE', hint: 'caixa lançamentos' },
+  { label: 'Configurações do site · Dados do sindicato', to: '/admin/configuracoes', search: { tab: 'dados' }, perm: 'READ_BANNER', hint: 'endereço telefone email horário mapa sobre' },
   { label: 'Configurações do site · Redes sociais', to: '/admin/configuracoes', search: { tab: 'redes' }, perm: 'READ_BANNER', hint: 'facebook instagram whatsapp rodapé' },
   { label: 'Configurações do site · Galerias', to: '/admin/configuracoes', search: { tab: 'galerias' }, perm: 'READ_BANNER', hint: 'fotos home historia faep patrulha rural' },
   { label: 'Configurações do site · Parceiros', to: '/admin/configuracoes', search: { tab: 'parceiros' }, perm: 'READ_USER', hint: 'parcerias logos home empresas' },
-  { label: 'Configurações do site · Contatos públicos', to: '/admin/configuracoes', search: { tab: 'contatos' }, perm: 'READ_USER_ADMIN', hint: 'nossa equipe contato' },
+  { label: 'Configurações do site · Contatos públicos', to: '/admin/configuracoes', search: { tab: 'contatos' }, perm: 'READ_USER', hint: 'nossa equipe contato' },
 ]
 
 // Paleta de comando: Ctrl/Cmd+K abre; digite para filtrar telas; ↑↓ navega; Enter abre.

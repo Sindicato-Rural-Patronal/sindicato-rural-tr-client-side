@@ -44,13 +44,16 @@ export type Registration = {
     email: string
     phone: string
     cpf: string | null
-    cnpj: string | null
     avatar: string | null
     birthDate: string | null
-    isPartner: boolean
     boardMember: boolean
     boardPosition: string | null
-    userAdmin: { publicTitle: string | null; isPublic: boolean } | null
+    memberStatus: 'ACTIVE' | 'INACTIVE' | null
+    membershipValidUntil: string | null
+    /** Cargo em "Nossa Equipe", se a pessoa for contato público. */
+    publicContact: { title: string | null } | null
+    /** Só vínculos com empresas parceiras ativas. */
+    companyMemberships: { company: { name: string; tradeName: string | null } }[]
   }
   ficha: { id: string; filename: string; createdAt: string } | null
 }
@@ -114,7 +117,6 @@ export type UserData = {
   email: string
   phone: string
   cpf: string | null
-  cnpj: string | null
   avatar: string | null
   createdAt: string
   updatedAt: string
@@ -228,8 +230,6 @@ export type UserAdmin = {
   username: string
   userDataId: string
   rulesId: string
-  isPublic: boolean
-  publicTitle: string | null
   createdAt: string
   updatedAt: string
   userData: { name: string; email: string; cpf: string | null; avatar: string | null }
@@ -294,18 +294,16 @@ export type AdminAdminsFilters = {
   limit?: number
   search?: string
   rulesId?: string
-  isPublic?: boolean
 }
 
 export function useAdminAdmins(filters: AdminAdminsFilters = {}) {
-  const { page = 1, limit = 20, search, rulesId, isPublic } = filters
+  const { page = 1, limit = 20, search, rulesId } = filters
   const params = new URLSearchParams({ page: String(page), limit: String(limit) })
   if (search?.trim()) params.set('search', search.trim())
   if (rulesId) params.set('rulesId', rulesId)
-  if (isPublic !== undefined) params.set('isPublic', String(isPublic))
 
   return useQuery<PaginatedResponse<UserAdmin>>({
-    queryKey: ['admin', 'admins', page, limit, search ?? '', rulesId ?? '', isPublic ?? ''],
+    queryKey: ['admin', 'admins', page, limit, search ?? '', rulesId ?? ''],
     queryFn: () => apiFetch(`/admin/users/admins?${params}`).then(r => r.json()),
   })
 }
@@ -422,7 +420,6 @@ export type UpdateWorkerBody = {
   email?: string
   phone?: string
   cpf?: string | null
-  cnpj?: string | null
   nickname?: string | null
   maritalStatus?: 'SINGLE' | 'MARRIED' | 'DIVORCED' | 'WIDOWED' | 'DOMESTIC_PARTNERSHIP' | null
   phone2?: string | null
@@ -484,8 +481,6 @@ export type UpdateAdminBody = {
   username?: string
   password?: string
   rulesId?: string
-  isPublic?: boolean
-  publicTitle?: string | null
 }
 
 export function useUpdateAdmin(adminId: string) {
@@ -498,21 +493,6 @@ export function useUpdateAdmin(adminId: string) {
       // Refetch /admin/me → se reatribuiu a regra do próprio usuário, a sidebar
       // e os guards atualizam ao vivo (sem deslogar). Backend valida por request.
       queryClient.invalidateQueries({ queryKey: ['admin', 'me'] })
-      // Admin com isPublic/publicTitle vira contato público — refresca /contatos.
-      queryClient.invalidateQueries({ queryKey: ['contacts'] })
-    },
-  })
-}
-
-/** Marca/desmarca um administrador como contato público (página Contato). */
-export function useSetPublicContact() {
-  const queryClient = useQueryClient()
-  return useMutation({
-    mutationFn: ({ adminId, isPublic, publicTitle }: { adminId: string; isPublic: boolean; publicTitle: string | null }) =>
-      apiFetch(`/admin/users/${adminId}`, { method: 'PATCH', body: JSON.stringify({ isPublic, publicTitle }) }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['admin', 'admins'] })
-      queryClient.invalidateQueries({ queryKey: ['contacts'] })
     },
   })
 }
@@ -788,6 +768,7 @@ export type PublicContactItem = {
     name: string
     email: string
     phone: string
+    avatar: string | null
   }
 }
 

@@ -1,4 +1,4 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query'
 import { apiFetch, API_BASE } from '@/lib/api'
 import type { QuotePeriod } from '@/lib/quote-utils'
 
@@ -54,5 +54,29 @@ export function useSaveDailyQuotes() {
       qc.setQueryData(['admin', 'market-quotes'], data)
       qc.invalidateQueries({ queryKey: ['market-quotes'] })
     },
+  })
+}
+
+export type QuoteHistoryPoint = {
+  /** "YYYY-MM-DD" (data do lançamento, sem fuso). */
+  date: string
+  period: QuotePeriod | null
+  priceCents: number
+}
+
+export type QuoteHistorySeries = {
+  id: string
+  label: string
+  unit: string | null
+  points: QuoteHistoryPoint[]
+}
+
+// Público (/cotacoes): um ponto por lançamento (dia + período) nos últimos N dias.
+// Trocar o período mantém o gráfico anterior na tela até o novo chegar.
+export function useQuoteHistory(days: number) {
+  return useQuery<QuoteHistorySeries[]>({
+    queryKey: ['market-quotes', 'history', days],
+    queryFn: () => fetch(`${API_BASE}/market-quotes/history?days=${days}`).then(r => (r.ok ? r.json() : [])),
+    placeholderData: keepPreviousData,
   })
 }

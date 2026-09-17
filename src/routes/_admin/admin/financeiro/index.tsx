@@ -401,7 +401,7 @@ function empFromUser(u: UserDataDetail): Partial<EmpForm> {
     usuarioNome: u.name,
     razaoSocial: u.name ?? '',
     nomeFantasia: u.nickname ?? u.name ?? '',
-    cnpjCpf: u.cnpj ?? u.cpf ?? '',
+    cnpjCpf: u.cpf ?? '',
     telefone: u.phone ?? '',
     endereco,
     bairro: addr?.neighborhood ?? '',
@@ -483,7 +483,7 @@ function VincularUsuario({ current, onPick, onClear }: {
               className="flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-sm hover:bg-accent disabled:opacity-50"
             >
               <span className="truncate">{u.name}</span>
-              <span className="shrink-0 text-xs text-muted-foreground">{u.cnpj ?? u.cpf ?? ''}</span>
+              <span className="shrink-0 text-xs text-muted-foreground">{u.cpf ?? ''}</span>
             </button>
           ))}
         </div>

@@ -1,8 +1,9 @@
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, Link } from '@tanstack/react-router'
 import { useState } from 'react'
 import { toast } from 'sonner'
-import { CalendarDays, Loader2, Minus, Save, Sun, Sunset, TrendingDown, TrendingUp } from 'lucide-react'
+import { CalendarDays, ExternalLink, Loader2, Minus, Save, Sun, Sunset, TrendingDown, TrendingUp } from 'lucide-react'
 import { useAdminMarketQuotes, useSaveDailyQuotes, type MarketQuote } from '@/hooks/useMarketQuotes'
+import { usePublicSiteSettings, useUpdateQuotesSource } from '@/hooks/useSiteSettings'
 import { usePermissions } from '@/hooks/usePermissions'
 import { useUnsavedGuard } from '@/hooks/use-unsaved-guard'
 import { apiErrorMessage } from '@/lib/api-error-message'
@@ -50,6 +51,65 @@ function LastEntry({ q }: { q: MarketQuote }) {
         <Variation value={q.variation} />
       </span>
     </div>
+  )
+}
+
+// Fonte mostrada na faixa da home e na página pública de histórico.
+function QuotesSourceCard({ canEdit }: { canEdit: boolean }) {
+  const { data: settings, isLoading } = usePublicSiteSettings()
+  const update = useUpdateQuotesSource()
+  const [draft, setDraft] = useState<string | null>(null)
+  const saved = settings?.quotesSource ?? ''
+  const value = draft ?? saved
+  const dirty = draft != null && draft.trim() !== saved
+
+  async function handleSave(e: React.FormEvent) {
+    e.preventDefault()
+    try {
+      await update.mutateAsync(value.trim())
+      setDraft(null)
+      toast.success(value.trim() ? 'Fonte das cotações salva.' : 'Fonte removida do site.')
+    } catch (err) {
+      toast.error(apiErrorMessage(err, 'Erro ao salvar a fonte.'))
+    }
+  }
+
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <CardTitle className="text-base">Fonte e histórico</CardTitle>
+        <p className="text-sm text-muted-foreground">
+          A fonte aparece ao lado das cotações no site. Deixe vazio para não mostrar.
+        </p>
+      </CardHeader>
+      <CardContent>
+        <form onSubmit={handleSave} className="flex flex-col gap-3 sm:flex-row sm:items-end">
+          <div className="flex flex-1 flex-col gap-1.5">
+            <label htmlFor="quotes-source" className="text-xs font-medium text-muted-foreground">Fonte exibida no site</label>
+            <Input
+              id="quotes-source"
+              className="h-9"
+              maxLength={80}
+              placeholder="Ex.: Cvale"
+              disabled={!canEdit || isLoading || update.isPending}
+              value={value}
+              onChange={e => setDraft(e.target.value)}
+            />
+          </div>
+          {canEdit && (
+            <Button type="submit" variant="outline" disabled={!dirty || update.isPending}>
+              {update.isPending ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}
+              Salvar fonte
+            </Button>
+          )}
+          <Button asChild variant="ghost">
+            <Link to="/cotacoes" target="_blank">
+              <ExternalLink className="size-4" /> Ver histórico no site
+            </Link>
+          </Button>
+        </form>
+      </CardContent>
+    </Card>
   )
 }
 
@@ -185,6 +245,8 @@ function RouteComponent() {
           </div>
         )}
       </form>
+
+      <QuotesSourceCard canEdit={canEdit} />
     </div>
   )
 }

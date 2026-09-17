@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
+import { Link } from '@tanstack/react-router'
+import { usePublicSiteSettings } from '@/hooks/useSiteSettings'
 import { useMarketQuotes, type MarketQuote } from '@/hooks/useMarketQuotes'
 import { QUOTE_PERIOD_LABEL, quoteProductLabel, trendOf } from '@/lib/quote-utils'
 import { centsToBRL } from '@/utils/masks'
-import { TrendingUp, TrendingDown, Minus } from 'lucide-react'
+import { ArrowRight, TrendingUp, TrendingDown, Minus } from 'lucide-react'
 
 function timeAgo(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime()
@@ -71,6 +73,8 @@ function QuoteCard({ q }: { q: MarketQuote }) {
 
 export function CotacoesSection() {
   const { data } = useMarketQuotes()
+  const { data: settings } = usePublicSiteSettings()
+  const source = settings?.quotesSource?.trim()
   const quotes = data ?? []
 
   const wrapperRef = useRef<HTMLDivElement>(null)
@@ -118,12 +122,17 @@ export function CotacoesSection() {
           <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
             Cotações
           </h2>
-          <span className="text-[11px] text-muted-foreground">· Fonte: Cvale</span>
-          {lastUpdated && (
-            <span className="ml-auto text-[11px] text-muted-foreground">
-              Atualizado {timeAgo(lastUpdated)}
-            </span>
-          )}
+          {source && <span className="text-[11px] text-muted-foreground">· Fonte: {source}</span>}
+          <div className="ml-auto flex items-center gap-3">
+            {lastUpdated && (
+              <span className="hidden text-[11px] text-muted-foreground sm:inline">
+                Atualizado {timeAgo(lastUpdated)}
+              </span>
+            )}
+            <Link to="/cotacoes" className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline">
+              Ver histórico <ArrowRight className="size-3.5" />
+            </Link>
+          </div>
         </div>
 
         <div ref={wrapperRef} className="relative w-full overflow-hidden">

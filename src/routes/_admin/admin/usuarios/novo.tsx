@@ -18,7 +18,7 @@ import { useUnsavedGuard, confirmLeaveIfDirty } from '@/hooks/use-unsaved-guard'
 import { CadproFields } from '@/components/CadproFields'
 import { toIso } from '@/utils/dates'
 import { upperNoAccents } from '@/utils/text-format'
-import { memberTypeOptions } from '@/lib/member-types'
+import { MEMBER_TYPE_OPTIONS } from '@/lib/member-types'
 import {
   GENDER_OPTIONS, ETHNICITY_OPTIONS, EDUCATION_OPTIONS,
   MARITAL_STATUS_OPTIONS, CNH_CATEGORY_OPTIONS,
@@ -421,7 +421,7 @@ function RouteComponent() {
           </CardHeader>
           <CardContent className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             <FieldRow label="Tipo de membro">
-              <SelectField value={form.memberType} onChange={v => set('memberType', v)} placeholder="Selecione" options={memberTypeOptions(form.memberType)} />
+              <SelectField value={form.memberType} onChange={v => set('memberType', v)} placeholder="Selecione" options={MEMBER_TYPE_OPTIONS} />
             </FieldRow>
             <FieldRow label="Classificação"><Input className={inp} value={form.memberClassification} onChange={e => set('memberClassification', upperNoAccents(e.target.value))} /></FieldRow>
             <FieldRow label="Situação">

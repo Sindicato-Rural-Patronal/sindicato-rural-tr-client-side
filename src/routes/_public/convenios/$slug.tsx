@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { ConvenioPageView } from '@/components/convenio/ConvenioPageView'
 import { usePublicConvenio } from '@/hooks/useConvenios'
+import { useOrgInfo } from '@/hooks/useSiteSettings'
 import { useSeo } from '@/hooks/useSeo'
 import { ApiError } from '@/lib/api'
 
@@ -12,6 +13,7 @@ export const Route = createFileRoute('/_public/convenios/$slug')({
 })
 
 function ConvenioPage() {
+  const org = useOrgInfo()
   const { slug } = Route.useParams()
   const { data, isLoading, isError, error } = usePublicConvenio(slug)
 
@@ -62,5 +64,5 @@ function ConvenioPage() {
     )
   }
 
-  return <ConvenioPageView convenio={data} />
+  return <ConvenioPageView convenio={data} orgPhone={org.phone} />
 }

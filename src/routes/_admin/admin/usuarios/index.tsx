@@ -721,7 +721,6 @@ function RouteComponent() {
   const [memberTypeFilter, setMemberTypeFilter] = useState('')
   const [memberClassFilter, setMemberClassFilter] = useState('')
   const [rulesFilter, setRulesFilter] = useState('')
-  const [isPublicFilter, setIsPublicFilter] = useState<'all' | 'true' | 'false'>('all')
   const [deleteAssociadoTarget, setDeleteAssociadoTarget] = useState<UserData | null>(null)
   const [editAdmin, setEditAdmin] = useState<UserAdmin | null>(null)
   const [deleteAdminTarget, setDeleteAdminTarget] = useState<UserAdmin | null>(null)
@@ -767,7 +766,6 @@ function RouteComponent() {
     page: adminsPage,
     limit,
     rulesId: rulesFilter || undefined,
-    isPublic: isPublicFilter === 'all' ? undefined : isPublicFilter === 'true',
   })
   const deleteWorker = useDeleteWorker()
   const deleteAdmin = useDeleteAdmin()
@@ -790,11 +788,6 @@ function RouteComponent() {
 
   function handleRulesFilterChange(v: string) {
     setRulesFilter(v === 'all' ? '' : v)
-    setAdminsPage(1)
-  }
-
-  function handleIsPublicFilterChange(v: string) {
-    setIsPublicFilter(v as 'all' | 'true' | 'false')
     setAdminsPage(1)
   }
 
@@ -1146,16 +1139,6 @@ function RouteComponent() {
                 ))}
               </SelectContent>
             </Select>
-            <Select value={isPublicFilter} onValueChange={handleIsPublicFilterChange}>
-              <SelectTrigger className="h-9 w-full sm:w-40">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Visibilidade</SelectItem>
-                <SelectItem value="true">Público</SelectItem>
-                <SelectItem value="false">Privado</SelectItem>
-              </SelectContent>
-            </Select>
           </div>
           {loadingAdmins && (
             <div className="flex flex-col gap-3">
@@ -1208,12 +1191,6 @@ function RouteComponent() {
                         <div className="flex items-center gap-1.5 flex-wrap">
                           <Shield className="size-3.5 text-muted-foreground" />
                           <Badge variant="outline" className="text-xs">{a.rules.name}</Badge>
-                          {a.isPublic && (
-                            <Badge variant="secondary" className="text-xs gap-1">
-                              <Globe className="size-2.5" />
-                              {a.publicTitle ?? 'Público'}
-                            </Badge>
-                          )}
                         </div>
                       </TableCell>
                       <TableCell className={`text-right ${STICKY_ACTIONS_CELL}`}>

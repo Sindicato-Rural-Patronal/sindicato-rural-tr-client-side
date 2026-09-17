@@ -41,6 +41,16 @@ const ptBR = {
     previous: 'Foto anterior',
     next: 'Próxima foto',
     learnMore: 'Saiba mais',
+    seeAll: 'Ver todas as fotos',
+  },
+  aboutPage: {
+    title: 'Sobre o Sindicato',
+    subtitle: 'Sindicato Rural de Terra Roxa',
+    seo: 'Conheça o Sindicato Rural de Terra Roxa: história, atuação e fotos.',
+    whoWeAre: 'Quem somos',
+    fallback: 'O Sindicato Rural de Terra Roxa representa os produtores e trabalhadores rurais de Terra Roxa e região, com cursos, convênios e atendimento na sede.',
+    visit: 'Visite a sede',
+    contact: 'Fale conosco',
   },
   home: {
     coursesTitle: 'Nossos cursos',
@@ -173,7 +183,7 @@ const ptBR = {
     },
     settings: {
       title: 'Configurações do site',
-      subtitle: 'O que aparece no site público: redes sociais, galerias da página inicial, parceiros e contatos.',
+      subtitle: 'O que aparece no site público: dados do sindicato, redes sociais, galerias, parceiros e contatos.',
       socialTitle: 'Redes sociais',
       hint: 'Cole a URL completa (com https://). Deixe em branco para ocultar do rodapé.',
       save: 'Salvar',
