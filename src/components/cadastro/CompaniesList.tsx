@@ -70,6 +70,7 @@ export function CompaniesList() {
     if (!deleteTarget) return
     try {
       await deleteM.mutateAsync(deleteTarget.id)
+      selection.remove(deleteTarget.id)
       toast.success(`Empresa "${companyDisplayName(deleteTarget)}" excluída.`)
       setDeleteTarget(null)
     } catch (e) {

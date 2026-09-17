@@ -49,12 +49,13 @@ export function useAdminGalleries() {
   })
 }
 
+// Devolve a promise do refetch (quem reordena espera a lista nova chegar).
 function useInvalidate() {
   const qc = useQueryClient()
-  return () => {
-    qc.invalidateQueries({ queryKey: ADMIN_KEY })
-    qc.invalidateQueries({ queryKey: ['galleries'] })
-  }
+  return () => Promise.all([
+    qc.invalidateQueries({ queryKey: ADMIN_KEY }),
+    qc.invalidateQueries({ queryKey: ['galleries'] }),
+  ])
 }
 
 export function useCreateGallery() {
@@ -62,7 +63,7 @@ export function useCreateGallery() {
   return useMutation({
     mutationFn: (body: GalleryAlbumInput) =>
       apiFetch('/admin/galleries', { method: 'POST', body: JSON.stringify(body) }).then(r => r.json()),
-    onSuccess: invalidate,
+    onSuccess: () => { invalidate() },
   })
 }
 
@@ -71,7 +72,7 @@ export function useUpdateGallery() {
   return useMutation({
     mutationFn: ({ id, body }: { id: string; body: GalleryAlbumInput }) =>
       apiFetch(`/admin/galleries/${id}`, { method: 'PATCH', body: JSON.stringify(body) }).then(r => r.json()),
-    onSuccess: invalidate,
+    onSuccess: () => { invalidate() },
   })
 }
 
@@ -79,7 +80,7 @@ export function useDeleteGallery() {
   const invalidate = useInvalidate()
   return useMutation({
     mutationFn: (id: string) => apiFetch(`/admin/galleries/${id}`, { method: 'DELETE' }),
-    onSuccess: invalidate,
+    onSuccess: () => { invalidate() },
   })
 }
 
@@ -88,7 +89,8 @@ export function useReorderGalleries() {
   return useMutation({
     mutationFn: (order: string[]) =>
       apiFetch('/admin/galleries/reorder', { method: 'PATCH', body: JSON.stringify({ order }) }),
-    onSettled: invalidate,
+    // Espera o refetch: isPending segue true e os botões de mover ficam travados até a ordem nova chegar
+    onSettled: () => invalidate(),
   })
 }
 
@@ -97,7 +99,8 @@ export function useUploadGalleryPhoto() {
   return useMutation({
     mutationFn: ({ albumId, file }: { albumId: string; file: File }) =>
       apiUpload(`/admin/galleries/${albumId}/photos`, file).then(r => r.json() as Promise<GalleryPhoto>),
-    onSettled: invalidate,
+    // Sem esperar: o envio de várias fotos em sequência não fica preso a cada refetch
+    onSettled: () => { invalidate() },
   })
 }
 
@@ -106,7 +109,7 @@ export function useUpdateGalleryPhoto() {
   return useMutation({
     mutationFn: ({ albumId, photoId, caption }: { albumId: string; photoId: string; caption: string | null }) =>
       apiFetch(`/admin/galleries/${albumId}/photos/${photoId}`, { method: 'PATCH', body: JSON.stringify({ caption }) }),
-    onSuccess: invalidate,
+    onSuccess: () => { invalidate() },
   })
 }
 
@@ -115,7 +118,7 @@ export function useDeleteGalleryPhoto() {
   return useMutation({
     mutationFn: ({ albumId, photoId }: { albumId: string; photoId: string }) =>
       apiFetch(`/admin/galleries/${albumId}/photos/${photoId}`, { method: 'DELETE' }),
-    onSuccess: invalidate,
+    onSuccess: () => { invalidate() },
   })
 }
 
@@ -124,6 +127,6 @@ export function useReorderGalleryPhotos() {
   return useMutation({
     mutationFn: ({ albumId, order }: { albumId: string; order: string[] }) =>
       apiFetch(`/admin/galleries/${albumId}/photos/reorder`, { method: 'PATCH', body: JSON.stringify({ order }) }),
-    onSettled: invalidate,
+    onSettled: () => invalidate(),
   })
 }

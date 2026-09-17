@@ -31,12 +31,14 @@ const unimed: ConvenioView = {
   aboutText: 'Primeiro parágrafo.\n\nSegundo parágrafo.',
 }
 
+const PHONE = '(44) 3645-2199'
+
 // Intl coloca espaço não separável entre "R$" e o número.
 const normalize = (s: string | null) => (s ?? '').replace(/\s+/g, ' ')
 
 describe('ConvenioPageView', () => {
   it('mostra cabeçalho, tabela com valores em reais e observação', () => {
-    render(<ConvenioPageView convenio={unimed} />)
+    render(<ConvenioPageView convenio={unimed} orgPhone={PHONE} />)
     expect(screen.getByRole('heading', { level: 1, name: 'Tabela de valores / Unimed' })).toBeInTheDocument()
     expect(screen.getByText('Sindicato Rural de Terra Roxa - PR')).toBeInTheDocument()
 
@@ -52,19 +54,27 @@ describe('ConvenioPageView', () => {
   })
 
   it('mostra documentos, destaques, texto em parágrafos e a chamada de contato', () => {
-    render(<ConvenioPageView convenio={unimed} />)
+    render(<ConvenioPageView convenio={unimed} orgPhone={PHONE} />)
     expect(screen.getByRole('heading', { name: 'Documentos para adesão' })).toBeInTheDocument()
     expect(screen.getByText('RG')).toBeInTheDocument()
     expect(screen.getByText('116 mil médicos cooperados')).toBeInTheDocument()
     expect(screen.getByText('Primeiro parágrafo.')).toBeInTheDocument()
     expect(screen.getByText('Segundo parágrafo.')).toBeInTheDocument()
     expect(screen.getByRole('link', { name: /Fale conosco/ })).toHaveAttribute('href', '/contato')
+    expect(screen.getByRole('link', { name: PHONE })).toHaveAttribute('href', 'tel:4436452199')
+  })
+
+  it('sem telefone salvo, não mostra o botão de ligar', () => {
+    render(<ConvenioPageView convenio={unimed} orgPhone="" />)
+    expect(document.querySelector('a[href^="tel:"]')).toBeNull()
+    expect(screen.getByRole('link', { name: /Fale conosco/ })).toBeInTheDocument()
   })
 
   it('esconde seções vazias', () => {
     render(
       <ConvenioPageView
         convenio={{ ...unimed, priceRows: [], priceNote: null, documents: [], highlights: [], aboutTitle: null, aboutText: null }}
+        orgPhone={PHONE}
       />,
     )
     expect(screen.queryByRole('table')).not.toBeInTheDocument()
@@ -76,7 +86,7 @@ describe('ConvenioPageView', () => {
   })
 
   it('mostra o logo quando existe', () => {
-    render(<ConvenioPageView convenio={{ ...unimed, logoUrl: 'https://exemplo/logo.png' }} />)
+    render(<ConvenioPageView convenio={{ ...unimed, logoUrl: 'https://exemplo/logo.png' }} orgPhone={PHONE} />)
     expect(screen.getByAltText('Logo Unimed')).toHaveAttribute('src', 'https://exemplo/logo.png')
   })
 })

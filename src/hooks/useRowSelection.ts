@@ -29,6 +29,16 @@ export function useRowSelection() {
 
   const clear = useCallback(() => setSelected(new Set()), [])
 
+  /** Tira ids da seleção (ex.: registros excluídos). */
+  const remove = useCallback((...ids: string[]) => {
+    setSelected(prev => {
+      if (!ids.some(id => prev.has(id))) return prev
+      const next = new Set(prev)
+      for (const id of ids) next.delete(id)
+      return next
+    })
+  }, [])
+
   return useMemo(() => ({
     ids: [...selected],
     count: selected.size,
@@ -41,7 +51,8 @@ export function useRowSelection() {
     toggle,
     togglePage,
     clear,
-  }), [selected, toggle, togglePage, clear])
+    remove,
+  }), [selected, toggle, togglePage, clear, remove])
 }
 
 export type RowSelection = ReturnType<typeof useRowSelection>

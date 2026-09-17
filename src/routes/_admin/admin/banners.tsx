@@ -26,7 +26,7 @@ import {
 } from 'lucide-react'
 
 export const Route = createFileRoute('/_admin/admin/banners')({
-  beforeLoad: () => requirePermission('READ_COURSE'),
+  beforeLoad: () => requirePermission('READ_BANNER'),
   component: RouteComponent,
 })
 

@@ -5,7 +5,7 @@ import { FaFacebook, FaInstagram, FaWhatsapp } from 'react-icons/fa'
 import { useTranslation } from 'react-i18next'
 import { LanguageToggle } from '@/components/LanguageToggle'
 import { useOrgInfo, usePublicSiteSettings } from '@/hooks/useSiteSettings'
-import { phoneDigits } from '@/lib/org-contact'
+import { orgAddressLines, phoneDigits } from '@/lib/org-contact'
 import { safeUrl } from '@/utils/safe-url'
 
 // Quatro colunas sempre preenchidas (marca + redes, links, contato, chamada),
@@ -15,6 +15,7 @@ export function PublicFooter() {
   const { t } = useTranslation()
   const { data: social } = usePublicSiteSettings()
   const org = useOrgInfo()
+  const address = orgAddressLines(org)
   const socials = [
     { label: 'Facebook', url: social?.facebook, Icon: FaFacebook },
     { label: 'Instagram', url: social?.instagram, Icon: FaInstagram },
@@ -78,22 +79,26 @@ export function PublicFooter() {
           <div>
             <h4 className="mb-4 text-sm font-semibold">{t('footer.contact')}</h4>
             <div className="space-y-3 text-sm text-brand-foreground/90">
-              <a href={`tel:${phoneDigits(org.phone)}`} className="flex items-center gap-2 transition-colors hover:text-white">
-                <Phone className="size-4 shrink-0" />
-                {org.phone}
-              </a>
-              <a href={`mailto:${org.email}`} className="flex items-center gap-2 break-all transition-colors hover:text-white">
-                <Mail className="size-4 shrink-0" />
-                {org.email}
-              </a>
-              <p className="flex items-start gap-2">
-                <MapPin className="mt-0.5 size-4 shrink-0" />
-                <span>
-                  {org.street}, {org.district}
-                  <br />
-                  {org.city} - {org.state}, {org.zip}
-                </span>
-              </p>
+              {org.phone && (
+                <a href={`tel:${phoneDigits(org.phone)}`} className="flex items-center gap-2 transition-colors hover:text-white">
+                  <Phone className="size-4 shrink-0" />
+                  {org.phone}
+                </a>
+              )}
+              {org.email && (
+                <a href={`mailto:${org.email}`} className="flex items-center gap-2 break-all transition-colors hover:text-white">
+                  <Mail className="size-4 shrink-0" />
+                  {org.email}
+                </a>
+              )}
+              {address.length > 0 && (
+                <p className="flex items-start gap-2">
+                  <MapPin className="mt-0.5 size-4 shrink-0" />
+                  <span>
+                    {address.map((line, i) => <span key={i} className="block">{line}</span>)}
+                  </span>
+                </p>
+              )}
               {org.hours.length > 0 && (
                 <p className="flex items-start gap-2">
                   <Clock className="mt-0.5 size-4 shrink-0" />

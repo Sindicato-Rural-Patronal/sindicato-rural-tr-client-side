@@ -64,11 +64,16 @@ function ConfiguracoesPage() {
           {available.contatos && <TabsTrigger value="contatos"><Users className="mr-1.5 size-3.5" /> Contatos públicos</TabsTrigger>}
         </TabsList>
 
+        {/* Abas com formulário ficam montadas (só escondidas) para não perder o que foi digitado ao trocar de aba */}
         {available.dados && (
-          <TabsContent value="dados"><OrgInfoPanel canEdit={can('UPDATE_BANNER')} /></TabsContent>
+          <TabsContent value="dados" forceMount className="data-[state=inactive]:hidden">
+            <OrgInfoPanel canEdit={can('UPDATE_BANNER')} />
+          </TabsContent>
         )}
         {available.redes && (
-          <TabsContent value="redes"><SocialLinksPanel canEdit={can('UPDATE_BANNER')} /></TabsContent>
+          <TabsContent value="redes" forceMount className="data-[state=inactive]:hidden">
+            <SocialLinksPanel canEdit={can('UPDATE_BANNER')} />
+          </TabsContent>
         )}
         {available.galerias && (
           <TabsContent value="galerias">

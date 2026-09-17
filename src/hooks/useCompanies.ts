@@ -123,11 +123,13 @@ export function useCompanyMemberTitles() {
 // ── Escritas ──────────────────────────────────────────────────────────────────
 
 // Empresa aparece no detalhe da pessoa (vínculos) e na home (parceiros):
-// qualquer escrita invalida as três visões.
+// qualquer escrita invalida as três visões. Devolve a promise do refetch.
 function invalidateCompanyViews(qc: ReturnType<typeof useQueryClient>) {
-  qc.invalidateQueries({ queryKey: ['admin', 'companies'] })
-  qc.invalidateQueries({ queryKey: ['admin', 'users'] })
-  qc.invalidateQueries({ queryKey: ['partners'] })
+  return Promise.all([
+    qc.invalidateQueries({ queryKey: ['admin', 'companies'] }),
+    qc.invalidateQueries({ queryKey: ['admin', 'users'] }),
+    qc.invalidateQueries({ queryKey: ['partners'] }),
+  ])
 }
 
 export function useCreateCompany() {
@@ -135,7 +137,7 @@ export function useCreateCompany() {
   return useMutation({
     mutationFn: (body: CompanyInput) =>
       apiFetch('/admin/companies', { method: 'POST', body: JSON.stringify(body) }).then(r => r.json() as Promise<Company>),
-    onSuccess: () => invalidateCompanyViews(qc),
+    onSuccess: () => { invalidateCompanyViews(qc) },
   })
 }
 
@@ -144,7 +146,7 @@ export function useUpdateCompany(id: string) {
   return useMutation({
     mutationFn: (body: CompanyInput) =>
       apiFetch(`/admin/companies/${id}`, { method: 'PATCH', body: JSON.stringify(body) }).then(r => r.json() as Promise<Company>),
-    onSuccess: () => invalidateCompanyViews(qc),
+    onSuccess: () => { invalidateCompanyViews(qc) },
   })
 }
 
@@ -152,7 +154,7 @@ export function useDeleteCompany() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (id: string) => apiFetch(`/admin/companies/${id}`, { method: 'DELETE' }),
-    onSuccess: () => invalidateCompanyViews(qc),
+    onSuccess: () => { invalidateCompanyViews(qc) },
   })
 }
 
@@ -161,7 +163,7 @@ export function useAddCompanyMember(companyId: string) {
   return useMutation({
     mutationFn: (body: { userDataId: string; title: string }) =>
       apiFetch(`/admin/companies/${companyId}/members`, { method: 'POST', body: JSON.stringify(body) }),
-    onSuccess: () => invalidateCompanyViews(qc),
+    onSuccess: () => { invalidateCompanyViews(qc) },
   })
 }
 
@@ -170,7 +172,7 @@ export function useUpdateCompanyMember(companyId: string) {
   return useMutation({
     mutationFn: ({ memberId, title }: { memberId: string; title: string }) =>
       apiFetch(`/admin/companies/${companyId}/members/${memberId}`, { method: 'PATCH', body: JSON.stringify({ title }) }),
-    onSuccess: () => invalidateCompanyViews(qc),
+    onSuccess: () => { invalidateCompanyViews(qc) },
   })
 }
 
@@ -179,7 +181,7 @@ export function useRemoveCompanyMember(companyId: string) {
   return useMutation({
     mutationFn: (memberId: string) =>
       apiFetch(`/admin/companies/${companyId}/members/${memberId}`, { method: 'DELETE' }),
-    onSuccess: () => invalidateCompanyViews(qc),
+    onSuccess: () => { invalidateCompanyViews(qc) },
   })
 }
 
@@ -188,7 +190,7 @@ export function useAddCompanyProperty(companyId: string) {
   return useMutation({
     mutationFn: (body: CreatePropertyBody) =>
       apiFetch(`/admin/companies/${companyId}/properties`, { method: 'POST', body: JSON.stringify(body) }),
-    onSuccess: () => invalidateCompanyViews(qc),
+    onSuccess: () => { invalidateCompanyViews(qc) },
   })
 }
 
@@ -197,7 +199,7 @@ export function useRemoveCompanyProperty(companyId: string) {
   return useMutation({
     mutationFn: (propertyId: string) =>
       apiFetch(`/admin/companies/${companyId}/properties/${propertyId}`, { method: 'DELETE' }),
-    onSuccess: () => invalidateCompanyViews(qc),
+    onSuccess: () => { invalidateCompanyViews(qc) },
   })
 }
 
@@ -207,7 +209,7 @@ export function useSetCompanyPartner() {
   return useMutation({
     mutationFn: ({ id, ...body }: { id: string; isPartner: boolean; partnerOrder?: number | null }) =>
       apiFetch(`/admin/companies/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
-    onSuccess: () => invalidateCompanyViews(qc),
+    onSuccess: () => { invalidateCompanyViews(qc) },
   })
 }
 
@@ -217,6 +219,7 @@ export function useReorderPartners() {
   return useMutation({
     mutationFn: (order: string[]) =>
       apiFetch('/admin/partners/reorder', { method: 'PATCH', body: JSON.stringify({ order }) }),
+    // Espera o refetch: isPending segue true e os botões de mover ficam travados até a ordem nova chegar
     onSettled: () => invalidateCompanyViews(qc),
   })
 }
@@ -226,6 +229,6 @@ export function useUploadCompanyPartnerLogo(companyId: string) {
   return useMutation({
     mutationFn: (file: File) =>
       apiUpload(`/admin/companies/${companyId}/partner-logo`, file).then(r => r.json() as Promise<{ partnerLogoUrl: string }>),
-    onSuccess: () => invalidateCompanyViews(qc),
+    onSuccess: () => { invalidateCompanyViews(qc) },
   })
 }

@@ -20,12 +20,6 @@ export const roomSchema = z.object({
   maxCapacity: z.number().int().min(1, 'Mínimo 1'),
 })
 
-export const adminSchema = z.object({
-  username: z.string().min(1, 'Username obrigatório'),
-  password: z.string().min(1, 'Senha obrigatória'),
-  userRole: z.string().min(1, 'Selecione um cargo'),
-})
-
 export const courseBaseSchema = z.object({
   name:            z.string().min(1, 'Título obrigatório'),
   description:     z.string().optional().default(''),
@@ -44,15 +38,5 @@ export const courseBaseSchema = z.object({
   minStudents:     z.number().int().min(0).optional(),
 })
 
-export function buildCourseSchema(isCreating: boolean) {
-  return courseBaseSchema.superRefine((data, ctx) => {
-    if (isCreating && !data.roomId) {
-      ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Sala obrigatória para criação', path: ['roomId'] })
-    }
-  })
-}
-
-export type PessoaFormData = z.infer<typeof pessoaSchema>
 export type RoomFormData   = z.infer<typeof roomSchema>
-export type AdminFormData  = z.infer<typeof adminSchema>
 export type CourseFormData = z.input<typeof courseBaseSchema>

@@ -41,7 +41,7 @@ import { apiErrorMessage } from '@/lib/api-error-message'
 import { downloadExport, type ExportDataset, type ExportParams } from '@/lib/export'
 import { toIso } from '@/utils/dates'
 import { upperNoAccents } from '@/utils/text-format'
-import { MEMBER_TYPE_OPTIONS } from '@/lib/member-types'
+import { MEMBER_TYPES } from '@/lib/member-types'
 import {
   GENDER_OPTIONS, ETHNICITY_OPTIONS, EDUCATION_OPTIONS,
   MARITAL_STATUS_OPTIONS, CNH_CATEGORY_OPTIONS,
@@ -87,7 +87,7 @@ function SelectField({
 }: {
   value: string
   onChange: (v: string) => void
-  options: { value: string; label: string }[]
+  options: readonly { value: string; label: string }[]
   placeholder?: string
   disabled?: boolean
 }) {
@@ -732,7 +732,7 @@ function DadosTab({ userId, user, completeMode, onCompleteModeEnd, hasNoProperti
             <Input className={inp} disabled={d} value={form.memberClassification} onChange={e => set('memberClassification', upperNoAccents(e.target.value))} />
           </FieldRow>
           <FieldRow label="Tipo de membro">
-            <SelectField disabled={d} value={form.memberType} onChange={v => set('memberType', v)} placeholder="Selecione" options={MEMBER_TYPE_OPTIONS} />
+            <SelectField disabled={d} value={form.memberType} onChange={v => set('memberType', v)} placeholder="Selecione" options={MEMBER_TYPES} />
           </FieldRow>
           <FieldRow label="Associado desde">
             <DatePicker disabled={d} value={form.memberSince} onChange={v => set('memberSince', v)} />

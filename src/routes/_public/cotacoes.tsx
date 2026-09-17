@@ -9,6 +9,7 @@ import { useSeo } from '@/hooks/useSeo'
 import { QUOTE_PERIOD_LABEL, quoteProductLabel, quoteUnitLong } from '@/lib/quote-utils'
 import { cn } from '@/lib/utils'
 import { centsToBRL } from '@/utils/masks'
+import { formatDateFromString } from '@/utils/format-data-from-string'
 
 export const Route = createFileRoute('/_public/cotacoes')({
   component: CotacoesPage,
@@ -175,7 +176,7 @@ function HistoryTable({ series }: { series: QuoteHistorySeries }) {
         <tbody>
           {rows.map(([date, r]) => (
             <tr key={date} className="border-t">
-              <th scope="row" className="px-3 py-1.5 text-left font-normal tabular-nums">{date.split('-').reverse().join('/')}</th>
+              <th scope="row" className="px-3 py-1.5 text-left font-normal tabular-nums">{formatDateFromString(date)}</th>
               <td className="px-3 py-1.5 text-right tabular-nums">{r.morning != null ? centsToBRL(r.morning) : '—'}</td>
               <td className="px-3 py-1.5 text-right tabular-nums">{r.afternoon != null ? centsToBRL(r.afternoon) : '—'}</td>
             </tr>

@@ -33,14 +33,18 @@ function PersonPicker({ onPick, excludeIds }: { onPick: (p: Picked) => void; exc
   const results = dq.length >= 2 ? (data?.data ?? []) : []
 
   return (
-    <div className="relative">
+    <div
+      className="relative"
+      // Fecha só quando o foco sai do campo e da lista (Tab entra nos resultados)
+      onBlur={e => { if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setOpen(false) }}
+      onKeyDown={e => { if (e.key === 'Escape' && open) { e.stopPropagation(); setOpen(false) } }}
+    >
       <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
       <Input
         id="member-person"
         value={q}
         onChange={e => { setQ(e.target.value); setOpen(true) }}
         onFocus={() => setOpen(true)}
-        onBlur={() => setTimeout(() => setOpen(false), 150)}
         placeholder="Buscar pessoa por nome, e-mail ou CPF…"
         className="h-9 pl-9"
         autoComplete="off"

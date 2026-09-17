@@ -1,8 +1,8 @@
 import { Document, Page, View, Text, Image, StyleSheet, pdf } from '@react-pdf/renderer'
-import { formatDateFromString } from '@/utils/format-data-from-string'
+import { fileSlug, saveBlob } from '@/utils/download'
 import type { UnimedDetail } from '@/hooks/useUnimed'
 import type { UserDataDetail } from '@/hooks/useAdmin'
-import { fmtCPF } from '@/lib/unimed-pdf-utils'
+import { fmtCPF, fmtDate, todayBR } from '@/lib/unimed-pdf-utils'
 import { UNIMED_LOGO_PNG } from '@/lib/unimed-pdf-assets'
 
 // Réplica do "Termo de Ciência e Consentimento" do sistema legado
@@ -58,19 +58,6 @@ const styles = StyleSheet.create({
   linha: { marginBottom: 0 },
 })
 
-/** Formata data ISO/`YYYY-MM-DD`; nulo/inválido → string vazia. */
-function fmtDate(v: string | null | undefined): string {
-  if (!v) return ''
-  return formatDateFromString(v)
-}
-
-/** Data de hoje em DD/MM/YYYY (fallback quando não há data de adesão). */
-function today(): string {
-  const d = new Date()
-  const p = (n: number) => String(n).padStart(2, '0')
-  return `${p(d.getDate())}/${p(d.getMonth() + 1)}/${d.getFullYear()}`
-}
-
 /** Texto em negrito dentro de um parágrafo. */
 function B({ children }: { children: string }) {
   return <Text style={styles.b}>{children}</Text>
@@ -80,7 +67,7 @@ export function ContratoUnimedDocument({ data }: { data: ContratoData }) {
   const { unimed: u, user } = data
   const nome = user.name || ''
   const cpf = fmtCPF(user.cpf)
-  const dataDoc = fmtDate(u.dataAdesao) || today()
+  const dataDoc = fmtDate(u.dataAdesao) || todayBR()
 
   return (
     <Document>
@@ -384,21 +371,7 @@ export function ContratoUnimedDocument({ data }: { data: ContratoData }) {
   )
 }
 
-/** Higieniza o nome pro nome do arquivo. */
-function slug(v: string): string {
-  return (v || 'beneficiario')
-    .normalize('NFD').replace(/[̀-ͯ]/g, '')
-    .replace(/[^a-zA-Z0-9]+/g, '-').replace(/^-+|-+$/g, '').toLowerCase()
-}
-
 export async function downloadContratoUnimed(data: ContratoData) {
   const blob = await pdf(<ContratoUnimedDocument data={data} />).toBlob()
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = `contrato-unimed-${slug(data.user.name)}.pdf`
-  document.body.appendChild(a)
-  a.click()
-  document.body.removeChild(a)
-  setTimeout(() => URL.revokeObjectURL(url), 60_000)
+  saveBlob(blob, `contrato-unimed-${fileSlug(data.user.name || 'beneficiario', Infinity)}.pdf`)
 }

@@ -2,6 +2,7 @@ import { Document, Page, View, Text, StyleSheet, pdf } from '@react-pdf/renderer
 import { formatDateFromString } from '@/utils/format-data-from-string'
 import { centsToBRL } from '@/utils/masks'
 import { valorPorExtenso } from '@/utils/extenso'
+import { saveBlob } from '@/utils/download'
 import type { Empenho } from '@/hooks/useFinance'
 
 // A nota precisa só destes campos do lançamento.
@@ -187,13 +188,6 @@ export function NotaEmpenhoDocument({ tx }: { tx: NotaData }) {
 
 export async function downloadNotaEmpenho(tx: NotaData) {
   const blob = await pdf(<NotaEmpenhoDocument tx={tx} />).toBlob()
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
   const num = tx.empenho?.numero ? `-${tx.empenho.numero}` : ''
-  a.download = `nota-empenho${num}.pdf`
-  document.body.appendChild(a)
-  a.click()
-  document.body.removeChild(a)
-  setTimeout(() => URL.revokeObjectURL(url), 60_000)
+  saveBlob(blob, `nota-empenho${num}.pdf`)
 }

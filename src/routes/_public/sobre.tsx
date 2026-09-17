@@ -7,7 +7,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { usePublicGalleries, type GalleryAlbum } from '@/hooks/useGalleries'
 import { useOrgInfo, usePublicSiteSettings } from '@/hooks/useSiteSettings'
 import { useSeo } from '@/hooks/useSeo'
-import { phoneDigits } from '@/lib/org-contact'
+import { orgAddressLines, phoneDigits } from '@/lib/org-contact'
 import { safeUrl } from '@/utils/safe-url'
 
 export const Route = createFileRoute('/_public/sobre')({
@@ -25,6 +25,7 @@ function AboutPage() {
   useSeo({ title: t('aboutPage.title'), description: t('aboutPage.seo') })
   const { data: settings, isLoading } = usePublicSiteSettings()
   const org = useOrgInfo()
+  const address = orgAddressLines(org)
   const text = paragraphs(settings?.aboutText ?? '')
 
   return (
@@ -53,17 +54,20 @@ function AboutPage() {
 
           <aside className="flex h-fit flex-col gap-4 rounded-xl border bg-card p-5 shadow-sm">
             <h2 className="font-semibold text-foreground">{t('aboutPage.visit')}</h2>
-            <div className="flex gap-3 text-sm">
-              <MapPin className="mt-0.5 size-4 shrink-0 text-primary" />
-              <div className="text-muted-foreground">
-                <p>{org.street}, {org.district}</p>
-                <p>{org.city} – {org.state}, {org.zip}</p>
+            {address.length > 0 && (
+              <div className="flex gap-3 text-sm">
+                <MapPin className="mt-0.5 size-4 shrink-0 text-primary" />
+                <div className="text-muted-foreground">
+                  {address.map((line, i) => <p key={i}>{line}</p>)}
+                </div>
               </div>
-            </div>
-            <div className="flex gap-3 text-sm">
-              <Phone className="mt-0.5 size-4 shrink-0 text-primary" />
-              <a href={`tel:${phoneDigits(org.phone)}`} className="text-muted-foreground hover:text-foreground">{org.phone}</a>
-            </div>
+            )}
+            {org.phone && (
+              <div className="flex gap-3 text-sm">
+                <Phone className="mt-0.5 size-4 shrink-0 text-primary" />
+                <a href={`tel:${phoneDigits(org.phone)}`} className="text-muted-foreground hover:text-foreground">{org.phone}</a>
+              </div>
+            )}
             {org.hours.length > 0 && (
               <div className="flex gap-3 text-sm">
                 <Clock className="mt-0.5 size-4 shrink-0 text-primary" />

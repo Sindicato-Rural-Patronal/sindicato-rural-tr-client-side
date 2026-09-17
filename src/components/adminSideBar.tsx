@@ -42,7 +42,7 @@ export function AdminSideBar({ ...props }: React.ComponentProps<typeof Sidebar>)
       label: t('admin.sidebar.management'),
       items: [
         { title: t('admin.sidebar.courses'), url: '/admin/cursos', icon: BookOpen, perm: 'READ_COURSE' },
-        { title: t('admin.sidebar.news'), url: '/admin/noticias', icon: Newspaper, perm: 'READ_COURSE' },
+        { title: t('admin.sidebar.news'), url: '/admin/noticias', icon: Newspaper, perm: 'READ_NEWS' },
         { title: t('admin.sidebar.users'), url: '/admin/usuarios', icon: Users, perm: 'READ_USER' },
         { title: t('admin.sidebar.unimed'), url: '/admin/unimed', icon: HeartPulse, perm: 'READ_USER' },
         { title: t('admin.sidebar.rooms'), url: '/admin/salas', icon: DoorOpen, perm: 'READ_COURSE' },

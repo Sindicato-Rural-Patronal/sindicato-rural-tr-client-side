@@ -9,7 +9,7 @@ type NavItem = { label: string; to: string; perm: string | null; hint?: string; 
 const NAV: NavItem[] = [
   { label: 'Painel', to: '/admin/dashboard', perm: null },
   { label: 'Cursos', to: '/admin/cursos', perm: 'READ_COURSE' },
-  { label: 'Notícias', to: '/admin/noticias', perm: 'READ_COURSE' },
+  { label: 'Notícias', to: '/admin/noticias', perm: 'READ_NEWS' },
   { label: 'Usuários', to: '/admin/usuarios', perm: 'READ_USER', hint: 'associados' },
   { label: 'Empresas', to: '/admin/usuarios', search: { tab: 'empresas' }, perm: 'READ_USER', hint: 'cnpj parceiros cadastro' },
   { label: 'Salas', to: '/admin/salas', perm: 'READ_COURSE' },
@@ -85,7 +85,7 @@ export function CommandPalette() {
             <li className="px-3 py-6 text-center text-sm text-muted-foreground">Nada encontrado.</li>
           )}
           {items.map((n, i) => (
-            <li key={n.to}>
+            <li key={n.label}>
               <button
                 type="button"
                 onClick={() => go(n)}

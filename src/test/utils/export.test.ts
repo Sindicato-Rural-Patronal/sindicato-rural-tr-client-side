@@ -1,9 +1,15 @@
 import { describe, it, expect } from 'vitest'
-import { exportQuery } from '@/lib/export'
+import { exportBody } from '@/lib/export'
 
-describe('exportação: query', () => {
-  it('listas viram "a,b" e vazios ficam de fora', () => {
-    expect(exportQuery({ ids: ['a', 'b'], search: '', type: undefined, isPartner: false, read: null })).toBe('ids=a%2Cb&isPartner=false')
-    expect(exportQuery({ ownerIds: [], search: 'joão' })).toBe('search=jo%C3%A3o')
+describe('exportação: corpo do POST', () => {
+  it('vazios, nulos e listas vazias ficam de fora; o resto vira texto', () => {
+    expect(exportBody({ ids: ['a', 'b'], search: '', type: undefined, isPartner: false, read: null }))
+      .toEqual({ ids: ['a', 'b'], isPartner: 'false' })
+    expect(exportBody({ ownerIds: [], search: 'joão', page: 2 })).toEqual({ search: 'joão', page: '2' })
+  })
+
+  it('nunca manda ids vazio', () => {
+    expect(exportBody({ ids: [] })).toEqual({})
+    expect(exportBody({ ids: [], courseIds: ['c1'] })).toEqual({ courseIds: ['c1'] })
   })
 })

@@ -1,5 +1,6 @@
 import { Document, Page, View, Text, StyleSheet, pdf } from '@react-pdf/renderer'
 import { formatDateFromString } from '@/utils/format-data-from-string'
+import { fileSlug, saveBlob } from '@/utils/download'
 
 export type CertificadoParticipant = {
   course: {
@@ -105,24 +106,7 @@ export function CertificadoDocument({ items }: { items: CertificadoParticipant[]
   )
 }
 
-function sanitize(name: string): string {
-  return name
-    .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
-    .replace(/[^a-zA-Z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-    .toLowerCase()
-}
-
 export async function downloadCertificadoPdf(items: CertificadoParticipant[], filename: string) {
   const blob = await pdf(<CertificadoDocument items={items} />).toBlob()
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = `${sanitize(filename)}.pdf`
-  document.body.appendChild(a)
-  a.click()
-  document.body.removeChild(a)
-  // revoga com atraso — revogar imediato pode truncar PDFs grandes em alguns navegadores.
-  setTimeout(() => URL.revokeObjectURL(url), 60_000)
+  saveBlob(blob, `${fileSlug(filename, Infinity)}.pdf`)
 }

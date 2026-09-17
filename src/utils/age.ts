@@ -10,9 +10,3 @@ export function calcAge(birthDate: string | null | undefined): number | null {
   if (monthDiff < 0 || (monthDiff === 0 && now.getDate() < d)) age--
   return age >= 0 && age < 150 ? age : null
 }
-
-/** Rótulo curto tipo "34 anos" (ou "" se a data for inválida/vazia). */
-export function ageLabel(birthDate: string | null | undefined): string {
-  const age = calcAge(birthDate)
-  return age === null ? '' : `${age} ${age === 1 ? 'ano' : 'anos'}`
-}

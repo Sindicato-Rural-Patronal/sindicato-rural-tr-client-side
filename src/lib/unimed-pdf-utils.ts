@@ -1,9 +1,11 @@
 import { Font } from '@react-pdf/renderer'
 import { maskCEP, maskCPF, maskPhone } from '@/utils/masks'
+import { formatDateFromString } from '@/utils/format-data-from-string'
+import { todayYmd } from '@/utils/dates'
 import type { UserAddress, UserDataDetail } from '@/hooks/useAdmin'
 
-// Helpers compartilhados pela Ficha e pelo Termo de Adesão da Unimed:
-// endereço (urbano OU rural), máscaras e concordância de gênero.
+// Helpers compartilhados pela Ficha, pelo Termo de Adesão e pelo Contrato da Unimed:
+// endereço (urbano OU rural), máscaras, datas e concordância de gênero.
 
 // Sem hifenização: evita "exam-ple.com" e quebras estranhas em nomes/e-mails.
 Font.registerHyphenationCallback(word => [word])
@@ -24,12 +26,23 @@ export function fmtCPF(v: string | null | undefined): string {
   return v ? maskCPF(v) : ''
 }
 
-export function fmtCEP(v: string | null | undefined): string {
+function fmtCEP(v: string | null | undefined): string {
   return v ? maskCEP(v) : ''
 }
 
-export function fmtPhone(v: string | null | undefined): string {
+function fmtPhone(v: string | null | undefined): string {
   return v ? maskPhone(v) : ''
+}
+
+/** Formata data ISO/`YYYY-MM-DD`; nulo/inválido → string vazia. */
+export function fmtDate(v: string | null | undefined): string {
+  if (!v) return ''
+  return formatDateFromString(v)
+}
+
+/** Data de hoje em DD/MM/YYYY (fallback quando não há data de adesão). */
+export function todayBR(): string {
+  return formatDateFromString(todayYmd())
 }
 
 /** Celular = 11 dígitos começando com 9 após o DDD; o resto é fixo. */

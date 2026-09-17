@@ -28,7 +28,11 @@ export type SiteSettingsInput = Partial<Omit<SiteSettings, 'quotesSource'>>
 export function usePublicSiteSettings() {
   return useQuery<SiteSettings>({
     queryKey: ['site-settings', 'public'],
-    queryFn: () => fetch(`${API_BASE}/site-settings`).then(r => r.json()),
+    // Erro (429/500) lança: `data` fica undefined e quem usa cai nos padrões
+    queryFn: () => fetch(`${API_BASE}/site-settings`).then(r => {
+      if (!r.ok) throw new Error(`HTTP ${r.status}`)
+      return r.json()
+    }),
     staleTime: 5 * 60 * 1000,
   })
 }
@@ -84,12 +88,13 @@ function parseHours(text: string): OrgInfo['hours'] {
 }
 
 /**
- * Dados do sindicato para o site. Enquanto as configurações carregam (ou se um
- * campo estiver vazio) usa os valores padrão de `org-contact.ts`.
+ * Dados do sindicato para o site. Enquanto as configurações não chegam
+ * (carregando ou erro) usa os valores padrão de `org-contact.ts`; depois, o que
+ * foi salvo — campo vazio fica vazio e quem exibe não mostra a linha.
  */
 export function useOrgInfo(): OrgInfo {
   const { data } = usePublicSiteSettings()
-  const pick = (value: string | undefined, fallback: string) => (value && value.trim() ? value.trim() : fallback)
+  const pick = (value: string | undefined, fallback: string) => (data ? (value ?? '').trim() : fallback)
   return {
     phone: pick(data?.orgPhone, ORG_CONTACT.phone),
     email: pick(data?.orgEmail, ORG_CONTACT.email),

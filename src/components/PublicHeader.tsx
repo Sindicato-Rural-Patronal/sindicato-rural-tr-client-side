@@ -6,9 +6,10 @@ import { useTranslation } from 'react-i18next'
 import { ThemeToggle } from '@/components/ThemeToggle'
 import { useConvenioMenu } from '@/hooks/useConvenios'
 
+// Desktop: nome longo (ex.: convênio) é cortado com "…" e aparece inteiro no title.
 const linkClass = {
-  active: 'px-3 py-1.5 text-sm font-semibold text-primary border-b-2 border-primary',
-  idle: 'px-3 py-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors',
+  active: 'max-w-40 truncate px-3 py-1.5 text-sm font-semibold text-primary border-b-2 border-primary',
+  idle: 'max-w-40 truncate px-3 py-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors',
 }
 const mobileClass = {
   active: 'px-4 py-2 text-sm font-semibold bg-primary/10 text-primary rounded-lg',
@@ -50,7 +51,7 @@ export function PublicHeader() {
         {/* Desktop Nav */}
         <nav className="hidden lg:flex items-center gap-1">
           {links.map(link => (
-            <Link key={link.href} to={link.href} className={isActive(link.href) ? linkClass.active : linkClass.idle}>
+            <Link key={link.href} to={link.href} title={link.label} className={isActive(link.href) ? linkClass.active : linkClass.idle}>
               {link.label}
             </Link>
           ))}

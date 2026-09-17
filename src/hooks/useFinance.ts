@@ -1,5 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { apiFetch, apiUpload, API_BASE } from '@/lib/api'
+import { apiFetch, apiUpload } from '@/lib/api'
+import { openBlob, saveBlob } from '@/utils/download'
+import { todayYmd } from '@/utils/dates'
 
 export type FinanceType = 'IN' | 'OUT'
 
@@ -240,29 +242,11 @@ function buildQuery(filters: TransactionFilters): string {
 }
 
 // Exporta os lançamentos filtrados como CSV (endpoint exige Bearer → download via blob).
+// Sem page/limit: o CSV traz todos os lançamentos que batem com os filtros.
 export async function exportFinanceTransactions(filters: TransactionFilters = {}) {
-  const p = new URLSearchParams()
-  if (filters.from) p.set('from', filters.from)
-  if (filters.to) p.set('to', filters.to)
-  if (filters.type) p.set('type', filters.type)
-  if (filters.categoryId) p.set('categoryId', filters.categoryId)
-  if (filters.accountId) p.set('accountId', filters.accountId)
-  if (filters.search) p.set('search', filters.search)
-  const qs = p.toString()
-  const token = localStorage.getItem('token')
-  const res = await fetch(`${API_BASE}/admin/finance/transactions/export${qs ? `?${qs}` : ''}`, {
-    headers: token ? { Authorization: `Bearer ${token}` } : {},
-  })
-  if (!res.ok) throw new Error('Falha ao exportar')
-  const blob = await res.blob()
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = `lancamentos-${new Date().toISOString().slice(0, 10)}.csv`
-  document.body.appendChild(a)
-  a.click()
-  a.remove()
-  setTimeout(() => URL.revokeObjectURL(url), 10_000)
+  const qs = buildQuery({ ...filters, page: undefined, limit: undefined })
+  const res = await apiFetch(`/admin/finance/transactions/export${qs}`)
+  saveBlob(await res.blob(), `lancamentos-${todayYmd()}.csv`)
 }
 
 export function useFinanceTransactions(
@@ -352,15 +336,8 @@ export function useDeleteFinanceAttachment() {
 
 // Abre o comprovante (endpoint exige Bearer, então não dá pra usar <a href>).
 export async function openFinanceAttachment(attachmentId: string) {
-  const token = localStorage.getItem('token')
-  const res = await fetch(`${API_BASE}/admin/finance/attachments/${attachmentId}`, {
-    headers: token ? { Authorization: `Bearer ${token}` } : {},
-  })
-  if (!res.ok) throw new Error('Falha ao abrir o comprovante')
-  const blob = await res.blob()
-  const url = URL.createObjectURL(blob)
-  window.open(url, '_blank', 'noopener')
-  setTimeout(() => URL.revokeObjectURL(url), 60_000)
+  const res = await apiFetch(`/admin/finance/attachments/${attachmentId}`)
+  openBlob(await res.blob())
 }
 
 // ── Dashboard ────────────────────────────────────────────────────────────────

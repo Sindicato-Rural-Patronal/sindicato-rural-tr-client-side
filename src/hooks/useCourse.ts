@@ -154,24 +154,6 @@ export function useUploadGalleryPhoto(courseId: string) {
   })
 }
 
-export type RegisterCourseBody = {
-  name: string
-  phone: string
-  email: string
-  cpf: string
-}
-
-export function useRegisterCourse(courseId: string) {
-  const queryClient = useQueryClient()
-  return useMutation({
-    mutationFn: (body: RegisterCourseBody) =>
-      apiFetch(`/courses/${courseId}/register`, { method: 'POST', body: JSON.stringify(body) }).then(r => r.json()),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['courses', courseId] })
-    },
-  })
-}
-
 export function useAssignInstructor(courseId: string) {
   const queryClient = useQueryClient()
   return useMutation({

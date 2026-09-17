@@ -1,14 +1,17 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import type { QueryClient } from '@tanstack/react-query'
 import { apiFetch, apiUpload, API_BASE } from '@/lib/api'
+import { openBlob } from '@/utils/download'
 
 // Invalida TODAS as listas onde um usuário aparece, para não ficarem defasadas
 // após editar a ficha (associados, admins, instrutores, parceiros, contatos
-// públicos e inscrições em cursos).
+// públicos, vínculos com empresas e inscrições em cursos).
 export function invalidateUserViews(qc: QueryClient) {
   qc.invalidateQueries({ queryKey: ['admin', 'users'] })
   qc.invalidateQueries({ queryKey: ['admin', 'admins'] })
   qc.invalidateQueries({ queryKey: ['admin', 'instructors'] })
+  qc.invalidateQueries({ queryKey: ['admin', 'companies'] })
+  qc.invalidateQueries({ queryKey: ['admin', 'public-contacts'] })
   qc.invalidateQueries({ queryKey: ['partners'] })
   qc.invalidateQueries({ queryKey: ['contacts'] })
   qc.invalidateQueries({ queryKey: ['admin', 'courses'] })
@@ -56,13 +59,6 @@ export type Registration = {
     companyMemberships: { company: { name: string; tradeName: string | null } }[]
   }
   ficha: { id: string; filename: string; createdAt: string } | null
-}
-
-export type CreateWorkerBody = {
-  name: string
-  email: string
-  phone: string
-  cpf: string
 }
 
 export type PaginatedResponse<T> = {
@@ -251,13 +247,6 @@ export type CreateRuleBody = {
   permissions: string[]
 }
 
-export type CreateAdminBody = {
-  username: string
-  password: string
-  userDataId: string
-  userRole: string
-}
-
 export type AdminUsersFilters = {
   page?: number
   limit?: number
@@ -389,28 +378,6 @@ export function useRevokeAdminInvite() {
     mutationFn: (id: string) => apiFetch(`/admin/invites/${id}`, { method: 'DELETE' }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin', 'invites'] })
-    },
-  })
-}
-
-export function useCreateAdmin() {
-  const queryClient = useQueryClient()
-  return useMutation({
-    mutationFn: (body: CreateAdminBody) =>
-      apiFetch('/admin/users', { method: 'POST', body: JSON.stringify(body) }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['admin', 'admins'] })
-    },
-  })
-}
-
-export function useCreateWorker() {
-  const queryClient = useQueryClient()
-  return useMutation({
-    mutationFn: (body: CreateWorkerBody) =>
-      apiFetch('/users', { method: 'POST', body: JSON.stringify(body) }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['admin', 'users'] })
     },
   })
 }
@@ -579,15 +546,8 @@ export function useDeleteRegistrationFicha(courseId: string) {
 
 // Baixa/abre o PDF anexado (endpoint exige Bearer, então não dá pra usar <a href>).
 export async function openRegistrationFicha(registrationId: string) {
-  const token = localStorage.getItem('token')
-  const res = await fetch(`${API_BASE}/admin/registrations/${registrationId}/ficha`, {
-    headers: token ? { Authorization: `Bearer ${token}` } : {},
-  })
-  if (!res.ok) throw new Error('Falha ao abrir a ficha')
-  const blob = await res.blob()
-  const url = URL.createObjectURL(blob)
-  window.open(url, '_blank', 'noopener')
-  setTimeout(() => URL.revokeObjectURL(url), 60_000)
+  const blob = await apiFetch(`/admin/registrations/${registrationId}/ficha`).then(r => r.blob())
+  openBlob(blob)
 }
 
 export function useAdminUser(userId: string) {
@@ -783,19 +743,15 @@ export function usePublicContacts() {
 export type PublicPartner = {
   id: string
   name: string
-  avatarUrl: string | null
   partnerLogoUrl: string | null
   partnerUrl: string | null
-  cnpj: string | null
 }
 
+// Público (home): o backend manda a lista pura. Fetch cru (sem token); erro vira lista vazia.
 export function usePartners() {
   return useQuery<PublicPartner[]>({
     queryKey: ['partners'],
-    queryFn: () =>
-      fetch(`${API_BASE}/partners`)
-        .then(r => r.json())
-        .then(d => Array.isArray(d) ? d : (d.data ?? [])),
+    queryFn: () => fetch(`${API_BASE}/partners`).then(r => (r.ok ? r.json() : [])),
   })
 }
 

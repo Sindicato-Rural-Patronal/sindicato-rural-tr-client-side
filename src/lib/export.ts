@@ -1,7 +1,9 @@
 import { apiFetch } from '@/lib/api'
+import { saveBlob } from '@/utils/download'
 
-// Exportação CSV (GET /admin/export/:dataset). Com `ids` o backend exporta só
-// esses registros; sem, tudo o que bate com os mesmos filtros da listagem.
+// Exportação CSV (POST /admin/export/:dataset, filtros no corpo). Com `ids` o
+// backend exporta só esses registros; sem, tudo o que bate com os mesmos
+// filtros da listagem. POST porque uma seleção grande estoura o limite da URL.
 
 export type ExportDataset =
   | 'people'
@@ -28,39 +30,39 @@ const FALLBACK_NAME: Record<ExportDataset, string> = {
   'audit-logs': 'auditoria',
 }
 
-/** Monta a query: listas viram "a,b,c"; vazio/nulo fica de fora. */
-export function exportQuery(params: ExportParams): string {
-  const qs = new URLSearchParams()
+/**
+ * Corpo da exportação: vazio/nulo e listas vazias ficam de fora (o backend
+ * recusa `ids: []`). Os demais valores vão como texto, igual à query do GET.
+ */
+export function exportBody(params: ExportParams): Record<string, string | string[]> {
+  const body: Record<string, string | string[]> = {}
   for (const [key, value] of Object.entries(params)) {
     if (value == null || value === '') continue
     if (Array.isArray(value)) {
-      if (value.length) qs.set(key, value.join(','))
+      if (value.length) body[key] = value.map(String)
     } else {
-      qs.set(key, String(value))
+      body[key] = String(value)
     }
   }
-  return qs.toString()
+  return body
 }
 
-/** Baixa a planilha e devolve quantos registros vieram. */
+/** Baixa a planilha e devolve quantos registros vieram (-1 se não souber). */
 export async function downloadExport(dataset: ExportDataset, params: ExportParams = {}): Promise<number> {
-  const query = exportQuery(params)
-  const res = await apiFetch(`/admin/export/${dataset}${query ? `?${query}` : ''}`)
+  const res = await apiFetch(`/admin/export/${dataset}`, {
+    method: 'POST',
+    body: JSON.stringify(exportBody(params)),
+  })
   const blob = await res.blob()
 
   const disposition = res.headers.get('Content-Disposition') ?? ''
   const today = new Date().toISOString().slice(0, 10)
   const filename = disposition.match(/filename="([^"]+)"/)?.[1] ?? `${FALLBACK_NAME[dataset]}-${today}.csv`
+  saveBlob(blob, filename)
 
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = filename
-  document.body.appendChild(a)
-  a.click()
-  a.remove()
-  setTimeout(() => URL.revokeObjectURL(url), 60_000)
-
-  const count = Number(res.headers.get('X-Export-Count'))
+  // Header ausente (ex.: CORS sem expor) não pode virar "0 registros"
+  const header = res.headers.get('X-Export-Count')
+  if (header == null) return -1
+  const count = Number(header)
   return Number.isFinite(count) ? count : -1
 }

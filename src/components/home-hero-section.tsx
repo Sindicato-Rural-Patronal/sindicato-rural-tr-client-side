@@ -1,4 +1,4 @@
-import { useRef } from 'react'
+import { useState } from 'react'
 import { Link } from '@tanstack/react-router'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -36,7 +36,8 @@ function BannerBtn({ btn, index }: { btn: BannerButton; index: number }) {
 }
 
 export function HeroSection() {
-  const autoplayPlugin = useRef(Autoplay({ delay: 5000, stopOnInteraction: true }))
+  // Uma instância só do plugin (inicialização preguiçosa), lida no render sem ref.
+  const [autoplayPlugin] = useState(() => Autoplay({ delay: 5000, stopOnInteraction: true }))
   const { data: banners, isLoading } = useBanners()
 
   if (isLoading) {
@@ -48,7 +49,7 @@ export function HeroSection() {
   return (
     <Carousel
       opts={{ loop: true, align: 'start' }}
-      plugins={[autoplayPlugin.current]}
+      plugins={[autoplayPlugin]}
       className="relative w-full"
     >
       <CarouselContent>

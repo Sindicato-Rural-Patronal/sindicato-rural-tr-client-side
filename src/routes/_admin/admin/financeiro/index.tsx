@@ -15,6 +15,7 @@ import {
 import { centsToBRL, maskMoney, moneyToCents } from '@/utils/masks'
 import { upperNoAccents } from '@/utils/text-format'
 import { formatDateFromString } from '@/utils/format-data-from-string'
+import { todayYmd, toYmd } from '@/utils/dates'
 import {
   Wallet, TrendingUp, TrendingDown, Scale, Plus, Pencil, Trash2, Search,
   Tag, ArrowUpCircle, ArrowDownCircle, Paperclip, FileText, X,
@@ -91,18 +92,15 @@ function monthLabel(ym: string): string {
   const [y, m] = ym.split('-').map(Number)
   return `${MONTHS_ABBR[(m ?? 1) - 1]}/${String(y).slice(2)}`
 }
-function isoDate(d: Date): string {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-}
 type Preset = 'month' | 'year' | 'last12'
 function presetRange(p: Preset): { from: string; to: string } {
   const now = new Date()
   const y = now.getFullYear()
   const m = now.getMonth()
-  const to = isoDate(now)
-  if (p === 'month') return { from: isoDate(new Date(y, m, 1)), to }
-  if (p === 'year') return { from: isoDate(new Date(y, 0, 1)), to }
-  return { from: isoDate(new Date(y, m - 11, 1)), to }
+  const to = toYmd(now)
+  if (p === 'month') return { from: toYmd(new Date(y, m, 1)), to }
+  if (p === 'year') return { from: toYmd(new Date(y, 0, 1)), to }
+  return { from: toYmd(new Date(y, m - 11, 1)), to }
 }
 
 function RouteComponent() {
@@ -157,7 +155,7 @@ function DashboardTab({ enabled, onDrill }: {
   onDrill: (patch: Partial<FinanceSearch>) => void
 }) {
   const [preset, setPreset] = useState<Preset | 'custom'>('year')
-  const [custom, setCustom] = useState({ from: presetRange('month').from, to: isoDate(new Date()) })
+  const [custom, setCustom] = useState({ from: presetRange('month').from, to: todayYmd() })
   const range = useMemo(
     () => (preset === 'custom' ? custom : presetRange(preset)),
     [preset, custom],
@@ -504,7 +502,7 @@ type TxForm = {
   empenho: EmpForm
 }
 const emptyTxForm = (): TxForm => ({
-  type: 'OUT', amount: '', date: isoDate(new Date()), description: '', method: '', categoryId: '', accountId: '', notes: '',
+  type: 'OUT', amount: '', date: todayYmd(), description: '', method: '', categoryId: '', accountId: '', notes: '',
   empenho: emptyEmp(),
 })
 
@@ -545,7 +543,7 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
 
   // Transferência entre caixas.
   const [transferOpen, setTransferOpen] = useState(false)
-  const [transfer, setTransfer] = useState({ fromAccountId: '', toAccountId: '', amount: '', date: isoDate(new Date()), description: '' })
+  const [transfer, setTransfer] = useState({ fromAccountId: '', toAccountId: '', amount: '', date: todayYmd(), description: '' })
   const [transferError, setTransferError] = useState<string | null>(null)
 
   const rows = data?.data ?? []
@@ -718,7 +716,7 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
   }
 
   function abrirTransferencia() {
-    setTransfer({ fromAccountId: '', toAccountId: '', amount: '', date: isoDate(new Date()), description: '' })
+    setTransfer({ fromAccountId: '', toAccountId: '', amount: '', date: todayYmd(), description: '' })
     setTransferError(null)
     setTransferOpen(true)
   }

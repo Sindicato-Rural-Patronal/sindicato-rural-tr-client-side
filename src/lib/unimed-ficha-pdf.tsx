@@ -1,9 +1,9 @@
 import { Document, Page, View, Text, Image, StyleSheet, pdf } from '@react-pdf/renderer'
-import { formatDateFromString } from '@/utils/format-data-from-string'
+import { fileSlug, saveBlob } from '@/utils/download'
 import { GENDER_OPTIONS, EDUCATION_OPTIONS, type SelectOption } from '@/lib/user-form-options'
 import type { UnimedDetail } from '@/hooks/useUnimed'
 import type { UserDataDetail } from '@/hooks/useAdmin'
-import { resolveAddress, addressFields, splitPhones, fmtCPF, maritalWord } from '@/lib/unimed-pdf-utils'
+import { resolveAddress, addressFields, splitPhones, fmtCPF, fmtDate, maritalWord } from '@/lib/unimed-pdf-utils'
 import { UNIMED_HEADER_PNG } from '@/lib/unimed-pdf-assets'
 
 // Réplica do "Formulário de Movimentação de Beneficiários Unimed" do sistema
@@ -88,12 +88,6 @@ const styles = StyleSheet.create({
 function labelOf(options: SelectOption[], value: string | null | undefined): string {
   if (!value) return ''
   return options.find(o => o.value === value)?.label ?? value
-}
-
-/** Formata data ISO/`YYYY-MM-DD`; nulo/inválido → string vazia. */
-function fmtDate(v: string | null | undefined): string {
-  if (!v) return ''
-  return formatDateFromString(v)
 }
 
 /** Caixa com borda dupla (outset + inset), como tabela HTML. */
@@ -271,21 +265,7 @@ export function FichaUnimedDocument({ data }: { data: FichaData }) {
   )
 }
 
-/** Higieniza o nome pro nome do arquivo. */
-function slug(v: string): string {
-  return (v || 'beneficiario')
-    .normalize('NFD').replace(/[̀-ͯ]/g, '')
-    .replace(/[^a-zA-Z0-9]+/g, '-').replace(/^-+|-+$/g, '').toLowerCase()
-}
-
 export async function downloadFichaUnimed(data: FichaData) {
   const blob = await pdf(<FichaUnimedDocument data={data} />).toBlob()
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = `ficha-unimed-${slug(data.user.name)}.pdf`
-  document.body.appendChild(a)
-  a.click()
-  document.body.removeChild(a)
-  setTimeout(() => URL.revokeObjectURL(url), 60_000)
+  saveBlob(blob, `ficha-unimed-${fileSlug(data.user.name || 'beneficiario', Infinity)}.pdf`)
 }

@@ -1,12 +1,12 @@
 import { describe, it, expect } from 'vitest'
-import { MEMBER_TYPE_OPTIONS, memberTypeLabel } from '@/lib/member-types'
+import { MEMBER_TYPES, memberTypeLabel } from '@/lib/member-types'
 import { roomNameOptions } from '@/lib/room-names'
 import { QUOTE_UNIT_OPTIONS, currentQuotePeriod, quoteProductLabel, quoteUnitLong, trendOf } from '@/lib/quote-utils'
 import { companyDisplayName } from '@/hooks/useCompanies'
 
 describe('tipo de membro', () => {
   it('tem as quatro opções fixas', () => {
-    expect(MEMBER_TYPE_OPTIONS.map(o => o.value)).toEqual([
+    expect(MEMBER_TYPES.map(o => o.value)).toEqual([
       'ALUNO', 'PRODUTOR RURAL', 'TRABALHADOR RURAL ASSALARIADO', 'TRABALHADOR RURAL AUTONOMO',
     ])
   })

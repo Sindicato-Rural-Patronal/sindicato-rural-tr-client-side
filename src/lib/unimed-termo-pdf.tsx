@@ -1,8 +1,8 @@
 import { Document, Page, View, Text, Image, StyleSheet, pdf } from '@react-pdf/renderer'
-import { formatDateFromString } from '@/utils/format-data-from-string'
+import { fileSlug, saveBlob } from '@/utils/download'
 import type { UnimedDetail } from '@/hooks/useUnimed'
 import type { UserDataDetail } from '@/hooks/useAdmin'
-import { resolveAddress, addressInline, fmtCPF, byGender, maritalWord, joinParts } from '@/lib/unimed-pdf-utils'
+import { resolveAddress, addressInline, fmtCPF, fmtDate, todayBR, byGender, maritalWord, joinParts } from '@/lib/unimed-pdf-utils'
 import { SINDICATO_EMBLEMA_PNG } from '@/lib/unimed-pdf-assets'
 
 // Réplica do "Termo de Adesão ao Contrato de Plano de Saúde" do sistema legado
@@ -48,19 +48,6 @@ const styles = StyleSheet.create({
   witnessLabel: { fontSize: 8.2, fontFamily: 'Helvetica-Bold' },
 })
 
-/** Formata data ISO/`YYYY-MM-DD`; nulo/inválido → string vazia. */
-function fmtDate(v: string | null | undefined): string {
-  if (!v) return ''
-  return formatDateFromString(v)
-}
-
-/** Data de hoje em DD/MM/YYYY (fallback quando não há data de adesão). */
-function today(): string {
-  const d = new Date()
-  const p = (n: number) => String(n).padStart(2, '0')
-  return `${p(d.getDate())}/${p(d.getMonth() + 1)}/${d.getFullYear()}`
-}
-
 /** Cláusula numerada: "N." em negrito (+ trecho em negrito opcional) e texto justificado. */
 function Clause({ n, bold, children }: { n: string; bold?: string; children: string }) {
   return (
@@ -80,7 +67,7 @@ export function TermoUnimedDocument({ data }: { data: TermoData }) {
   const rg = joinParts([user.rg, user.rgIssuer], '-')
   const cpf = fmtCPF(user.cpf)
   const endereco = addressInline(resolveAddress(user))
-  const dataTermo = fmtDate(u.dataAdesao) || today()
+  const dataTermo = fmtDate(u.dataAdesao) || todayBR()
 
   const qualificacao = joinParts([
     byGender(g, 'brasileiro', 'brasileira'),
@@ -180,21 +167,7 @@ export function TermoUnimedDocument({ data }: { data: TermoData }) {
   )
 }
 
-/** Higieniza o nome pro nome do arquivo. */
-function slug(v: string): string {
-  return (v || 'beneficiario')
-    .normalize('NFD').replace(/[̀-ͯ]/g, '')
-    .replace(/[^a-zA-Z0-9]+/g, '-').replace(/^-+|-+$/g, '').toLowerCase()
-}
-
 export async function downloadTermoUnimed(data: TermoData) {
   const blob = await pdf(<TermoUnimedDocument data={data} />).toBlob()
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = `termo-unimed-${slug(data.user.name)}.pdf`
-  document.body.appendChild(a)
-  a.click()
-  document.body.removeChild(a)
-  setTimeout(() => URL.revokeObjectURL(url), 60_000)
+  saveBlob(blob, `termo-unimed-${fileSlug(data.user.name || 'beneficiario', Infinity)}.pdf`)
 }

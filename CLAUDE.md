@@ -96,7 +96,7 @@ src/
 │   ├── home-courses-section.tsx     # Carrossel de cursos (CoursesSection)
 │   ├── home-news-section.tsx        # Seção de notícias na home
 │   ├── course-card.tsx              # CourseCard + CourseCardSimple (carousel-aware)
-│   ├── StatusBadge.tsx              # Badge PUBLICO | PRIVADO | NAO_PUBLICADO
+│   ├── StatusBadge.tsx              # Badge do status do curso (PUBLIC | PRIVATE | UNPUBLISHED | IN_PROGRESS)
 │   ├── LanguageToggle.tsx           # Toggle 🇧🇷 PT / 🇺🇸 EN (i18n)
 │   ├── ImageCropDialog.tsx          # Dialog de crop de imagem (avatar/upload)
 │   ├── PermissionButton.tsx         # Botão condicional baseado em permissão
@@ -104,11 +104,11 @@ src/
 │   ├── ErrorAlert.tsx               # Alerta de erro
 │   └── EmptyState.tsx               # Placeholder estado vazio
 ├── context/
-│   └── AuthContext.tsx              # Token em localStorage; expõe token, baseUrl='/api', login(), logout()
+│   └── AuthContext.tsx              # Token em localStorage; expõe token, baseUrl (= API_BASE), login(), logout()
 ├── hooks/
 │   ├── useCourse.ts                 # useAdminCourses, useCourses, useCourse, useCreateCourse,
 │   │                                #   useUpdateCourse, useDeleteCourse, useUploadBanner,
-│   │                                #   useUploadGalleryPhoto, useRegisterCourse, useDeleteGalleryPhoto
+│   │                                #   useUploadGalleryPhoto, useDeleteGalleryPhoto
 │   ├── useAdmin.ts                  # Ver seção "Hooks — useAdmin.ts" abaixo
 │   ├── useCompanies.ts              # Empresas: useAdminCompanies, useAdminCompany, CRUD, vínculos
 │   │                                #   (members), propriedades, logo de parceira, títulos usados
@@ -129,9 +129,9 @@ src/
 │   │                                #   injetam Bearer token; 401 → limpa token + redireciona /login
 │   ├── query-client.ts              # QueryClient: staleTime 60s, gcTime 5min, retry false, refetchOnWindowFocus false
 │   ├── auth-guard.ts                # Guard de rota admin
-│   ├── schemas.ts                   # Schemas Zod: pessoaSchema, roomSchema, adminSchema, courseBaseSchema
-│   ├── export.ts                    # downloadExport(dataset, params) → GET /admin/export/:dataset (CSV)
-│   ├── member-types.ts              # Tipo de membro (lista fixa) + MEMBER_TYPE_OPTIONS
+│   ├── schemas.ts                   # Schemas Zod: pessoaSchema, roomSchema, courseBaseSchema
+│   ├── export.ts                    # downloadExport(dataset, params) → POST /admin/export/:dataset (filtros/ids no corpo; CSV)
+│   ├── member-types.ts              # MEMBER_TYPES (lista fixa {value,label}, também opções do select) + memberTypeLabel
 │   ├── membership.ts                # isActiveMember (selo "Associado" nas inscrições)
 │   ├── org-contact.ts               # Dados padrão do sindicato (fallback) + phoneDigits
 │   ├── room-names.ts                # Nomes fixos das salas + opções do select
@@ -140,6 +140,8 @@ src/
 ├── routes/                          # File-based routing
 ├── utils/
 │   ├── format-data-from-string.ts   # formatDateFromString (YYYY-MM-DD → DD/MM/YYYY)
+│   ├── dates.ts                     # toIso, toYmd(date) e todayYmd() (YYYY-MM-DD no fuso local)
+│   ├── download.ts                  # saveBlob, openBlob, fileSlug (downloads de CSV/PDF)
 │   ├── cnpj.ts                      # isValidCnpj
 │   └── masks.ts                     # maskCPF, maskCNPJ, maskPhone
 └── main.tsx                         # Entry: QueryClientProvider → AuthProvider → RouterProvider
@@ -206,39 +208,24 @@ useMarkContactMessageRead / useDeleteContactMessage / useSendContactMessage
 
 ## Tipo Principal: `Course`
 
-Definido em `src/@types/course.ts`. Dois tipos:
+Definido em `src/@types/course.ts`. O backend já responde com os campos em inglês, então a UI usa o shape da API direto (não há mais tipo em português nem função de mapeamento).
 
-**`ApiCourse`** — shape do backend (campos em português):
+**`Course`**:
 ```typescript
-titulo, modulo, numeroEvento, dataInicio, dataTermino, horarioInicio,
-horarioFim, inscricoesAte, local, instrutorId, instrutorNome,
-cargaHoraria, descricaoBreve, descricaoCompleta, status, valor,
-minimoAlunos, maximoAlunos, observacoes, imagemCapa, galeriaFotos[],
-inscritos, preInscritos, listaEspera, instructors: CourseInstructor[]
-```
-
-**`Course`** — shape do frontend (campos em inglês), usado em toda a UI:
-```typescript
-id, title, module, eventNumber, startDate, endDate, startTime, endTime,
-registrationDeadline, location, workloadHours, shortDescription, fullDescription,
-status: "PUBLICO" | "PRIVADO" | "NAO_PUBLICADO",
-price, minStudents, maxStudents, notes, coverImage,
-gallery: { id, url, caption }[], enrolled, preEnrolled, waitingList,
-instructors: CourseInstructor[]
+id, status: 'PUBLIC' | 'PRIVATE' | 'UNPUBLISHED' | 'IN_PROGRESS',
+title, description, maxStudents, minStudents, enrolled, preEnrolled, waitlist,
+coverImage: string | null, price, startDate, endDate, startTime, endTime,
+workloadHours, location, instructorName,
+registrationDeadline: string | null, observations: string | null, eventNumber: string | null,
+photoGallery: { id, url, caption }[], instructors: CourseInstructor[]
 ```
 
 **`CourseInstructor`** — shape plano retornado pelo backend:
 ```typescript
 { id, userDataId, title, category, name, bio, avatar,
-  linkedin, instagram, facebook }
+  linkedin, instagram, facebook }   // title/category/bio/avatar/redes podem ser null
 ```
 `id` = assignment ID (usado em DELETE); `userDataId` = ID do userData do instrutor.
-
-**Mapeamento** feito em `src/@types/course.ts`:
-```typescript
-mapCourse(api: ApiCourse): Course
-mapCourses(list: ApiCourse[]): Course[]
-```
 
 ## Auth
 
@@ -253,9 +240,9 @@ mapCourses(list: ApiCourse[]): Course[]
 
 ## Backend / Proxy
 
-- **Dev**: backend em `http://2.24.80.138:3000`. Vite proxy: `/api/*` → `http://2.24.80.138:3000/*` (strip `/api`).
-- **Prod**: nginx proxy: `/api/*` → `BACKEND_URL/*` (strip `/api`). Mesma semântica do Vite dev proxy.
-- `baseUrl` no contexto é `/api`.
+- **Base da API**: `API_BASE` em `src/lib/api.ts` = `VITE_API_URL` (embutido no build) ou, sem ele, `/api`. `baseUrl` do contexto é esse mesmo valor.
+- **Dev**: sem `VITE_API_URL`, as chamadas vão para `/api/*` e o proxy do Vite encaminha para `VITE_BACKEND_URL` (padrão `http://localhost:3000`), tirando o `/api`.
+- **Prod**: não há proxy. O `Dockerfile` builda com `VITE_API_URL` (padrão `https://sindicatoruraltrbackend.nakaidev.tech`), então o navegador chama o backend direto. O container roda `node server/index.mjs` (Fastify na porta 80): serve o `dist/` como SPA (rota desconhecida → `index.html`; asset em `assets/` que não existe → 404) e, em `/cursos/:id` e `/noticias/:id`, busca o curso/notícia em `BACKEND_URL` (runtime) para injetar as meta OpenGraph no HTML (preview de link em WhatsApp/redes).
 
 ## API — Endpoints
 
@@ -357,7 +344,7 @@ mapCourses(list: ApiCourse[]): Course[]
 **Auditoria**
 - `GET /api/admin/audit-logs` — trilha de auditoria (paginado; `action=create|edit|delete|export`)
 
-**Exportação CSV** — `GET /api/admin/export/:dataset` (planilha `;` com BOM, abre no Excel; cada exportação vai para a auditoria como "Exportou")
+**Exportação CSV** — `POST /api/admin/export/:dataset` (corpo JSON; GET com query também existe) (planilha `;` com BOM, abre no Excel; cada exportação vai para a auditoria como "Exportou")
 - Datasets: `people`, `companies`, `properties` (`ownerIds`), `unimed` (READ_USER) · `admins` (READ_USER_ADMIN) · `courses`, `registrations` (`courseIds`) (READ_COURSE) · `contact-messages` (READ_CONTACT) · `audit-logs` (READ_AUDIT)
 - `ids=a,b` = selecionados ou um registro; sem `ids` = mesmos filtros da listagem
 - Telas: checkboxes + "Exportar" em Associados, Empresas, Administradores, Unimed, Cursos (cards), Mensagens; ícone de download por linha; "Exportar" no detalhe de pessoa/empresa/curso/mensagem; botão na Auditoria e na aba Inscrições do curso
@@ -399,7 +386,7 @@ mapCourses(list: ApiCourse[]): Course[]
 - **Configurações do site** (`/admin/configuracoes`): centraliza o que é do site público — Dados do sindicato (telefone, e-mail, endereço, horário, busca do mapa e texto do Sobre; usados no rodapé, Contato, Sobre e convênios via `useOrgInfo`), Redes sociais, Galerias, Parceiros da home (adicionar empresa, logo, link, ordem, tirar) e Contatos públicos ("Nossa Equipe": qualquer pessoa do cadastro, com cargo e ordem). Permissões: Dados/Redes/Galerias `*_BANNER`; Parceiros e Contatos `*_USER`. A empresa não tem mais aba Parceria e o diálogo de admin não marca mais contato público — ambos apontam para cá.
 - **Convênios**: cada convênio ativo é um item próprio no menu do header público (entre Notícias e Sobre; sem submenu — pedido do usuário, são poucos); cada um tem página em `/convenios/$slug` (tabela de valores por faixa, documentos para adesão, destaques e texto). Conteúdo 100% editável em `/admin/convenios` (`ConvenioEditor` + `ConvenioPageView` compartilhado com a pré-visualização). Hooks em `useConvenios.ts`. Unimed semeado com os dados da página antiga (`ruraltr.com.br/pgs/print_unimed.php`). Regras com `UPDATE_BANNER` receberam as permissões `*_CONVENIO` na migration.
 - **Financeiro** (admin): lançamentos de caixa (valor em centavos Int), categorias, dashboard, comprovantes (anexo em Bytes no banco), export CSV, multi-caixa e transferência entre caixas, relatório PDF do período. Gated por `READ/CREATE/UPDATE/DELETE_FINANCE`. Filtros dos lançamentos vivem na URL (search params).
-- Deploy em produção via Docker (Dockerfile + docker-compose.prod.yml + nginx).
+- Deploy em produção via Docker (Dockerfile + docker-compose.prod.yml; servidor Node/Fastify em `server/index.mjs`).
 
 ## Comandos
 
@@ -412,7 +399,8 @@ npm run lint     # ESLint
 
 # Produção (manual VPS)
 cp .env.production.example .env.production
-# editar .env.production com BACKEND_URL real
+# editar .env.production com BACKEND_URL real (usado em runtime pelo server/index.mjs
+# para as meta OpenGraph; as chamadas da SPA usam o VITE_API_URL do build)
 docker compose -f docker-compose.prod.yml --env-file .env.production up -d --build
 ```
 
@@ -422,7 +410,7 @@ docker compose -f docker-compose.prod.yml --env-file .env.production up -d --bui
 - Componentes shadcn ficam em `src/components/ui/`
 - Rotas públicas sob `_public/`, admin sob `_admin/`
 - `routeTree.gen.ts` regenerado automaticamente ao salvar rotas — **nunca editar manualmente**
-- Todas chamadas API usam prefixo `/api/` (proxy Vite em dev, nginx em prod)
+- Todas chamadas API passam por `API_BASE` (`/api` com proxy do Vite em dev; `VITE_API_URL` direto em prod)
 - Datas ISO da API → `formatDateFromString()` para exibição
 - Máscaras de input em `src/utils/masks.ts` (CPF, telefone)
 - Formulários: React Hook Form + Zod schemas centralizados em `src/lib/schemas.ts`

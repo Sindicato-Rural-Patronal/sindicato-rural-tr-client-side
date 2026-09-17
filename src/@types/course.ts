@@ -37,8 +37,3 @@ export type Course = {
   photoGallery: { id: string; url: string; caption: string }[]
   instructors: CourseInstructor[]
 }
-
-/** @deprecated Use Course instead */
-export type ApiCourse = Course
-/** @deprecated Use Course instead */
-export type Curso = Course

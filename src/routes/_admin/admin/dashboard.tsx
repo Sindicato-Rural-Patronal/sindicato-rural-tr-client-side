@@ -2,6 +2,8 @@ import { createFileRoute, Link } from '@tanstack/react-router'
 import { useState, useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { apiFetch } from '@/lib/api'
+import { toYmd } from '@/utils/dates'
+import { formatDateFromString } from '@/utils/format-data-from-string'
 import type { CourseCardItem, PaginatedCourses } from '@/hooks/useCourse'
 import { useAdminStats, useAdminUsers } from '@/hooks/useAdmin'
 import { useRooms } from '@/hooks/useRooms'
@@ -33,17 +35,6 @@ async function fetchAllAdminCourses(): Promise<CourseCardItem[]> {
 
 // ─── calendar helpers ─────────────────────────────────────────────────────────
 
-function isoDate(y: number, m: number, d: number) {
-  return `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`
-}
-
-// Normaliza (ano, mês, dia) que estouram o mês — meses -1/+1 nas bordas do ano
-// viravam "00"/"13". `new Date` corrige o ano/mês automaticamente.
-function isoFromParts(y: number, m: number, d: number) {
-  const dt = new Date(y, m, d)
-  return isoDate(dt.getFullYear(), dt.getMonth(), dt.getDate())
-}
-
 function ptMonth(m: number) {
   return ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'][m]
 }
@@ -54,16 +45,17 @@ function buildCalendar(year: number, month: number) {
   const daysInPrev = new Date(year, month, 0).getDate()
   const cells: { date: string; current: boolean }[] = []
 
+  // Meses -1/+1 que estouram o ano: `new Date` normaliza (nada de mês "00"/"13").
   for (let i = firstDay - 1; i >= 0; i--) {
     const d = daysInPrev - i
-    cells.push({ date: isoFromParts(year, month - 1, d), current: false })
+    cells.push({ date: toYmd(new Date(year, month - 1, d)), current: false })
   }
   for (let d = 1; d <= daysInMonth; d++) {
-    cells.push({ date: isoDate(year, month, d), current: true })
+    cells.push({ date: toYmd(new Date(year, month, d)), current: true })
   }
   while (cells.length % 7 !== 0) {
     const d = cells.length - daysInMonth - firstDay + 1
-    cells.push({ date: isoFromParts(year, month + 1, d), current: false })
+    cells.push({ date: toYmd(new Date(year, month + 1, d)), current: false })
   }
   return cells
 }
@@ -114,7 +106,7 @@ function RouteComponent() {
   const { data: incompletosData } = useAdminUsers({ page: 1, limit: 5, incompleteRegistration: true })
 
   const today = new Date()
-  const todayStr = isoDate(today.getFullYear(), today.getMonth(), today.getDate())
+  const todayStr = toYmd(today)
 
   const [mesAtual, setMesAtual] = useState({ year: today.getFullYear(), month: today.getMonth() })
   const [dataSelecionada, setDataSelecionada] = useState(todayStr)
@@ -136,7 +128,7 @@ function RouteComponent() {
       const start = new Date(startStr + 'T12:00:00')
       const end = new Date(endStr + 'T12:00:00')
       for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-        set.add(isoDate(d.getFullYear(), d.getMonth(), d.getDate()))
+        set.add(toYmd(d))
       }
     })
     return set
@@ -164,11 +156,6 @@ function RouteComponent() {
   function ptDayOfWeek(date: string) {
     const d = new Date(date + 'T12:00:00')
     return ['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado'][d.getDay()]
-  }
-
-  function formatDate(date: string) {
-    const [y, m, d] = date.split('-')
-    return `${d}/${m}/${y}`
   }
 
   return (
@@ -308,7 +295,7 @@ function RouteComponent() {
             <div className="flex items-center justify-between">
               <CardTitle className="text-base flex items-center gap-2">
                 <Calendar className="size-4 text-primary" />
-                <span className="capitalize">{ptDayOfWeek(dataSelecionada)}, {formatDate(dataSelecionada)}</span>
+                <span className="capitalize">{ptDayOfWeek(dataSelecionada)}, {formatDateFromString(dataSelecionada)}</span>
               </CardTitle>
               {cursosDoDia.length > 0 && (
                 <Badge variant="secondary">{cursosDoDia.length} curso{cursosDoDia.length > 1 ? 's' : ''}</Badge>

@@ -14,7 +14,7 @@ import {
 } from 'lucide-react'
 import { maskPhone } from '@/utils/masks'
 import { useSeo } from '@/hooks/useSeo'
-import { phoneDigits } from '@/lib/org-contact'
+import { orgAddressLines, phoneDigits } from '@/lib/org-contact'
 import { useOrgInfo } from '@/hooks/useSiteSettings'
 
 export const Route = createFileRoute('/_public/contato')({
@@ -221,6 +221,7 @@ function ContactForm() {
 function ContatoPage() {
   useSeo({ title: 'Contato', description: 'Fale com o Sindicato Rural de Terra Roxa: endereço, telefones, e-mail e formulário.' })
   const org = useOrgInfo()
+  const address = orgAddressLines(org)
   return (
     <main>
       {/* Hero */}
@@ -254,57 +255,66 @@ function ContatoPage() {
               <h2 className="text-xl font-bold">Informações</h2>
 
               <div className="flex flex-col gap-5">
-                <div className="flex gap-3">
-                  <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary/10">
-                    <MapPin className="size-5 text-primary" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-semibold text-foreground">Endereço</p>
-                    <p className="text-sm text-muted-foreground mt-0.5">{org.street}, {org.district}</p>
-                    <p className="text-sm text-muted-foreground">{org.city} – {org.state}, {org.zip}</p>
-                  </div>
-                </div>
-
-                <div className="flex gap-3">
-                  <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary/10">
-                    <Phone className="size-5 text-primary" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-semibold text-foreground">Telefone</p>
-                    <a href={`tel:${phoneDigits(org.phone)}`} className="text-sm text-muted-foreground hover:text-foreground transition-colors block mt-0.5">
-                      {org.phone}
-                    </a>
-                  </div>
-                </div>
-
-                <div className="flex gap-3">
-                  <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary/10">
-                    <Mail className="size-5 text-primary" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-semibold text-foreground">E-mail</p>
-                    <a href={`mailto:${org.email}`} className="text-sm text-muted-foreground hover:text-foreground transition-colors mt-0.5 block break-all">
-                      {org.email}
-                    </a>
-                  </div>
-                </div>
-
-                <div className="flex gap-3">
-                  <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary/10">
-                    <Clock className="size-5 text-primary" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-semibold text-foreground">Horário de atendimento</p>
-                    <div className="flex flex-col gap-1 mt-0.5">
-                      {org.hours.map(h => (
-                        <div key={h.label} className="flex items-center justify-between gap-4">
-                          <span className="text-sm text-muted-foreground">{h.label}</span>
-                          <span className="text-sm font-medium text-foreground tabular-nums">{h.time}</span>
-                        </div>
-                      ))}
+                {address.length > 0 && (
+                  <div className="flex gap-3">
+                    <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary/10">
+                      <MapPin className="size-5 text-primary" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-foreground">Endereço</p>
+                      <div className="mt-0.5">
+                        {address.map((line, i) => <p key={i} className="text-sm text-muted-foreground">{line}</p>)}
+                      </div>
                     </div>
                   </div>
-                </div>
+                )}
+
+                {org.phone && (
+                  <div className="flex gap-3">
+                    <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary/10">
+                      <Phone className="size-5 text-primary" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-foreground">Telefone</p>
+                      <a href={`tel:${phoneDigits(org.phone)}`} className="text-sm text-muted-foreground hover:text-foreground transition-colors block mt-0.5">
+                        {org.phone}
+                      </a>
+                    </div>
+                  </div>
+                )}
+
+                {org.email && (
+                  <div className="flex gap-3">
+                    <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary/10">
+                      <Mail className="size-5 text-primary" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-foreground">E-mail</p>
+                      <a href={`mailto:${org.email}`} className="text-sm text-muted-foreground hover:text-foreground transition-colors mt-0.5 block break-all">
+                        {org.email}
+                      </a>
+                    </div>
+                  </div>
+                )}
+
+                {org.hours.length > 0 && (
+                  <div className="flex gap-3">
+                    <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary/10">
+                      <Clock className="size-5 text-primary" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-foreground">Horário de atendimento</p>
+                      <div className="flex flex-col gap-1 mt-0.5">
+                        {org.hours.map(h => (
+                          <div key={h.label} className="flex items-center justify-between gap-4">
+                            <span className="text-sm text-muted-foreground">{h.label}</span>
+                            <span className="text-sm font-medium text-foreground tabular-nums">{h.time}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 <div className="flex gap-3">
                   <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary/10">
@@ -323,20 +333,22 @@ function ContatoPage() {
         </div>
       </section>
 
-      {/* Google Maps */}
-      <section className="h-80 md:h-105 w-full border-t">
-        <iframe
-          title="Localização Sindicato Rural de Terra Roxa"
-          src={`https://maps.google.com/maps?q=${encodeURIComponent(org.mapQuery)}&output=embed&z=15`}
-          width="100%"
-          height="100%"
-          style={{ border: 0 }}
-          allowFullScreen
-          loading="lazy"
-          referrerPolicy="no-referrer-when-downgrade"
-          className="w-full h-full"
-        />
-      </section>
+      {/* Google Maps (sem busca configurada, sem mapa) */}
+      {org.mapQuery && (
+        <section className="h-80 md:h-105 w-full border-t">
+          <iframe
+            title="Localização Sindicato Rural de Terra Roxa"
+            src={`https://maps.google.com/maps?q=${encodeURIComponent(org.mapQuery)}&output=embed&z=15`}
+            width="100%"
+            height="100%"
+            style={{ border: 0 }}
+            allowFullScreen
+            loading="lazy"
+            referrerPolicy="no-referrer-when-downgrade"
+            className="w-full h-full"
+          />
+        </section>
+      )}
     </main>
   )
 }

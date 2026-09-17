@@ -14,12 +14,13 @@ export type AdminPublicContact = {
 
 const KEY = ['admin', 'public-contacts'] as const
 
+// Devolve a promise do refetch (quem reordena espera a lista nova chegar).
 function useInvalidate() {
   const qc = useQueryClient()
-  return () => {
-    qc.invalidateQueries({ queryKey: KEY })
-    qc.invalidateQueries({ queryKey: ['contacts'] })
-  }
+  return () => Promise.all([
+    qc.invalidateQueries({ queryKey: KEY }),
+    qc.invalidateQueries({ queryKey: ['contacts'] }),
+  ])
 }
 
 export function useAdminPublicContacts() {
@@ -34,7 +35,7 @@ export function useAddPublicContact() {
   return useMutation({
     mutationFn: (body: { userDataId: string; title: string | null }) =>
       apiFetch('/admin/public-contacts', { method: 'POST', body: JSON.stringify(body) }),
-    onSuccess: invalidate,
+    onSuccess: () => { invalidate() },
   })
 }
 
@@ -43,7 +44,7 @@ export function useUpdatePublicContact() {
   return useMutation({
     mutationFn: ({ id, title }: { id: string; title: string | null }) =>
       apiFetch(`/admin/public-contacts/${id}`, { method: 'PATCH', body: JSON.stringify({ title }) }),
-    onSuccess: invalidate,
+    onSuccess: () => { invalidate() },
   })
 }
 
@@ -51,7 +52,7 @@ export function useRemovePublicContact() {
   const invalidate = useInvalidate()
   return useMutation({
     mutationFn: (id: string) => apiFetch(`/admin/public-contacts/${id}`, { method: 'DELETE' }),
-    onSuccess: invalidate,
+    onSuccess: () => { invalidate() },
   })
 }
 
@@ -60,6 +61,7 @@ export function useReorderPublicContacts() {
   return useMutation({
     mutationFn: (order: string[]) =>
       apiFetch('/admin/public-contacts/reorder', { method: 'PATCH', body: JSON.stringify({ order }) }),
-    onSettled: invalidate,
+    // Espera o refetch: isPending segue true e os botões de mover ficam travados até a ordem nova chegar
+    onSettled: () => invalidate(),
   })
 }

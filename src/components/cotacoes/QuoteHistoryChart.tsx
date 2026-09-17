@@ -32,7 +32,7 @@ function dayTick(x: number, long: boolean): string {
   return long ? `${MONTHS[mm]}/${String(date.getUTCFullYear()).slice(2)}` : `${dd}/${String(mm + 1).padStart(2, '0')}`
 }
 
-// Ticks "redondos" (1, 2, 2,5, 5 × 10ⁿ) cobrindo [min, max].
+// Ticks "redondos" (1, 2, 2,5, 5 × 10ⁿ) cobrindo [min, max], em centavos.
 function niceTicks(min: number, max: number, count = 4): number[] {
   if (min === max) {
     const pad = Math.max(Math.abs(min) * 0.05, 1)
@@ -41,11 +41,14 @@ function niceTicks(min: number, max: number, count = 4): number[] {
   }
   const raw = (max - min) / count
   const mag = 10 ** Math.floor(Math.log10(raw))
-  const step = [1, 2, 2.5, 5, 10].map(s => s * mag).find(s => s >= raw) ?? raw
+  // Passo inteiro e de pelo menos 1 centavo: menor que isso os rótulos (R$ com 2 casas) se repetem
+  const step = [1, 2, 2.5, 5, 10]
+    .map(s => Math.round(s * mag * 1e6) / 1e6)
+    .find(s => s >= raw && s >= 1 && Number.isInteger(s)) ?? Math.max(1, Math.ceil(raw))
   const start = Math.floor(min / step) * step
   const ticks: number[] = []
-  for (let v = start; v <= max + step * 0.999; v += step) ticks.push(Math.round(v * 100) / 100)
-  return ticks
+  for (let v = start; v <= max + step * 0.999; v += step) ticks.push(Math.round(v))
+  return [...new Set(ticks)]
 }
 
 function useWidth<T extends HTMLElement>() {

@@ -377,8 +377,7 @@ function RegistrationsTab({
       const { downloadFichaPdf } = await import('@/lib/ficha-inscricao-pdf')
       const user: UserDataDetail = await apiFetch(`/admin/users/${userDataId}`).then(r => r.json())
       await downloadFichaPdf([{ course, user }], `ficha-${user.name}`)
-    } catch (e) {
-      console.error(e)
+    } catch {
       toast.error(t('admin.courses.fichaError'))
     } finally {
       setFichaId(null)
@@ -417,8 +416,7 @@ function RegistrationsTab({
     try {
       await openRegistrationFicha(regId)
     } catch (e) {
-      console.error(e)
-      toast.error('Erro ao abrir a ficha.')
+      toast.error(apiErrorMessage(e, 'Erro ao abrir a ficha.'))
     } finally {
       setFichaBusyId(null)
     }
@@ -452,15 +450,14 @@ function RegistrationsTab({
         users.map(user => ({ course, user })),
         `fichas-${courseTitle}`,
       )
-    } catch (e) {
-      console.error(e)
+    } catch {
       toast.error(t('admin.courses.fichaError'))
     } finally {
       setExportingAll(false)
     }
   }
 
-  // Planilha das inscrições gerada no servidor (GET /admin/export/registrations).
+  // Planilha das inscrições gerada no servidor (/admin/export/registrations).
   async function exportCsv() {
     setExportingCsv(true)
     try {
@@ -492,8 +489,7 @@ function RegistrationsTab({
         [{ course: certCourse(), participant: { name: reg.userData.name, cpf: reg.userData.cpf } }],
         `certificado-${reg.userData.name}`,
       )
-    } catch (e) {
-      console.error(e)
+    } catch {
       toast.error('Erro ao gerar o certificado.')
     } finally {
       setCertId(null)
@@ -515,8 +511,7 @@ function RegistrationsTab({
         confirmed.map(r => ({ course, participant: { name: r.userData.name, cpf: r.userData.cpf } })),
         `certificados-${courseTitle}`,
       )
-    } catch (e) {
-      console.error(e)
+    } catch {
       toast.error('Erro ao gerar os certificados.')
     } finally {
       setExportingCerts(false)
@@ -1924,6 +1919,7 @@ function RouteComponent() {
   async function handleDelete(id: string) {
     try {
       await deleteCourse.mutateAsync(id)
+      selection.remove(id)
       toast.success('Curso excluído.')
       setDeleteConfirm(null)
       setViewDialog(null)

@@ -31,7 +31,8 @@ export type DailyQuotesInput = {
 export function useMarketQuotes() {
   return useQuery<MarketQuote[]>({
     queryKey: ['market-quotes'],
-    queryFn: () => fetch(`${API_BASE}/market-quotes`).then(r => r.json()),
+    // Erro (429/500) vira lista vazia: a home faz reduce/map na lista
+    queryFn: () => fetch(`${API_BASE}/market-quotes`).then(r => (r.ok ? r.json() : [])),
   })
 }
 

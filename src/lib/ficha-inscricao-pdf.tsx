@@ -8,6 +8,7 @@ import {
 } from '@react-pdf/renderer'
 import type { UserDataDetail, UserProperty } from '@/hooks/useAdmin'
 import { formatDateFromString } from '@/utils/format-data-from-string'
+import { fileSlug, saveBlob } from '@/utils/download'
 
 // Endereço agora vive na propriedade principal do associado (o user.address
 // legado foi descontinuado).
@@ -327,24 +328,7 @@ export function FichaInscricaoDocument({ fichas }: { fichas: FichaParticipant[] 
   )
 }
 
-function sanitizeFilename(name: string): string {
-  return name
-    .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
-    .replace(/[^a-zA-Z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-    .toLowerCase()
-}
-
 export async function downloadFichaPdf(fichas: FichaParticipant[], filename: string) {
   const blob = await pdf(<FichaInscricaoDocument fichas={fichas} />).toBlob()
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = `${sanitizeFilename(filename)}.pdf`
-  document.body.appendChild(a)
-  a.click()
-  document.body.removeChild(a)
-  // revoga com atraso — revogar imediato pode truncar PDFs grandes em alguns navegadores.
-  setTimeout(() => URL.revokeObjectURL(url), 60_000)
+  saveBlob(blob, `${fileSlug(filename, Infinity)}.pdf`)
 }

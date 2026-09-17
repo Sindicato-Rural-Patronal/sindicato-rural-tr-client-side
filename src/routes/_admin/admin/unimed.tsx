@@ -214,7 +214,6 @@ function UnimedFormDialog({ open, editId, onClose }: {
       setSnapshot(snapshotOf(f, null, null))
       setError(null)
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, isEdit, detail])
 
   function setF<K extends keyof UnimedForm>(k: K, v: string) {
@@ -427,6 +426,7 @@ function RouteComponent() {
     if (!deleteTarget) return
     try {
       await deleteM.mutateAsync(deleteTarget.id)
+      selection.remove(deleteTarget.id)
       toast.success('Beneficiário removido.')
       setDeleteTarget(null)
     } catch (e) {

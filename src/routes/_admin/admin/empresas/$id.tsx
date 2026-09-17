@@ -141,7 +141,8 @@ function EmpresaPage() {
           <TabsTrigger value="enderecos"><TreePine className="mr-1.5 size-3.5" /> Propriedades <Count n={company.properties.length} /></TabsTrigger>
         </TabsList>
 
-        <TabsContent value="dados">
+        {/* Fica montada (só escondida) para não perder edições ao trocar de aba */}
+        <TabsContent value="dados" forceMount className="data-[state=inactive]:hidden">
           <CompanyForm
             key={company.updatedAt}
             company={company}

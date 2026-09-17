@@ -78,6 +78,7 @@ function OrgInfoForm({ initial, canEdit }: { initial: SiteSettings; canEdit: boo
         <CardHeader className="pb-3">
           <CardTitle className="text-sm">Contato e endereço</CardTitle>
           <p className="text-xs text-muted-foreground">Aparecem no rodapé do site, na página Contato e nas páginas dos convênios.</p>
+          <p className="text-xs text-muted-foreground">Campo vazio não aparece no site.</p>
         </CardHeader>
         <CardContent className="grid grid-cols-1 gap-4 md:grid-cols-6">
           <Field id="org-phone" label="Telefone" className="md:col-span-2">

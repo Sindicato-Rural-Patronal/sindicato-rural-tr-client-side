@@ -790,6 +790,8 @@ function RouteComponent() {
   const userPageState = userSelection.pageState(userPageIds)
   const adminPageIds = admins.map(a => a.id)
   const adminPageState = adminSelection.pageState(adminPageIds)
+  // Exportar administradores exige READ_USER_ADMIN no backend
+  const canExportAdmins = can('READ_USER_ADMIN')
   // Mesmos filtros da listagem, sem página/limite.
   const usersExportFilters: ExportParams = {
     search: usersSearch.trim() || undefined,
@@ -829,6 +831,7 @@ function RouteComponent() {
     if (!deleteAssociadoTarget) return
     try {
       await deleteWorker.mutateAsync(deleteAssociadoTarget.id)
+      userSelection.remove(deleteAssociadoTarget.id)
       toast.success(`Associado "${deleteAssociadoTarget.name}" excluído.`)
       setDeleteAssociadoTarget(null)
     } catch (e) {
@@ -840,6 +843,7 @@ function RouteComponent() {
     if (!deleteAdminTarget) return
     try {
       await deleteAdmin.mutateAsync(deleteAdminTarget.id)
+      adminSelection.remove(deleteAdminTarget.id)
       toast.success(`Administrador "${deleteAdminTarget.userData.name}" excluído.`)
       setDeleteAdminTarget(null)
     } catch (e) {
@@ -1214,17 +1218,19 @@ function RouteComponent() {
                 ))}
               </SelectContent>
             </Select>
-            <div className="flex items-center gap-2 sm:ml-auto">
-              <SelectionInfo count={adminSelection.count} onClear={adminSelection.clear} />
-              <ExportMenu
-                dataset="admins"
-                filters={{ rulesId: rulesFilter || undefined }}
-                selectedIds={adminSelection.ids}
-                total={adminsData?.total}
-                filtered={!!rulesFilter}
-                className="h-9"
-              />
-            </div>
+            {canExportAdmins && (
+              <div className="flex items-center gap-2 sm:ml-auto">
+                <SelectionInfo count={adminSelection.count} onClear={adminSelection.clear} />
+                <ExportMenu
+                  dataset="admins"
+                  filters={{ rulesId: rulesFilter || undefined }}
+                  selectedIds={adminSelection.ids}
+                  total={adminsData?.total}
+                  filtered={!!rulesFilter}
+                  className="h-9"
+                />
+              </div>
+            )}
           </div>
           {loadingAdmins && (
             <div className="flex flex-col gap-3">
@@ -1254,14 +1260,16 @@ function RouteComponent() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="w-10">
-                      <SelectCheckbox
-                        checked={adminPageState === 'all'}
-                        indeterminate={adminPageState === 'some'}
-                        onChange={() => adminSelection.togglePage(adminPageIds)}
-                        label="Selecionar todos desta página"
-                      />
-                    </TableHead>
+                    {canExportAdmins && (
+                      <TableHead className="w-10">
+                        <SelectCheckbox
+                          checked={adminPageState === 'all'}
+                          indeterminate={adminPageState === 'some'}
+                          onChange={() => adminSelection.togglePage(adminPageIds)}
+                          label="Selecionar todos desta página"
+                        />
+                      </TableHead>
+                    )}
                     <TableHead>Administrador</TableHead>
                     <TableHead className="hidden md:table-cell">Email</TableHead>
                     <TableHead>Regra</TableHead>
@@ -1271,13 +1279,15 @@ function RouteComponent() {
                 <TableBody>
                   {admins.map(a => (
                     <TableRow key={a.id} className={STICKY_ACTIONS_ROW}>
-                      <TableCell className="w-10">
-                        <SelectCheckbox
-                          checked={adminSelection.isSelected(a.id)}
-                          onChange={() => adminSelection.toggle(a.id)}
-                          label={`Selecionar ${a.userData.name}`}
-                        />
-                      </TableCell>
+                      {canExportAdmins && (
+                        <TableCell className="w-10">
+                          <SelectCheckbox
+                            checked={adminSelection.isSelected(a.id)}
+                            onChange={() => adminSelection.toggle(a.id)}
+                            label={`Selecionar ${a.userData.name}`}
+                          />
+                        </TableCell>
+                      )}
                       <TableCell>
                         <div className="flex items-center gap-3">
                           <InitialsAvatar name={a.userData.name} avatar={a.userData.avatar} size="sm" />
@@ -1305,15 +1315,17 @@ function RouteComponent() {
                           >
                             <Pencil className="size-3.5" />
                           </PermissionButton>
-                          <Button
-                            variant="ghost" size="icon"
-                            className="size-7"
-                            disabled={exportingRow === a.id}
-                            onClick={() => handleExportRow('admins', a.id)}
-                            aria-label="Exportar administrador" title="Exportar administrador"
-                          >
-                            {exportingRow === a.id ? <Loader2 className="size-3.5 animate-spin" /> : <Download className="size-3.5" />}
-                          </Button>
+                          {canExportAdmins && (
+                            <Button
+                              variant="ghost" size="icon"
+                              className="size-7"
+                              disabled={exportingRow === a.id}
+                              onClick={() => handleExportRow('admins', a.id)}
+                              aria-label="Exportar administrador" title="Exportar administrador"
+                            >
+                              {exportingRow === a.id ? <Loader2 className="size-3.5 animate-spin" /> : <Download className="size-3.5" />}
+                            </Button>
+                          )}
                           <PermissionButton
                             allowed={can('DELETE_USER_ADMIN')}
                             noPermissionMessage="Sem permissão para excluir administradores"

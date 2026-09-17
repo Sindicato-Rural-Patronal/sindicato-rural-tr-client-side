@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 
@@ -82,6 +82,14 @@ vi.mock('@uiw/react-md-editor', () => ({
 
 vi.mock('@uiw/react-md-editor/markdown-editor.css', () => ({}))
 
+// DatePicker real = Radix Popover + react-day-picker (portais/pointer capture, frágil
+// no jsdom). O teste só precisa do valor "YYYY-MM-DD" chegando no form.
+vi.mock('@/components/ui/date-picker', () => ({
+  DatePicker: ({ value, onChange }: { value: string; onChange: (v: string) => void }) => (
+    <input type="date" data-testid="date-picker" value={value} onChange={e => onChange(e.target.value)} />
+  ),
+}))
+
 vi.mock('@tanstack/react-router', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@tanstack/react-router')>()
   return {
@@ -122,24 +130,25 @@ describe('CourseFormDialog — criação', () => {
     expect(btn).toBeDisabled()
   }, 15000)
 
-  // TODO: reescrever dirigindo os componentes atuais. As datas agora usam o
-  // DatePicker (Radix Popover + react-day-picker) e a sala usa Radix Select —
-  // ambos são difíceis/flaky de automatizar em jsdom (pointer capture, portais).
-  // O teste original mirava <input type="date"> e nem preenchia a sala
-  // (obrigatória na criação), então nunca validava de fato.
-  it.skip('botão Criar habilitado após preencher campos obrigatórios', async () => {
+  // O botão segue a validade do schema (título, datas e horários de início/fim).
+  // A sala é cobrada só no submit, então não entra aqui.
+  it('botão Criar habilitado após preencher campos obrigatórios', async () => {
     const user = userEvent.setup()
     await renderCourseFormDialog(null)
 
+    const btn = screen.getByRole('button', { name: 'Criar' })
     await user.type(screen.getByPlaceholderText(/Manejo/i), 'Curso de Soja')
+
+    const [startDate, endDate] = screen.getAllByTestId('date-picker')
+    fireEvent.change(startDate, { target: { value: '2026-10-01' } })
+    fireEvent.change(endDate, { target: { value: '2026-10-02' } })
 
     const [startHour, endHour] = screen.getAllByDisplayValue('')
       .filter(el => (el as HTMLInputElement).type === 'time')
     await user.type(startHour, '08:00')
+    expect(btn).toBeDisabled()
     await user.type(endHour, '17:00')
 
-    await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'Criar' })).not.toBeDisabled()
-    })
-  })
+    await waitFor(() => expect(btn).not.toBeDisabled())
+  }, 15000)
 })

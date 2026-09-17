@@ -12,6 +12,7 @@ import {
 import { DeleteConfirmDialog } from '@/components/DeleteConfirmDialog'
 import { Pagination } from '@/components/ui/pagination'
 import { useDebouncedValue } from '@/hooks/useDebouncedValue'
+import { useRowSelection } from '@/hooks/useRowSelection'
 import { ExportMenu, ExportOneButton } from '@/components/export/ExportMenu'
 import { apiErrorMessage } from '@/lib/api-error-message'
 import { downloadExport } from '@/lib/export'
@@ -97,7 +98,8 @@ function RouteComponent() {
   const [readFilter, setReadFilter] = useState<ReadFilter>('all')
   const [selected, setSelected] = useState<ContactMessage | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<ContactMessage | null>(null)
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  // Seleção múltipla da página visível — limpa ao trocar de página/filtro/busca.
+  const selection = useRowSelection()
   const [bulkBusy, setBulkBusy] = useState(false)
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false)
   const [exportingId, setExportingId] = useState<string | null>(null)
@@ -120,6 +122,7 @@ function RouteComponent() {
     if (!deleteTarget) return
     try {
       await deleteMsg.mutateAsync(deleteTarget.id)
+      selection.remove(deleteTarget.id)
       toast.success('Mensagem excluída.')
       setDeleteTarget(null)
       if (selected?.id === deleteTarget.id) setSelected(null)
@@ -152,40 +155,47 @@ function RouteComponent() {
   const total = data?.total ?? 0
   const unreadCount = unreadData?.total ?? 0
 
-  // Seleção múltipla — limpa ao trocar de página/filtro/busca.
-  useEffect(() => { setSelectedIds(new Set()) }, [page, readFilter, search])
-  const allOnPageSelected = messages.length > 0 && messages.every(m => selectedIds.has(m.id))
-  function toggleOne(id: string) {
-    setSelectedIds(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n })
+  const pageIds = messages.map(m => m.id)
+  const allOnPageSelected = selection.pageState(pageIds) === 'all'
+
+  function changePage(p: number) {
+    setPage(p)
+    selection.clear()
   }
-  function toggleAllOnPage() {
-    setSelectedIds(prev => {
-      const n = new Set(prev)
-      if (messages.every(m => n.has(m.id))) messages.forEach(m => n.delete(m.id))
-      else messages.forEach(m => n.add(m.id))
-      return n
-    })
+  function changeReadFilter(f: ReadFilter) {
+    setReadFilter(f)
+    selection.clear()
   }
+  function changeSearch(value: string) {
+    setSearchInput(value)
+    selection.clear()
+  }
+
   async function bulkMarkRead() {
     setBulkBusy(true)
     try {
-      const targets = messages.filter(m => selectedIds.has(m.id) && !m.read)
+      const targets = messages.filter(m => selection.isSelected(m.id) && !m.read)
       await Promise.all(targets.map(m => markRead.mutateAsync({ messageId: m.id, read: true })))
       toast.success('Marcadas como lidas.')
-      setSelectedIds(new Set())
+      selection.clear()
     } catch { toast.error('Erro ao marcar como lidas.') }
     finally { setBulkBusy(false) }
   }
   async function bulkDelete() {
     setBulkBusy(true)
-    try {
-      const ids = [...selectedIds]
-      await Promise.all(ids.map(id => deleteMsg.mutateAsync(id)))
+    const ids = selection.ids
+    const results = await Promise.allSettled(ids.map(id => deleteMsg.mutateAsync(id)))
+    const deleted = ids.filter((_, i) => results[i].status === 'fulfilled')
+    // Tira da seleção só as que saíram; as que falharam continuam marcadas
+    selection.remove(...deleted)
+    if (selected && deleted.includes(selected.id)) setSelected(null)
+    if (deleted.length === ids.length) {
       toast.success(`${ids.length} mensagem(ns) excluída(s).`)
-      setSelectedIds(new Set())
       setBulkDeleteOpen(false)
-    } catch { toast.error('Erro ao excluir as mensagens.') }
-    finally { setBulkBusy(false) }
+    } else {
+      toast.error('Erro ao excluir as mensagens.')
+    }
+    setBulkBusy(false)
   }
 
   return (
@@ -209,13 +219,13 @@ function RouteComponent() {
           <Input
             placeholder="Buscar por nome, e-mail ou assunto..."
             value={searchInput}
-            onChange={e => setSearchInput(e.target.value)}
+            onChange={e => changeSearch(e.target.value)}
             className="pl-9 pr-9"
           />
           {searchInput && (
             <button
               className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-              onClick={() => setSearchInput('')}
+              onClick={() => changeSearch('')}
             >
               <X className="size-3.5" />
             </button>
@@ -227,7 +237,7 @@ function RouteComponent() {
               key={f}
               size="sm"
               variant={readFilter === f ? 'default' : 'outline'}
-              onClick={() => setReadFilter(f)}
+              onClick={() => changeReadFilter(f)}
               className="text-xs"
             >
               {f === 'all' ? 'Todas' : f === 'unread' ? 'Não lidas' : 'Lidas'}
@@ -238,7 +248,7 @@ function RouteComponent() {
           dataset="contact-messages"
           className="shrink-0"
           filters={{ search: search.trim(), read: readParam ?? undefined }}
-          selectedIds={[...selectedIds]}
+          selectedIds={selection.ids}
           total={data?.total}
           filtered={!!search.trim() || readFilter !== 'all'}
         />
@@ -247,10 +257,10 @@ function RouteComponent() {
       {!isLoading && messages.length > 0 && (
         <div className="flex items-center gap-3 mb-3 rounded-lg border border-border bg-muted/30 px-3 py-2">
           <label className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer select-none">
-            <input type="checkbox" checked={allOnPageSelected} onChange={toggleAllOnPage} className="size-4 accent-primary" aria-label="Selecionar todas nesta página" />
-            {selectedIds.size > 0 ? `${selectedIds.size} selecionada${selectedIds.size > 1 ? 's' : ''}` : 'Selecionar tudo'}
+            <input type="checkbox" checked={allOnPageSelected} onChange={() => selection.togglePage(pageIds)} className="size-4 accent-primary" aria-label="Selecionar todas nesta página" />
+            {selection.count > 0 ? `${selection.count} selecionada${selection.count > 1 ? 's' : ''}` : 'Selecionar tudo'}
           </label>
-          {selectedIds.size > 0 && (
+          {selection.count > 0 && (
             <div className="ml-auto flex items-center gap-2">
               <Button size="sm" variant="outline" className="gap-1.5" disabled={bulkBusy} onClick={bulkMarkRead}>
                 <CheckCheck className="size-4" /> Marcar lidas
@@ -258,7 +268,7 @@ function RouteComponent() {
               <Button size="sm" variant="outline" className="gap-1.5 text-destructive hover:text-destructive" disabled={bulkBusy} onClick={() => setBulkDeleteOpen(true)}>
                 <Trash2 className="size-4" /> Excluir
               </Button>
-              <Button size="sm" variant="ghost" onClick={() => setSelectedIds(new Set())}>Limpar</Button>
+              <Button size="sm" variant="ghost" onClick={selection.clear}>Limpar</Button>
             </div>
           )}
         </div>
@@ -289,13 +299,13 @@ function RouteComponent() {
           <div
             key={msg.id}
             className={`rounded-xl border px-4 py-3 flex items-center gap-4 transition-all hover:shadow-sm hover:border-primary/30 ${
-              selectedIds.has(msg.id) ? 'ring-1 ring-primary/40 ' : ''
+              selection.isSelected(msg.id) ? 'ring-1 ring-primary/40 ' : ''
             }${msg.read ? 'bg-card' : 'bg-primary/5 border-primary/20'}`}
           >
             <input
               type="checkbox"
-              checked={selectedIds.has(msg.id)}
-              onChange={() => toggleOne(msg.id)}
+              checked={selection.isSelected(msg.id)}
+              onChange={() => selection.toggle(msg.id)}
               className="size-4 accent-primary shrink-0"
               aria-label={`Selecionar mensagem de ${msg.name}`}
             />
@@ -356,7 +366,7 @@ function RouteComponent() {
             totalPages={totalPages}
             total={total}
             limit={20}
-            onPageChange={setPage}
+            onPageChange={changePage}
             showLimitSelector={false}
             isLoading={isLoading}
           />
@@ -368,7 +378,7 @@ function RouteComponent() {
       <DeleteConfirmDialog
         open={bulkDeleteOpen}
         onOpenChange={open => { if (!open) setBulkDeleteOpen(false) }}
-        title={`Excluir ${selectedIds.size} mensagem(ns)`}
+        title={`Excluir ${selection.count} mensagem(ns)`}
         description="Esta ação não pode ser desfeita. As mensagens selecionadas serão removidas permanentemente."
         onConfirm={bulkDelete}
         pending={bulkBusy}

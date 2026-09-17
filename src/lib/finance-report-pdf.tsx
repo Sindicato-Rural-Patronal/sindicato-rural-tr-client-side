@@ -1,6 +1,8 @@
 import { Document, Page, View, Text, StyleSheet, pdf } from '@react-pdf/renderer'
 import { formatDateFromString } from '@/utils/format-data-from-string'
 import { centsToBRL } from '@/utils/masks'
+import { saveBlob } from '@/utils/download'
+import { todayYmd } from '@/utils/dates'
 import type { FinanceSummary, FinanceTransaction } from '@/hooks/useFinance'
 
 const C = {
@@ -42,7 +44,7 @@ function typeLabel(t: FinanceTransaction): string {
   return t.type === 'IN' ? 'Entrada' : 'Saída'
 }
 
-export function FinanceReportDocument({ summary, transactions, range }: {
+function FinanceReportDocument({ summary, transactions, range }: {
   summary: FinanceSummary
   transactions: FinanceTransaction[]
   range: { from?: string; to?: string }
@@ -144,12 +146,5 @@ export async function downloadFinanceReportPdf(
   const blob = await pdf(
     <FinanceReportDocument summary={summary} transactions={transactions} range={range} />,
   ).toBlob()
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = `relatorio-financeiro-${new Date().toISOString().slice(0, 10)}.pdf`
-  document.body.appendChild(a)
-  a.click()
-  document.body.removeChild(a)
-  setTimeout(() => URL.revokeObjectURL(url), 60_000)
+  saveBlob(blob, `relatorio-financeiro-${todayYmd()}.pdf`)
 }

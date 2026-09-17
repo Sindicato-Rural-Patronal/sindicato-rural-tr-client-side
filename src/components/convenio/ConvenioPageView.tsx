@@ -2,7 +2,7 @@ import { Link } from '@tanstack/react-router'
 import { CheckCircle2, FileText, MessageCircle, Phone, Sparkles } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { centsToBRL } from '@/utils/masks'
-import { ORG_CONTACT, phoneDigits } from '@/lib/org-contact'
+import { phoneDigits } from '@/lib/org-contact'
 import { toParagraphs } from '@/lib/convenio-utils'
 import type { Convenio } from '@/hooks/useConvenios'
 
@@ -21,8 +21,8 @@ export type ConvenioView = Pick<
  * sindicato (tabela de valores, documentos para adesão, estrutura do convênio
  * e texto institucional) no visual do site atual.
  */
-// `orgPhone` vem das Configurações do site (quem usa a página passa o valor).
-export function ConvenioPageView({ convenio: c, orgPhone = ORG_CONTACT.phone }: { convenio: ConvenioView; orgPhone?: string }) {
+// `orgPhone` vem das Configurações do site (quem usa a página passa o valor); vazio esconde o botão.
+export function ConvenioPageView({ convenio: c, orgPhone }: { convenio: ConvenioView; orgPhone: string }) {
   const aboutParagraphs = toParagraphs(c.aboutText)
   const hasTable = c.priceRows.length > 0
   const hasDocuments = c.documents.length > 0
@@ -160,11 +160,13 @@ export function ConvenioPageView({ convenio: c, orgPhone = ORG_CONTACT.phone }: 
               </p>
             </div>
             <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
-              <Button asChild variant="outline">
-                <a href={`tel:${phoneDigits(orgPhone)}`}>
-                  <Phone className="size-4" /> {orgPhone}
-                </a>
-              </Button>
+              {orgPhone && (
+                <Button asChild variant="outline">
+                  <a href={`tel:${phoneDigits(orgPhone)}`}>
+                    <Phone className="size-4" /> {orgPhone}
+                  </a>
+                </Button>
+              )}
               <Button asChild>
                 <Link to="/contato">
                   <MessageCircle className="size-4" /> Fale conosco
