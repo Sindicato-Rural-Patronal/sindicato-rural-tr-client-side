@@ -8,8 +8,6 @@ const ptBR = {
     openMenu: 'Abrir menu',
     closeMenu: 'Fechar menu',
     convenios: 'Convênios',
-    allConvenios: 'Todos os convênios',
-    loading: 'Carregando…',
   },
   footer: {
     socialMedia: 'Redes sociais',

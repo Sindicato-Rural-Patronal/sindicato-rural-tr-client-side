@@ -8,8 +8,6 @@ const en = {
     openMenu: 'Open menu',
     closeMenu: 'Close menu',
     convenios: 'Agreements',
-    allConvenios: 'All agreements',
-    loading: 'Loading…',
   },
   footer: {
     socialMedia: 'Social media',
