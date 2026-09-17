@@ -166,10 +166,19 @@ function CameraDialog({ open, onClose, onCapture }: {
   const [captured, setCaptured] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
+  // Ao abrir, começa sem foto nem erro da vez anterior (ajustado no render; a
+  // câmera em si continua no efeito abaixo).
+  const [wasOpen, setWasOpen] = useState(open)
+  if (open !== wasOpen) {
+    setWasOpen(open)
+    if (open) {
+      setCaptured(null)
+      setError(null)
+    }
+  }
+
   useEffect(() => {
     if (!open) return
-    setCaptured(null)
-    setError(null)
     let active = true
     let localStream: MediaStream | null = null
     navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } })
@@ -272,13 +281,11 @@ function DadosTab({ userId, user, completeMode, onCompleteModeEnd, hasNoProperti
   const uploadAvatar = useUploadAvatar(userId)
   const avatarInputRef = useRef<HTMLInputElement>(null)
   const [showCamera, setShowCamera] = useState(false)
-  const [editing, setEditing] = useState(false)
+  const [manualEditing, setEditing] = useState(false)
+  // "Completar cadastro" já abre em edição; Cancelar/Salvar encerram os dois juntos.
+  const editing = manualEditing || completeMode
   const [form, setForm] = useState<DadosForm>(() => dadosFromDetail(user))
   const [saved, setSaved] = useState<DadosForm>(() => dadosFromDetail(user))
-
-  useEffect(() => {
-    if (completeMode) setEditing(true)
-  }, [completeMode])
 
   const promote = usePromoteInstructor(userId)
   const demote = useRemoveInstructor(userId)
@@ -288,6 +295,30 @@ function DadosTab({ userId, user, completeMode, onCompleteModeEnd, hasNoProperti
   const [instrLinkedin, setInstrLinkedin] = useState(user.userInstructor?.linkedin ?? '')
   const [instrInstagram, setInstrInstagram] = useState(user.userInstructor?.instagram ?? '')
   const [instrFacebook, setInstrFacebook] = useState(user.userInstructor?.facebook ?? '')
+
+  // Trocou de pessoa sem desmontar: recarrega o formulário com o cadastro novo.
+  const [formUserId, setFormUserId] = useState(user.id)
+  if (user.id !== formUserId) {
+    setFormUserId(user.id)
+    const d = dadosFromDetail(user)
+    setForm(d)
+    setSaved(d)
+    setInstrBio(user.userInstructor?.bio ?? '')
+    setInstrLinkedin(user.userInstructor?.linkedin ?? '')
+    setInstrInstagram(user.userInstructor?.instagram ?? '')
+    setInstrFacebook(user.userInstructor?.facebook ?? '')
+  }
+  // Ao entrar em edição, os campos de instrutor partem dos dados atuais.
+  const [wasEditing, setWasEditing] = useState(editing)
+  if (editing !== wasEditing) {
+    setWasEditing(editing)
+    if (editing && user.userInstructor) {
+      setInstrBio(user.userInstructor.bio ?? '')
+      setInstrLinkedin(user.userInstructor.linkedin ?? '')
+      setInstrInstagram(user.userInstructor.instagram ?? '')
+      setInstrFacebook(user.userInstructor.facebook ?? '')
+    }
+  }
 
   const isInstructor = !!user.userInstructor
   // Salvar pode disparar update de worker E/OU promoção/atualização de instrutor;
@@ -304,25 +335,6 @@ function DadosTab({ userId, user, completeMode, onCompleteModeEnd, hasNoProperti
     instrInstagram !== (user.userInstructor?.instagram ?? '') ||
     instrFacebook !== (user.userInstructor?.facebook ?? '')
   useUnsavedGuard(editing && (JSON.stringify(form) !== JSON.stringify(saved) || instrDirty))
-
-  useEffect(() => {
-    if (editing && user.userInstructor) {
-      setInstrBio(user.userInstructor.bio ?? '')
-      setInstrLinkedin(user.userInstructor.linkedin ?? '')
-      setInstrInstagram(user.userInstructor.instagram ?? '')
-      setInstrFacebook(user.userInstructor.facebook ?? '')
-    }
-  }, [editing])
-
-  useEffect(() => {
-    const d = dadosFromDetail(user)
-    setForm(d)
-    setSaved(d)
-    setInstrBio(user.userInstructor?.bio ?? '')
-    setInstrLinkedin(user.userInstructor?.linkedin ?? '')
-    setInstrInstagram(user.userInstructor?.instagram ?? '')
-    setInstrFacebook(user.userInstructor?.facebook ?? '')
-  }, [user.id])
 
   function set(k: keyof DadosForm, v: string | boolean) {
     setForm(prev => ({ ...prev, [k]: v }))

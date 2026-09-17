@@ -1,5 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { useAuditLogs, useAdminAdmins } from '@/hooks/useAdmin'
 import { usePermissions } from '@/hooks/usePermissions'
@@ -116,8 +116,10 @@ function RouteComponent() {
   const enabled = !permLoading && can('READ_AUDIT')
   const search = Route.useSearch()
   const navigate = Route.useNavigate()
-  const setSearch = (patch: Partial<AuditSearch>) =>
-    navigate({ search: prev => ({ ...prev, ...patch }), replace: true })
+  const setSearch = useCallback(
+    (patch: Partial<AuditSearch>) => navigate({ search: prev => ({ ...prev, ...patch }), replace: true }),
+    [navigate],
+  )
   const page = search.page ?? 1
 
   const filters = { action: search.action, entity: search.entity, actorId: search.actorId, from: search.from, to: search.to, q: search.q }
@@ -144,13 +146,22 @@ function RouteComponent() {
 
   // Busca com debounce → grava `q` na URL.
   const [searchInput, setSearchInput] = useState(search.q ?? '')
-  useEffect(() => { setSearchInput(search.q ?? '') }, [search.q])
   const debouncedSearch = useDebouncedValue(searchInput, 350)
+  // `q` mudou por fora (voltar/avançar, limpar filtros) → o campo acompanha (ajuste no render, sem efeito).
+  // Se veio da própria digitação, não mexe: não apaga o que ainda está sendo digitado.
+  const [prevQ, setPrevQ] = useState(search.q)
+  if (search.q !== prevQ) {
+    setPrevQ(search.q)
+    if (search.q !== (debouncedSearch.trim() || undefined)) setSearchInput(search.q ?? '')
+  }
+  // Só grava quando a digitação muda — reagir ao `q` com o valor antigo desfaria o voltar/limpar.
+  const syncedSearch = useRef(debouncedSearch)
   useEffect(() => {
+    if (debouncedSearch === syncedSearch.current) return
+    syncedSearch.current = debouncedSearch
     const q = debouncedSearch.trim() || undefined
     if (q !== (search.q ?? undefined)) setSearch({ q, page: undefined })
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [debouncedSearch, search.q])
+  }, [debouncedSearch, search.q, setSearch])
 
   const rows = data?.data ?? []
   const total = data?.total ?? 0

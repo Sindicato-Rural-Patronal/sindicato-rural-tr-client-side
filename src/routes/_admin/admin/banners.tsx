@@ -135,20 +135,17 @@ function BannerSheet({
   const uploadImage = useUploadBannerImage(banner?.id ?? '')
   const imageInputRef = useRef<HTMLInputElement>(null)
 
-  const [form, setForm] = useState<BannerFormState>(emptyForm)
+  // O pai remonta o sheet a cada abertura (key), então o estado já nasce certo.
+  const [form, setForm] = useState<BannerFormState>(() => (banner ? formFromBanner(banner) : emptyForm()))
   const [error, setError] = useState<string | null>(null)
   const [cropSrc, setCropSrc] = useState<string | null>(null)
   // imagem recortada antes do banner existir (modo criação) — sobe após o create
   const [stagedImage, setStagedImage] = useState<{ file: File; url: string } | null>(null)
   const queryClient = useQueryClient()
 
-  useEffect(() => {
-    if (!mode) return
-    setForm(banner ? formFromBanner(banner) : emptyForm())
-    setError(null)
-    setCropSrc(prev => { if (prev) URL.revokeObjectURL(prev); return null })
-    setStagedImage(prev => { if (prev) URL.revokeObjectURL(prev.url); return null })
-  }, [mode?.mode, banner?.id])
+  // Libera as URLs de prévia ao trocá-las ou ao desmontar (na reabertura).
+  useEffect(() => () => { if (cropSrc) URL.revokeObjectURL(cropSrc) }, [cropSrc])
+  useEffect(() => () => { if (stagedImage) URL.revokeObjectURL(stagedImage.url) }, [stagedImage])
 
   function set<K extends keyof BannerFormState>(k: K, v: BannerFormState[K]) {
     setForm(prev => ({ ...prev, [k]: v }))
@@ -339,7 +336,14 @@ function RouteComponent() {
   const reorder = useReorderBanners()
 
   const [sheet, setSheet] = useState<SheetMode | null>(null)
+  // Muda a cada abertura: o sheet remonta com o formulário vazio (novo) ou do banner (edição).
+  const [sheetKey, setSheetKey] = useState(0)
   const [deleteTarget, setDeleteTarget] = useState<Banner | null>(null)
+
+  function openSheet(next: SheetMode) {
+    setSheet(next)
+    setSheetKey(k => k + 1)
+  }
 
   const sorted = [...(banners ?? [])].sort((a, b) => a.order - b.order)
 
@@ -376,7 +380,7 @@ function RouteComponent() {
           <h1 className="text-2xl font-bold tracking-tight">Banners</h1>
           <p className="text-sm text-muted-foreground">Gerencie os banners exibidos na página inicial</p>
         </div>
-        <Button onClick={() => setSheet({ mode: 'create' })} className="gap-1.5 shrink-0">
+        <Button onClick={() => openSheet({ mode: 'create' })} className="gap-1.5 shrink-0">
           <Plus className="size-4" /> Novo banner
         </Button>
       </div>
@@ -460,7 +464,7 @@ function RouteComponent() {
               </div>
               <Button
                 variant="ghost" size="icon" className="size-8"
-                onClick={() => setSheet({ mode: 'edit', banner })}
+                onClick={() => openSheet({ mode: 'edit', banner })}
                 aria-label="Editar banner"
                 title="Editar banner"
               >
@@ -480,7 +484,7 @@ function RouteComponent() {
         ))}
       </div>
 
-      <BannerSheet mode={sheet} onClose={() => setSheet(null)} />
+      <BannerSheet key={sheetKey} mode={sheet} onClose={() => setSheet(null)} />
 
       <DeleteConfirmDialog
         open={!!deleteTarget}

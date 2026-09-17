@@ -26,10 +26,10 @@ export default defineConfig([
     },
   },
   {
-    // Arquivos de rota exportam `Route` + componentes (padrão do TanStack Router) e os
-    // geradores de PDF exportam documento + função de download: a regra de Fast
-    // Refresh só gera ruído aqui.
-    files: ['src/routes/**/*.tsx', 'src/lib/*-pdf.tsx'],
+    // Rotas exportam `Route` + componentes (TanStack Router), geradores de PDF
+    // exportam documento + download, e componentes shadcn/contexto exportam
+    // variantes e hooks junto: a regra de Fast Refresh só gera ruído aqui.
+    files: ['src/routes/**/*.tsx', 'src/lib/*-pdf.tsx', 'src/components/ui/**/*.tsx', 'src/context/**/*.tsx'],
     rules: { 'react-refresh/only-export-components': 'off' },
   },
 ])

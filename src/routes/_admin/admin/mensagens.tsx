@@ -19,7 +19,6 @@ import { downloadExport } from '@/lib/export'
 import { Mail, MailOpen, Phone, AtSign, Trash2, Search, X, CheckCheck, Download, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Input } from '@/components/ui/input'
-import { useEffect } from 'react'
 
 export const Route = createFileRoute('/_admin/admin/mensagens')({
   beforeLoad: () => requirePermission('READ_CONTACT'),
@@ -104,11 +103,13 @@ function RouteComponent() {
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false)
   const [exportingId, setExportingId] = useState<string | null>(null)
 
-  // reset page when the debounced search changes
-  useEffect(() => { setPage(1) }, [search])
-
-  // reset page on filter change
-  useEffect(() => { setPage(1) }, [readFilter])
+  // Busca (já com debounce) ou filtro mudou → volta à página 1. Ajuste no render, sem efeito.
+  const pageResetKey = `${search}|${readFilter}`
+  const [prevPageResetKey, setPrevPageResetKey] = useState(pageResetKey)
+  if (pageResetKey !== prevPageResetKey) {
+    setPrevPageResetKey(pageResetKey)
+    setPage(1)
+  }
 
   const readParam = readFilter === 'unread' ? false : readFilter === 'read' ? true : null
 

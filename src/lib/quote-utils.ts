@@ -7,6 +7,12 @@ export const QUOTE_PERIOD_LABEL: Record<QuotePeriod, string> = {
   AFTERNOON: 'Tarde',
 }
 
+/** Posição de um lançamento no eixo X do histórico: dia (UTC) + meio dia para a tarde. */
+export function pointX(p: { date: string; period: QuotePeriod | null }): number {
+  const [y, m, d] = p.date.split('-').map(Number)
+  return Date.UTC(y, m - 1, d) / 86_400_000 + (p.period === 'AFTERNOON' ? 0.5 : 0)
+}
+
 const PRODUCT_LABEL: Record<string, string> = {
   SOJA: 'Soja',
   MILHO: 'Milho',

@@ -9,6 +9,7 @@ import { Pagination } from '@/components/ui/pagination'
 import { GraduationCap, Search } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useCourses } from '@/hooks/useCourse'
+import type { Course } from '@/@types/course'
 import { CourseCard } from '@/components/course-card'
 import { getCourseSituation } from '@/utils/course-status'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -29,6 +30,9 @@ type CoursesSearch = {
 
 const oneOf = <T extends string>(v: unknown, opts: readonly T[]): T | undefined =>
   typeof v === 'string' && (opts as readonly string[]).includes(v) ? (v as T) : undefined
+
+// Lista vazia estável: evita recalcular o filtro a cada render enquanto carrega.
+const NO_COURSES: Course[] = []
 
 export const Route = createFileRoute('/_public/cursos/')({
   // Filtros vivem na URL: refresh-safe, compartilhável e respeita voltar/avançar.
@@ -60,7 +64,7 @@ function RouteComponent() {
   // Puxa um lote amplo e faz busca/filtro/ordenação/paginação no cliente —
   // o backend de cursos não expõe busca e o volume total é pequeno.
   const { data: result, isLoading, isError } = useCourses({ limit: 100 })
-  const courses = result?.data ?? []
+  const courses = result?.data ?? NO_COURSES
 
   // Merge na URL; muda filtro → volta pra página 1; remove defaults pra URL curta.
   function patchSearch(patch: Partial<CoursesSearch>, opts?: { replace?: boolean }) {

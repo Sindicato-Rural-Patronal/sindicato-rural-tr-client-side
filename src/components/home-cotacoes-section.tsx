@@ -71,11 +71,13 @@ function QuoteCard({ q }: { q: MarketQuote }) {
   )
 }
 
+const NO_QUOTES: MarketQuote[] = []
+
 export function CotacoesSection() {
   const { data } = useMarketQuotes()
   const { data: settings } = usePublicSiteSettings()
   const source = settings?.quotesSource?.trim()
-  const quotes = data ?? []
+  const quotes = data ?? NO_QUOTES
 
   const wrapperRef = useRef<HTMLDivElement>(null)
   const trackRef = useRef<HTMLDivElement>(null)

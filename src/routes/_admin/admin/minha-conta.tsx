@@ -1,8 +1,8 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { useEffect, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { UserCog, Shield, Languages, Palette, Camera } from 'lucide-react'
-import { useMe, useUpdateMe, useUploadMyAvatar } from '@/hooks/useAdmin'
+import { useMe, useUpdateMe, useUploadMyAvatar, type AdminMe } from '@/hooks/useAdmin'
 import { apiErrorMessage } from '@/lib/api-error-message'
 import { resizeToSquare } from '@/utils/resize-image'
 import { upperNoAccents } from '@/utils/text-format'
@@ -23,12 +23,26 @@ export const Route = createFileRoute('/_admin/admin/minha-conta')({
 
 function PerfilTab() {
   const { data: me, isLoading } = useMe()
+
+  if (isLoading || !me) {
+    return (
+      <div className="flex flex-col gap-4">
+        {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-9 w-full" />)}
+      </div>
+    )
+  }
+
+  // Só monta com os dados carregados; o refetch após salvar não reinicia os campos.
+  return <PerfilForm key={me.userId} me={me} />
+}
+
+function PerfilForm({ me }: { me: AdminMe }) {
   const update = useUpdateMe()
   const uploadAvatar = useUploadMyAvatar()
   const avatarInputRef = useRef<HTMLInputElement>(null)
 
-  const [name, setName] = useState('')
-  const [username, setUsername] = useState('')
+  const [name, setName] = useState(me.name)
+  const [username, setUsername] = useState(me.username)
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
 
@@ -45,17 +59,13 @@ function PerfilTab() {
     }
   }
 
-  useEffect(() => {
-    if (me) { setName(me.name); setUsername(me.username) }
-  }, [me?.userId])
-
   const passwordMismatch = password.trim() !== '' && password !== confirm
 
   async function handleSave() {
     if (passwordMismatch) return
     const body: { name?: string; username?: string; password?: string } = {}
-    if (me && name.trim() && name !== me.name) body.name = name.trim()
-    if (me && username.trim() && username !== me.username) body.username = username.trim()
+    if (name.trim() && name !== me.name) body.name = name.trim()
+    if (username.trim() && username !== me.username) body.username = username.trim()
     if (password.trim()) body.password = password
     if (Object.keys(body).length === 0) { toast.info('Nada para salvar.'); return }
     try {
@@ -65,14 +75,6 @@ function PerfilTab() {
     } catch (e) {
       toast.error(apiErrorMessage(e, 'Erro ao salvar seus dados.'))
     }
-  }
-
-  if (isLoading || !me) {
-    return (
-      <div className="flex flex-col gap-4">
-        {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-9 w-full" />)}
-      </div>
-    )
   }
 
   return (

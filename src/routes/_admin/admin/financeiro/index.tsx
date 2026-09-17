@@ -557,13 +557,22 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
 
   // Busca: campo local com debounce → grava em `q` na URL (evita 1 request/tecla).
   const [searchInput, setSearchInput] = useState(search.q ?? '')
-  useEffect(() => { setSearchInput(search.q ?? '') }, [search.q])
   const debouncedSearch = useDebouncedValue(searchInput, 300)
+  // `q` mudou por fora (voltar/avançar, limpar filtros) → o campo acompanha (ajuste no render, sem efeito).
+  // Se veio da própria digitação, não mexe: não apaga o que ainda está sendo digitado.
+  const [prevQ, setPrevQ] = useState(search.q)
+  if (search.q !== prevQ) {
+    setPrevQ(search.q)
+    if (search.q !== (debouncedSearch.trim() || undefined)) setSearchInput(search.q ?? '')
+  }
+  // Só grava quando a digitação muda — reagir ao `q` com o valor antigo desfaria o voltar/limpar.
+  const syncedSearch = useRef(debouncedSearch)
   useEffect(() => {
+    if (debouncedSearch === syncedSearch.current) return
+    syncedSearch.current = debouncedSearch
     const q = debouncedSearch.trim() || undefined
     if (q !== (search.q ?? undefined)) setSearch({ q, page: undefined })
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [debouncedSearch, search.q])
+  }, [debouncedSearch, search.q, setSearch])
 
   function setF<K extends keyof TxForm>(k: K, v: TxForm[K]) {
     setForm(prev => ({ ...prev, [k]: v }))

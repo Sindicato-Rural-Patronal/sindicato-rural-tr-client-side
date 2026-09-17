@@ -1,5 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { toast } from 'sonner'
 import {
   HeartPulse, Plus, Pencil, Trash2, Search, User, X, Receipt, ScrollText, FileSignature, Loader2, Download,
@@ -192,29 +192,31 @@ function UnimedFormDialog({ open, editId, onClose }: {
   const [confirmClose, setConfirmClose] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  // Popula (novo → vazio; edição → quando o detalhe chega).
-  useEffect(() => {
-    if (!open) return
-    if (isEdit) {
-      if (detail) {
-        const f = toForm(detail)
-        const ben: PickedUser = { id: detail.userDataId, name: detail.userData.name, cpf: detail.userData.cpf }
-        const tit: PickedUser | null = detail.titularId ? { id: detail.titularId, name: '', cpf: null } : null
-        setForm(f)
-        setBeneficiary(ben)
-        setTitular(tit)
-        setSnapshot(snapshotOf(f, ben.id, tit?.id ?? null))
-        setError(null)
-      }
-    } else {
+  // Popula (novo → vazio ao abrir; edição → quando o detalhe chega ou muda).
+  // Ajustado no render comparando com a origem da última carga: o Dialog não
+  // pode remontar (o fechar depende do `dirty` deste estado).
+  const source: UnimedDetail | 'novo' | null | undefined = !open ? null : isEdit ? detail : 'novo'
+  const [loadedFrom, setLoadedFrom] = useState<typeof source>(null)
+  if (source !== loadedFrom) {
+    setLoadedFrom(source)
+    if (source === 'novo') {
       const f = emptyForm()
       setForm(f)
       setBeneficiary(null)
       setTitular(null)
       setSnapshot(snapshotOf(f, null, null))
       setError(null)
+    } else if (source) {
+      const f = toForm(source)
+      const ben: PickedUser = { id: source.userDataId, name: source.userData.name, cpf: source.userData.cpf }
+      const tit: PickedUser | null = source.titularId ? { id: source.titularId, name: '', cpf: null } : null
+      setForm(f)
+      setBeneficiary(ben)
+      setTitular(tit)
+      setSnapshot(snapshotOf(f, ben.id, tit?.id ?? null))
+      setError(null)
     }
-  }, [open, isEdit, detail])
+  }
 
   function setF<K extends keyof UnimedForm>(k: K, v: string) {
     setForm(prev => ({ ...prev, [k]: v }))
@@ -399,7 +401,12 @@ function RouteComponent() {
   const [searchInput, setSearchInput] = useState('')
   const search = useDebouncedValue(searchInput, 300).trim()
   const [page, setPage] = useState(1)
-  useEffect(() => { setPage(1) }, [search])
+  // Busca nova (já com debounce) volta para a página 1 — ajuste no render, sem efeito.
+  const [pageSearch, setPageSearch] = useState(search)
+  if (pageSearch !== search) {
+    setPageSearch(search)
+    setPage(1)
+  }
 
   const { data, isLoading, isError } = useUnimedList({ page, limit: 20, search })
   const deleteM = useDeleteUnimed()

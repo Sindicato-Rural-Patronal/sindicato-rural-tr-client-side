@@ -2,7 +2,7 @@ import { createFileRoute } from '@tanstack/react-router'
 import { useQueryClient } from '@tanstack/react-query'
 import { apiErrorMessage } from '@/lib/api-error-message'
 import { apiFetch, apiUpload } from '@/lib/api'
-import { useState, useRef, useEffect } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { toast } from 'sonner'
 import { usePermissions } from '@/hooks/usePermissions'
 import { PermissionButton } from '@/components/PermissionButton'
@@ -785,13 +785,6 @@ function ViewDialog({
   const assignInstructor = useAssignInstructor(course?.id ?? '')
   const removeAssignment = useRemoveInstructorAssignment(course?.id ?? '')
 
-  useEffect(() => {
-    setGalleryIndex(0)
-    setSelInstrId('')
-    setInstrTitle('')
-    setInstrCategory('')
-  }, [course?.id])
-
   async function handleAssignInstructor() {
     if (!selInstrId) return
     try {
@@ -901,7 +894,7 @@ function ViewDialog({
                 <span className="text-sm text-muted-foreground font-mono">#{course.eventNumber}</span>
               )}
             </div>
-            <h2 className="text-2xl font-bold text-foreground mb-0.5">{course.title}</h2>
+            <DialogTitle className="text-2xl font-bold text-foreground mb-0.5">{course.title}</DialogTitle>
 
             <TabsList className="mb-0">
               <TabsTrigger value="details">{t('admin.courses.tabs.info')}</TabsTrigger>
@@ -1452,15 +1445,26 @@ function StagedImagesTab({
   )
 }
 
-export function CourseFormDialog({
-  open,
-  editing,
-  onClose,
-}: {
+type CourseFormDialogProps = {
   open: boolean
   editing: Course | null
   onClose: () => void
-}) {
+}
+
+export function CourseFormDialog(props: CourseFormDialogProps) {
+  // Cada abertura é uma sessão nova (formulário com os dados do curso ou vazio,
+  // sem imagens pendentes). Fechar não troca a chave, então a animação de saída
+  // continua com o mesmo conteúdo.
+  const [session, setSession] = useState(0)
+  const [wasOpen, setWasOpen] = useState(props.open)
+  if (props.open !== wasOpen) {
+    setWasOpen(props.open)
+    if (props.open) setSession(s => s + 1)
+  }
+  return <CourseFormDialogSession key={session} {...props} />
+}
+
+function CourseFormDialogSession({ open, editing, onClose }: CourseFormDialogProps) {
   const { data: rooms, isLoading: roomsLoading } = useRooms()
   const createCourse = useCreateCourse()
   const updateCourse = useUpdateCourse(editing?.id ?? '')
@@ -1472,22 +1476,22 @@ export function CourseFormDialog({
   // imagens escolhidas antes do curso existir (modo criação)
   const [stagedBanner, setStagedBanner] = useState<StagedImage | null>(null)
   const [stagedPhotos, setStagedPhotos] = useState<StagedImage[]>([])
+  // Libera as prévias (object URLs) quando esta sessão do formulário sai da tela.
+  const stagedRef = useRef({ stagedBanner, stagedPhotos })
+  useEffect(() => { stagedRef.current = { stagedBanner, stagedPhotos } }, [stagedBanner, stagedPhotos])
+  useEffect(() => () => {
+    const { stagedBanner: banner, stagedPhotos: photos } = stagedRef.current
+    if (banner) URL.revokeObjectURL(banner.url)
+    for (const photo of photos) URL.revokeObjectURL(photo.url)
+  }, [])
   const [uploadingStaged, setUploadingStaged] = useState(false)
   const [confirmClose, setConfirmClose] = useState(false)
 
   const form = useForm<CourseFormData>({
     resolver: zodResolver(courseBaseSchema),
     mode: 'onTouched',
-    defaultValues: emptyFormDefaults,
+    defaultValues: editing ? courseToForm(editing) : emptyFormDefaults,
   })
-
-  useEffect(() => {
-    if (open) {
-      form.reset(editing ? courseToForm(editing) : emptyFormDefaults)
-      setStagedBanner(null)
-      setStagedPhotos([])
-    }
-  }, [open]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const isPending = createCourse.isPending || updateCourse.isPending || uploadingStaged
 
@@ -1888,7 +1892,12 @@ function RouteComponent() {
   const [search, setSearch] = useState('')
   // Busca é server-side (o hook aceita `search`); debounce evita 1 request por tecla.
   const debouncedSearch = useDebouncedValue(search, 350)
-  useEffect(() => { setPage(1) }, [debouncedSearch])
+  // Busca nova (já com debounce) volta para a página 1 — ajustado no próprio render.
+  const [pageSearch, setPageSearch] = useState(debouncedSearch)
+  if (pageSearch !== debouncedSearch) {
+    setPageSearch(debouncedSearch)
+    setPage(1)
+  }
   const { data, isLoading, isError } = useAdminCourses({ page, limit, search: debouncedSearch })
   const deleteCourse = useDeleteCourse()
   const [viewDialog, setViewDialog] = useState<CourseCardItem | null>(null)
@@ -1903,11 +1912,10 @@ function RouteComponent() {
 
   // Se a página atual ficou fora do intervalo (ex.: excluir o último card de uma
   // página > 1), volta para a última página válida em vez de mostrar tela vazia.
-  useEffect(() => {
-    if (!isLoading && total > 0 && page > totalPages) {
-      setPage(totalPages)
-    }
-  }, [isLoading, total, page, totalPages])
+  // Math.min: se a busca acabou de voltar para a página 1 neste render, fica na 1.
+  if (!isLoading && total > 0 && page > totalPages) {
+    setPage(p => Math.min(p, totalPages))
+  }
 
   // Filtragem feita no servidor via `search` — não filtrar de novo no cliente
   // (isso quebrava a busca entre páginas).
@@ -2053,7 +2061,9 @@ function RouteComponent() {
         />
       )}
 
+      {/* key por curso: trocar de curso remonta o dialog (galeria na 1ª imagem, instrutor em branco) */}
       <ViewDialog
+        key={viewDialog?.id ?? ''}
         course={viewDialog}
         onClose={() => setViewDialog(null)}
         onEdit={c => setFormDialog({ open: true, editing: c })}

@@ -39,22 +39,28 @@ export function CommandPalette() {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
         e.preventDefault()
         setOpen(o => !o)
+        // Abrir ou fechar sempre recomeça: busca vazia e 1º item destacado.
+        setQ('')
+        setIdx(0)
       }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [])
 
-  useEffect(() => { if (!open) setQ('') }, [open])
-  useEffect(() => { setIdx(0) }, [q, open])
-
   const term = q.trim().toLowerCase()
   const items = NAV
     .filter(n => !n.perm || can(n.perm))
     .filter(n => !term || n.label.toLowerCase().includes(term) || (n.hint ?? '').toLowerCase().includes(term))
 
-  function go(item: NavItem) {
+  function close() {
     setOpen(false)
+    setQ('')
+    setIdx(0)
+  }
+
+  function go(item: NavItem) {
+    close()
     navigate({ to: item.to as string, search: item.search as never })
   }
 
@@ -65,7 +71,7 @@ export function CommandPalette() {
   }
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={o => (o ? setOpen(true) : close())}>
       <DialogContent className="p-0 overflow-hidden gap-0 sm:max-w-lg">
         <DialogTitle className="sr-only">Buscar telas</DialogTitle>
         <div className="flex items-center gap-2 border-b border-border px-3">
@@ -73,7 +79,7 @@ export function CommandPalette() {
           <input
             autoFocus
             value={q}
-            onChange={e => setQ(e.target.value)}
+            onChange={e => { setQ(e.target.value); setIdx(0) }}
             onKeyDown={onInputKey}
             placeholder="Ir para..."
             className="w-full bg-transparent py-3 text-sm outline-none placeholder:text-muted-foreground"

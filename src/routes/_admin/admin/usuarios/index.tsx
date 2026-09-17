@@ -166,20 +166,14 @@ function RegraDialog({
   const ruleId = isEdit ? state.rule.id : ''
   const createRule = useCreateRule()
   const updateRule = useUpdateRule(ruleId)
-  const [form, setForm] = useState({ name: '', description: '', permissions: [] as string[] })
+  // O pai remonta o diálogo a cada abertura (key): nova → vazio; edição → dados da regra.
+  const [form, setForm] = useState(() => (
+    state?.mode === 'edit'
+      ? { name: state.rule.name, description: state.rule.description ?? '', permissions: [...state.rule.permissions] }
+      : { name: '', description: '', permissions: [] as string[] }
+  ))
   const [error, setError] = useState<string | null>(null)
   const [confirmTotal, setConfirmTotal] = useState(false)
-
-  useEffect(() => {
-    if (!state) return
-    if (state.mode === 'edit') {
-      setForm({ name: state.rule.name, description: state.rule.description ?? '', permissions: [...state.rule.permissions] })
-    } else {
-      setForm({ name: '', description: '', permissions: [] })
-    }
-    setError(null)
-    setConfirmTotal(false)
-  }, [state?.mode, isEdit && state.mode === 'edit' ? state.rule.id : ''])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -307,9 +301,16 @@ function RegrasSheet() {
   const { data: regrasResult, isLoading } = useAdminRules()
   const regras = regrasResult?.data ?? []
   const [dialog, setDialog] = useState<RegraDialogState | null>(null)
+  // Muda a cada abertura para o diálogo remontar com o formulário certo.
+  const [dialogKey, setDialogKey] = useState(0)
   const [deleteRuleTarget, setDeleteRuleTarget] = useState<Rule | null>(null)
   const { can } = usePermissions()
   const deleteRule = useDeleteRule()
+
+  function openDialog(next: RegraDialogState) {
+    setDialog(next)
+    setDialogKey(k => k + 1)
+  }
 
   async function handleDeleteRule() {
     if (!deleteRuleTarget) return
@@ -334,7 +335,7 @@ function RegrasSheet() {
           <SheetHeader className="px-5 pt-5 pb-4 border-b border-border shrink-0">
             <div className="flex items-center justify-between">
               <SheetTitle>Regras de permissão</SheetTitle>
-              <Button size="sm" onClick={() => setDialog({ mode: 'create' })}>
+              <Button size="sm" onClick={() => openDialog({ mode: 'create' })}>
                 <Plus className="size-3.5" /> Nova regra
               </Button>
             </div>
@@ -357,7 +358,7 @@ function RegrasSheet() {
                 <Shield className="size-8 text-muted-foreground/30 mb-3" />
                 <p className="text-sm font-medium text-foreground">Nenhuma regra cadastrada</p>
                 <p className="text-xs text-muted-foreground mt-1">Crie uma regra para definir permissões de acesso.</p>
-                <Button size="sm" className="mt-4" onClick={() => setDialog({ mode: 'create' })}>
+                <Button size="sm" className="mt-4" onClick={() => openDialog({ mode: 'create' })}>
                   <Plus className="size-3.5" /> Nova regra
                 </Button>
               </div>
@@ -390,7 +391,7 @@ function RegrasSheet() {
                     <Button
                       variant="ghost" size="icon"
                       className="size-7"
-                      onClick={() => setDialog({ mode: 'edit', rule: r })}
+                      onClick={() => openDialog({ mode: 'edit', rule: r })}
                     >
                       <Pencil className="size-3.5" />
                     </Button>
@@ -413,7 +414,7 @@ function RegrasSheet() {
         </SheetContent>
       </Sheet>
 
-      <RegraDialog state={dialog} onClose={() => setDialog(null)} />
+      <RegraDialog key={dialogKey} state={dialog} onClose={() => setDialog(null)} />
 
       <DeleteConfirmDialog
         open={!!deleteRuleTarget}
@@ -602,20 +603,14 @@ function EditarAdminDialog({ admin, onClose }: { admin: UserAdmin | null; onClos
   const { data: regrasData } = useAdminRules()
   const regras = regrasData?.data ?? []
   const updateAdmin = useUpdateAdmin(admin?.id ?? '')
-  const [form, setForm] = useState({ username: '', password: '', confirm: '', userRole: '' })
+  // O pai remonta o diálogo a cada abertura (key): começa com os dados do admin.
+  const [form, setForm] = useState(() => ({
+    username: admin?.username ?? '',
+    password: '',
+    confirm: '',
+    userRole: admin?.rulesId ?? '',
+  }))
   const [error, setError] = useState<string | null>(null)
-
-  useEffect(() => {
-    if (admin) {
-      setForm({
-        username: admin.username,
-        password: '',
-        confirm: '',
-        userRole: admin.rulesId,
-      })
-      setError(null)
-    }
-  }, [admin?.id])
 
   const passwordMismatch = form.password.trim() !== '' && form.password !== form.confirm
 
@@ -726,6 +721,8 @@ function RouteComponent() {
   const [rulesFilter, setRulesFilter] = useState('')
   const [deleteAssociadoTarget, setDeleteAssociadoTarget] = useState<UserData | null>(null)
   const [editAdmin, setEditAdmin] = useState<UserAdmin | null>(null)
+  // Muda a cada abertura para o diálogo de edição remontar com os dados do admin.
+  const [editAdminKey, setEditAdminKey] = useState(0)
   const [deleteAdminTarget, setDeleteAdminTarget] = useState<UserAdmin | null>(null)
   const userSelection = useRowSelection()
   const adminSelection = useRowSelection()
@@ -1311,7 +1308,7 @@ function RouteComponent() {
                             noPermissionMessage="Sem permissão para editar administradores"
                             variant="ghost" size="icon"
                             className="size-7"
-                            onClick={() => setEditAdmin(a)}
+                            onClick={() => { setEditAdmin(a); setEditAdminKey(k => k + 1) }}
                           >
                             <Pencil className="size-3.5" />
                           </PermissionButton>
@@ -1355,7 +1352,7 @@ function RouteComponent() {
         </TabsContent>
       </Tabs>
 
-      <EditarAdminDialog admin={editAdmin} onClose={() => setEditAdmin(null)} />
+      <EditarAdminDialog key={editAdminKey} admin={editAdmin} onClose={() => setEditAdmin(null)} />
 
       <DeleteConfirmDialog
         open={!!deleteAssociadoTarget}

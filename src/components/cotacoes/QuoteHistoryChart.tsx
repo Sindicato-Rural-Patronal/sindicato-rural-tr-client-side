@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { QuoteHistoryPoint } from '@/hooks/useMarketQuotes'
-import { QUOTE_PERIOD_LABEL } from '@/lib/quote-utils'
+import { QUOTE_PERIOD_LABEL, pointX } from '@/lib/quote-utils'
 import { centsToBRL } from '@/utils/masks'
 
 // Linha de preço de UM produto (small multiple: cada produto tem sua escala,
@@ -14,13 +14,7 @@ const HEIGHT = 200
 const AXIS_BAND = 24
 const MARGIN = { top: 12, right: 12, left: 56 }
 
-/** Posição no eixo X: dia (UTC) + meio dia para a tarde. */
-export function pointX(p: QuoteHistoryPoint): number {
-  const [y, m, d] = p.date.split('-').map(Number)
-  return Date.UTC(y, m - 1, d) / DAY_MS + (p.period === 'AFTERNOON' ? 0.5 : 0)
-}
-
-export function pointLabel(p: QuoteHistoryPoint): string {
+function pointLabel(p: QuoteHistoryPoint): string {
   const [, m, d] = p.date.split('-')
   return p.period ? `${d}/${m} · ${QUOTE_PERIOD_LABEL[p.period]}` : `${d}/${m}`
 }
