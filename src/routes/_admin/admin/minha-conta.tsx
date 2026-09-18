@@ -8,6 +8,7 @@ import { resizeToSquare } from '@/utils/resize-image'
 import { upperNoAccents } from '@/utils/text-format'
 import { InitialsAvatar } from '@/components/InitialsAvatar'
 import { PasswordInput } from '@/components/PasswordInput'
+import { PasswordStrengthHint } from '@/components/PasswordStrengthHint'
 import { ThemeSetting } from '@/components/ThemeSetting'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -123,6 +124,8 @@ function PerfilForm({ me }: { me: AdminMe }) {
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="mc-password">Nova senha</Label>
           <PasswordInput id="mc-password" value={password} onChange={e => setPassword(e.target.value)} placeholder="Deixar em branco para manter" autoComplete="new-password" />
+          {/* Só orientação: senha fraca continua podendo ser salva. */}
+          <PasswordStrengthHint password={password} context={{ username, name }} />
         </div>
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="mc-confirm">Confirmar nova senha</Label>

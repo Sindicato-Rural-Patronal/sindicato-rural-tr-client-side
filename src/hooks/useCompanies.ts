@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query'
 import { apiFetch, apiUpload } from '@/lib/api'
-import type { UserProperty, CreatePropertyBody, PaginatedResponse } from '@/hooks/useAdmin'
+import type { UserProperty, CreatePropertyBody, UpdatePropertyBody, PaginatedResponse } from '@/hooks/useAdmin'
 
 // ── Tipos ─────────────────────────────────────────────────────────────────────
 
@@ -218,6 +218,18 @@ export function useAddCompanyProperty(companyId: string) {
   return useMutation({
     mutationFn: (body: CreatePropertyBody) =>
       apiFetch(`/admin/companies/${companyId}/properties`, { method: 'POST', body: JSON.stringify(body) }),
+    onSuccess: () => { invalidateCompanyViews(qc) },
+  })
+}
+
+export function useUpdateCompanyProperty(companyId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ propertyId, ...body }: UpdatePropertyBody & { propertyId: string }) =>
+      apiFetch(`/admin/companies/${companyId}/properties/${propertyId}`, {
+        method: 'PATCH',
+        body: JSON.stringify(body),
+      }),
     onSuccess: () => { invalidateCompanyViews(qc) },
   })
 }

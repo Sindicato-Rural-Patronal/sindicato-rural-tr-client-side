@@ -139,7 +139,8 @@ describe('formulário de reserva', () => {
 
   it('reserva da API → formulário', () => {
     const booking: RoomBooking = {
-      id: 'b1', type: 'MEETING', title: 'REUNIAO', description: null, roomId: 'r1', roomName: 'SALA 1',
+      id: 'b1', type: 'MEETING', title: 'REUNIAO', description: null,
+      publicOnSite: false, publicDescription: null, roomId: 'r1', roomName: 'SALA 1',
       startTime: '2026-10-05T19:00:00.000Z', endTime: '2026-10-06T01:00:00.000Z',
       responsible: null, responsibleName: 'JOAO', seriesId: 's1',
     }

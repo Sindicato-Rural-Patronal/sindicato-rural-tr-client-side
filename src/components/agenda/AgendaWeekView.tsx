@@ -2,6 +2,7 @@ import { DoorOpen, Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { KindBadge } from '@/components/agenda/KindBadge'
+import { OnSiteBadge } from '@/components/agenda/OnSiteBadge'
 import type { RoomScheduleItem } from '@/hooks/useRoomBookings'
 import {
   KIND_ACCENT_CLASS, formatDayMonth, itemsForDay, timeRangeLabel, weekdayLong, weekdayShort,
@@ -78,7 +79,10 @@ export function AgendaWeekView({ days, today, items, loading, onOpenItem, onCrea
                   )}
                 >
                   <span className="text-sm font-semibold tabular-nums">{timeRangeLabel(item)}</span>
-                  <KindBadge kind={item.kind} />
+                  <div className="flex flex-wrap items-center gap-1">
+                    <KindBadge kind={item.kind} />
+                    {item.publicOnSite && <OnSiteBadge />}
+                  </div>
                   <span className="max-w-full wrap-break-word text-sm font-medium leading-snug">{item.title}</span>
                   <span className="flex items-center gap-1 text-xs text-muted-foreground">
                     <DoorOpen className="size-3.5 shrink-0" aria-hidden />

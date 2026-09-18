@@ -27,7 +27,7 @@ import {
   Table, TableHeader, TableBody,
   TableRow, TableHead, TableCell,
 } from '@/components/ui/table'
-import { AlertCircle, Plus, Shield, Users, Pencil, Trash2, ExternalLink, Globe, ChevronDown, X, SlidersHorizontal, Building2, Download, Loader2 } from 'lucide-react'
+import { AlertCircle, Plus, Shield, Users, Pencil, Trash2, ExternalLink, Globe, ChevronDown, X, SlidersHorizontal, Building2, Download, Loader2, Copy } from 'lucide-react'
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
@@ -37,8 +37,10 @@ import { EmptyState } from '@/components/EmptyState'
 import { Pagination } from '@/components/ui/pagination'
 import { InitialsAvatar } from '@/components/InitialsAvatar'
 import { PasswordInput } from '@/components/PasswordInput'
+import { PasswordStrengthHint } from '@/components/PasswordStrengthHint'
 import { STICKY_ACTIONS_CELL, STICKY_ACTIONS_ROW } from '@/lib/table-sticky-actions'
 import { CompaniesList } from '@/components/cadastro/CompaniesList'
+import { DuplicatePeopleList } from '@/components/cadastro/DuplicatePeopleList'
 import { useAdminCompanies } from '@/hooks/useCompanies'
 import { MEMBER_TYPES } from '@/lib/member-types'
 import { downloadExport, type ExportDataset, type ExportParams } from '@/lib/export'
@@ -75,7 +77,7 @@ const PERM_GROUPS = [
   { label: 'Contatos',        perms: ['READ_CONTACT', 'UPDATE_CONTACT'] },
   { label: 'Banners',         perms: ['CREATE_BANNER', 'READ_BANNER', 'UPDATE_BANNER', 'DELETE_BANNER'] },
   { label: 'Cotações',        perms: ['CREATE_MARKET_QUOTE', 'READ_MARKET_QUOTE', 'UPDATE_MARKET_QUOTE', 'DELETE_MARKET_QUOTE'] },
-  { label: 'Auditoria',       perms: ['READ_AUDIT'] },
+  { label: 'Auditoria',       perms: ['READ_AUDIT', 'UPDATE_AUDIT'] },
   { label: 'Financeiro',      perms: ['CREATE_FINANCE', 'READ_FINANCE', 'UPDATE_FINANCE', 'DELETE_FINANCE'] },
   { label: 'Convênios',       perms: ['CREATE_CONVENIO', 'READ_CONVENIO', 'UPDATE_CONVENIO', 'DELETE_CONVENIO'] },
 ]
@@ -679,6 +681,7 @@ function EditarAdminDialog({ admin, onClose }: { admin: UserAdmin | null; onClos
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="edit-admin-password">Nova senha</Label>
             <PasswordInput id="edit-admin-password" value={form.password} onChange={e => setForm(p => ({ ...p, password: e.target.value }))} placeholder="Deixar em branco para manter" autoComplete="new-password" />
+            <PasswordStrengthHint password={form.password} context={{ username: form.username }} />
           </div>
           {form.password.trim() !== '' && (
             <div className="flex flex-col gap-1.5">
@@ -738,6 +741,8 @@ function RouteComponent() {
   const [adminsPage, setAdminsPage] = useState(1)
   const [limit, setLimit] = useState<typeof USERS_LIMIT_OPTIONS[number]>(10)
   const [incompleteOnly, setIncompleteOnly] = useState(urlSearch.incomplete ?? false)
+  // Visão "Possíveis duplicados": mesma pessoa cadastrada duas vezes.
+  const [duplicatesView, setDuplicatesView] = useState(false)
   const [usersSearch, setUsersSearch] = useState(urlSearch.q ?? '')
   // A consulta espera a pessoa parar de digitar (não busca a cada tecla).
   const usersQuery = useDebouncedValue(usersSearch, 300).trim()
@@ -964,6 +969,31 @@ function RouteComponent() {
         </TabsList>
 
         <TabsContent value="associados">
+          {/* Cadastros repetidos da mesma pessoa: a inscrição pública só acha por CPF,
+              então quem estava cadastrado sem CPF ganha um segundo cadastro. */}
+          <div className="mb-3 flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setDuplicatesView(v => !v)}
+              className={`inline-flex items-center gap-1.5 rounded-md border px-3 h-9 text-sm font-medium transition-colors ${
+                duplicatesView
+                  ? 'border-primary/40 bg-primary/5 text-primary dark:border-primary/60'
+                  : 'border-border bg-background text-muted-foreground hover:text-foreground hover:bg-muted/50'
+              }`}
+            >
+              <Copy className="size-3.5" />
+              Possíveis duplicados
+            </button>
+            {duplicatesView && (
+              <span className="text-xs text-muted-foreground">
+                Mesmo nome, telefone ou e-mail, com pelo menos um cadastro sem CPF.
+              </span>
+            )}
+          </div>
+
+          {duplicatesView ? (
+            <DuplicatePeopleList canMerge={can('DELETE_USER')} />
+          ) : (<>
           {/* Search + advanced filter toggle */}
           <div className="flex gap-2 mb-3">
             <Input
@@ -1243,6 +1273,7 @@ function RouteComponent() {
               />
             </>
           )}
+          </>)}
         </TabsContent>
 
         <TabsContent value="empresas">

@@ -7,6 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { LoadErrorBanner } from '@/components/LoadErrorBanner'
 import { ExportMenu, SelectCheckbox, SelectionInfo } from '@/components/export/ExportMenu'
 import { KindBadge } from '@/components/agenda/KindBadge'
+import { OnSiteBadge } from '@/components/agenda/OnSiteBadge'
 import { DeleteBookingDialog } from '@/components/agenda/DeleteBookingDialog'
 import { useDebouncedValue } from '@/hooks/useDebouncedValue'
 import { useRowSelection } from '@/hooks/useRowSelection'
@@ -120,7 +121,10 @@ export function AgendaListView({ from, to, roomId, type, canUpdate, canDelete, o
                   <TableCell className="min-w-48">
                     <div className="flex flex-col items-start gap-1">
                       <span className="font-medium">{booking.title}</span>
-                      <KindBadge kind={booking.type} />
+                      <div className="flex flex-wrap items-center gap-1">
+                        <KindBadge kind={booking.type} />
+                        {booking.publicOnSite && <OnSiteBadge />}
+                      </div>
                     </div>
                   </TableCell>
                   <TableCell className="whitespace-nowrap">{booking.roomName}</TableCell>

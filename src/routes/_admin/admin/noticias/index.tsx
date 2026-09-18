@@ -9,7 +9,7 @@ import { PermissionButton } from '@/components/PermissionButton'
 import { useTranslation } from 'react-i18next'
 import {
   useAdminNews, useCreateNews, useUpdateNews, useDeleteNews,
-  useUploadNewsBanner, useUploadNewsBlockImage,
+  useUploadNewsBanner, useUploadNewsBlockImage, type AdminNewsStatusFilter,
 } from '@/hooks/useNews'
 import {
   DndContext, closestCenter, KeyboardSensor, PointerSensor,
@@ -23,6 +23,7 @@ import { CSS } from '@dnd-kit/utilities'
 import {
   Plus, Newspaper, Pencil, Trash2, ImageUp, GripVertical,
   AlignLeft, Image, LayoutTemplate, X, ArrowLeft, Save, Calendar,
+  CalendarClock, ExternalLink, Link2, Search,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -38,8 +39,17 @@ import {
 import { EmptyState } from '@/components/EmptyState'
 import { ErrorAlert } from '@/components/ErrorAlert'
 import { Pagination } from '@/components/ui/pagination'
+import { DatePicker } from '@/components/ui/date-picker'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { useDebouncedValue } from '@/hooks/useDebouncedValue'
 import type { News, ContentBlock, ParagraphBlock, ImageBlock, ImageTextBlock } from '@/@types/news'
 import { parseBlocks, serializeBlocks } from '@/@types/news'
+import {
+  isNewsLive, isScheduled, scheduleLabel, scheduleToForm, scheduleToPublishAt,
+  validateSchedule, type NewsScheduleForm,
+} from '@/lib/news-schedule'
+import { copyText } from '@/lib/copy-text'
 import { upperNoAccents } from '@/utils/text-format'
 
 // Revoga um object URL de blob (evita vazamento de memória em sessões longas).
@@ -327,12 +337,75 @@ function ImageTextEdit({
   )
 }
 
+// ─── Quando publicar ─────────────────────────────────────────────────────────
+
+/** "Publicar agora" ou "Agendar para" (data + hora de Brasília). */
+function SchedulePanel({ value, onChange }: {
+  value: NewsScheduleForm
+  onChange: (value: NewsScheduleForm) => void
+}) {
+  const scheduled = value.mode === 'scheduled'
+
+  return (
+    <div className="border-b bg-muted/30 px-4 py-2.5">
+      <div className="container mx-auto flex max-w-3xl flex-wrap items-center gap-2">
+        <span className="flex items-center gap-1.5 text-sm font-medium">
+          <CalendarClock className="size-4 text-muted-foreground" aria-hidden /> Quando publicar
+        </span>
+        <div role="group" aria-label="Quando publicar" className="flex gap-1 rounded-lg border bg-background p-1">
+          {([
+            { mode: 'now' as const, label: 'Publicar agora' },
+            { mode: 'scheduled' as const, label: 'Agendar para' },
+          ]).map(option => (
+            <button
+              key={option.mode}
+              type="button"
+              aria-pressed={value.mode === option.mode}
+              onClick={() => onChange({ ...value, mode: option.mode })}
+              className={
+                value.mode === option.mode
+                  ? 'h-8 rounded-md bg-muted px-3 text-xs font-semibold text-foreground'
+                  : 'h-8 rounded-md px-3 text-xs font-medium text-muted-foreground hover:text-foreground'
+              }
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
+
+        {scheduled && (
+          <div className="flex flex-wrap items-center gap-2">
+            <Label htmlFor="news-publish-date" className="sr-only">Data da publicação</Label>
+            <DatePicker
+              id="news-publish-date"
+              className="h-8 w-36 text-xs"
+              value={value.date}
+              onChange={date => onChange({ ...value, date })}
+            />
+            <Label htmlFor="news-publish-hour" className="sr-only">Hora da publicação</Label>
+            <Input
+              id="news-publish-hour"
+              type="time"
+              className="h-8 w-28 text-xs"
+              value={value.hour}
+              onChange={e => onChange({ ...value, hour: e.target.value })}
+            />
+            <span className="text-xs text-muted-foreground">Horário de Brasília</span>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
 // ─── Full-screen news editor ──────────────────────────────────────────────────
 
 type NewsForm = {
   title: string
   summary: string
   status: 'PUBLISHED' | 'UNPUBLISHED'
+  /** "Publicar agora" ou "Agendar para" (só vale com status publicado). */
+  schedule: NewsScheduleForm
 }
 
 function NewsEditor({
@@ -348,6 +421,7 @@ function NewsEditor({
     title: news?.title ?? '',
     summary: news?.summary ?? '',
     status: news?.status ?? 'UNPUBLISHED',
+    schedule: scheduleToForm(news?.publishAt),
   })
   const [blockItems, setBlockItems] = useState<BlockItem[]>(() =>
     news
@@ -443,6 +517,11 @@ function NewsEditor({
   async function handleSave() {
     setError(null)
     if (!form.title.trim()) { setError('Título é obrigatório.'); return }
+    if (form.status === 'PUBLISHED') {
+      const scheduleError = validateSchedule(form.schedule)
+      if (scheduleError) { setError(scheduleError); return }
+    }
+    const publishAt = scheduleToPublishAt(form.schedule, form.status)
     try {
       if (!savedId) {
         // nunca persiste URLs blob: — cria com url vazia e corrige via PATCH após os uploads
@@ -453,6 +532,7 @@ function NewsEditor({
           title: form.title,
           summary: form.summary || undefined,
           status: form.status,
+          publishAt,
           content: createContent,
         })
         const data = await res.json()
@@ -519,6 +599,7 @@ function NewsEditor({
           title: form.title,
           summary: form.summary || undefined,
           status: form.status,
+          publishAt,
           content: serializeBlocks(toBlocks(blockItems)),
         })
       }
@@ -602,6 +683,14 @@ function NewsEditor({
           {isPending ? 'Salvando...' : 'Salvar'}
         </Button>
       </div>
+
+      {/* ── Quando publicar (só faz sentido com a notícia publicada) ── */}
+      {form.status === 'PUBLISHED' && (
+        <SchedulePanel
+          value={form.schedule}
+          onChange={schedule => { setForm(p => ({ ...p, schedule })); setSaved(false) }}
+        />
+      )}
 
       {/* ── Page body (mimics /noticias/$id) ── */}
       <div className="container mx-auto max-w-3xl px-4 py-10">
@@ -769,6 +858,15 @@ function AdminNewsCard({
         day: '2-digit', month: 'short', year: 'numeric',
       })
     : null
+  const scheduled = isScheduled(news.publishAt)
+  const live = isNewsLive(news)
+  const publicPath = `/noticias/${news.id}`
+
+  async function copyPublicLink() {
+    const ok = await copyText(`${window.location.origin}${publicPath}`)
+    if (ok) toast.success('Link copiado.')
+    else toast.error('Não foi possível copiar o link.')
+  }
 
   return (
     <Card className="group overflow-hidden hover:shadow-md transition-all duration-200">
@@ -782,10 +880,17 @@ function AdminNewsCard({
         ) : (
           <Newspaper className="size-10 text-muted-foreground/30" />
         )}
-        <div className="absolute top-2 left-2">
+        <div className="absolute top-2 left-2 flex flex-wrap gap-1">
           <Badge variant={news.status === 'PUBLISHED' ? 'default' : 'secondary'}>
             {news.status === 'PUBLISHED' ? t('admin.news.published') : t('admin.news.draft')}
           </Badge>
+          {/* Publicada, mas ainda fora do site até a hora marcada. */}
+          {scheduled && news.publishAt && (
+            <Badge variant="outline" className="gap-1 bg-background/90">
+              <CalendarClock className="size-3" aria-hidden />
+              {scheduleLabel(news.publishAt)}
+            </Badge>
+          )}
         </div>
       </div>
       <CardContent className="p-4 flex flex-col gap-2">
@@ -795,6 +900,19 @@ function AdminNewsCard({
         )}
         {date && <p className="text-xs text-muted-foreground">{date}</p>}
         <Separator className="my-1" />
+        {/* A página só abre no site depois de publicada e fora do agendamento. */}
+        {live && (
+          <div className="flex items-center gap-2 flex-wrap">
+            <Button asChild variant="outline" size="sm" className="h-7 text-xs gap-1">
+              <a href={publicPath} target="_blank" rel="noopener noreferrer">
+                <ExternalLink className="size-3" /> Ver no site
+              </a>
+            </Button>
+            <Button variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={copyPublicLink}>
+              <Link2 className="size-3" /> Copiar link
+            </Button>
+          </div>
+        )}
         <div className="flex items-center gap-2 flex-wrap">
           <PermissionButton
             allowed={can('UPDATE_NEWS')}
@@ -838,11 +956,20 @@ function RouteComponent() {
 
   const [page, setPage] = useState(1)
   const [limit, setLimit] = useState<typeof NEWS_LIMIT_OPTIONS[number]>(6)
+  const [statusFilter, setStatusFilter] = useState<'ALL' | AdminNewsStatusFilter>('ALL')
+  const [search, setSearch] = useState('')
+  const debouncedSearch = useDebouncedValue(search, 350).trim()
 
-  const { data: newsData, isLoading, isError } = useAdminNews({ page, limit })
+  const { data: newsData, isLoading, isError } = useAdminNews({
+    page,
+    limit,
+    status: statusFilter === 'ALL' ? undefined : statusFilter,
+    search: debouncedSearch || undefined,
+  })
   const news       = newsData?.data       ?? []
   const totalNews  = newsData?.total      ?? 0
   const totalPages = newsData?.totalPages ?? 1
+  const filtering = statusFilter !== 'ALL' || !!debouncedSearch
 
   const [editorMode, setEditorMode] = useState<'create' | 'edit' | null>(null)
   const [selectedNews, setSelectedNews] = useState<News | null>(null)
@@ -911,7 +1038,31 @@ function RouteComponent() {
           <h1 className="text-2xl font-bold tracking-tight">{t('admin.news.title')}</h1>
           <p className="text-sm text-muted-foreground">Gerencie as notícias publicadas no site</p>
         </div>
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex flex-wrap items-center gap-2 shrink-0">
+          <div className="relative w-full sm:w-56">
+            <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
+            <Input
+              value={search}
+              onChange={e => { setSearch(e.target.value); setPage(1) }}
+              placeholder="Buscar por título…"
+              aria-label="Buscar notícias por título"
+              className="h-9 pl-9"
+            />
+          </div>
+          <Select
+            value={statusFilter}
+            onValueChange={v => { setStatusFilter(v as typeof statusFilter); setPage(1) }}
+          >
+            <SelectTrigger className="h-9 w-40" aria-label="Filtrar por situação">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ALL">Todas</SelectItem>
+              <SelectItem value="PUBLISHED">Publicadas</SelectItem>
+              <SelectItem value="SCHEDULED">Agendadas</SelectItem>
+              <SelectItem value="UNPUBLISHED">Não publicadas</SelectItem>
+            </SelectContent>
+          </Select>
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <span className="hidden sm:inline">Itens por página:</span>
             <Select
@@ -962,16 +1113,29 @@ function RouteComponent() {
       )}
 
       {!isLoading && !isError && news.length === 0 && (
-        <EmptyState
-          icon={Newspaper}
-          title="Nenhuma notícia cadastrada"
-          description="Crie a primeira notícia para exibição no site"
-          action={
-            <Button onClick={openCreate}>
-              <Plus className="size-4" /> {t('admin.news.newNews')}
-            </Button>
-          }
-        />
+        filtering ? (
+          <EmptyState
+            icon={Search}
+            title="Nenhuma notícia encontrada"
+            description="Mude a busca ou a situação para ver outras notícias"
+            action={
+              <Button variant="outline" onClick={() => { setSearch(''); setStatusFilter('ALL'); setPage(1) }}>
+                Limpar filtros
+              </Button>
+            }
+          />
+        ) : (
+          <EmptyState
+            icon={Newspaper}
+            title="Nenhuma notícia cadastrada"
+            description="Crie a primeira notícia para exibição no site"
+            action={
+              <Button onClick={openCreate}>
+                <Plus className="size-4" /> {t('admin.news.newNews')}
+              </Button>
+            }
+          />
+        )
       )}
 
       {!isLoading && news.length > 0 && (

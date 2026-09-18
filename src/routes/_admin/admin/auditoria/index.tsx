@@ -9,6 +9,7 @@ import {
   ScrollText, Plus, Pencil, Trash2, Dot, Search, X, Download, Loader2, LogIn, ShieldAlert, ChevronDown,
 } from 'lucide-react'
 import { AuditRowDetails } from '@/components/auditoria/AuditRowDetails'
+import { AuditRetentionPanel } from '@/components/auditoria/AuditRetentionPanel'
 import { apiErrorMessage } from '@/lib/api-error-message'
 import { downloadExport } from '@/lib/export'
 import { Button } from '@/components/ui/button'
@@ -66,7 +67,7 @@ export const Route = createFileRoute('/_admin/admin/auditoria/')({
 
 // Tipos gravados pelo backend (lib/audit-entity.ts), para o filtro "Tipo".
 const ENTITIES = [
-  'Administrador', 'Banner', 'Beneficiário Unimed', 'Caixa', 'Categoria financeira', 'Comprovante',
+  'Administrador', 'Auditoria', 'Banner', 'Beneficiário Unimed', 'Caixa', 'Categoria financeira', 'Comprovante',
   'Configurações do site', 'Contato público', 'Convênio', 'Convite', 'Cotação', 'Curso', 'Empresa',
   'Endereço', 'Exportação', 'Galeria', 'Inscrição', 'Instrutor', 'Lançamento', 'Login', 'Mensagem', 'Notícia',
   'Propriedade', 'Regra', 'Relação', 'Reserva de sala', 'Sala', 'Transferência', 'Usuário',
@@ -207,6 +208,9 @@ function RouteComponent() {
           Registro de criações, edições, exclusões, exportações e tentativas de login, com o IP e o aparelho de origem.
         </p>
       </div>
+
+      {/* Tempo de guarda dos registros — só para quem pode configurar a trilha. */}
+      {can('UPDATE_AUDIT') && <AuditRetentionPanel />}
 
       {/* Filtros */}
       <div className="flex flex-col gap-3">

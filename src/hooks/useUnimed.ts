@@ -11,6 +11,8 @@ export type UnimedRow = {
   plano: string | null
   matricula: string | null
   tipoDependente: string | null
+  grauDependencia: string | null
+  titularId: string | null
   dataAdesao: string | null
   createdAt: string
 }
@@ -86,6 +88,18 @@ export function useUnimedList(
   return useQuery<UnimedListResponse>({
     queryKey: ['admin', 'unimed', 'list', page, limit, search?.trim() ?? ''],
     queryFn: () => apiFetch(`/admin/unimed?${qs}`).then(r => r.json()),
+  })
+}
+
+/**
+ * Cadastros da Unimed ligados a uma pessoa: o dela e aqueles em que ela é o
+ * titular da família (aba Unimed da ficha da pessoa).
+ */
+export function useUnimedByPerson(userDataId: string | null | undefined) {
+  return useQuery<UnimedListResponse>({
+    queryKey: ['admin', 'unimed', 'pessoa', userDataId],
+    queryFn: () => apiFetch(`/admin/unimed?userDataId=${userDataId}&limit=50`).then(r => r.json()),
+    enabled: !!userDataId,
   })
 }
 

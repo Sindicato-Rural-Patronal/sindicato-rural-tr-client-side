@@ -32,7 +32,13 @@ export type News = {
   summary: string | null
   bannerUrl: string | null
   status: NewsStatus
+  /** Data mostrada ao leitor ("Publicada em"). */
   publishedAt: string | null
+  /**
+   * Agendamento: hora "de parede" de Brasília com Z ("…T08:00:00.000Z").
+   * null = no ar assim que o status for PUBLISHED.
+   */
+  publishAt: string | null
   createdAt: string
   updatedAt: string
 }

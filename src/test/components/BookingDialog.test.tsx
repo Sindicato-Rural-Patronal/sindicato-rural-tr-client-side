@@ -74,6 +74,29 @@ describe('BookingDialog', () => {
     })
   })
 
+  it('evento marcado "Mostrar no site" vai publicado, com o texto público', async () => {
+    const onClose = vi.fn()
+    createMock.mockResolvedValue({ ids: ['b1'], seriesId: null })
+    render(<BookingDialog open booking={null} onClose={onClose} />)
+    fillValid()
+    fireEvent.click(screen.getByRole('switch', { name: /Mostrar no site/ }))
+    fireEvent.change(byId('booking-public-description'), { target: { value: 'Aberto ao público' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Criar reserva' }))
+    await waitFor(() => expect(onClose).toHaveBeenCalled())
+    expect(createMock).toHaveBeenCalledWith(expect.objectContaining({
+      type: 'EVENT',
+      publicOnSite: true,
+      publicDescription: 'Aberto ao público',
+    }))
+  })
+
+  it('reunião não tem a opção de mostrar no site', () => {
+    render(<BookingDialog open booking={null} onClose={() => {}} />)
+    expect(screen.getByRole('switch', { name: /Mostrar no site/ })).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Reunião' }))
+    expect(screen.queryByRole('switch', { name: /Mostrar no site/ })).not.toBeInTheDocument()
+  })
+
   it('sala ocupada (409): a mensagem do servidor fica no diálogo', async () => {
     const onClose = vi.fn()
     createMock.mockRejectedValue(new ApiError(409, 'Sala ocupada: Curso "X" em 05/10 08:00–12:00'))
@@ -86,7 +109,8 @@ describe('BookingDialog', () => {
 
   it('editar: carrega a reserva e avisa quando faz parte de uma repetição', () => {
     const booking: RoomBooking = {
-      id: 'b9', type: 'EVENT', title: 'DIA DE CAMPO', description: 'Levar cadeiras', roomId: 'r1', roomName: 'AUDITORIO',
+      id: 'b9', type: 'EVENT', title: 'DIA DE CAMPO', description: 'Levar cadeiras',
+      publicOnSite: false, publicDescription: null, roomId: 'r1', roomName: 'AUDITORIO',
       startTime: '2026-10-07T13:30:00.000Z', endTime: '2026-10-07T17:00:00.000Z',
       responsible: { id: 'p1', name: 'MARIA SILVA' }, responsibleName: null, seriesId: 's1',
     }

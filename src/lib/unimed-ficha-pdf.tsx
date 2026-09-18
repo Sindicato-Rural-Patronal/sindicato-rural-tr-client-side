@@ -122,7 +122,8 @@ export function FichaUnimedDocument({ data }: { data: FichaData }) {
   const addr = addressFields(resolveAddress(user))
   const tel = splitPhones(user)
   // Sem titular vinculado e cadastrado como titular → a própria pessoa é o titular da família.
-  const titular = titularName || (/TITULAR/i.test(u.tipoDependente ?? '') ? user.name : '')
+  const titular = titularName
+    || (/TITULAR/i.test(`${u.grauDependencia ?? ''} ${u.tipoDependente ?? ''}`) ? user.name : '')
 
   return (
     <Document>

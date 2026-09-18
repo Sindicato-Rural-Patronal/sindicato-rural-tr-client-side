@@ -15,6 +15,7 @@ import { Route as AdminRouteImport } from './routes/_admin'
 import { Route as PublicIndexRouteImport } from './routes/_public/index'
 import { Route as ConviteTokenRouteImport } from './routes/convite/$token'
 import { Route as PublicSobreRouteImport } from './routes/_public/sobre'
+import { Route as PublicEventosRouteImport } from './routes/_public/eventos'
 import { Route as PublicCotacoesRouteImport } from './routes/_public/cotacoes'
 import { Route as PublicContatoRouteImport } from './routes/_public/contato'
 import { Route as PublicNoticiasIndexRouteImport } from './routes/_public/noticias/index'
@@ -79,6 +80,11 @@ const ConviteTokenRoute = ConviteTokenRouteImport.update({
 const PublicSobreRoute = PublicSobreRouteImport.update({
   id: '/sobre',
   path: '/sobre',
+  getParentRoute: () => PublicRoute,
+} as any)
+const PublicEventosRoute = PublicEventosRouteImport.update({
+  id: '/eventos',
+  path: '/eventos',
   getParentRoute: () => PublicRoute,
 } as any)
 const PublicCotacoesRoute = PublicCotacoesRouteImport.update({
@@ -277,6 +283,7 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/contato': typeof PublicContatoRoute
   '/cotacoes': typeof PublicCotacoesRoute
+  '/eventos': typeof PublicEventosRoute
   '/sobre': typeof PublicSobreRoute
   '/convite/$token': typeof ConviteTokenRoute
   '/admin/administradores': typeof AdminAdminAdministradoresRouteWithChildren
@@ -320,6 +327,7 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/contato': typeof PublicContatoRoute
   '/cotacoes': typeof PublicCotacoesRoute
+  '/eventos': typeof PublicEventosRoute
   '/sobre': typeof PublicSobreRoute
   '/convite/$token': typeof ConviteTokenRoute
   '/admin/agenda': typeof AdminAdminAgendaRoute
@@ -360,6 +368,7 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/_public/contato': typeof PublicContatoRoute
   '/_public/cotacoes': typeof PublicCotacoesRoute
+  '/_public/eventos': typeof PublicEventosRoute
   '/_public/sobre': typeof PublicSobreRoute
   '/convite/$token': typeof ConviteTokenRoute
   '/_public/': typeof PublicIndexRoute
@@ -406,6 +415,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/contato'
     | '/cotacoes'
+    | '/eventos'
     | '/sobre'
     | '/convite/$token'
     | '/admin/administradores'
@@ -449,6 +459,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/contato'
     | '/cotacoes'
+    | '/eventos'
     | '/sobre'
     | '/convite/$token'
     | '/admin/agenda'
@@ -488,6 +499,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/_public/contato'
     | '/_public/cotacoes'
+    | '/_public/eventos'
     | '/_public/sobre'
     | '/convite/$token'
     | '/_public/'
@@ -577,6 +589,13 @@ declare module '@tanstack/react-router' {
       path: '/sobre'
       fullPath: '/sobre'
       preLoaderRoute: typeof PublicSobreRouteImport
+      parentRoute: typeof PublicRoute
+    }
+    '/_public/eventos': {
+      id: '/_public/eventos'
+      path: '/eventos'
+      fullPath: '/eventos'
+      preLoaderRoute: typeof PublicEventosRouteImport
       parentRoute: typeof PublicRoute
     }
     '/_public/cotacoes': {
@@ -959,6 +978,7 @@ const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
 interface PublicRouteChildren {
   PublicContatoRoute: typeof PublicContatoRoute
   PublicCotacoesRoute: typeof PublicCotacoesRoute
+  PublicEventosRoute: typeof PublicEventosRoute
   PublicSobreRoute: typeof PublicSobreRoute
   PublicIndexRoute: typeof PublicIndexRoute
   PublicConveniosSlugRoute: typeof PublicConveniosSlugRoute
@@ -972,6 +992,7 @@ interface PublicRouteChildren {
 const PublicRouteChildren: PublicRouteChildren = {
   PublicContatoRoute: PublicContatoRoute,
   PublicCotacoesRoute: PublicCotacoesRoute,
+  PublicEventosRoute: PublicEventosRoute,
   PublicSobreRoute: PublicSobreRoute,
   PublicIndexRoute: PublicIndexRoute,
   PublicConveniosSlugRoute: PublicConveniosSlugRoute,

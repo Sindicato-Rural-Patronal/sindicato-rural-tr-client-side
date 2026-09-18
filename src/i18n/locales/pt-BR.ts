@@ -5,6 +5,7 @@ const ptBR = {
     about: 'Sobre nós',
     contact: 'Contate-nos',
     news: 'Notícias',
+    events: 'Eventos',
     openMenu: 'Abrir menu',
     closeMenu: 'Fechar menu',
     convenios: 'Convênios',

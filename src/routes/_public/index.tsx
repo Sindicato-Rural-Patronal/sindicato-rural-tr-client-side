@@ -6,6 +6,7 @@ import Autoplay from 'embla-carousel-autoplay'
 import { HeroSection } from '@/components/home-hero-section'
 import { CotacoesSection } from '@/components/home-cotacoes-section'
 import { CoursesSection } from '@/components/home-courses-section'
+import { HomeEventsSection } from '@/components/home-events-section'
 import { HomeNewsSection } from '@/components/home-news-section'
 import { usePartners } from '@/hooks/useAdmin'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -133,6 +134,7 @@ function HomePage() {
     <div className="bg-background">
       <HeroSection />
       <CoursesSection autoplayPlugin={autoplayPlugin} />
+      <HomeEventsSection />
       <CotacoesSection />
       <HomeNewsSection />
       <PartnersSection />

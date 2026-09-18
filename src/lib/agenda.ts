@@ -204,6 +204,10 @@ export type BookingFormValues = {
   responsible: { id: string; name: string } | null
   responsibleName: string
   description: string
+  /** Mostrar o evento na página pública /eventos (nunca vale para reunião). */
+  publicOnSite: boolean
+  /** Texto do evento no site (o campo Descrição é só para a equipe). */
+  publicDescription: string
   repeat: RepeatOption
   repeatUntil: string
 }
@@ -229,6 +233,8 @@ export function emptyBookingForm(date = '', roomId = ''): BookingFormValues {
     responsible: null,
     responsibleName: '',
     description: '',
+    publicOnSite: false,
+    publicDescription: '',
     repeat: 'NONE',
     repeatUntil: '',
   }
@@ -284,6 +290,8 @@ export function bookingToForm(booking: RoomBooking): BookingFormValues {
     responsible: booking.responsible ? { id: booking.responsible.id, name: booking.responsible.name } : null,
     responsibleName: freeName ? (booking.responsibleName ?? '') : '',
     description: booking.description ?? '',
+    publicOnSite: booking.publicOnSite,
+    publicDescription: booking.publicDescription ?? '',
     repeat: 'NONE',
     repeatUntil: '',
   }
@@ -303,15 +311,24 @@ export function bookingFormToBody(values: BookingFormValues, { creating }: { cre
     endTime: toWallIso(formEndDate(values), values.endHour),
   }
   const description = values.description.trim() || null
+  // Só evento vai para o site; reunião nunca (o backend também garante).
+  const publicOnSite = values.type === 'EVENT' && values.publicOnSite
+  const publicDescription = publicOnSite ? (values.publicDescription.trim() || null) : null
   const personId = values.responsibleMode === 'person' ? (values.responsible?.id ?? null) : null
   const freeName = values.responsibleMode === 'name' ? (values.responsibleName.trim() || null) : null
   if (creating) {
     if (description) body.description = description
+    if (publicOnSite) {
+      body.publicOnSite = true
+      if (publicDescription) body.publicDescription = publicDescription
+    }
     if (personId) body.responsibleUserDataId = personId
     if (freeName) body.responsibleName = freeName
     if (values.repeat !== 'NONE') body.repeat = { frequency: values.repeat, until: values.repeatUntil }
   } else {
     body.description = description
+    body.publicOnSite = publicOnSite
+    body.publicDescription = publicDescription
     body.responsibleUserDataId = personId
     body.responsibleName = freeName
   }

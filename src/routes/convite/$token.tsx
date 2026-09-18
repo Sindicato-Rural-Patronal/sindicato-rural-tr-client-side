@@ -5,6 +5,7 @@ import { useInvite, useAcceptInvite } from '@/hooks/useInvite'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { PasswordStrengthHint } from '@/components/PasswordStrengthHint'
 import { Leaf, ShieldCheck, XCircle, Loader2 } from 'lucide-react'
 
 export const Route = createFileRoute('/convite/$token')({
@@ -98,6 +99,11 @@ function Convite() {
                   onChange={e => setForm(p => ({ ...p, password: e.target.value }))}
                   autoComplete="new-password"
                   placeholder="mínimo 8 caracteres"
+                />
+                {/* Só orientação: senha fraca continua podendo ser salva. */}
+                <PasswordStrengthHint
+                  password={form.password}
+                  context={{ username: form.username, name: invite.userName }}
                 />
               </div>
               <div className="flex flex-col gap-1.5">

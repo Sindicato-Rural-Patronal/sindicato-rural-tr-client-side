@@ -50,6 +50,20 @@ export function maskRG(v: string) {
   return `${raw.slice(0, 2)}.${raw.slice(2, 5)}.${raw.slice(5, 8)}-${raw.slice(8)}`
 }
 
+/**
+ * CNS (Cartão Nacional de Saúde): 15 dígitos, exibidos em "000 0000 0000 0000".
+ * É gravado só com os dígitos — use `unmaskDigits` antes de enviar.
+ */
+export function maskCNS(v: string) {
+  const d = v.replace(/\D/g, '').slice(0, 15)
+  return [d.slice(0, 3), d.slice(3, 7), d.slice(7, 11), d.slice(11, 15)].filter(Boolean).join(' ')
+}
+
+/** Só os dígitos de um valor mascarado (CNS, CPF, telefone…). */
+export function unmaskDigits(v: string | null | undefined) {
+  return (v ?? '').replace(/\D/g, '')
+}
+
 /** "11222333000181" → "11.222.333/0001-81" (formata enquanto digita). */
 export function maskCNPJ(v: string) {
   return v.replace(/\D/g, '').slice(0, 14)

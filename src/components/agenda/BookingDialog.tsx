@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from 'react'
 import { toast } from 'sonner'
-import { Loader2, Repeat, Trash2, X } from 'lucide-react'
+import { Globe, Loader2, Repeat, Trash2, X } from 'lucide-react'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -315,6 +315,39 @@ function BookingDialogSession({ open, booking, defaults, canUpdate = true, canDe
                   placeholder="Observações para a equipe (opcional)"
                 />
               </Field>
+
+              {/* Só evento pode ir para o site; reunião fica sempre interna. */}
+              {values.type === 'EVENT' && (
+                <div className="flex flex-col gap-2 rounded-lg border bg-muted/30 p-3">
+                  <label className="flex w-fit cursor-pointer items-center gap-2 text-sm font-medium">
+                    <input
+                      id="booking-public"
+                      type="checkbox"
+                      role="switch"
+                      className="size-5 accent-primary"
+                      checked={values.publicOnSite}
+                      onChange={e => set('publicOnSite', e.target.checked)}
+                    />
+                    <Globe className="size-4 text-muted-foreground" aria-hidden />
+                    Mostrar no site
+                  </label>
+                  <p className="text-sm text-muted-foreground">
+                    O título, a data, o horário e a sala aparecem na página de eventos do site.
+                    A descrição acima continua só para a equipe.
+                  </p>
+                  {values.publicOnSite && (
+                    <Field label="Texto do evento no site" htmlFor="booking-public-description">
+                      <Textarea
+                        id="booking-public-description"
+                        rows={3}
+                        value={values.publicDescription}
+                        onChange={e => set('publicDescription', e.target.value)}
+                        placeholder="O que o público vê sobre o evento (opcional)"
+                      />
+                    </Field>
+                  )}
+                </div>
+              )}
 
               {creating && (
                 <Field label="Repetir">

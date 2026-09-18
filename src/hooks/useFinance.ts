@@ -60,6 +60,76 @@ export type FinanceAccount = {
   updatedAt: string
 }
 
+export type FinancePaymentMethod = {
+  id: string
+  name: string
+  active: boolean
+  order: number
+  isDeleted: boolean
+  createdAt: string
+  updatedAt: string
+}
+
+// Molde do lançamento que se repete todo mês. Meses são texto "AAAA-MM".
+export type FinanceRecurrence = {
+  id: string
+  type: FinanceType
+  description: string
+  amountCents: number
+  /** Dia do lançamento (1–31); mês mais curto usa o último dia dele. */
+  dayOfMonth: number
+  startMonth: string
+  endMonth: string | null
+  lastGeneratedMonth: string | null
+  paymentMethod: string | null
+  notes: string | null
+  active: boolean
+  categoryId: string | null
+  category: FinanceCategory | null
+  accountId: string | null
+  account: FinanceAccount | null
+  createdAt: string
+  updatedAt: string
+}
+
+export type RecurrenceInput = {
+  type: FinanceType
+  description: string
+  amountCents: number
+  dayOfMonth: number
+  startMonth: string
+  endMonth?: string | null
+  paymentMethod?: string | null
+  notes?: string | null
+  categoryId?: string | null
+  accountId?: string | null
+  active?: boolean
+}
+
+// Fechamento/conferência de um mês em um caixa.
+export type FinanceClosing = {
+  id: string
+  accountId: string
+  month: string
+  expectedBalanceCents: number
+  countedBalanceCents: number
+  /** contado − esperado (negativo = faltou dinheiro no caixa). */
+  differenceCents: number
+  notes: string | null
+  closedAt: string
+  closedByAdminId: string | null
+}
+
+// O que o sistema calculou para o mês/caixa, antes de fechar.
+export type FinanceClosingPreview = {
+  openingCents: number
+  inCents: number
+  outCents: number
+  expectedBalanceCents: number
+  differenceCents: number
+  closing: FinanceClosing | null
+}
+
 export type FinanceTransaction = {
   id: string
   // null = "só nota" (sem lançamento no caixa; fora de saldo/KPIs).
@@ -74,6 +144,9 @@ export type FinanceTransaction = {
   accountId: string | null
   account: FinanceAccount | null
   transferId: string | null
+  /** Preenchido quando o lançamento nasceu de uma recorrência (+ o mês gerado). */
+  recurringId: string | null
+  recurringMonth: string | null
   empenho: Empenho | null
   attachments: FinanceAttachment[]
   createdBy: string | null
@@ -146,6 +219,8 @@ export type TransactionFilters = {
   type?: FinanceType | ''
   categoryId?: string
   accountId?: string
+  /** Forma de pagamento (texto do lançamento; o backend ignora maiúsculas). */
+  method?: string
   search?: string
 }
 
@@ -239,6 +314,7 @@ function buildQuery(filters: TransactionFilters): string {
   if (filters.type) p.set('type', filters.type)
   if (filters.categoryId) p.set('categoryId', filters.categoryId)
   if (filters.accountId) p.set('accountId', filters.accountId)
+  if (filters.method) p.set('method', filters.method)
   if (filters.search) p.set('search', filters.search)
   const s = p.toString()
   return s ? `?${s}` : ''
@@ -341,6 +417,140 @@ export function useDeleteFinanceAttachment() {
 export async function openFinanceAttachment(attachmentId: string) {
   const res = await apiFetch(`/admin/finance/attachments/${attachmentId}`)
   openBlob(await res.blob())
+}
+
+// ── Recorrentes ──────────────────────────────────────────────────────────────
+export function useFinanceRecurrences(
+  opts: { includeInactive?: boolean; enabled?: boolean } = {},
+) {
+  return useQuery<FinanceRecurrence[]>({
+    queryKey: ['finance', 'recurrences', opts.includeInactive ?? false],
+    queryFn: () =>
+      apiFetch(`/admin/finance/recurrences${opts.includeInactive ? '?all=true' : ''}`).then(r => r.json()),
+    enabled: opts.enabled ?? true,
+  })
+}
+
+export function useCreateFinanceRecurrence() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (body: RecurrenceInput) =>
+      apiFetch('/admin/finance/recurrences', { method: 'POST', body: JSON.stringify(body) }),
+    onSuccess: () => invalidateFinance(qc),
+  })
+}
+
+export function useUpdateFinanceRecurrence() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, body }: { id: string; body: Partial<RecurrenceInput> }) =>
+      apiFetch(`/admin/finance/recurrences/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
+    onSuccess: () => invalidateFinance(qc),
+  })
+}
+
+export function useDeleteFinanceRecurrence() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) => apiFetch(`/admin/finance/recurrences/${id}`, { method: 'DELETE' }),
+    onSuccess: () => invalidateFinance(qc),
+  })
+}
+
+/** Cria os lançamentos que faltam das recorrências ativas. Idempotente. */
+export function useGenerateFinanceRecurrences() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async () => {
+      const res = await apiFetch('/admin/finance/recurrences/generate', { method: 'POST' })
+      return (await res.json()) as { created: number }
+    },
+    onSuccess: r => { if (r.created > 0) invalidateFinance(qc) },
+  })
+}
+
+// ── Formas de pagamento ──────────────────────────────────────────────────────
+export function useFinancePaymentMethods(
+  opts: { includeInactive?: boolean; enabled?: boolean } = {},
+) {
+  return useQuery<FinancePaymentMethod[]>({
+    queryKey: ['finance', 'payment-methods', opts.includeInactive ?? false],
+    queryFn: () =>
+      apiFetch(`/admin/finance/payment-methods${opts.includeInactive ? '?all=true' : ''}`).then(r => r.json()),
+    enabled: opts.enabled ?? true,
+  })
+}
+
+export function useCreateFinancePaymentMethod() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (name: string) => {
+      const res = await apiFetch('/admin/finance/payment-methods', {
+        method: 'POST',
+        body: JSON.stringify({ name }),
+      })
+      return (await res.json()) as FinancePaymentMethod
+    },
+    onSuccess: () => invalidateFinance(qc),
+  })
+}
+
+export function useDeleteFinancePaymentMethod() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) => apiFetch(`/admin/finance/payment-methods/${id}`, { method: 'DELETE' }),
+    onSuccess: () => invalidateFinance(qc),
+  })
+}
+
+// ── Fechamento mensal ────────────────────────────────────────────────────────
+export function useFinanceClosings(
+  filters: { accountId?: string; year?: string } = {},
+  opts: { enabled?: boolean } = {},
+) {
+  const p = new URLSearchParams()
+  if (filters.accountId) p.set('accountId', filters.accountId)
+  if (filters.year) p.set('year', filters.year)
+  const qs = p.toString()
+  return useQuery<FinanceClosing[]>({
+    queryKey: ['finance', 'closings', filters],
+    queryFn: () => apiFetch(`/admin/finance/closings${qs ? `?${qs}` : ''}`).then(r => r.json()),
+    enabled: opts.enabled ?? true,
+  })
+}
+
+/** Saldo esperado do caixa no mês (abertura + entradas − saídas). Não grava nada. */
+export function useFinanceClosingPreview(
+  params: { accountId?: string; month?: string },
+  opts: { enabled?: boolean } = {},
+) {
+  const ready = !!params.accountId && !!params.month
+  return useQuery<FinanceClosingPreview>({
+    queryKey: ['finance', 'closing-preview', params],
+    queryFn: () =>
+      apiFetch(
+        `/admin/finance/closings/preview?accountId=${params.accountId}&month=${params.month}`,
+      ).then(r => r.json()),
+    enabled: (opts.enabled ?? true) && ready,
+  })
+}
+
+export function useCreateFinanceClosing() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (body: { accountId: string; month: string; countedBalanceCents: number; notes?: string | null }) =>
+      apiFetch('/admin/finance/closings', { method: 'POST', body: JSON.stringify(body) }),
+    onSuccess: () => invalidateFinance(qc),
+  })
+}
+
+/** Reabre o mês: apaga o fechamento (os lançamentos ficam). */
+export function useDeleteFinanceClosing() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) => apiFetch(`/admin/finance/closings/${id}`, { method: 'DELETE' }),
+    onSuccess: () => invalidateFinance(qc),
+  })
 }
 
 // ── Dashboard ────────────────────────────────────────────────────────────────

@@ -29,6 +29,7 @@ Site institucional do **Sindicato Rural de Terra Roxa** (Paraná, Brasil). Plata
 /                           → _public/index.tsx (HomePage)
 /cursos                     → _public/cursos/index.tsx
 /cursos/$id                 → _public/cursos/$id.tsx (detalhe + inscrição)
+/eventos                    → _public/eventos.tsx (eventos publicados, agrupados por mês)
 /noticias                   → _public/noticias/index.tsx
 /noticias/$id               → _public/noticias/$id.tsx
 /sobre                      → _public/sobre.tsx (texto de Configurações + sede + galeria com todas as fotos em #galeria)
@@ -40,7 +41,7 @@ Site institucional do **Sindicato Rural de Terra Roxa** (Paraná, Brasil). Plata
 /admin                      → _admin/admin/index.tsx (redirect → /admin/cursos)
 /admin/cursos               → _admin/admin/cursos/index.tsx (CRUD completo em diálogos: criar, editar, duplicar, inscrições; ?curso=<id>&aba=inscricoes abre a janela do curso)
 /admin/noticias             → _admin/admin/noticias/index.tsx
-/admin/usuarios             → _admin/admin/usuarios/index.tsx (abas ?tab=associados|empresas|admins)
+/admin/usuarios             → _admin/admin/usuarios/index.tsx (abas ?tab=associados|empresas|admins; "Possíveis duplicados")
 /admin/usuarios/$id         → _admin/admin/usuarios/$id.tsx (detalhe completo; aba "Empresas" = vínculos; ?completar=1 abre "Completar cadastro")
 /admin/empresas/novo        → _admin/admin/empresas/novo.tsx (criar empresa)
 /admin/empresas/$id         → _admin/admin/empresas/$id.tsx (abas Dados / Pessoas / Propriedades)
@@ -48,6 +49,9 @@ Site institucional do **Sindicato Rural de Terra Roxa** (Paraná, Brasil). Plata
 /admin/mensagens            → _admin/admin/mensagens.tsx (responder por e-mail/WhatsApp, marcar como não lida)
 /admin/salas                → _admin/admin/salas/index.tsx (nome = lista fixa de salas)
 /admin/agenda               → _admin/admin/agenda.tsx (Agenda das salas: ?week=<segunda>&roomId&type=COURSE|EVENT|MEETING&view=semana|lista; componentes em components/agenda)
+/admin/unimed               → _admin/admin/unimed.tsx (beneficiários do plano: tipo de movimento e grau de
+                              dependência em select de lista fixa, CNS mascarado, menu "Ações" com rótulos
+                              escritos e Ficha/Termo/Contrato em PDF)
 /admin/administradores      → _admin/admin/administradores/index.tsx
 /admin/cotacoes             → _admin/admin/cotacoes/index.tsx (lançamento do dia: produtos fixos, preço + manhã/tarde; unidade por produto; fonte)
 /admin/galerias             → _admin/admin/galerias/index.tsx (redireciona p/ /admin/configuracoes?tab=galerias)
@@ -55,8 +59,8 @@ Site institucional do **Sindicato Rural de Terra Roxa** (Paraná, Brasil). Plata
 /admin/convenios            → _admin/admin/convenios/index.tsx (lista de convênios)
 /admin/convenios/novo       → _admin/admin/convenios/novo.tsx (editor, criação)
 /admin/convenios/$id        → _admin/admin/convenios/$id.tsx (editor com pré-visualização)
-/admin/auditoria            → _admin/admin/auditoria/index.tsx (trilha de auditoria; linha abre IP, local, navegador e "O que mudou"; filtros na URL, inclusive ?ip=)
-/admin/financeiro           → _admin/admin/financeiro/index.tsx (Financeiro: dashboard, lançamentos, categorias, caixas)
+/admin/auditoria            → _admin/admin/auditoria/index.tsx (trilha de auditoria; linha abre IP, local, navegador e "O que mudou"; filtros na URL, inclusive ?ip=; "Configurações da trilha" (tempo de guarda) só com UPDATE_AUDIT)
+/admin/financeiro           → _admin/admin/financeiro/index.tsx (Financeiro: ?tab=dashboard|lancamentos|recorrentes|categorias|caixas|fechamento)
 /admin/dashboard            → _admin/admin/dashboard.tsx (painel: stats + calendário de cursos e reservas de sala + cadastros incompletos; pendências ficam no sino)
 /convite/:token             → convite/$token.tsx (público: ativar acesso de admin por convite)
 ```
@@ -75,9 +79,12 @@ src/
 │   └── course.ts                    # Tipos Course, ApiCourse, CourseInstructor + mapCourse()
 ├── components/
 │   ├── ui/                          # shadcn/ui + pagination.tsx (PaginatedResponse)
-│   ├── cadastro/                    # Empresas: CompaniesList, CompanyForm, CompanyMembersPanel,
+│   ├── cadastro/                    # Cadastros repetidos: MergePeopleDialog, DuplicatePeopleList,
+│   │                                #   merge-people.ts (hooks/tipos/resumo do toast)
+│   │                                # Empresas: CompaniesList, CompanyForm, CompanyMembersPanel,
 │   │                                #   PersonCompanies (aba Empresas da pessoa: vincular a empresa/desvincular);
-│   │                                #   PropertiesManager (propriedades/endereços, compartilhado por pessoa e empresa)
+│   │                                #   PropertiesManager (propriedades/endereços, compartilhado por pessoa e empresa;
+│   │                                #     adiciona, edita pelo lápis — só com `onUpdate` — e remove)
 │   ├── PublicHeader.tsx             # Nav pública (sticky; convênios como itens próprios; menu mobile abaixo de lg) — logo-full.png
 │   ├── public-footer.tsx            # Footer: 4 colunas (marca+redes, links, contato via useOrgInfo, chamada); "Acesso ao painel" é link discreto na linha de baixo
 │   ├── WhatsAppFloatingButton.tsx   # Botão flutuante do WhatsApp (layout público; só com WhatsApp nas Configurações; some abaixo de lg em /cursos/$id)
@@ -91,6 +98,7 @@ src/
 │   ├── nav-user.tsx                 # Dropdown do usuário (logout)
 │   ├── home-hero-section.tsx        # Banner hero
 │   ├── GalleryLightbox.tsx          # Fotos de uma galeria em tela cheia (página Sobre)
+│   ├── home-events-section.tsx      # "Próximos eventos" (só quando há evento publicado)
 │   ├── home-cotacoes-section.tsx    # Faixa de cotações (preço, unidade, dia/período, fonte, link histórico)
 │   ├── cotacoes/QuoteHistoryChart.tsx # Gráfico SVG de um produto (linha, crosshair/tooltip, setas do teclado)
 │   ├── courses/                     # Admin de cursos: CourseFormDialog (criar/editar/duplicar — fora do arquivo
@@ -102,6 +110,8 @@ src/
 │   │                                #   AgendaListView (busca, exportar), BookingDialog (nova/editar reserva),
 │   │                                #   DeleteBookingDialog (só esta / esta e as próximas), KindBadge (Curso/Evento/Reunião)
 │   ├── galerias/                    # Admin: GalleryAlbumCard (fotos, legenda, ordem), GalleryAlbumDialog
+│   ├── unimed/PersonUnimedTab.tsx   # Aba "Unimed" da ficha da pessoa: cadastros dela e em que ela é titular,
+│   │                                #   com plano/matrícula/grau/adesão, botões Ficha/Termo/Contrato e link p/ /admin/unimed
 │   ├── site-config/                 # Abas de Configurações do site: OrgInfoPanel (dados do sindicato +
 │   │                                #   texto do Sobre), SocialLinksPanel, GalleriesPanel, PartnersPanel
 │   │                                #   (+ PartnerEditDialog: logo/link), PublicContactsPanel (busca pessoa, cargo, ordem)
@@ -110,6 +120,8 @@ src/
 │   ├── course-card.tsx              # CourseCard + CourseCardSimple (carousel-aware)
 │   ├── StatusBadge.tsx              # Badge do status do curso (PUBLIC | PRIVATE | UNPUBLISHED | IN_PROGRESS | COMPLETED)
 │   ├── ImageCropDialog.tsx          # Dialog de crop de imagem (avatar/upload)
+│   ├── PasswordStrengthHint.tsx     # Força da senha: barra + rótulo + até 2 dicas (aria-live); só orienta, nunca bloqueia
+│   ├── auditoria/AuditRetentionPanel.tsx # "Configurações da trilha": tempo de guarda (select + confirmação ao diminuir)
 │   ├── PermissionButton.tsx         # Botão condicional baseado em permissão
 │   ├── confirm-close-dialog.tsx     # Dialog de confirmação de descarte
 │   ├── ErrorAlert.tsx               # Alerta de erro
@@ -124,7 +136,7 @@ src/
 │   ├── useAdmin.ts                  # Ver seção "Hooks — useAdmin.ts" abaixo
 │   ├── useCompanies.ts              # Empresas: useAdminCompanies, useAdminCompany, CRUD, vínculos
 │   │                                #   (members; pela pessoa: useLinkPersonToCompany/useUnlinkPersonFromCompany),
-│   │                                #   propriedades, logo de parceira, títulos usados + COMMON_MEMBER_TITLES
+│   │                                #   propriedades (add/update/remove), logo de parceira, títulos usados + COMMON_MEMBER_TITLES
 │   ├── useGalleries.ts              # Galerias: pública, admin, CRUD, upload/legenda/ordem das fotos
 │   ├── useMarketQuotes.ts           # Cotações: pública, admin, useSaveDailyQuotes (PUT daily), useQuoteHistory
 │   ├── useNotifications.ts          # Sino: useNotifications (a cada 60s e ao voltar à aba), useMarkNotificationsRead
@@ -132,12 +144,15 @@ src/
 │   ├── useSiteSettings.ts           # Configurações do site (pública/admin/salvar), useUpdateQuotesSource,
 │   │                                #   useOrgInfo (dados do sindicato com fallback de lib/org-contact.ts)
 │   ├── usePublicContactsAdmin.ts    # Contatos públicos no admin: listar, adicionar, cargo, tirar, reordenar
-│   ├── useNews.ts                   # Hooks de notícias (admin + público)
+│   ├── useNews.ts                   # Hooks de notícias (admin + público; filtro Todas/Publicadas/
+│   │                                #   Agendadas/Não publicadas + busca por título)
+│   ├── usePublicEvents.ts           # Eventos publicados no site (GET /events)
 │   ├── useBanner.ts                 # Hooks de banners
 │   ├── useRooms.ts                  # useRooms, useCreateRoom
 │   ├── useRoomBookings.ts           # Reservas de sala: useRoomBookings, useRoomSchedule, useCreate/Update/DeleteRoomBooking
 │   ├── useRowSelection.ts           # Seleção de linhas por id (continua entre páginas) para exportar
 │   ├── useAuditTrail.ts             # Auditoria: useAuditTrail (filtros action/entity/actorId/ip/from/to/q) + AuditTrailItem
+│   │                                #   + useAuditSettings / useUpdateAuditRetention (tempo de guarda)
 │   ├── usePermissions.ts            # Hook de permissões do usuário logado
 │   ├── use-users.ts                 # authenticateUser(username, password) → POST /api/auth/login
 │   └── use-mobile.ts               # useIsMobile (breakpoint hook)
@@ -156,14 +171,22 @@ src/
 │   │                                #   firstInvalidField, focusFieldById (cadastro novo e edição de pessoa)
 │   ├── org-contact.ts               # Dados padrão do sindicato (fallback) + phoneDigits
 │   ├── room-names.ts                # Nomes fixos das salas + opções do select
+│   ├── unimed-options.ts            # Unimed: listas fixas (UNIMED_MOVEMENT_TYPES, UNIMED_DEPENDENCY_DEGREES),
+│   │                                #   unimedOptionsWith (acrescenta o valor antigo do cadastro) + unimedOptionLabel
+│   ├── unimed-docs.ts               # Baixa Ficha/Termo/Contrato da Unimed pelo id (busca beneficiário + pessoa);
+│   │                                #   usado pela tela /admin/unimed e pela aba Unimed da pessoa
 │   ├── agenda.ts                    # Agenda das salas: semana (weekStart, weekLabel), itemsForDay (vários dias), horário de parede,
 │   │                                #   parseAgendaSearch, validação/corpo do formulário de reserva
 │   ├── calendar-links.ts            # Curso na agenda/WhatsApp: buildCourseIcs (.ics, hora de Brasília → UTC, repete por dia),
 │   │                                #   googleCalendarUrl, whatsappShareUrl (só nome, data, horário, local e link)
 │   ├── dashboard-agenda.ts          # Calendário do painel: dias com reserva, lista do dia (cursos + reservas), contagem
+│   ├── news-schedule.ts             # Agendamento de notícia (publicar agora x agendar para; relógio de Brasília)
+│   ├── public-events.ts             # Eventos públicos: agrupar por mês, rótulo da data
 │   ├── quote-utils.ts               # Cotações: período (manhã/tarde), rótulo dos produtos, unidades (QUOTE_UNIT_OPTIONS), trendOf
 │   ├── relative-time.ts             # relativeTime ("agora", "há 5 min", "há 2 h", "ontem", "12/09") + fullDateTime
 │   ├── audit-fields.ts              # Auditoria "O que mudou": AUDIT_FIELD_LABELS (campo → português), formatAuditValue, auditChanges
+│   ├── password-strength.ts         # passwordStrength(senha, { username, name }) → { score 0-4, label, tips } (tamanho,
+│   │                                #   variedade, sequências, senhas comuns, nome/usuário); nunca impede salvar
 │   ├── quote-price-check.ts         # Cotações: findQuoteDeviations (preço >20% diferente do último → confirmação), formatQuoteChange
 │   ├── banner-dates.ts              # Banners: bannerStartIso/bannerEndIso (dia → 00:00 / 23:59:59.999 -03:00), brasiliaYmd
 │   │                                #   (instante → dia em Brasília), bannerState (mesma regra do GET /banners), bannerPeriodLabel
@@ -184,7 +207,7 @@ src/
 │   │                                #   (COMPLETED = terminado); hasCourseStarted (mostra a presença)
 │   ├── course-attendance.ts         # Presença: attendanceCounts/attendanceSummary (só confirmadas), canReceiveCertificate,
 │   │                                #   courseDays (uma folha por dia na lista de presença), sortByName
-│   └── masks.ts                     # maskCPF, maskCNPJ, maskPhone
+│   └── masks.ts                     # maskCPF, maskCNPJ, maskPhone, maskCNS (15 dígitos, "000 0000 0000 0000") + unmaskDigits
 └── main.tsx                         # Entry: QueryClientProvider → AuthProvider → RouterProvider
 ```
 
@@ -222,7 +245,7 @@ useCancelRegistration       → DELETE /api/admin/registrations/:id
 useAdminUser                → GET /api/admin/users/:id  (inclui userInstructor)
 useUpdateUserAddress        → PUT /api/admin/users/:id/address
 useUserProperties           → GET /api/admin/users/:id/properties (paginado)
-useCreateUserProperty / useDeleteUserProperty
+useCreateUserProperty / useUpdateUserProperty / useDeleteUserProperty
 useUploadAvatar             → POST /api/admin/users/:id/avatar
 useUserRelations            → GET /api/admin/users/:id/relations (paginado)
 useCreateUserRelation / useDeleteUserRelation
@@ -322,11 +345,15 @@ photoGallery: { id, url, caption }[], instructors: CourseInstructor[]
 - `PUT /api/admin/users/:id/address` — atualizar endereço
 - `GET /api/admin/users/:id/properties` — propriedades rurais (paginado)
 - `POST /api/admin/users/:id/properties` — adicionar propriedade
+- `PATCH /api/admin/users/:id/properties/:propId` — editar propriedade/endereço (campos opcionais)
 - `DELETE /api/admin/users/:id/properties/:propId` — remover propriedade
 - `GET /api/admin/users/:id/relations` — relacionamentos (paginado)
 - `POST /api/admin/users/:id/relations` — adicionar relacionamento
 - `DELETE /api/admin/users/:id/relations/:relId` — remover relacionamento
 - `POST /api/admin/users/:id/avatar` — upload avatar (multipart)
+- `GET /api/admin/users/duplicates?limit=50` — possíveis cadastros repetidos (READ_USER): grupos com o mesmo nome normalizado, telefone ou e-mail, em que pelo menos um está sem CPF
+- `GET /api/admin/users/merge-preview?ids=a,b` — os dois cadastros com os números de cada um (comparação do diálogo)
+- `POST /api/admin/users/merge` — `{ keepId, removeId }` (DELETE_USER + UPDATE_USER); junta os dois cadastros da mesma pessoa
 - `POST /api/admin/users` — criar admin/funcionário
 - `PATCH /api/admin/users/:id` — atualizar admin/funcionário
 
@@ -336,7 +363,7 @@ photoGallery: { id, url, caption }[], instructors: CourseInstructor[]
 - `GET /api/admin/companies/:id` — detalhe (members com a pessoa + properties)
 - `POST /api/admin/companies` · `PATCH /api/admin/companies/:id` (inclui `tradeName`, `address` da sede — null/vazio remove —, parceria e `primaryPropertyId`) · `DELETE /api/admin/companies/:id` (soft)
 - `POST /api/admin/companies/:id/members` `{ userDataId, title }` · `PATCH /members/:memberId` `{ title }` · `DELETE /members/:memberId`
-- `POST /api/admin/companies/:id/properties` · `DELETE /api/admin/companies/:id/properties/:propertyId`
+- `POST /api/admin/companies/:id/properties` · `PATCH /api/admin/companies/:id/properties/:propertyId` (editar) · `DELETE /api/admin/companies/:id/properties/:propertyId`
 - `POST /api/admin/companies/:id/partner-logo` — multipart (300×150, PNG); `PATCH` com `partnerLogo: null` remove
 
 **Instrutores (admin)**
@@ -358,6 +385,9 @@ photoGallery: { id, url, caption }[], instructors: CourseInstructor[]
 - `PATCH /api/admin/contacts/messages/:id/unread` — marcar como não lida (rota própria: a auditoria diz qual foi; mande corpo `{}`)
 - `DELETE /api/admin/contacts/messages/:id` — deletar mensagem
 
+**Eventos (público)**
+- `GET /api/events` — eventos publicados que ainda não terminaram, por início (até 50): `{ id, title, description, startTime, endTime, roomName }`
+
 **Contato (público)**
 - `GET /api/contacts` — contatos públicos, na ordem definida no admin
 - `GET /api/site-settings` — redes sociais, dados do sindicato (`org*`), `aboutText`, `quotesSource`
@@ -375,6 +405,7 @@ photoGallery: { id, url, caption }[], instructors: CourseInstructor[]
 - `GET /api/admin/room-bookings?from&to[&roomId][&type=EVENT|MEETING][&search]` — reservas (responsável = pessoa ou nome, `seriesId`)
 - `GET /api/admin/room-schedule?from&to[&roomId]` — cursos + reservas (`kind` COURSE|EVENT|MEETING)
 - `POST /api/admin/room-bookings` (`repeat: { frequency: WEEKLY|MONTHLY, until }` opcional) → `{ ids, seriesId }` · `PATCH /:id` (só esta data) · `DELETE /:id?scope=one|future` — sala ocupada → 409 com a mensagem do conflito
+- `publicOnSite` + `publicDescription` no corpo: só evento pode ir para o site (reunião nunca); `description` continua sendo observação interna da equipe
 
 **Convênios** — gated por `*_CONVENIO`; preço em centavos (Int); listas em JSON
 - `GET /api/convenios` — menu público (ativos: id, slug, name, subtitle, logoUrl, order)
@@ -382,6 +413,11 @@ photoGallery: { id, url, caption }[], instructors: CourseInstructor[]
 - `GET /api/admin/convenios` · `GET /api/admin/convenios/:id`
 - `POST /api/admin/convenios` · `PATCH /api/admin/convenios/:id` (`logoUrl: null` remove o logo) · `DELETE /api/admin/convenios/:id`
 - `POST /api/admin/convenios/:id/logo` — multipart (reduzido para caber em 480×240, PNG)
+
+**Unimed (beneficiários)** — permissões de pessoa (`*_USER`); hooks em `useUnimed.ts`
+- `GET /api/admin/unimed` — paginado; `?search` (nome/CPF/telefone) e `?userDataId=` (cadastros da pessoa **e** aqueles em que ela é o titular — a aba Unimed da ficha usa `useUnimedByPerson`)
+- `GET /api/admin/unimed/:id` · `POST /api/admin/unimed` · `PATCH /api/admin/unimed/:id` · `DELETE /api/admin/unimed/:id` (soft)
+- `tipoMovimento` e `grauDependencia` são listas fixas (`lib/unimed-options.ts`); `cns` vai só com dígitos (15)
 
 **Cotações (home)** — produtos fixos: SOJA, MILHO, TRIGO, MANDIOCA, DOLAR (não se cria/exclui)
 - `GET /api/market-quotes` — produtos com preço lançado (público; `priceCents`, `unit`, `period`, `referenceDate`, `variation`)
@@ -399,6 +435,7 @@ photoGallery: { id, url, caption }[], instructors: CourseInstructor[]
 
 **Auditoria**
 - `GET /api/admin/audit-logs` — trilha de auditoria (paginado; `action=create|edit|delete|export|login|login_failed`, `ip` exato). Cada linha traz `summary`, a frase pronta ("Iniciou o curso "HORTA"", "Tentativa de login falhou (usuário "x")", montada no backend); a tela só a exibe. O filtro "Tipo" lista as entidades do backend (`lib/audit-entity.ts`, inclui "Login")
+- `GET /api/admin/audit-settings` (READ_AUDIT) — `{ retentionDays, options, oldestAt, total }`; `PATCH` (UPDATE_AUDIT) — `{ retentionDays }` (0 = guardar para sempre; senão 30 a 3650, painel oferece 90/180/365/730). Baixar o prazo apaga na hora os registros mais antigos (resposta traz `deleted`)
 - Cada linha também traz de onde veio — `ip`, `location` ("Terra Roxa, PR, Brasil", aproximado pelo IP; o backend consulta o ipwho.is), `device` ("Chrome no Windows"), `userAgent` — e `changes` (`[{ field, before, after }]` em edições/exclusões; senha trocada = `password` "alterada", sem valor). Linhas antigas: tudo null. Tentativas de login ficam na trilha (LOGIN, LOGIN_FAILED, LOGIN_BLOCKED), com o usuário digitado e nunca a senha
 
 **Exportação CSV** — `POST /api/admin/export/:dataset` (corpo JSON; GET com query também existe) (planilha `;` com BOM, abre no Excel; cada exportação vai para a auditoria como "Exportou")
@@ -414,13 +451,18 @@ photoGallery: { id, url, caption }[], instructors: CourseInstructor[]
 **Financeiro (admin)** — gated por `*_FINANCE`; valor sempre em centavos (Int)
 - `GET /api/admin/finance/categories` (?all=true inclui inativas) · `POST` · `PATCH /:id` · `DELETE /:id`
 - `GET /api/admin/finance/accounts` (caixas; ?all=true) · `POST` · `PATCH /:id` · `DELETE /:id`
-- `GET /api/admin/finance/transactions` — paginado + filtros (from, to, type, categoryId, accountId, search); `totals: { incomeCents, expenseCents }` de todos os filtrados (não só a página; sem transferências nem "só nota", como no summary)
+- `GET /api/admin/finance/transactions` — paginado + filtros (from, to, type, categoryId, accountId, method, search); `totals: { incomeCents, expenseCents }` de todos os filtrados (não só a página; sem transferências nem "só nota", como no summary)
 - `GET /api/admin/finance/transactions/export` — CSV (respeita filtros)
 - `POST /api/admin/finance/transactions` · `PATCH /:id` · `DELETE /:id`
 - `POST /api/admin/finance/transfers` — transferência entre caixas (2 lançamentos ligados)
 - `POST /api/admin/finance/transactions/:id/attachments` — comprovante (multipart)
 - `GET /api/admin/finance/attachments/:id` (download inline) · `DELETE /api/admin/finance/attachments/:id`
 - `GET /api/admin/finance/summary?from=&to=` — KPIs + por categoria + por mês + saldo por caixa
+- `GET /api/admin/finance/recurrences` (?all=true inclui pausadas) · `POST` · `PATCH /:id` · `DELETE /:id` (só o molde; lançamentos ficam)
+- `POST /api/admin/finance/recurrences/generate` → `{ created }` — cria os lançamentos que faltam até o mês atual (idempotente)
+- `GET /api/admin/finance/payment-methods` (?all=true) · `POST` `{ name }` · `PATCH /:id` · `DELETE /:id` — nome em caixa alta, único
+- `GET /api/admin/finance/closings?accountId&year` · `GET /closings/preview?accountId&month` (abertura, entradas, saídas, esperado, diferença)
+- `POST /api/admin/finance/closings` `{ accountId, month, countedBalanceCents, notes? }` (esperado recalculado no servidor) · `DELETE /:id` (reabrir)
 
 **Notificações (admin)** — sino do painel; pendências conforme as permissões de quem está logado
 - `GET /api/admin/notifications` — `{ unreadCount, pendingCount, events: [{ id, type, title, body, link, createdAt, read }], pending: [{ type, title, body, count, link, severity: info|warning }] }` (avisos dos últimos 30 dias)
@@ -451,9 +493,16 @@ photoGallery: { id, url, caption }[], instructors: CourseInstructor[]
 - **Página do curso** (`/cursos/$id`): prazo de inscrição vale até o fim do dia em Brasília, ou até a hora quando o painel informou (`registrationDeadlineTime`, "HH:MM"; 00:00/null = dia inteiro; a página mostra "Inscrições até DD/MM/AAAA às HH:MM") e o curso aceita inscrição até o último dia; status `IN_PROGRESS`, curso terminado, prazo vencido ou lotado desligam "Inscrever-se" com o motivo — regra em `utils/course-status.ts`, a mesma do backend e do card. "Não existe" só com 404; outra falha mostra "Tentar de novo". No celular há barra presa ao pé (sticky) com preço e botão. CPF é conferido (dígitos) antes de seguir; formulário com algo digitado não fecha tocando fora/Esc (o X pede confirmação); menor de idade ganha link do `/termo-autorizacao-menor.pdf`. Depois de inscrever (ou se já estava inscrito, 409 "User already registered…" vira tela amigável): resumo, "Adicionar à agenda" (.ics + Google Agenda), "Enviar para meu WhatsApp" e telefone do sindicato.
 - **Home**: os números (associados, cursos realizados, anos, alunos) saíram. As galerias de fotos (História do Sindicato, FAEP, Patrulha Rural) ficam só na página Sobre (#galeria) — o usuário pediu para NÃO ter seção de galerias na home.
 - **Configurações do site** (`/admin/configuracoes`): centraliza o que é do site público — Dados do sindicato (telefone, e-mail, endereço, horário, busca do mapa e texto do Sobre; usados no rodapé, Contato, Sobre e convênios via `useOrgInfo`), Redes sociais, Galerias, Parceiros da home (adicionar empresa, logo, link, ordem, tirar) e Contatos públicos ("Nossa Equipe": qualquer pessoa do cadastro, com cargo e ordem). Permissões: Dados/Redes/Galerias `*_BANNER`; Parceiros e Contatos `*_USER`. A empresa não tem mais aba Parceria e o diálogo de admin não marca mais contato público — ambos apontam para cá.
+- **Cadastros repetidos** (item 42): a inscrição pública em curso só acha a pessoa pelo CPF, então quem já estava cadastrado sem CPF ganha um segundo cadastro. Em `/admin/usuarios` (aba Associados) o botão "Possíveis duplicados" lista os grupos (mesmo nome, telefone ou e-mail, com pelo menos um sem CPF) com atalho "Juntar"; no detalhe da pessoa, "Juntar cadastros" (DELETE_USER) abre o mesmo diálogo com PersonPicker. O diálogo compara os dois lado a lado (CPF, e-mail, telefone, criado em, nº de inscrições/empresas/propriedades/relações), deixa escolher qual fica e avisa o que vai ser movido. O backend faz tudo numa transação: inscrições (repetida no mesmo curso é cancelada), vínculos com empresas (repetido mantém o título do que fica), propriedades, relações, Unimed, contato público, instrutor e login; campos vazios do que fica são preenchidos com os do outro; o removido vira excluído (nunca apagado). Recusa CPFs diferentes e os dois com login (409).
 - **Convênios**: cada convênio ativo é um item próprio no menu do header público (entre Notícias e Sobre; sem submenu — pedido do usuário, são poucos); cada um tem página em `/convenios/$slug` (tabela de valores por faixa, documentos para adesão, destaques e texto). Conteúdo 100% editável em `/admin/convenios` (`ConvenioEditor` + `ConvenioPageView` compartilhado com a pré-visualização). Hooks em `useConvenios.ts`. Unimed semeado com os dados da página antiga (`ruraltr.com.br/pgs/print_unimed.php`). Regras com `UPDATE_BANNER` receberam as permissões `*_CONVENIO` na migration.
 - **Financeiro** (admin): lançamentos de caixa (valor em centavos Int), categorias, dashboard, comprovantes (anexo em Bytes no banco), export CSV, multi-caixa e transferência entre caixas, relatório PDF do período. Gated por `READ/CREATE/UPDATE/DELETE_FINANCE`. Filtros dos lançamentos vivem na URL (search params). Aba Lançamentos: totais (Entradas, Saídas, Saldo) dos filtros atuais vindos do backend (`totals`); "Registrar e novo" (mantém data/tipo/categoria/caixa/método); "Repetir" por linha (novo lançamento copiado, data de hoje, sem comprovantes nem números da nota); remover comprovante pede confirmação.
+- **Recorrentes** (set/2026): aba "Recorrentes" do Financeiro com o molde do lançamento que se repete todo mês (descrição, valor, dia 1–31, primeiro/último mês, categoria, caixa, forma). Ao abrir a tela, o backend cria os lançamentos que faltam até o mês atual — idempotente, cada mês entra uma vez só; mês mais curto que o dia usa o último dia dele. Lançamento gerado mostra o selo "Recorrente"; excluir a recorrência não apaga o que já foi lançado. Hooks em `useFinance.ts`, componentes em `src/components/financeiro/`, helpers de mês em `src/lib/finance-month.ts`.
+- **Forma de pagamento** vira lista cadastrável (`FinancePaymentMethod`): select no lançamento e na recorrência, com "+ Nova forma de pagamento" (CREATE_FINANCE). O lançamento continua guardando o texto. Filtro "Forma" na lista de lançamentos (na URL como `pm`) e no CSV.
+- **Fechamento mensal**: aba "Fechamento" — escolhe caixa + mês, mostra saldo anterior, entradas, saídas e saldo esperado, recebe o saldo contado, destaca a diferença em vermelho quando não bate e guarda o fechamento (um por caixa/mês). Histórico do ano com opção de reabrir (DELETE_FINANCE).
+- **Notícias — agendamento e link** (set/2026): ao publicar dá para escolher "Publicar agora" ou "Agendar para" (data + hora de Brasília, `publishAt`); no site a notícia só aparece depois da hora marcada (o link direto dá 404 até lá) e o cartão do painel mostra o selo "Agendada para DD/MM/AAAA HH:MM". Notícia no ar ganha "Ver no site" e "Copiar link". A listagem tem busca por título e filtro Todas / Publicadas / Agendadas / Não publicadas. Regras puras em `lib/news-schedule.ts`.
+- **Eventos no site** (set/2026): no `BookingDialog` o evento (nunca a reunião) tem a opção "Mostrar no site" + "Texto do evento no site"; a agenda marca esses eventos com o selo "No site". A página pública `/eventos` lista os eventos que ainda não terminaram, agrupados por mês, com data, horário e sala; há item "Eventos" no menu (depois de Cursos) e a faixa "Próximos eventos" na home, que só aparece quando há pelo menos um.
 - **Agenda das salas** (`/admin/agenda`, set/2026): semana seg–dom (7 colunas em tela larga, um cartão por dia no celular) com cursos, eventos e reuniões; item de vários dias aparece em cada dia; selo com texto e cor por tipo; Hoje / semana anterior / próxima, filtro de sala e de tipo na URL. Curso abre `/admin/cursos?curso=<id>`; reserva abre o `BookingDialog` (Tipo, Título, Sala, Data, Início/Término, "Termina em outro dia", responsável do cadastro ou nome digitado, descrição, repetir toda semana/todo mês até uma data — só ao criar). 409 (sala ocupada) aparece dentro do diálogo. Reserva de uma repetição: editar muda só a data; excluir pergunta "Só esta data" / "Esta e as próximas". Visão Lista: só eventos/reuniões da semana, busca, Editar/Excluir e exportar CSV. Ao editar, campos opcionais vazios vão como `null`. Item "Agenda das salas" na barra lateral (depois de Cursos) e na paleta Ctrl+K.
+- **Unimed** (set/2026): no formulário, tipo de movimento e grau de dependência viraram select de lista fixa (`lib/unimed-options.ts`) — cadastro antigo com texto fora da lista continua aparecendo como "(valor antigo)" e é aceito pelo backend ao salvar o mesmo registro; CNS com máscara "000 0000 0000 0000" (15 dígitos, gravado só com dígitos); o titular vinculado mostra o nome da pessoa (era "Usuário vinculado"); as ações da linha viraram um menu "Ações" com rótulos escritos (ícone sozinho não se explica no toque). Plano segue texto livre (o legado só tinha o nome/registro ANS do plano, sem lista). Ficha/Termo/Contrato agora baixam por `lib/unimed-docs.ts`, compartilhado com a aba Unimed da ficha da pessoa (`components/unimed/PersonUnimedTab.tsx`).
 - Deploy em produção via Docker (Dockerfile + docker-compose.prod.yml; servidor Node/Fastify em `server/index.mjs`).
 - **Conexão fraca / site público (set/2026)**: consultas repetem até 2x em falha de rede/5xx; home, listas, cotações e notícia mostram "Não foi possível carregar" + "Tentar de novo" (nunca "nenhum curso" quando a API falhou; notícia só diz "não existe" em 404); 404/erro/carregamento em português no router; cards de curso usam `coverImageThumb` (cursos antigos: capa inteira) e descrição sem markdown; faixa de cotações parada e rolável no toque; botão flutuante do WhatsApp; alvos de toque de 44px no menu e chamadas do site.
 

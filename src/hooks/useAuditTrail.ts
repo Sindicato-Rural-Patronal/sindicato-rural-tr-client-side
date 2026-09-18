@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { apiFetch } from '@/lib/api'
 import type { PaginatedResponse } from '@/hooks/useAdmin'
 import type { AuditChange } from '@/lib/audit-fields'
@@ -54,5 +54,43 @@ export function useAuditTrail(params: AuditTrailFilters = {}, opts: { enabled?: 
     queryKey: ['admin', 'audit-logs', page, limit, action, entity, actorId, ip, from, to, q],
     queryFn: () => apiFetch(`/admin/audit-logs?${search}`).then(r => r.json()),
     enabled: opts.enabled ?? true,
+  })
+}
+
+// Configurações da trilha: por quanto tempo os registros ficam guardados.
+// Ver exige READ_AUDIT; mudar exige UPDATE_AUDIT.
+
+export type AuditSettings = {
+  /** 0 = guardar para sempre. */
+  retentionDays: number
+  /** Opções oferecidas pelo backend (0, 90, 180, 365, 730). */
+  options: number[]
+  /** Registro mais antigo guardado (null = trilha vazia). */
+  oldestAt: string | null
+  total: number
+  /** Só na resposta do PATCH: quantas linhas a mudança apagou. */
+  deleted?: number
+}
+
+export function useAuditSettings(opts: { enabled?: boolean } = {}) {
+  return useQuery<AuditSettings>({
+    queryKey: ['admin', 'audit-settings'],
+    queryFn: () => apiFetch('/admin/audit-settings').then(r => r.json()),
+    enabled: opts.enabled ?? true,
+  })
+}
+
+export function useUpdateAuditRetention() {
+  const qc = useQueryClient()
+  return useMutation<AuditSettings, Error, number>({
+    mutationFn: (retentionDays: number) =>
+      apiFetch('/admin/audit-settings', {
+        method: 'PATCH',
+        body: JSON.stringify({ retentionDays }),
+      }).then(r => r.json()),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['admin', 'audit-settings'] })
+      qc.invalidateQueries({ queryKey: ['admin', 'audit-logs'] })
+    },
   })
 }

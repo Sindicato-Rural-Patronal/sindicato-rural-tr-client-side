@@ -8,7 +8,7 @@ import {
   useCreateFinanceTransaction, useUpdateFinanceTransaction, useDeleteFinanceTransaction,
   useCreateFinanceCategory, useUpdateFinanceCategory, useDeleteFinanceCategory,
   useFinanceAccounts, useCreateFinanceAccount, useUpdateFinanceAccount, useDeleteFinanceAccount,
-  useCreateFinanceTransfer, fetchFinanceTransactionsForRange,
+  useCreateFinanceTransfer, fetchFinanceTransactionsForRange, useGenerateFinanceRecurrences,
   useUploadFinanceAttachment, useDeleteFinanceAttachment, openFinanceAttachment, exportFinanceTransactions,
   type FinanceType, type FinanceCategory, type FinanceAccount, type FinanceTransaction, type TransactionFilters, type Empenho,
   type FinanceAttachment,
@@ -42,8 +42,11 @@ import { NativeSelect } from '@/components/ui/native-select'
 import { Pagination } from '@/components/ui/pagination'
 import { useDebouncedValue } from '@/hooks/useDebouncedValue'
 import { useCrudDialog } from '@/hooks/useCrudDialog'
+import { RecurringTab } from '@/components/financeiro/RecurringTab'
+import { ClosingTab } from '@/components/financeiro/ClosingTab'
+import { PaymentMethodSelect } from '@/components/financeiro/PaymentMethodSelect'
 
-type FinanceTab = 'dashboard' | 'lancamentos' | 'categorias' | 'caixas'
+type FinanceTab = 'dashboard' | 'lancamentos' | 'recorrentes' | 'categorias' | 'caixas' | 'fechamento'
 type FinanceSearch = {
   tab: FinanceTab
   from?: string
@@ -51,10 +54,12 @@ type FinanceSearch = {
   fType?: FinanceType
   cat?: string
   acc?: string
+  /** Filtro por forma de pagamento (texto do lançamento). */
+  pm?: string
   q?: string
   page?: number
 }
-const TABS: FinanceTab[] = ['dashboard', 'lancamentos', 'categorias', 'caixas']
+const TABS: FinanceTab[] = ['dashboard', 'lancamentos', 'recorrentes', 'categorias', 'caixas', 'fechamento']
 function str(v: unknown): string | undefined {
   return typeof v === 'string' && v.trim() ? v : undefined
 }
@@ -71,6 +76,7 @@ export const Route = createFileRoute('/_admin/admin/financeiro/')({
       fType: s.fType === 'IN' || s.fType === 'OUT' ? s.fType : undefined,
       cat: str(s.cat),
       acc: str(s.acc),
+      pm: str(s.pm),
       q: str(s.q),
       page: Number.isFinite(page) && page > 1 ? page : undefined,
     }
@@ -112,6 +118,31 @@ function RouteComponent() {
   const setSearch = (patch: Partial<FinanceSearch>) =>
     navigate({ search: prev => ({ ...prev, ...patch }), replace: true })
 
+  // Lançamentos recorrentes: ao abrir a tela, o backend cria os que faltam até o
+  // mês atual. É idempotente, então rodar de novo não duplica nada — mas basta
+  // uma vez por visita, e só quem pode lançar dispara.
+  const generateRecurrences = useGenerateFinanceRecurrences()
+  const generated = useRef(false)
+  const canCreateFinance = !permLoading && can('CREATE_FINANCE')
+  const runGenerate = generateRecurrences.mutate
+  useEffect(() => {
+    if (!canCreateFinance || generated.current) return
+    generated.current = true
+    runGenerate(undefined, {
+      onSuccess: r => {
+        if (r.created > 0) {
+          toast.success(
+            r.created === 1
+              ? '1 lançamento recorrente foi criado automaticamente.'
+              : `${r.created} lançamentos recorrentes foram criados automaticamente.`,
+          )
+        }
+      },
+      // Falha silenciosa: a tela do Financeiro continua servindo normalmente.
+      onError: () => {},
+    })
+  }, [canCreateFinance, runGenerate])
+
   if (!permLoading && !can('READ_FINANCE')) {
     return <NoPermission message="Você não tem permissão para ver o Financeiro." />
   }
@@ -126,24 +157,32 @@ function RouteComponent() {
       </div>
 
       <Tabs value={search.tab} onValueChange={v => setSearch({ tab: v as FinanceTab })}>
-        <TabsList>
+        <TabsList className="flex-wrap">
           <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
           <TabsTrigger value="lancamentos">Lançamentos</TabsTrigger>
+          <TabsTrigger value="recorrentes">Recorrentes</TabsTrigger>
           <TabsTrigger value="categorias">Categorias</TabsTrigger>
           <TabsTrigger value="caixas">Caixas</TabsTrigger>
+          <TabsTrigger value="fechamento">Fechamento</TabsTrigger>
         </TabsList>
 
         <TabsContent value="dashboard" className="mt-6">
-          <DashboardTab enabled={enabled} onDrill={patch => setSearch({ tab: 'lancamentos', page: undefined, cat: undefined, acc: undefined, q: undefined, ...patch })} />
+          <DashboardTab enabled={enabled} onDrill={patch => setSearch({ tab: 'lancamentos', page: undefined, cat: undefined, acc: undefined, pm: undefined, q: undefined, ...patch })} />
         </TabsContent>
         <TabsContent value="lancamentos" className="mt-6">
           <TransactionsTab enabled={enabled} search={search} setSearch={setSearch} canCreate={can('CREATE_FINANCE')} canUpdate={can('UPDATE_FINANCE')} canDelete={can('DELETE_FINANCE')} />
+        </TabsContent>
+        <TabsContent value="recorrentes" className="mt-6">
+          <RecurringTab enabled={enabled} canCreate={can('CREATE_FINANCE')} canUpdate={can('UPDATE_FINANCE')} canDelete={can('DELETE_FINANCE')} />
         </TabsContent>
         <TabsContent value="categorias" className="mt-6">
           <CategoriesTab enabled={enabled} canCreate={can('CREATE_FINANCE')} canUpdate={can('UPDATE_FINANCE')} canDelete={can('DELETE_FINANCE')} />
         </TabsContent>
         <TabsContent value="caixas" className="mt-6">
           <AccountsTab enabled={enabled} canCreate={can('CREATE_FINANCE')} canUpdate={can('UPDATE_FINANCE')} canDelete={can('DELETE_FINANCE')} />
+        </TabsContent>
+        <TabsContent value="fechamento" className="mt-6">
+          <ClosingTab enabled={enabled} canCreate={can('CREATE_FINANCE')} canDelete={can('DELETE_FINANCE')} />
         </TabsContent>
       </Tabs>
     </div>
@@ -553,8 +592,8 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
     page, limit: 20,
     from: search.from, to: search.to,
     type: search.fType ?? '',
-    categoryId: search.cat, accountId: search.acc, search: search.q,
-  }), [page, search.from, search.to, search.fType, search.cat, search.acc, search.q])
+    categoryId: search.cat, accountId: search.acc, method: search.pm, search: search.q,
+  }), [page, search.from, search.to, search.fType, search.cat, search.acc, search.pm, search.q])
   const { data, isLoading, isError } = useFinanceTransactions(filters, { enabled })
   const { data: categories } = useFinanceCategories({ enabled })
   const { data: accounts } = useFinanceAccounts({ enabled })
@@ -883,6 +922,16 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
               {accs.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
             </NativeSelect>
           </div>
+          <div className="flex flex-col gap-1">
+            <Label className="text-[11px] text-muted-foreground">Forma</Label>
+            <PaymentMethodSelect
+              className="h-9"
+              value={search.pm ?? ''}
+              onChange={v => setSearch({ pm: v || undefined, page: undefined })}
+              enabled={enabled}
+              emptyLabel="Todas"
+            />
+          </div>
         </div>
         <div className="flex items-center gap-2">
           <Button variant="outline" className="shrink-0" disabled={exporting || rows.length === 0} onClick={handleExport}>
@@ -941,6 +990,11 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
             </div>
             <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
               {!t.type && !t.transferId && <Badge variant="outline" className="text-muted-foreground">Nota</Badge>}
+              {t.recurringId && (
+                <Badge variant="outline" className="gap-1 text-muted-foreground" title="Criado por uma recorrência">
+                  <Repeat className="size-3" /> Recorrente
+                </Badge>
+              )}
               <span className="tabular-nums">{formatDateFromString(t.date.slice(0, 10))}</span>
               {t.category && <span className="inline-flex items-center gap-1"><span className="size-2 rounded-sm" style={{ backgroundColor: t.category.color }} />{t.category.name}</span>}
               {t.account && <span className="inline-flex items-center gap-1"><Landmark className="size-3" style={{ color: t.account.color }} />{t.account.name}</span>}
@@ -1019,6 +1073,11 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
                             : <Receipt className="size-4 shrink-0 text-muted-foreground" />}
                       {t.description}
                       {!t.type && !t.transferId && <Badge variant="outline" className="text-muted-foreground">Nota</Badge>}
+                      {t.recurringId && (
+                        <Badge variant="outline" className="gap-1 text-muted-foreground" title="Criado por uma recorrência">
+                          <Repeat className="size-3" /> Recorrente
+                        </Badge>
+                      )}
                       {t.attachments.length > 0 && (
                         <button
                           type="button"
@@ -1235,8 +1294,13 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
               </div>
             </div>
             <div className="flex flex-col gap-1.5">
-              <Label>Método</Label>
-              <Input value={form.method} onChange={e => setF('method', e.target.value)} placeholder="Ex: PIX, Dinheiro" />
+              <Label>Forma de pagamento</Label>
+              <PaymentMethodSelect
+                value={form.method}
+                onChange={v => setF('method', v)}
+                canCreate={canCreate}
+                enabled={enabled}
+              />
             </div>
             <div className="flex flex-col gap-1.5">
               <Label>Observações</Label>

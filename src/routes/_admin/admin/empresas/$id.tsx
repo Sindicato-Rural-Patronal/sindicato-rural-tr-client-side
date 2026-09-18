@@ -7,7 +7,7 @@ import { apiErrorMessage } from '@/lib/api-error-message'
 import { downloadExport, type ExportDataset, type ExportParams } from '@/lib/export'
 import { usePermissions } from '@/hooks/usePermissions'
 import {
-  useAdminCompany, useUpdateCompany, useDeleteCompany, useAddCompanyProperty, useRemoveCompanyProperty,
+  useAdminCompany, useUpdateCompany, useDeleteCompany, useAddCompanyProperty, useRemoveCompanyProperty, useUpdateCompanyProperty,
   COMPANY_TYPE_LABEL, companyDisplayName,
 } from '@/hooks/useCompanies'
 import { CompanyForm } from '@/components/cadastro/CompanyForm'
@@ -42,6 +42,7 @@ function EmpresaPage() {
   const deleteM = useDeleteCompany()
   const addProp = useAddCompanyProperty(id)
   const removeProp = useRemoveCompanyProperty(id)
+  const updateProperty = useUpdateCompanyProperty(id)
   const [tab, setTab] = useState('dados')
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [exporting, setExporting] = useState(false)
@@ -179,6 +180,8 @@ function EmpresaPage() {
             nameLabel="Nome (ex.: SEDE, FILIAL, ARMAZEM) *"
             onCreate={body => addProp.mutateAsync(body)}
             creating={addProp.isPending}
+            onUpdate={(propertyId, body) => updateProperty.mutateAsync({ propertyId, ...body })}
+            updating={updateProperty.isPending}
             onDelete={propertyId => removeProp.mutateAsync(propertyId)}
             deleting={removeProp.isPending}
             onSetPrimary={propertyId => updateM.mutateAsync({ primaryPropertyId: propertyId })}

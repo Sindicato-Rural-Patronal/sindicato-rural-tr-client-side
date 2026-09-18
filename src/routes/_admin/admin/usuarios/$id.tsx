@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import { toast } from 'sonner'
 import {
   useAdminUser, useUpdateWorker, useDeleteWorker, useUploadAvatar,
-  useUserProperties, useCreateUserProperty, useDeleteUserProperty,
+  useUserProperties, useCreateUserProperty, useDeleteUserProperty, useUpdateUserProperty,
   useUserRelations, useCreateUserRelation, useDeleteUserRelation,
   useAdminUsers,
   usePromoteInstructor, useRemoveInstructor, useUpdateInstructor,
@@ -15,6 +15,9 @@ import { useDebouncedValue } from '@/hooks/useDebouncedValue'
 import { CadproFields } from '@/components/CadproFields'
 import { PropertiesManager } from '@/components/cadastro/PropertiesManager'
 import { PersonCompanies } from '@/components/cadastro/PersonCompanies'
+import { PersonUnimedTab } from '@/components/unimed/PersonUnimedTab'
+import { MergePeopleDialog } from '@/components/cadastro/MergePeopleDialog'
+import { usePermissions } from '@/hooks/usePermissions'
 import { DeleteConfirmDialog } from '@/components/DeleteConfirmDialog'
 import { NativeSelect } from '@/components/ui/native-select'
 import { Pagination } from '@/components/ui/pagination'
@@ -32,8 +35,8 @@ import {
 } from '@/components/ui/dropdown-menu'
 import {
   AlertCircle, ArrowLeft, Camera, CheckCircle2, Save, Plus, Trash2, Building2, Eye,
-  User, FileText, Globe, Briefcase, Heart, TreePine,
-  Pencil, X, GraduationCap, ImageUp, Download, Loader2,
+  User, FileText, Globe, Briefcase, Heart, HeartPulse, TreePine,
+  Pencil, X, GraduationCap, ImageUp, Download, Loader2, Users,
 } from 'lucide-react'
 import { maskCPF, maskPhone, maskRG, maskCNH, maskMoney } from '@/utils/masks'
 import { AgeHint } from '@/components/AgeHint'
@@ -982,6 +985,7 @@ function PropriedadesTab({ userId }: { userId: string }) {
   const totalPages = resp ? Math.ceil(total / limit) : 1
   const createProp = useCreateUserProperty(userId)
   const deleteProp = useDeleteUserProperty(userId)
+  const updateProp = useUpdateUserProperty(userId)
   const { data: user } = useAdminUser(userId)
   const updateWorker = useUpdateWorker(userId)
 
@@ -993,6 +997,8 @@ function PropriedadesTab({ userId }: { userId: string }) {
       primaryId={user?.primaryPropertyId ?? null}
       onCreate={body => createProp.mutateAsync(body)}
       creating={createProp.isPending}
+      onUpdate={(propertyId, body) => updateProp.mutateAsync({ propertyId, ...body })}
+      updating={updateProp.isPending}
       onDelete={id => deleteProp.mutateAsync(id)}
       deleting={deleteProp.isPending}
       onSetPrimary={id => updateWorker.mutateAsync({ primaryPropertyId: id })}
@@ -1178,7 +1184,9 @@ function RouteComponent() {
   // ?completar=1 é conferido uma vez, com cadastro e propriedades carregados.
   const [completarPending, setCompletarPending] = useState(completar === 1)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [showMerge, setShowMerge] = useState(false)
   const [exporting, setExporting] = useState(false)
+  const { can } = usePermissions()
   const deleteWorker = useDeleteWorker()
   const navigate = useNavigate()
   // allowLeave do formulário de dados: excluir a pessoa sai sem o aviso de não salvo.
@@ -1296,6 +1304,19 @@ function RouteComponent() {
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
+          {/* Mesma pessoa cadastrada duas vezes (ver "Possíveis duplicados" na lista). */}
+          {can('DELETE_USER') && (
+            <Button
+              size="sm"
+              variant="outline"
+              className="gap-1.5"
+              onClick={() => setShowMerge(true)}
+              title="Juntar com outro cadastro"
+            >
+              <Users className="size-3.5" />
+              <span className="hidden sm:inline">Juntar cadastros</span>
+            </Button>
+          )}
           <Button
             size="sm"
             variant="outline"
@@ -1324,6 +1345,9 @@ function RouteComponent() {
               <span className="ml-1 rounded-full bg-muted px-1.5 text-[10px]">{user.companyMemberships!.length}</span>
             )}
           </TabsTrigger>
+          <TabsTrigger value="unimed">
+            <HeartPulse className="size-3.5 mr-1.5" /> Unimed
+          </TabsTrigger>
           <TabsTrigger value="relacoes">
             <Heart className="size-3.5 mr-1.5" /> Relações
             {relationsTotal > 0 && (
@@ -1350,10 +1374,24 @@ function RouteComponent() {
         <TabsContent value="empresas">
           <PersonCompanies userId={id} personName={user.name} memberships={user.companyMemberships ?? []} />
         </TabsContent>
+        <TabsContent value="unimed">
+          <PersonUnimedTab userDataId={id} />
+        </TabsContent>
         <TabsContent value="relacoes">
           <RelacoesTab userId={id} />
         </TabsContent>
       </Tabs>
+
+      <MergePeopleDialog
+        open={showMerge}
+        onOpenChange={setShowMerge}
+        person={{ id, name: user.name }}
+        onMerged={keepId => {
+          // Se este cadastro foi o removido, a tela passa para o que ficou.
+          allowLeaveRef.current?.()
+          if (keepId !== id) navigate({ to: '/admin/usuarios/$id', params: { id: keepId } })
+        }}
+      />
 
       <DeleteConfirmDialog
         open={showDeleteConfirm}

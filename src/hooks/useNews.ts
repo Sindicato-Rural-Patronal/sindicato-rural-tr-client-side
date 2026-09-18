@@ -9,6 +9,8 @@ export type CreateNewsBody = {
   summary?: string
   status?: 'PUBLISHED' | 'UNPUBLISHED'
   publishedAt?: string
+  /** Agendamento (hora de parede de Brasília com Z); null = publicar agora. */
+  publishAt?: string | null
 }
 
 export type UpdateNewsBody = Partial<CreateNewsBody>
@@ -24,19 +26,25 @@ export function useNews(params: { page?: number; limit?: number } = {}) {
   })
 }
 
+/** PUBLISHED = já no ar; SCHEDULED = agendada para depois; UNPUBLISHED = rascunho. */
+export type AdminNewsStatusFilter = 'PUBLISHED' | 'SCHEDULED' | 'UNPUBLISHED'
+
 export type AdminNewsFilters = {
   page?: number
   limit?: number
-  status?: 'PUBLISHED' | 'UNPUBLISHED'
+  status?: AdminNewsStatusFilter
+  /** Busca por título. */
+  search?: string
 }
 
 export function useAdminNews(filters: AdminNewsFilters = {}) {
-  const { page = 1, limit = 20, status } = filters
+  const { page = 1, limit = 20, status, search } = filters
   const params = new URLSearchParams({ page: String(page), limit: String(limit) })
   if (status) params.set('status', status)
+  if (search) params.set('search', search)
 
   return useQuery<PaginatedResponse<News>>({
-    queryKey: ['admin', 'news', page, limit, status ?? ''],
+    queryKey: ['admin', 'news', page, limit, status ?? '', search ?? ''],
     queryFn: () => apiFetch(`/admin/news?${params}`).then(r => r.json()),
   })
 }

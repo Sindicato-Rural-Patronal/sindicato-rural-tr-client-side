@@ -29,6 +29,7 @@ export function PublicHeader() {
   const links = [
     { href: '/', label: t('nav.home') },
     { href: '/cursos', label: t('nav.courses') },
+    { href: '/eventos', label: t('nav.events') },
     { href: '/noticias', label: t('nav.news') },
     ...(convenios ?? []).map(c => ({ href: `/convenios/${c.slug}`, label: c.name })),
     { href: '/sobre', label: t('nav.about') },

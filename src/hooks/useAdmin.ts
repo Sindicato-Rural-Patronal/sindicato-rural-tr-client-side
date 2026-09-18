@@ -575,6 +575,13 @@ export type CreatePropertyBody = {
   address: UpdateUserAddressBody & { type: 'URBAN' | 'RURAL' }
 }
 
+/** Edição: só o que vier muda (campo de texto vazio limpa o que estava gravado). */
+export type UpdatePropertyBody = {
+  name?: string
+  registration?: string | null
+  address?: Partial<UpdateUserAddressBody> & { type?: 'URBAN' | 'RURAL' }
+}
+
 export function useUserProperties(userId: string, params: { page?: number; limit?: number } = {}) {
   const { page = 1, limit = 10 } = params
   return useQuery<PaginatedResponse<UserProperty>>({
@@ -591,6 +598,21 @@ export function useCreateUserProperty(userId: string) {
       apiFetch(`/admin/users/${userId}/properties`, { method: 'POST', body: JSON.stringify(body) }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin', 'users', userId, 'properties'] })
+    },
+  })
+}
+
+export function useUpdateUserProperty(userId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ propertyId, ...body }: UpdatePropertyBody & { propertyId: string }) =>
+      apiFetch(`/admin/users/${userId}/properties/${propertyId}`, {
+        method: 'PATCH',
+        body: JSON.stringify(body),
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'users', userId, 'properties'] })
+      queryClient.invalidateQueries({ queryKey: ['admin', 'users', userId] })
     },
   })
 }

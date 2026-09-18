@@ -2,22 +2,23 @@ import { createFileRoute } from '@tanstack/react-router'
 import { useState } from 'react'
 import { toast } from 'sonner'
 import {
-  HeartPulse, Plus, Pencil, Trash2, Search, User, X, Receipt, ScrollText, FileSignature, Loader2, Download,
+  HeartPulse, Plus, Pencil, Trash2, Search, User, X, Receipt, ScrollText, FileSignature, Loader2, Download, MoreHorizontal,
 } from 'lucide-react'
 import { requirePermission } from '@/lib/auth-guard'
-import { apiFetch } from '@/lib/api'
 import { apiErrorMessage } from '@/lib/api-error-message'
 import { downloadExport } from '@/lib/export'
-import { downloadFichaUnimed } from '@/lib/unimed-ficha-pdf'
-import { downloadTermoUnimed } from '@/lib/unimed-termo-pdf'
-import { downloadContratoUnimed } from '@/lib/unimed-contrato-pdf'
+import { baixarFichaUnimed, baixarTermoUnimed, baixarContratoUnimed } from '@/lib/unimed-docs'
+import {
+  UNIMED_MOVEMENT_TYPES, UNIMED_DEPENDENCY_DEGREES, unimedOptionsWith,
+} from '@/lib/unimed-options'
 import { upperNoAccents } from '@/utils/text-format'
 import { formatDateFromString } from '@/utils/format-data-from-string'
-import { maskCPF } from '@/utils/masks'
+import { maskCPF, maskCNS, unmaskDigits } from '@/utils/masks'
 import { STICKY_ACTIONS_CELL, STICKY_ACTIONS_ROW } from '@/lib/table-sticky-actions'
 import { useDebouncedValue } from '@/hooks/useDebouncedValue'
 import { PersonPicker, type PickedPerson } from '@/components/PersonPicker'
 import { useRowSelection } from '@/hooks/useRowSelection'
+import { useAdminUser } from '@/hooks/useAdmin'
 import {
   useUnimedList, useUnimed, useCreateUnimed, useUpdateUnimed, useDeleteUnimed,
   type UnimedRow, type UnimedDetail, type UnimedFields,
@@ -26,6 +27,10 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
+import { NativeSelect } from '@/components/ui/native-select'
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
   Table, TableHeader, TableBody, TableRow, TableHead, TableCell,
@@ -49,12 +54,17 @@ export const Route = createFileRoute('/_admin/admin/unimed')({
 // A busca é o PersonPicker compartilhado (oferece cadastrar pessoa nova em outra aba).
 type PickedUser = PickedPerson
 
-function LinkedUser({ user, onClear }: { user: PickedUser; onClear?: () => void }) {
+function LinkedUser({ user, onClear, fallback = 'Usuário vinculado' }: {
+  user: PickedUser
+  onClear?: () => void
+  /** Texto enquanto o nome não chegou (a API do convênio devolve só o id do titular). */
+  fallback?: string
+}) {
   return (
     <div className="flex items-center justify-between rounded-md border border-border bg-muted/40 px-3 py-2 text-sm">
       <span className="inline-flex items-center gap-2 text-muted-foreground min-w-0">
         <User className="size-4 shrink-0" />
-        <strong className="text-foreground truncate">{user.name || 'Usuário vinculado'}</strong>
+        <strong className="text-foreground truncate">{user.name || fallback}</strong>
         {user.cpf && <span className="shrink-0 text-xs text-muted-foreground">{maskCPF(user.cpf)}</span>}
       </span>
       {onClear && (
@@ -63,6 +73,21 @@ function LinkedUser({ user, onClear }: { user: PickedUser; onClear?: () => void 
         </Button>
       )}
     </div>
+  )
+}
+
+/**
+ * Titular já gravado: o convênio guarda só o id, então busca o nome da pessoa
+ * para o card não ficar com o genérico "Usuário vinculado".
+ */
+function LinkedTitular({ id, onClear }: { id: string; onClear: () => void }) {
+  const { data, isLoading } = useAdminUser(id)
+  return (
+    <LinkedUser
+      user={{ id, name: data?.name ?? '', cpf: data?.cpf ?? null }}
+      onClear={onClear}
+      fallback={isLoading ? 'Carregando…' : 'Titular vinculado'}
+    />
   )
 }
 
@@ -93,7 +118,7 @@ function toForm(d: UnimedDetail): UnimedForm {
     tipoMovimento: d.tipoMovimento ?? '',
     tipoDependente: d.tipoDependente ?? '',
     grauDependencia: d.grauDependencia ?? '',
-    cns: d.cns ?? '',
+    cns: maskCNS(d.cns ?? ''),
     nomeMae: d.nomeMae ?? '',
     profissao: d.profissao ?? '',
     plano: d.plano ?? '',
@@ -111,7 +136,7 @@ function formToFields(form: UnimedForm, titularId: string | null): UnimedFields 
     tipoMovimento: s(form.tipoMovimento),
     tipoDependente: s(form.tipoDependente),
     grauDependencia: s(form.grauDependencia),
-    cns: s(form.cns),
+    cns: unmaskDigits(form.cns) || null,
     nomeMae: s(form.nomeMae),
     profissao: s(form.profissao),
     plano: s(form.plano),
@@ -190,6 +215,11 @@ function UnimedFormDialog({ open, editId, onClose }: {
     setError(null)
     if (!isEdit && !beneficiary) {
       setError('Selecione o usuário beneficiário.')
+      return
+    }
+    const cnsDigits = unmaskDigits(form.cns)
+    if (cnsDigits && cnsDigits.length !== 15) {
+      setError('O CNS precisa ter 15 dígitos.')
       return
     }
     const fields = formToFields(form, titular?.id ?? null)
@@ -271,16 +301,34 @@ function UnimedFormDialog({ open, editId, onClose }: {
                 <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Dependência e movimento</h4>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="flex flex-col gap-1.5">
-                    <Label>Tipo de movimento</Label>
-                    <Input value={form.tipoMovimento} onChange={e => setUpper('tipoMovimento', e.target.value)} />
+                    <Label htmlFor="unimed-tipo-movimento">Tipo de movimento</Label>
+                    <NativeSelect
+                      id="unimed-tipo-movimento"
+                      value={form.tipoMovimento}
+                      onChange={e => setF('tipoMovimento', e.target.value)}
+                    >
+                      <option value="">Selecione…</option>
+                      {unimedOptionsWith(UNIMED_MOVEMENT_TYPES, form.tipoMovimento).map(o => (
+                        <option key={o.value} value={o.value}>{o.label}</option>
+                      ))}
+                    </NativeSelect>
                   </div>
                   <div className="flex flex-col gap-1.5">
                     <Label>Tipo de dependente</Label>
                     <Input value={form.tipoDependente} onChange={e => setUpper('tipoDependente', e.target.value)} />
                   </div>
                   <div className="flex flex-col gap-1.5">
-                    <Label>Grau de dependência</Label>
-                    <Input value={form.grauDependencia} onChange={e => setUpper('grauDependencia', e.target.value)} />
+                    <Label htmlFor="unimed-grau">Grau de dependência</Label>
+                    <NativeSelect
+                      id="unimed-grau"
+                      value={form.grauDependencia}
+                      onChange={e => setF('grauDependencia', e.target.value)}
+                    >
+                      <option value="">Selecione…</option>
+                      {unimedOptionsWith(UNIMED_DEPENDENCY_DEGREES, form.grauDependencia).map(o => (
+                        <option key={o.value} value={o.value}>{o.label}</option>
+                      ))}
+                    </NativeSelect>
                   </div>
                   <div className="flex flex-col gap-1.5">
                     <Label>Data de adesão</Label>
@@ -290,7 +338,9 @@ function UnimedFormDialog({ open, editId, onClose }: {
                 <div className="flex flex-col gap-1.5">
                   <Label htmlFor="unimed-titular">Titular da família</Label>
                   {titular ? (
-                    <LinkedUser user={titular} onClear={() => setTitular(null)} />
+                    titular.name
+                      ? <LinkedUser user={titular} onClear={() => setTitular(null)} />
+                      : <LinkedTitular id={titular.id} onClear={() => setTitular(null)} />
                   ) : (
                     <PersonPicker id="unimed-titular" onPick={setTitular} limit={6} placeholder="Vincular o titular (nome, e-mail ou CPF)…" />
                   )}
@@ -302,8 +352,15 @@ function UnimedFormDialog({ open, editId, onClose }: {
                 <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Dados</h4>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="flex flex-col gap-1.5">
-                    <Label>CNS</Label>
-                    <Input value={form.cns} onChange={e => setF('cns', e.target.value)} />
+                    <Label htmlFor="unimed-cns">CNS</Label>
+                    <Input
+                      id="unimed-cns"
+                      inputMode="numeric"
+                      placeholder="000 0000 0000 0000"
+                      value={form.cns}
+                      onChange={e => setF('cns', maskCNS(e.target.value))}
+                    />
+                    <p className="text-[11px] text-muted-foreground">Cartão Nacional de Saúde — 15 dígitos.</p>
                   </div>
                   <div className="flex flex-col gap-1.5">
                     <Label>Profissão</Label>
@@ -348,6 +405,20 @@ function UnimedFormDialog({ open, editId, onClose }: {
   )
 }
 
+// Documentos do beneficiário, na ordem em que aparecem no menu de ações.
+type DocKind = 'ficha' | 'termo' | 'contrato'
+type UnimedDoc = {
+  kind: DocKind
+  label: string
+  icon: typeof Receipt
+  run: (id: string) => Promise<void>
+}
+const UNIMED_DOCS: UnimedDoc[] = [
+  { kind: 'ficha', label: 'Gerar Ficha', icon: Receipt, run: baixarFichaUnimed },
+  { kind: 'termo', label: 'Gerar Termo de adesão', icon: ScrollText, run: baixarTermoUnimed },
+  { kind: 'contrato', label: 'Gerar Contrato (Ciência e Consentimento)', icon: FileSignature, run: baixarContratoUnimed },
+]
+
 // ── Tela ──────────────────────────────────────────────────────────────────────
 function RouteComponent() {
   const [searchInput, setSearchInput] = useState('')
@@ -366,9 +437,7 @@ function RouteComponent() {
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editId, setEditId] = useState<string | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<UnimedRow | null>(null)
-  const [fichaBusyId, setFichaBusyId] = useState<string | null>(null)
-  const [termoBusyId, setTermoBusyId] = useState<string | null>(null)
-  const [contratoBusyId, setContratoBusyId] = useState<string | null>(null)
+  const [docBusy, setDocBusy] = useState<{ id: string; kind: DocKind } | null>(null)
   const [exportBusyId, setExportBusyId] = useState<string | null>(null)
   const selection = useRowSelection()
 
@@ -393,51 +462,16 @@ function RouteComponent() {
     }
   }
 
-  // Busca o beneficiário completo + a pessoa (e o titular, se houver) e baixa a Ficha PDF.
-  async function gerarFicha(row: UnimedRow) {
-    setFichaBusyId(row.id)
+  // Os três documentos (Ficha, Termo e Contrato) são cópia do modelo antigo e
+  // dependem da ficha completa da pessoa — o download vive em lib/unimed-docs.
+  async function gerarDoc(row: UnimedRow, doc: UnimedDoc) {
+    setDocBusy({ id: row.id, kind: doc.kind })
     try {
-      const unimed = await apiFetch(`/admin/unimed/${row.id}`).then(r => r.json()) as UnimedDetail
-      const user = await apiFetch(`/admin/users/${unimed.userDataId}`).then(r => r.json())
-      let titularName: string | undefined
-      if (unimed.titularId) {
-        const titular = await apiFetch(`/admin/users/${unimed.titularId}`).then(r => r.json())
-        titularName = titular?.name ?? undefined
-      }
-      await downloadFichaUnimed({ unimed, user, titularName })
+      await doc.run(row.id)
     } catch (e) {
-      toast.error(apiErrorMessage(e, 'Erro ao gerar a ficha.'))
+      toast.error(apiErrorMessage(e, `Erro ao gerar o documento (${doc.label}).`))
     } finally {
-      setFichaBusyId(null)
-    }
-  }
-
-  // Busca o beneficiário completo + a pessoa e baixa o Termo de adesão PDF.
-  async function gerarTermo(row: UnimedRow) {
-    setTermoBusyId(row.id)
-    try {
-      const unimed = await apiFetch(`/admin/unimed/${row.id}`).then(r => r.json()) as UnimedDetail
-      const user = await apiFetch(`/admin/users/${unimed.userDataId}`).then(r => r.json())
-      await downloadTermoUnimed({ unimed, user })
-    } catch (e) {
-      toast.error(apiErrorMessage(e, 'Erro ao gerar o termo.'))
-    } finally {
-      setTermoBusyId(null)
-    }
-  }
-
-  // Busca o beneficiário completo + a pessoa e baixa o Termo de Ciência e
-  // Consentimento (o "Contrato" do sistema antigo) em PDF.
-  async function gerarContrato(row: UnimedRow) {
-    setContratoBusyId(row.id)
-    try {
-      const unimed = await apiFetch(`/admin/unimed/${row.id}`).then(r => r.json()) as UnimedDetail
-      const user = await apiFetch(`/admin/users/${unimed.userDataId}`).then(r => r.json())
-      await downloadContratoUnimed({ unimed, user })
-    } catch (e) {
-      toast.error(apiErrorMessage(e, 'Erro ao gerar o contrato.'))
-    } finally {
-      setContratoBusyId(null)
+      setDocBusy(null)
     }
   }
 
@@ -556,66 +590,45 @@ function RouteComponent() {
                     {r.dataAdesao ? formatDateFromString(r.dataAdesao) : '—'}
                   </TableCell>
                   <TableCell className={`text-right ${STICKY_ACTIONS_CELL}`}>
-                    <div className="flex items-center justify-end gap-1">
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="h-8 px-2"
-                        onClick={() => gerarFicha(r)}
-                        disabled={fichaBusyId === r.id}
-                        aria-label="Gerar Ficha"
-                        title="Gerar Ficha"
-                      >
-                        {fichaBusyId === r.id
-                          ? <Loader2 className="size-4 animate-spin" />
-                          : <Receipt className="size-4" />}
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="h-8 px-2"
-                        onClick={() => gerarTermo(r)}
-                        disabled={termoBusyId === r.id}
-                        aria-label="Gerar Termo"
-                        title="Gerar Termo"
-                      >
-                        {termoBusyId === r.id
-                          ? <Loader2 className="size-4 animate-spin" />
-                          : <ScrollText className="size-4" />}
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="h-8 px-2"
-                        onClick={() => gerarContrato(r)}
-                        disabled={contratoBusyId === r.id}
-                        aria-label="Gerar Contrato"
-                        title="Gerar Contrato (Termo de Ciência e Consentimento)"
-                      >
-                        {contratoBusyId === r.id
-                          ? <Loader2 className="size-4 animate-spin" />
-                          : <FileSignature className="size-4" />}
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="h-8 px-2"
-                        onClick={() => exportarLinha(r)}
-                        disabled={exportBusyId === r.id}
-                        aria-label="Exportar"
-                        title="Exportar"
-                      >
-                        {exportBusyId === r.id
-                          ? <Loader2 className="size-4 animate-spin" />
-                          : <Download className="size-4" />}
-                      </Button>
-                      <Button size="sm" variant="ghost" className="h-8 px-2" onClick={() => openEdit(r.id)} aria-label="Editar" title="Editar">
-                        <Pencil className="size-4" />
-                      </Button>
-                      <Button size="sm" variant="ghost" className="h-8 px-2 text-muted-foreground hover:text-destructive" onClick={() => setDeleteTarget(r)} aria-label="Excluir" title="Excluir">
-                        <Trash2 className="size-4" />
-                      </Button>
-                    </div>
+                    {/* Menu com rótulos escritos: os ícones sozinhos só se explicavam
+                        no hover, que não existe no celular/tablet. */}
+                    <DropdownMenu modal={false}>
+                      <DropdownMenuTrigger asChild>
+                        <Button size="sm" variant="outline" className="h-8 gap-1 px-2">
+                          {docBusy?.id === r.id || exportBusyId === r.id
+                            ? <Loader2 className="size-4 animate-spin" />
+                            : <MoreHorizontal className="size-4" />}
+                          Ações
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="w-64">
+                        {UNIMED_DOCS.map(doc => (
+                          <DropdownMenuItem
+                            key={doc.kind}
+                            onSelect={() => gerarDoc(r, doc)}
+                            disabled={docBusy !== null}
+                          >
+                            {docBusy?.id === r.id && docBusy.kind === doc.kind
+                              ? <Loader2 className="size-4 animate-spin" />
+                              : <doc.icon className="size-4" />}
+                            {doc.label}
+                          </DropdownMenuItem>
+                        ))}
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem onSelect={() => exportarLinha(r)} disabled={exportBusyId === r.id}>
+                          {exportBusyId === r.id
+                            ? <Loader2 className="size-4 animate-spin" />
+                            : <Download className="size-4" />}
+                          Exportar planilha
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onSelect={() => openEdit(r.id)}>
+                          <Pencil className="size-4" /> Editar
+                        </DropdownMenuItem>
+                        <DropdownMenuItem variant="destructive" onSelect={() => setDeleteTarget(r)}>
+                          <Trash2 className="size-4" /> Excluir
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </TableCell>
                 </TableRow>
               ))}

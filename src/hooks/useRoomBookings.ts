@@ -9,7 +9,12 @@ export type RoomBooking = {
   id: string
   type: BookingType
   title: string
+  /** Observações internas da equipe (não aparecem no site). */
   description: string | null
+  /** Evento publicado na página /eventos. */
+  publicOnSite: boolean
+  /** Texto do evento no site. */
+  publicDescription: string | null
   roomId: string
   roomName: string
   startTime: string
@@ -29,6 +34,8 @@ export type RoomScheduleItem = {
   endTime: string
   status: string | null
   seriesId: string | null
+  /** Evento publicado no site (sempre false para cursos e reuniões). */
+  publicOnSite: boolean
 }
 
 export type RoomBookingFilters = {
@@ -43,6 +50,8 @@ export type RoomBookingBody = {
   type: BookingType
   title: string
   description?: string | null
+  publicOnSite?: boolean
+  publicDescription?: string | null
   roomId: string
   startTime: string
   endTime: string

@@ -1,7 +1,12 @@
 import { cloneElement, isValidElement, useId, useState } from 'react'
 import { toast } from 'sonner'
-import { Building2, Eye, Plus, Star, Trash2, TreePine } from 'lucide-react'
-import { useCEPLookup, type CreatePropertyBody, type UserProperty } from '@/hooks/useAdmin'
+import { Building2, Eye, Pencil, Plus, Star, Trash2, TreePine } from 'lucide-react'
+import {
+  useCEPLookup,
+  type CreatePropertyBody,
+  type UpdatePropertyBody,
+  type UserProperty,
+} from '@/hooks/useAdmin'
 import { DeleteConfirmDialog } from '@/components/DeleteConfirmDialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -44,6 +49,25 @@ const emptyPropForm = (): PropForm => ({
   },
 })
 
+/** Formulário preenchido com o que já está cadastrado (edição). */
+function propToForm(prop: UserProperty): PropForm {
+  const empty = emptyPropForm()
+  const a = prop.address
+  return {
+    name: prop.name ?? '',
+    registration: prop.registration ?? '',
+    address: {
+      ...empty.address,
+      type: a?.type ?? 'URBAN',
+      street: a?.street ?? '', number: a?.number ?? '', neighborhood: a?.neighborhood ?? '',
+      city: a?.city ?? '', state: a?.state ?? '', zipCode: a?.zipCode ?? '',
+      complement: a?.complement ?? '', notes: a?.notes ?? '',
+      localityName: a?.localityName ?? '', road: a?.road ?? '',
+      km: a?.km ?? '', lot: a?.lot ?? '', section: a?.section ?? '',
+    },
+  }
+}
+
 // Liga o rótulo ao campo (leitor de tela e clique no rótulo): injeta um id no
 // filho, ou usa `htmlFor` quando o campo está dentro de um wrapper.
 function FieldRow({ label, children, htmlFor }: { label: string; children: React.ReactNode; htmlFor?: string }) {
@@ -76,6 +100,9 @@ export type PropertiesManagerProps = {
   primaryId: string | null
   onCreate: (body: CreatePropertyBody) => Promise<unknown>
   creating: boolean
+  /** Sem `onUpdate` o lápis de editar não aparece. */
+  onUpdate?: (id: string, body: UpdatePropertyBody) => Promise<unknown>
+  updating?: boolean
   onDelete: (id: string) => Promise<unknown>
   deleting: boolean
   onSetPrimary: (id: string) => Promise<unknown>
@@ -89,15 +116,44 @@ export type PropertiesManagerProps = {
 
 export function PropertiesManager({
   properties, total, loading, primaryId,
-  onCreate, creating, onDelete, deleting, onSetPrimary, settingPrimary,
+  onCreate, creating, onUpdate, updating = false, onDelete, deleting, onSetPrimary, settingPrimary,
   footer, readOnly = false, nameLabel = 'Nome da propriedade *',
 }: PropertiesManagerProps) {
   const cepLookup = useCEPLookup()
   const cepId = useId()
+  const nameId = useId()
+  const nameErrorId = useId()
   const [adding, setAdding] = useState(false)
+  // Id da propriedade em edição (o mesmo formulário serve para criar e editar).
+  const [editingId, setEditingId] = useState<string | null>(null)
   const [form, setForm] = useState<PropForm>(emptyPropForm)
+  const [nameError, setNameError] = useState<string | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<UserProperty | null>(null)
   const [detailProp, setDetailProp] = useState<UserProperty | null>(null)
+
+  const formOpen = adding || editingId !== null
+  const saving = editingId ? updating : creating
+
+  function closeForm() {
+    setAdding(false)
+    setEditingId(null)
+    setForm(emptyPropForm())
+    setNameError(null)
+  }
+
+  function startCreate() {
+    setEditingId(null)
+    setForm(emptyPropForm())
+    setNameError(null)
+    setAdding(true)
+  }
+
+  function startEdit(prop: UserProperty) {
+    setAdding(false)
+    setForm(propToForm(prop))
+    setNameError(null)
+    setEditingId(prop.id)
+  }
 
   async function setPrimary(propId: string) {
     try {
@@ -116,14 +172,15 @@ export function PropertiesManager({
     if (!form.address.zipCode) return
     try {
       const result = await cepLookup.mutateAsync(form.address.zipCode)
+      // O cadastro é todo em maiúsculas sem acento: o que vem do CEP também.
       setForm(prev => ({
         ...prev,
         address: {
           ...prev.address,
-          street: result.street ?? prev.address.street,
-          neighborhood: result.neighborhood ?? prev.address.neighborhood,
-          city: result.city ?? prev.address.city,
-          state: result.state ?? prev.address.state,
+          street: result.street ? upperNoAccents(result.street) : prev.address.street,
+          neighborhood: result.neighborhood ? upperNoAccents(result.neighborhood) : prev.address.neighborhood,
+          city: result.city ? upperNoAccents(result.city) : prev.address.city,
+          state: result.state ? result.state.toUpperCase() : prev.address.state,
         },
       }))
     } catch {
@@ -131,20 +188,33 @@ export function PropertiesManager({
     }
   }
 
-  async function handleCreate(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (!form.name.trim()) return
+    // Antes salvar sem nome não fazia nada e ninguém entendia por quê.
+    if (!form.name.trim()) {
+      setNameError('Informe o nome da propriedade/endereço.')
+      return
+    }
+    setNameError(null)
+    const editing = editingId
     try {
-      await onCreate({
-        name: form.name,
-        registration: form.registration || undefined,
-        address: form.address,
-      })
-      setForm(emptyPropForm())
-      setAdding(false)
-      toast.success('Propriedade adicionada!')
+      if (editing && onUpdate) {
+        await onUpdate(editing, {
+          name: form.name,
+          registration: form.registration || null,
+          address: form.address,
+        })
+      } else {
+        await onCreate({
+          name: form.name,
+          registration: form.registration || undefined,
+          address: form.address,
+        })
+      }
+      closeForm()
+      toast.success(editing ? 'Propriedade atualizada!' : 'Propriedade adicionada!')
     } catch (e) {
-      toast.error(apiErrorMessage(e, 'Erro ao adicionar propriedade.'))
+      toast.error(apiErrorMessage(e, editing ? 'Erro ao salvar propriedade.' : 'Erro ao adicionar propriedade.'))
     }
   }
 
@@ -167,26 +237,43 @@ export function PropertiesManager({
       <div className="flex items-center justify-between">
         <p className="text-sm text-muted-foreground">{total} propriedade(s) cadastrada(s)</p>
         {!readOnly && (
-          <Button size="sm" onClick={() => setAdding(true)}>
+          <Button size="sm" onClick={startCreate} disabled={formOpen}>
             <Plus className="size-4" /> Adicionar
           </Button>
         )}
       </div>
 
-      {!loading && total === 0 && !adding && (
+      {!loading && total === 0 && !formOpen && (
         <div className="flex flex-col items-center justify-center py-12 border-2 border-dashed rounded-lg text-center">
           <TreePine className="size-10 text-muted-foreground/30 mb-3" />
           <p className="text-sm font-medium">Nenhuma propriedade cadastrada</p>
         </div>
       )}
 
-      {adding && (
+      {formOpen && (
         <Card>
           <CardContent className="pt-4">
-            <form onSubmit={handleCreate} className="flex flex-col gap-4">
+            <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+              {editingId && (
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Editando propriedade</p>
+              )}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <FieldRow label={nameLabel}>
-                  <Input value={form.name} onChange={e => setForm(p => ({ ...p, name: upperNoAccents(e.target.value) }))} className={inp} autoFocus />
+                <FieldRow label={nameLabel} htmlFor={nameId}>
+                  <div className="flex flex-col gap-1">
+                    <Input
+                      id={nameId}
+                      value={form.name}
+                      onChange={e => {
+                        setForm(p => ({ ...p, name: upperNoAccents(e.target.value) }))
+                        if (nameError) setNameError(null)
+                      }}
+                      className={inp}
+                      autoFocus
+                      aria-invalid={!!nameError || undefined}
+                      aria-describedby={nameError ? nameErrorId : undefined}
+                    />
+                    {nameError && <p id={nameErrorId} className="text-xs text-destructive">{nameError}</p>}
+                  </div>
                 </FieldRow>
                 <FieldRow label="Matrícula">
                   <Input value={form.registration} onChange={e => setForm(p => ({ ...p, registration: e.target.value }))} className={inp} />
@@ -241,9 +328,9 @@ export function PropertiesManager({
               )}
 
               <div className="flex gap-2 justify-end">
-                <Button type="button" variant="outline" size="sm" onClick={() => { setAdding(false); setForm(emptyPropForm()) }}>Cancelar</Button>
-                <Button type="submit" size="sm" disabled={creating}>
-                  {creating ? 'Salvando...' : 'Salvar'}
+                <Button type="button" variant="outline" size="sm" onClick={closeForm} disabled={saving}>Cancelar</Button>
+                <Button type="submit" size="sm" disabled={saving}>
+                  {saving ? 'Salvando...' : 'Salvar'}
                 </Button>
               </div>
             </form>
@@ -290,6 +377,16 @@ export function PropertiesManager({
                 <Button variant="ghost" size="icon" className="size-7" onClick={() => setDetailProp(prop)} aria-label="Ver detalhes">
                   <Eye className="size-3.5" />
                 </Button>
+                {!readOnly && onUpdate && (
+                  <Button
+                    variant="ghost" size="icon" className="size-7"
+                    onClick={() => startEdit(prop)}
+                    aria-label={`Editar ${prop.name}`}
+                    title="Editar"
+                  >
+                    <Pencil className="size-3.5" />
+                  </Button>
+                )}
                 {!readOnly && (
                   <Button variant="ghost" size="icon" className="size-7 text-destructive/60 hover:text-destructive" onClick={() => setDeleteTarget(prop)} aria-label="Remover">
                     <Trash2 className="size-3.5" />
