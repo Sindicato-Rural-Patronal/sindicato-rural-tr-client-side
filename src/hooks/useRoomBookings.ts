@@ -79,13 +79,21 @@ export function useRoomBookings(filters: RoomBookingFilters, options: { enabled?
     queryKey: ['admin', 'room-bookings', filters],
     queryFn: () => apiFetch(`/admin/room-bookings?${queryString(filters)}`).then(r => asArray<RoomBooking>(r)),
     enabled: options.enabled ?? true,
+    // Digitar na busca (ou virar o dia) mantém a lista anterior na tela até a
+    // resposta chegar, em vez de piscar o esqueleto a cada letra.
+    placeholderData: previous => previous,
   })
 }
 
-export function useRoomSchedule(filters: { from: string; to: string; roomId?: string }) {
+export function useRoomSchedule(
+  filters: { from: string; to: string; roomId?: string },
+  options: { enabled?: boolean } = {},
+) {
   return useQuery<RoomScheduleItem[]>({
     queryKey: ['admin', 'room-schedule', filters],
     queryFn: () => apiFetch(`/admin/room-schedule?${queryString(filters)}`).then(r => asArray<RoomScheduleItem>(r)),
+    enabled: options.enabled ?? true,
+    placeholderData: previous => previous,
   })
 }
 

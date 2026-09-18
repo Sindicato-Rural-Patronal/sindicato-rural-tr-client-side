@@ -22,17 +22,37 @@ export function invalidateUserViews(qc: QueryClient) {
 // sidebar e guards atualizam ao vivo, sem precisar recarregar/deslogar. O
 // backend valida permissão por request, então a UI só precisa refletir.
 
+/**
+ * Números do Painel Geral. TUDO é opcional de propósito: o backend só manda o
+ * que o admin pode ver (sem READ_CONTACT não vem `unreadMessages`, e assim por
+ * diante). A tela não desenha o cartão do que não veio.
+ */
 export type DashboardStats = {
-  totalUsers: number
-  totalAdmins: number
-  courses: {
+  courses?: {
     total: number
     public: number
     private: number
     unpublished: number
+    inProgress: number
+    completed: number
   }
-  totalRegistrations: number
-  registrationsLast30Days: number
+  totalUsers?: number
+  totalAdmins?: number
+  totalRooms?: number
+  registrations?: {
+    last30Days: number
+    /** Inscrições ainda não confirmadas pela secretaria. */
+    pendingConfirmation: number
+  }
+  /** Cursos que começam nos próximos 7 dias. */
+  coursesStartingIn7Days?: number
+  unreadMessages?: number
+  /** Associações que vencem nos próximos 30 dias. */
+  membershipsExpiring30Days?: number
+  quotesToday?: {
+    launched: boolean
+    period: 'MORNING' | 'AFTERNOON' | null
+  }
 }
 
 export type Registration = {
@@ -71,6 +91,15 @@ export type PaginatedResponse<T> = {
   totalPages: number
 }
 
+/**
+ * Preferências do Painel Geral de cada admin (blocos escondidos e a ordem
+ * deles). Guardadas no próprio usuário — ver `components/dashboard/dashboard-prefs.ts`.
+ */
+export type DashboardPrefs = {
+  hidden?: string[]
+  order?: string[]
+}
+
 export type AdminMe = {
   userId: string
   userDataId: string
@@ -80,6 +109,8 @@ export type AdminMe = {
   rulesId: string
   ruleName: string
   permissions: string[]
+  /** null = nunca personalizou o painel (vale o layout padrão). */
+  dashboardPrefs?: DashboardPrefs | null
 }
 
 export function useMe() {
@@ -97,6 +128,27 @@ export function useUpdateMe() {
     mutationFn: (body: { name?: string; username?: string; password?: string }) =>
       apiFetch('/admin/me', { method: 'PATCH', body: JSON.stringify(body) }),
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'me'] })
+    },
+  })
+}
+
+/**
+ * Salva a personalização do painel (blocos escondidos/ordem) do admin logado.
+ * Atualiza ['admin','me'] na hora para a tela não "piscar" o layout antigo.
+ */
+export function useUpdateDashboardPrefs() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (dashboardPrefs: DashboardPrefs | null) =>
+      apiFetch('/admin/me/preferences', {
+        method: 'PATCH',
+        body: JSON.stringify({ dashboardPrefs }),
+      }),
+    onSuccess: (_data, dashboardPrefs) => {
+      queryClient.setQueryData<AdminMe>(['admin', 'me'], prev =>
+        prev ? { ...prev, dashboardPrefs } : prev,
+      )
       queryClient.invalidateQueries({ queryKey: ['admin', 'me'] })
     },
   })

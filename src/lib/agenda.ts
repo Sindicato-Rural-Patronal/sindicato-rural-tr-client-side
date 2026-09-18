@@ -1,4 +1,4 @@
-import type { RoomBooking, RoomBookingBody } from '@/hooks/useRoomBookings'
+import type { RoomBooking, RoomBookingBody, RoomScheduleItem } from '@/hooks/useRoomBookings'
 
 // Agenda das salas (cursos, eventos e reuniões), hoje dentro do Painel Geral.
 // Funções puras: datas "YYYY-MM-DD" e horários "de parede" — igual aos cursos,
@@ -15,6 +15,13 @@ export const KIND_LABEL: Record<ScheduleKind, string> = {
   COURSE: 'Curso',
   EVENT: 'Evento',
   MEETING: 'Reunião',
+}
+
+/** Plural de cada tipo ("Reunião" + "s" daria "Reuniãos"). */
+export const KIND_LABEL_PLURAL: Record<ScheduleKind, string> = {
+  COURSE: 'Cursos',
+  EVENT: 'Eventos',
+  MEETING: 'Reuniões',
 }
 
 /** Selo do tipo (sempre com o texto — a cor não é a única pista). */
@@ -146,14 +153,14 @@ export type BookingFormErrors = Partial<Record<
 
 const HOUR_RE = /^([01]\d|2[0-3]):[0-5]\d$/
 
-export function emptyBookingForm(date = '', roomId = ''): BookingFormValues {
+export function emptyBookingForm(date = '', roomId = '', startHour = '', endHour = ''): BookingFormValues {
   return {
     type: 'EVENT',
     title: '',
     roomId,
     date,
-    startHour: '',
-    endHour: '',
+    startHour,
+    endHour,
     multiDay: false,
     endDate: '',
     responsibleMode: 'person',
@@ -260,4 +267,285 @@ export function bookingFormToBody(values: BookingFormValues, { creating }: { cre
     body.responsibleName = freeName
   }
   return body
+}
+
+// ── Visão do dia / da semana ────────────────────────────────────────────────
+
+/** Como a agenda está sendo vista. */
+export type AgendaView = 'day' | 'week'
+
+/** Filtro de tipo da agenda ("ALL" = todos). */
+export type AgendaTypeFilter = 'ALL' | ScheduleKind
+
+/** Segunda-feira da semana de `ymd` (a semana vai de segunda a domingo). */
+export function startOfWeek(ymd: string): string {
+  const day = weekdayOf(ymd)
+  // Domingo (0) fecha a semana que começou na segunda anterior.
+  return addDays(ymd, day === 0 ? -6 : 1 - day)
+}
+
+/** Os 7 dias da semana de `ymd`, de segunda a domingo. */
+export function weekDays(ymd: string): string[] {
+  const first = startOfWeek(ymd)
+  return Array.from({ length: 7 }, (_, i) => addDays(first, i))
+}
+
+/** Período que está na tela: só o dia, ou a semana inteira. */
+export function visibleRange(ymd: string, view: AgendaView): { from: string; to: string } {
+  if (view === 'day') return { from: ymd, to: ymd }
+  const days = weekDays(ymd)
+  return { from: days[0], to: days[6] }
+}
+
+/** "05/10/2026" quando é um dia só; "05/10/2026 a 11/10/2026" no período. */
+export function rangeLabel(from: string, to: string): string {
+  return from === to ? formatDateBr(from) : `${formatDateBr(from)} a ${formatDateBr(to)}`
+}
+
+/** "2 cursos · 1 reserva" (a parte vazia some; nada marcado → null). */
+export function agendaCountLabel(courses: number, bookings: number): string | null {
+  const parts = [
+    courses > 0 ? `${courses} curso${courses > 1 ? 's' : ''}` : null,
+    bookings > 0 ? `${bookings} reserva${bookings > 1 ? 's' : ''}` : null,
+  ].filter(Boolean)
+  return parts.length ? parts.join(' · ') : null
+}
+
+/** Nome do arquivo do PDF da agenda (sem extensão). */
+export function agendaFileName(from: string, to: string): string {
+  return from === to ? `agenda-${from}` : `agenda-${from}-a-${to}`
+}
+
+// ── Itens da agenda (cursos + reservas juntos) ──────────────────────────────
+
+/** Curso ou reserva já no mesmo formato, do jeito que a tela mostra. */
+export type AgendaEntry = {
+  key: string
+  kind: ScheduleKind
+  id: string
+  title: string
+  roomId: string
+  roomName: string
+  startTime: string
+  endTime: string
+  publicOnSite: boolean
+  /** Responsável da reserva (pessoa do cadastro ou nome digitado); curso não tem. */
+  responsible: string | null
+}
+
+/** Curso da agenda das salas (GET /admin/room-schedule, kind COURSE). */
+export function courseEntry(item: RoomScheduleItem): AgendaEntry {
+  return {
+    key: `course-${item.id}`,
+    kind: 'COURSE',
+    id: item.id,
+    title: item.title,
+    roomId: item.roomId,
+    roomName: item.roomName,
+    startTime: item.startTime,
+    endTime: item.endTime,
+    publicOnSite: false,
+    responsible: null,
+  }
+}
+
+/** Reserva (GET /admin/room-bookings) com o responsável já resolvido. */
+export function bookingEntry(booking: RoomBooking): AgendaEntry {
+  return {
+    key: `booking-${booking.id}`,
+    kind: booking.type,
+    id: booking.id,
+    title: booking.title,
+    roomId: booking.roomId,
+    roomName: booking.roomName,
+    startTime: booking.startTime,
+    endTime: booking.endTime,
+    publicOnSite: booking.publicOnSite,
+    responsible: booking.responsible?.name ?? booking.responsibleName ?? null,
+  }
+}
+
+/** Cursos e reservas do período numa lista só. */
+export function agendaEntries(courses: RoomScheduleItem[], bookings: RoomBooking[]): AgendaEntry[] {
+  return [
+    ...courses.filter(c => c.kind === 'COURSE').map(courseEntry),
+    ...bookings.map(bookingEntry),
+  ]
+}
+
+const KIND_ORDER: Record<ScheduleKind, number> = { COURSE: 0, EVENT: 1, MEETING: 2 }
+
+/** Hora que ordena o item no dia: o que começou antes conta como 00:00. */
+function sortHour(item: AgendaEntry, ymd: string): string {
+  return wallDate(item.startTime) < ymd ? '00:00' : wallTime(item.startTime)
+}
+
+/** Itens que ocupam o dia (inclusive os que começaram antes), em ordem de horário. */
+export function itemsOfDay(items: AgendaEntry[], ymd: string): AgendaEntry[] {
+  return items
+    .filter(item => wallDate(item.startTime) <= ymd && lastDayOf(item) >= ymd)
+    .sort((a, b) =>
+      sortHour(a, ymd).localeCompare(sortHour(b, ymd))
+      || KIND_ORDER[a.kind] - KIND_ORDER[b.kind]
+      || a.title.localeCompare(b.title, 'pt-BR'))
+}
+
+/**
+ * Dias entre `from` e `to` ocupados por algum item — a MESMA regra para curso e
+ * reserva (ver `lastDayOf`: terminar à 00:00 não ocupa o dia seguinte). É o que
+ * marca as bolinhas do calendário, para a bolinha e a lista nunca discordarem.
+ */
+export function occupiedDays(items: AgendaItemLike[], from: string, to: string): Set<string> {
+  const days = new Set<string>()
+  for (const item of items) {
+    const start = wallDate(item.startTime)
+    const first = start < from ? from : start
+    const itemLast = lastDayOf(item)
+    const last = itemLast > to ? to : itemLast
+    for (let day = first; day <= last; day = addDays(day, 1)) days.add(day)
+  }
+  return days
+}
+
+/** Os itens de cada dia do período (dia sem nada vem com a lista vazia). */
+export function itemsByDay(items: AgendaEntry[], days: string[]): { date: string; items: AgendaEntry[] }[] {
+  return days.map(date => ({ date, items: itemsOfDay(items, date) }))
+}
+
+// ── Faixa de ocupação das salas ─────────────────────────────────────────────
+
+/** A faixa vai das 07:00 às 22:00 — o horário em que as salas são usadas. */
+export const OCCUPANCY_START_MIN = 7 * 60
+export const OCCUPANCY_END_MIN = 22 * 60
+const OCCUPANCY_SPAN = OCCUPANCY_END_MIN - OCCUPANCY_START_MIN
+const DAY_MIN = 24 * 60
+
+/** "08:30" → 510 minutos. */
+export function wallMinutes(hhmm: string): number {
+  const [h, m] = hhmm.split(':')
+  return Number(h) * 60 + Number(m)
+}
+
+/** 510 → "08:30". */
+export function minutesToWall(minutes: number): string {
+  const clamped = Math.max(0, Math.min(DAY_MIN, Math.round(minutes)))
+  return `${String(Math.floor(clamped / 60)).padStart(2, '0')}:${String(clamped % 60).padStart(2, '0')}`
+}
+
+/** Bloco ocupado na faixa de uma sala (medidas em % da faixa). */
+export type OccupancyBlock = {
+  key: string
+  kind: ScheduleKind
+  id: string
+  title: string
+  left: number
+  width: number
+  /** "08:00–12:00 · MANEJO DE PASTAGEM" (o que aparece ao passar o dedo/mouse). */
+  label: string
+  /** Começou antes das 07:00 (ou em outro dia) / termina depois das 22:00. */
+  cutBefore: boolean
+  cutAfter: boolean
+  /** Linha dentro da sala, para quando dois itens se sobrepõem. */
+  lane: number
+}
+
+export type OccupancyRow = {
+  roomId: string
+  roomName: string
+  blocks: OccupancyBlock[]
+  /** Quantas linhas a sala precisa (1 quando nada se sobrepõe). */
+  lanes: number
+  /** Itens do dia que ficam fora das 07:00–22:00 (só entram no aviso). */
+  outside: AgendaEntry[]
+}
+
+/** Minutos ocupados pelo item no dia (item de outro dia entra/sai pelas pontas). */
+function spanOfDay(item: AgendaEntry, ymd: string): { start: number; end: number } {
+  const startsBefore = wallDate(item.startTime) < ymd
+  const endsAfter = lastDayOf(item) > ymd
+  const start = startsBefore ? 0 : wallMinutes(wallTime(item.startTime))
+  let end = endsAfter ? DAY_MIN : wallMinutes(wallTime(item.endTime))
+  // Termina à meia-noite: ocupa até o fim do dia.
+  if (end <= start) end = DAY_MIN
+  return { start, end }
+}
+
+/** Uma faixa por sala com os blocos ocupados do dia. */
+export function occupancyRows(
+  items: AgendaEntry[],
+  rooms: { id: string; name: string }[],
+  ymd: string,
+): OccupancyRow[] {
+  const rows = new Map<string, OccupancyRow>()
+  for (const room of rooms) {
+    rows.set(room.id, { roomId: room.id, roomName: room.name, blocks: [], lanes: 1, outside: [] })
+  }
+  for (const item of itemsOfDay(items, ymd)) {
+    let row = rows.get(item.roomId)
+    if (!row) {
+      // Sala fora da lista (ou que ainda não carregou): mostra a linha assim mesmo.
+      row = { roomId: item.roomId, roomName: item.roomName, blocks: [], lanes: 1, outside: [] }
+      rows.set(item.roomId, row)
+    }
+    const { start, end } = spanOfDay(item, ymd)
+    const from = Math.max(start, OCCUPANCY_START_MIN)
+    const to = Math.min(end, OCCUPANCY_END_MIN)
+    if (to <= from) {
+      row.outside.push(item)
+      continue
+    }
+    const left = ((from - OCCUPANCY_START_MIN) / OCCUPANCY_SPAN) * 100
+    // Reserva curta ganha uma largura mínima para continuar visível.
+    const width = Math.min(Math.max(((to - from) / OCCUPANCY_SPAN) * 100, 2), 100 - left)
+    row.blocks.push({
+      key: item.key,
+      kind: item.kind,
+      id: item.id,
+      title: item.title,
+      left,
+      width,
+      label: `${timeRangeLabel(item)} · ${item.title}`,
+      cutBefore: start < OCCUPANCY_START_MIN,
+      cutAfter: end > OCCUPANCY_END_MIN,
+      lane: 0,
+    })
+  }
+  for (const row of rows.values()) {
+    // Sobreposição (curso e evento na mesma sala): cada um na sua linha.
+    const laneEnds: number[] = []
+    for (const block of row.blocks) {
+      let lane = laneEnds.findIndex(end => end <= block.left + 0.001)
+      if (lane === -1) lane = laneEnds.length
+      laneEnds[lane] = block.left + block.width
+      block.lane = lane
+    }
+    row.lanes = Math.max(1, laneEnds.length)
+  }
+  return [...rows.values()]
+}
+
+/** Horário aproximado de um clique na faixa (0 = 07:00, 1 = 22:00), de meia em meia hora. */
+export function hourAtFraction(fraction: number, stepMinutes = 30): string {
+  const raw = OCCUPANCY_START_MIN + Math.max(0, Math.min(1, fraction)) * OCCUPANCY_SPAN
+  const stepped = Math.round(raw / stepMinutes) * stepMinutes
+  // Sempre sobra pelo menos uma hora até o fim da faixa.
+  return minutesToWall(Math.max(OCCUPANCY_START_MIN, Math.min(stepped, OCCUPANCY_END_MIN - 60)))
+}
+
+/** Uma hora depois de "HH:MM" (término sugerido da nova reserva). */
+export function plusOneHour(hhmm: string): string {
+  return minutesToWall(Math.min(wallMinutes(hhmm) + 60, DAY_MIN))
+}
+
+/** Marcas de hora da faixa (07:00, 08:00 … 22:00). */
+export function occupancyTicks(everyMinutes = 60): { minutes: number; left: number; label: string }[] {
+  const ticks: { minutes: number; left: number; label: string }[] = []
+  for (let m = OCCUPANCY_START_MIN; m <= OCCUPANCY_END_MIN; m += everyMinutes) {
+    ticks.push({
+      minutes: m,
+      left: ((m - OCCUPANCY_START_MIN) / OCCUPANCY_SPAN) * 100,
+      label: minutesToWall(m),
+    })
+  }
+  return ticks
 }

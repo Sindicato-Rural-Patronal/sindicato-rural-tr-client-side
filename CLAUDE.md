@@ -60,9 +60,10 @@ Site institucional do **Sindicato Rural de Terra Roxa** (Paraná, Brasil). Plata
 /admin/convenios/$id        → _admin/admin/convenios/$id.tsx (editor com pré-visualização)
 /admin/auditoria            → _admin/admin/auditoria/index.tsx (trilha de auditoria; linha abre IP, local, navegador e "O que mudou"; filtros na URL, inclusive ?ip=; "Configurações da trilha" (tempo de guarda) só com UPDATE_AUDIT)
 /admin/financeiro           → _admin/admin/financeiro/index.tsx (Financeiro: ?tab=dashboard|lancamentos|recorrentes|categorias|caixas|fechamento)
-/admin/dashboard            → _admin/admin/dashboard.tsx (painel + agenda das salas: stats, calendário de cursos e
-                              reservas, agenda do dia (criar/editar/excluir reserva, exportar CSV) e cadastros
-                              incompletos; ?dia=AAAA-MM-DD&sala=<id>&tipo=COURSE|EVENT|MEETING; pendências no sino)
+/admin/dashboard            → _admin/admin/dashboard.tsx (só liga a URL à tela; o painel é DashboardPage):
+                              ações rápidas, números que pedem ação, aviso das cotações, Financeiro do mês,
+                              calendário + agenda das salas, cursos públicos, cadastros incompletos, últimas ações;
+                              ?dia=AAAA-MM-DD&sala=<id>&tipo=COURSE|EVENT|MEETING&nova=reserva; "Personalizar" blocos
 /convite/:token             → convite/$token.tsx (público: ativar acesso de admin por convite)
 ```
 
@@ -107,10 +108,17 @@ src/
 │   ├── PersonPicker.tsx             # Busca de pessoa do cadastro (lista suspensa; "Cadastrar nova pessoa" em outra aba)
 │   ├── export/ExportMenu.tsx        # Exportação CSV: ExportMenu (selecionados / todos com filtros / extras),
 │   │                                #   ExportOneButton (um registro), SelectCheckbox, SelectionInfo
-│   ├── agenda/                      # Agenda das salas (dentro do Painel Geral): DayAgendaPanel (lista do dia,
-│   │                                #   "Nova reserva", exportar CSV), BookingDialog (nova/editar reserva),
+│   ├── agenda/                      # Agenda das salas (dentro do Painel Geral): AgendaSection (a seção inteira —
+│   │                                #   Dia/Semana, busca, exportar, imprimir, nova reserva, faixa de ocupação),
+│   │                                #   AgendaItem (cartão do dia + linha da semana), WeekAgenda (segunda a domingo),
+│   │                                #   RoomOccupancy (faixa 07:00–22:00 por sala), BookingDialog (nova/editar reserva),
 │   │                                #   DeleteBookingDialog (só esta / esta e as próximas), KindBadge (Curso/Evento/Reunião),
 │   │                                #   OnSiteBadge (evento publicado no site)
+│   ├── dashboard/                   # Painel Geral: DashboardPage (a tela inteira, fora do arquivo de rota),
+│   │                                #   StatsRow (cartões que pedem ação), QuickActions, QuotesNoticeLine,
+│   │                                #   FinanceMonthCard, PublicCoursesCard, IncompleteUsersCard, RecentAuditCard,
+│   │                                #   CustomizeDialog + dashboard-prefs.ts (blocos/ordem), quotes-notice.ts,
+│   │                                #   course-capacity.ts (vagas), month-range.ts (mês atual em Brasília)
 │   ├── galerias/                    # Admin: GalleryAlbumCard (fotos, legenda, ordem), GalleryAlbumDialog
 │   ├── unimed/PersonUnimedTab.tsx   # Aba "Unimed" da ficha da pessoa: cadastros dela e em que ela é titular,
 │   │                                #   com plano/matrícula/grau/adesão, botões Ficha/Termo/Contrato e link p/ /admin/unimed
@@ -178,11 +186,16 @@ src/
 │   ├── unimed-docs.ts               # Baixa Ficha/Termo/Contrato da Unimed pelo id (busca beneficiário + pessoa);
 │   │                                #   usado pela tela /admin/unimed e pela aba Unimed da pessoa
 │   ├── agenda.ts                    # Agenda das salas: horário de parede (wallDate/wallTime/toWallIso), itens de vários
-│   │                                #   dias (lastDayOf, timeRangeLabel), validação/corpo do formulário de reserva
+│   │                                #   dias (lastDayOf, timeRangeLabel, occupiedDays — a MESMA regra para curso e reserva),
+│   │                                #   visão dia/semana (startOfWeek, weekDays, visibleRange, rangeLabel, agendaFileName),
+│   │                                #   itens juntos (agendaEntries, itemsOfDay, itemsByDay), faixa de ocupação
+│   │                                #   (occupancyRows, occupancyTicks, hourAtFraction), formulário de reserva
+│   ├── agenda-pdf.tsx               # "Imprimir" da agenda: AgendaDocument + printAgendaPdf (uma tabela por dia com
+│   │                                #   horário, título, sala, tipo e responsável; abre em aba nova, baixa se bloquear)
 │   ├── calendar-links.ts            # Curso na agenda/WhatsApp: buildCourseIcs (.ics, hora de Brasília → UTC, repete por dia),
 │   │                                #   googleCalendarUrl, whatsappShareUrl (só nome, data, horário, local e link)
-│   ├── dashboard-agenda.ts          # Calendário do painel: dias com reserva, lista do dia (cursos + reservas), contagem,
-│   │                                #   parseDashboardSearch (?dia&sala&tipo)
+│   ├── dashboard-agenda.ts          # Calendário do painel: parseDashboardSearch (?dia&sala&tipo&nova) e kindDays
+│   │                                #   (dias com curso/evento/reunião — usa occupiedDays de agenda.ts, regra única)
 │   ├── news-schedule.ts             # Agendamento de notícia (publicar agora x agendar para; relógio de Brasília)
 │   ├── public-events.ts             # Eventos públicos: agrupar por mês, rótulo da data
 │   ├── quote-utils.ts               # Cotações: período (manhã/tarde), rótulo dos produtos, unidades (QUOTE_UNIT_OPTIONS), trendOf
@@ -235,8 +248,9 @@ ContactMessage          // mensagem de contato recebida
 
 **Hooks disponíveis:**
 ```
-useMe                       → GET /api/admin/me
-useAdminStats               → GET /api/admin/dashboard/stats
+useMe                       → GET /api/admin/me (inclui `dashboardPrefs`)
+useUpdateDashboardPrefs     → PATCH /api/admin/me/preferences `{ dashboardPrefs: { hidden, order } }`
+useAdminStats               → GET /api/admin/dashboard/stats (campos opcionais: só vem o que o admin pode ver)
 useAdminUsers               → GET /api/admin/users (paginado + filtros; mantém a lista anterior enquanto carrega; 2º arg { enabled })
 useAdminAdmins              → GET /api/admin/users/admins
 useAdminRules               → GET /api/admin/rules (paginado)
@@ -376,8 +390,11 @@ photoGallery: { id, url, caption }[], instructors: CourseInstructor[]
 - `DELETE /api/admin/users/:id/instructor` — rebaixar instrutor
 
 **Admin geral**
-- `GET /api/admin/me` — dados do admin logado
-- `GET /api/admin/dashboard/stats` — stats do dashboard
+- `GET /api/admin/me` — dados do admin logado (+ `dashboardPrefs`: blocos escondidos/ordem do Painel Geral)
+- `PATCH /api/admin/me/preferences` — `{ dashboardPrefs: { hidden: string[], order: string[] } }`
+- `GET /api/admin/dashboard/stats` — números do Painel Geral: `courses{total,public,private,unpublished,inProgress,completed}`,
+  `totalUsers`, `totalAdmins`, `totalRooms`, `registrations{last30Days,pendingConfirmation}`, `coursesStartingIn7Days`,
+  `unreadMessages`, `membershipsExpiring30Days`, `quotesToday{launched,period}` — cada bloco só vem com a permissão correspondente
 - `GET /api/admin/rules` — regras (paginado)
 - `POST /api/rules` — criar regra
 - `PATCH /api/rules/:id` — atualizar regra
@@ -444,7 +461,7 @@ photoGallery: { id, url, caption }[], instructors: CourseInstructor[]
 **Exportação CSV** — `POST /api/admin/export/:dataset` (corpo JSON; GET com query também existe) (planilha `;` com BOM, abre no Excel; cada exportação vai para a auditoria como "Exportou")
 - Datasets: `people`, `companies`, `properties` (`ownerIds`), `unimed` (READ_USER) · `admins` (READ_USER_ADMIN) · `courses`, `registrations` (`courseIds`) (READ_COURSE) · `contact-messages` (READ_CONTACT) · `audit-logs` (READ_AUDIT) · `room-bookings` (READ_COURSE; from/to/roomId/type/search)
 - `ids=a,b` = selecionados ou um registro; sem `ids` = mesmos filtros da listagem
-- Telas: checkboxes + "Exportar" em Associados, Empresas, Administradores, Unimed, Cursos (cards), Mensagens; ícone de download por linha; "Exportar" no detalhe de pessoa/empresa/curso/mensagem; botão na Auditoria, na aba Inscrições do curso e na agenda do dia do Painel Geral (reservas)
+- Telas: checkboxes + "Exportar" em Associados, Empresas, Administradores, Unimed, Cursos (cards), Mensagens; ícone de download por linha; "Exportar" no detalhe de pessoa/empresa/curso/mensagem; botão na Auditoria, na aba Inscrições do curso e na agenda do Painel Geral (reservas do dia, da semana ou de um período escolhido)
 
 **Convites de admin**
 - `POST /api/admin/invites` — gera convite (pessoa + regra → token)
@@ -484,7 +501,9 @@ photoGallery: { id, url, caption }[], instructors: CourseInstructor[]
 - **Redes sociais** (Configurações do site): o WhatsApp é digitado como telefone ((44) 99999-9999) e salvo como `https://wa.me/55…`; link colado também serve. "Alterações não salvas" e Salvar só com mudança.
 - Notícias, salas, admins e parceiros implementados.
 - **Empresas separadas de pessoas** (set/2026): `Company` tem vínculos N:N com pessoas (`CompanyMember`, cada um com título livre, ex.: SOCIO, CONTADOR), propriedades próprias (endereços; `Property` pertence a uma pessoa OU a uma empresa) e a parceria (antes flags em `UserData`). Lista na aba "Empresas" de `/admin/usuarios`. O CNPJ saiu do formulário de pessoa; as colunas `cnpj`/`isPartner`/`partner*` de `UserData` foram removidas (valores antigos de CNPJ e de tipo de membro fora da lista foram para as observações do associado). A migration criou uma empresa para cada pessoa ativa que era parceira ou tinha CNPJ, com a pessoa como RESPONSAVEL.
-- Dashboard admin **implementado** — stats + calendário + lista de cadastros incompletos (não é mais stub). Calendário: cursos (lista de cursos) e, com `READ_COURSE`, eventos/reuniões de `GET /admin/room-schedule` para os dias visíveis; bolinhas separadas (Cursos / Eventos e reuniões) e agenda do dia pela hora com horário, título, sala, selo de tipo e selo "No site".
+- **Painel Geral** (`/admin/dashboard`, set/2026): a tela é `components/dashboard/DashboardPage` — o arquivo de rota só cuida da URL. Blocos, nesta ordem de fábrica: **Ações rápidas** (Novo associado `CREATE_USER` → `/admin/usuarios/novo`; Novo curso `CREATE_COURSE` → `/admin/cursos`, onde fica o botão que abre o formulário; Nova reserva `CREATE_COURSE` → põe `?nova=reserva` na URL e rola até a agenda, que abre o formulário; Lançar cotação `UPDATE_MARKET_QUOTE` → `/admin/cotacoes`); **Números** (inscrições a confirmar, cursos começando em 7 dias, mensagens não lidas, associações vencendo em 30 dias, cursos cadastrados e pessoas cadastradas — cada cartão é link para a tela; zero fica apagadinho, e o cartão de um número que o backend não mandou (sem permissão) não é desenhado; salas/administradores/inscrições de 30 dias viraram uma linha de apoio); **Cotações do dia** (âmbar "Cotações de hoje ainda não lançadas" em dia útil depois das 11h de Brasília; "lançadas (manhã/tarde)" quando já foram); **Financeiro do mês** (`READ_FINANCE`; entradas/saídas/saldo de `GET /admin/finance/summary` do mês corrente); **Calendário + agenda das salas** (`READ_COURSE`); **Cursos públicos** (vagas "8/40" com "quase lotado" ≥80% e "lotado" 100%, prazo "Inscrições até DD/MM" ou "Prazo encerrado"; consulta própria de 1 página); **Cadastros incompletos** (`READ_USER`); **Últimas ações** (`READ_AUDIT`, 5 últimas de `GET /admin/audit-logs?limit=5` com tempo relativo).
+- **Calendário do painel**: os dias vêm todos de `GET /admin/room-schedule` (cursos, eventos e reuniões) — o painel não pagina mais a lista de cursos. Bolinha por tipo, com as mesmas cores dos selos (`KIND_DOT_CLASS`), sempre 6 linhas, dia com nome por extenso no rótulo (leitor de tela) e "hoje" pelo relógio de Brasília. O mês segue o `?dia=` da URL (chegar pelo sino em outro mês abre o mês certo).
+- **Personalizar o painel**: botão no topo abre a janela com uma caixinha por bloco e setas de subir/descer; salva em `PATCH /admin/me/preferences` (`{ dashboardPrefs: { hidden, order } }`) e vale ao abrir a tela (`GET /admin/me`). "Restaurar padrão" volta ao layout de fábrica. Sem preferências, com preferências estragadas ou se a gravação falhar, fica o layout padrão.
 - **Notificações** (set/2026): sino no topo da barra lateral (embaixo do logo com a barra recolhida) e no topo da tela no celular. Número = avisos não lidos + pendências `warning` ("9+" acima de 9). Painel com "Pendências" (calculadas no backend; importantes primeiro, em âmbar) e "Avisos" (30 dias; clicar marca como lido e abre o `link`; "Marcar todas como lidas"). Links abrem pelo roteador (`navigate({ href })`, só caminhos `/admin`): `/admin/cursos?curso=<id>&aba=inscricoes`, `/admin/usuarios?incomplete=true` ou `?tab=admins` (a tela de usuários acompanha a URL mesmo já aberta), `/admin/configuracoes?tab=...`, `/admin/mensagens`, `/admin/cotacoes`, `/admin/dashboard?dia=<hoje>` (reservas de sala de hoje). Alertas de pendência não ficam no painel geral.
 - Trilha de auditoria e convites de admin implementados.
 - **Ajustes de cadastro (set/2026)**: tipo de membro é select (Aluno, Produtor rural, Trabalhador rural assalariado/autônomo; o backend recusa valor fora da lista); CAD/PRO até 5; salas com nome de lista fixa; empresa com razão social (`name`), nome fantasia (`tradeName`, exibido quando houver — `companyDisplayName`) e endereço da sede no próprio cadastro (CEP com busca).
@@ -504,7 +523,7 @@ photoGallery: { id, url, caption }[], instructors: CourseInstructor[]
 - **Fechamento mensal**: aba "Fechamento" — escolhe caixa + mês, mostra saldo anterior, entradas, saídas e saldo esperado, recebe o saldo contado, destaca a diferença em vermelho quando não bate e guarda o fechamento (um por caixa/mês). Histórico do ano com opção de reabrir (DELETE_FINANCE).
 - **Notícias — agendamento e link** (set/2026): ao publicar dá para escolher "Publicar agora" ou "Agendar para" (data + hora de Brasília, `publishAt`); no site a notícia só aparece depois da hora marcada (o link direto dá 404 até lá) e o cartão do painel mostra o selo "Agendada para DD/MM/AAAA HH:MM". Notícia no ar ganha "Ver no site" e "Copiar link". A listagem tem busca por título e filtro Todas / Publicadas / Agendadas / Não publicadas. Regras puras em `lib/news-schedule.ts`.
 - **Eventos no site** (set/2026): no `BookingDialog` o evento (nunca a reunião) tem a opção "Mostrar no site" + "Texto do evento no site"; a agenda do dia marca esses eventos com o selo "No site". A página pública `/eventos` lista os eventos que ainda não terminaram, agrupados por mês, com data, horário e sala; há item "Eventos" no menu (depois de Cursos) e a faixa "Próximos eventos" na home, que só aparece quando há pelo menos um.
-- **Agenda das salas** (dentro do Painel Geral, set/2026): a tela própria `/admin/agenda` saiu — o calendário do `/admin/dashboard` é o controle. Filtros de sala e de tipo (Todos/Curso/Evento/Reunião) e o dia selecionado ficam na URL (`?dia=&sala=&tipo=`). A agenda do dia (`DayAgendaPanel`) mostra horário, título, sala, selo de tipo e "No site", com "Nova reserva" (CREATE_COURSE) já no dia/sala escolhidos e "Exportar" CSV das reservas do dia (READ_COURSE); vazio = "Nada marcado neste dia.". Curso abre `/admin/cursos?curso=<id>`; evento/reunião abre o `BookingDialog` (Tipo, Título, Sala, Data, Início/Término, "Termina em outro dia", responsável do cadastro ou nome digitado, descrição, "Mostrar no site", repetir toda semana/todo mês até uma data — só ao criar). 409 (sala ocupada) aparece dentro do diálogo. Reserva de uma repetição: editar muda só a data; excluir pergunta "Só esta data" / "Esta e as próximas". Ao editar, campos opcionais vazios vão como `null`.
+- **Agenda das salas** (dentro do Painel Geral, set/2026): a tela própria `/admin/agenda` saiu — o calendário do `/admin/dashboard` é o controle. Filtros de sala e de tipo (Todos/Curso/Evento/Reunião) e o dia selecionado ficam na URL (`?dia=&sala=&tipo=`). A seção da agenda (`AgendaSection`) tem **Dia / Semana** (semana de segunda a domingo, no celular um dia embaixo do outro; clicar no dia passa o foco e volta para a visão do dia), busca por título ou responsável (com espera de 350 ms; só eventos e reuniões — cursos não entram na busca e a tela avisa), "Nova reserva" (CREATE_COURSE) já no dia/sala escolhidos, "Exportar" CSV das reservas do período visível ou de um período escolhido (READ_COURSE; cursos não entram na planilha), "Imprimir" (PDF da agenda do dia/semana, `lib/agenda-pdf.tsx`) e a **faixa de ocupação das salas** do dia (07:00–22:00, uma linha por sala mesmo vazia; clicar num espaço livre abre a nova reserva naquela sala e horário; fechada no celular). Tudo o que aparece vem de duas buscas do período visível (`/admin/room-schedule` para os cursos e `/admin/room-bookings` para as reservas, com o responsável) — nunca uma busca por dia —, e editar não pede a reserva de novo. Erro mostra "Tentar de novo"; vazio = "Nada marcado neste dia." (na busca, "Nada encontrado para …"). Curso abre `/admin/cursos?curso=<id>`; evento/reunião abre o `BookingDialog` (Tipo, Título, Sala, Data, Início/Término, "Termina em outro dia", responsável do cadastro ou nome digitado, descrição, "Mostrar no site", repetir toda semana/todo mês até uma data — só ao criar). 409 (sala ocupada) aparece dentro do diálogo. Reserva de uma repetição: editar muda só a data; excluir pergunta "Só esta data" / "Esta e as próximas". Ao editar, campos opcionais vazios vão como `null`.
 - **Unimed** (set/2026): no formulário, tipo de movimento e grau de dependência viraram select de lista fixa (`lib/unimed-options.ts`) — cadastro antigo com texto fora da lista continua aparecendo como "(valor antigo)" e é aceito pelo backend ao salvar o mesmo registro; CNS com máscara "000 0000 0000 0000" (15 dígitos, gravado só com dígitos); o titular vinculado mostra o nome da pessoa (era "Usuário vinculado"); as ações da linha viraram um menu "Ações" com rótulos escritos (ícone sozinho não se explica no toque). Plano segue texto livre (o legado só tinha o nome/registro ANS do plano, sem lista). Ficha/Termo/Contrato agora baixam por `lib/unimed-docs.ts`, compartilhado com a aba Unimed da ficha da pessoa (`components/unimed/PersonUnimedTab.tsx`).
 - Deploy em produção via Docker (Dockerfile + docker-compose.prod.yml; servidor Node/Fastify em `server/index.mjs`).
 - **Conexão fraca / site público (set/2026)**: consultas repetem até 2x em falha de rede/5xx; home, listas, cotações e notícia mostram "Não foi possível carregar" + "Tentar de novo" (nunca "nenhum curso" quando a API falhou; notícia só diz "não existe" em 404); 404/erro/carregamento em português no router; cards de curso usam `coverImageThumb` (cursos antigos: capa inteira) e descrição sem markdown; faixa de cotações parada e rolável no toque; botão flutuante do WhatsApp; alvos de toque de 44px no menu e chamadas do site.

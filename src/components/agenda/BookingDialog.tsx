@@ -30,8 +30,8 @@ export type BookingDialogProps = {
   /** Edição pedida mas a reserva ainda está carregando (ou não foi achada). */
   loading?: boolean
   notFound?: boolean
-  /** Valores iniciais da nova reserva (dia clicado, sala do filtro). */
-  defaults?: { date?: string; roomId?: string }
+  /** Valores iniciais da nova reserva (dia clicado, sala e horário do filtro/faixa). */
+  defaults?: { date?: string; roomId?: string; startHour?: string; endHour?: string }
   canUpdate?: boolean
   canDelete?: boolean
   onClose: () => void
@@ -123,7 +123,9 @@ function BookingDialogSession({ open, booking, defaults, canUpdate = true, canDe
   const update = useUpdateRoomBooking()
 
   const [initial] = useState<BookingFormValues>(() =>
-    booking ? bookingToForm(booking) : emptyBookingForm(defaults?.date ?? '', defaults?.roomId ?? ''),
+    booking
+      ? bookingToForm(booking)
+      : emptyBookingForm(defaults?.date ?? '', defaults?.roomId ?? '', defaults?.startHour ?? '', defaults?.endHour ?? ''),
   )
   const [values, setValues] = useState(initial)
   const [showErrors, setShowErrors] = useState(false)
