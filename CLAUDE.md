@@ -524,6 +524,9 @@ docker compose -f docker-compose.prod.yml --env-file .env.production up -d --bui
 
 ## Convenções
 
+- Aviso conhecido em desenvolvimento (só no console do Vite, não acontece no site publicado): "Cannot update a component while rendering a different component" nos formulários com React Hook Form + React 19.3 — vem da validação da própria biblioteca (testado em 7.76 e 7.88, ocorre nas duas). Ignorar nas baterias de navegador.
+- Outro aviso só de desenvolvimento: "This library called use() to suspend in a previous render…" — vem do TanStack Router (1.170, já a última) com React 19.3 ao carregar rotas sob Suspense. Navegação funciona; ignorar nas baterias.
+
 - Alias `@/` aponta para `src/`
 - Componentes shadcn ficam em `src/components/ui/`
 - Arquivo de rota exporta só `Route`: componente ou helper exportado de lá (e `validateSearch` com zod) não é dividido pelo `autoCodeSplitting` e vai para o bundle inicial do site público — coloque em `src/components`/`src/lib`
