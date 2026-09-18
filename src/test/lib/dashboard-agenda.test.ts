@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { bookingDays, bookingsOnly, dayAgenda, dayCountLabel } from '@/lib/dashboard-agenda'
+import { bookingDays, bookingsOnly, dayAgenda, dayCountLabel, parseDashboardSearch } from '@/lib/dashboard-agenda'
 import type { ScheduleKind } from '@/lib/agenda'
 
 // Horários "de parede": 08:00 = "…T08:00:00.000Z".
@@ -63,6 +63,19 @@ describe('dayAgenda', () => {
     const bookings = [item('EVENT', 'jantar', '2026-09-20T20:00', '2026-09-21T00:00')]
     expect(dayAgenda([], bookings, '2026-09-21')).toEqual([])
     expect(dayAgenda([], bookings, '2026-09-20')).toHaveLength(1)
+  })
+})
+
+describe('parseDashboardSearch', () => {
+  it('aceita dia, sala e tipo válidos', () => {
+    expect(parseDashboardSearch({ dia: '2026-09-17', sala: 12, tipo: 'MEETING' }))
+      .toEqual({ dia: '2026-09-17', sala: '12', tipo: 'MEETING' })
+  })
+
+  it('joga fora o que não serve', () => {
+    expect(parseDashboardSearch({ dia: '2026-02-31', sala: '', tipo: 'X' }))
+      .toEqual({ dia: undefined, sala: undefined, tipo: undefined })
+    expect(parseDashboardSearch({})).toEqual({ dia: undefined, sala: undefined, tipo: undefined })
   })
 })
 

@@ -3,24 +3,32 @@ import { useState, useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { apiFetch } from '@/lib/api'
 import { toYmd } from '@/utils/dates'
-import { formatDateFromString } from '@/utils/format-data-from-string'
 import type { CourseCardItem, PaginatedCourses } from '@/hooks/useCourse'
+import type { RoomScheduleItem } from '@/hooks/useRoomBookings'
 import { useAdminStats, useAdminUsers } from '@/hooks/useAdmin'
 import { useRooms } from '@/hooks/useRooms'
 import { usePermissions } from '@/hooks/usePermissions'
 import { memberTypeLabel } from '@/lib/member-types'
-import { KIND_LABEL, timeRangeLabel, weekStart, type ScheduleKind } from '@/lib/agenda'
-import { bookingDays, dayAgenda, dayCountLabel, type ScheduleEntryLike } from '@/lib/dashboard-agenda'
+import { KIND_DOT_CLASS, KIND_LABEL, type ScheduleKind } from '@/lib/agenda'
+import {
+  bookingDays, parseDashboardSearch,
+  type DashboardSearch, type DashboardTypeFilter,
+} from '@/lib/dashboard-agenda'
+import { DayAgendaPanel } from '@/components/agenda/DayAgendaPanel'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { NativeSelect } from '@/components/ui/native-select'
 import { Skeleton } from '@/components/ui/skeleton'
+import { cn } from '@/lib/utils'
 import {
   BookOpen, Users, ChevronLeft, ChevronRight,
-  Calendar, Shield, GraduationCap, DoorOpen, UserX, ArrowRight, CalendarClock,
+  Shield, GraduationCap, DoorOpen, UserX, ArrowRight,
 } from 'lucide-react'
 
 export const Route = createFileRoute('/_admin/admin/dashboard')({
+  // Dia, sala e tipo da agenda ficam na URL (voltar/atualizar/compartilhar).
+  validateSearch: parseDashboardSearch,
   component: RouteComponent,
 })
 
@@ -37,19 +45,11 @@ async function fetchAllAdminCourses(): Promise<CourseCardItem[]> {
   return all
 }
 
-// Reservas de sala (eventos e reuniões) do período, mesma rota e chave da Agenda
-// (salvar uma reserva lá atualiza aqui). Horários "de parede", como os cursos.
-type ScheduleItem = ScheduleEntryLike & {
-  id: string
-  title: string
-  roomId: string
-  roomName: string
-  status: string | null
-  seriesId: string | null
-}
-
-async function fetchRoomSchedule(range: { from: string; to: string }): Promise<ScheduleItem[]> {
-  const qs = new URLSearchParams(range)
+// Reservas de sala (eventos e reuniões) do período. Horários "de parede", como
+// os cursos. Mesma chave de cache das mutações de reserva (salvar atualiza aqui).
+async function fetchRoomSchedule(range: { from: string; to: string; roomId?: string }): Promise<RoomScheduleItem[]> {
+  const qs = new URLSearchParams({ from: range.from, to: range.to })
+  if (range.roomId) qs.set('roomId', range.roomId)
   const json = await apiFetch(`/admin/room-schedule?${qs}`).then(r => r.json())
   return Array.isArray(json) ? json : (json?.data ?? [])
 }
@@ -90,12 +90,32 @@ function coursesInRange<T extends { startDate?: string | null; endDate?: string 
   })
 }
 
-// Tipo do item na lista do dia, em texto (não só pela cor).
-function KindBadge({ kind }: { kind: ScheduleKind }) {
+/** Ids dos cursos que a agenda devolveu (usados quando há filtro de sala). */
+function courseIdsOf(items: RoomScheduleItem[] | undefined): Set<string> {
+  return new Set((items ?? []).filter(i => i.kind === 'COURSE').map(i => i.id))
+}
+
+/** Botão redondo dos filtros por tipo. */
+function Chip({ active, onClick, children, kind }: {
+  active: boolean
+  onClick: () => void
+  children: React.ReactNode
+  kind?: ScheduleKind
+}) {
   return (
-    <span className="shrink-0 rounded-full border border-current/20 bg-background/80 px-2 py-0.5 text-[11px] font-medium leading-none">
-      {KIND_LABEL[kind]}
-    </span>
+    <button
+      type="button"
+      aria-pressed={active}
+      onClick={onClick}
+      className={cn(
+        'inline-flex h-9 items-center gap-2 rounded-full border px-3.5 text-sm font-medium transition-colors',
+        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+        active ? 'border-primary bg-primary text-primary-foreground' : 'bg-background hover:bg-muted',
+      )}
+    >
+      {kind && <span className={cn('size-2.5 rounded-full ring-2 ring-background', KIND_DOT_CLASS[kind])} aria-hidden />}
+      {children}
+    </button>
   )
 }
 
@@ -127,6 +147,9 @@ function StatCard({
 // ─── component ────────────────────────────────────────────────────────────────
 
 function RouteComponent() {
+  const search = Route.useSearch()
+  const navigate = Route.useNavigate()
+
   const { data: cursos } = useQuery({
     queryKey: ['admin', 'courses', 'all'],
     queryFn: fetchAllAdminCourses,
@@ -145,8 +168,19 @@ function RouteComponent() {
   const today = new Date()
   const todayStr = toYmd(today)
 
-  const [mesAtual, setMesAtual] = useState({ year: today.getFullYear(), month: today.getMonth() })
-  const [dataSelecionada, setDataSelecionada] = useState(todayStr)
+  const dataSelecionada = search.dia ?? todayStr
+  const sala = search.sala
+  const tipo: DashboardTypeFilter = search.tipo ?? 'all'
+
+  function setSearch(patch: Partial<DashboardSearch>) {
+    navigate({ search: prev => ({ ...prev, ...patch }), replace: true })
+  }
+
+  // O mês começa no dia que veio da URL (link direto abre o mês certo).
+  const [mesAtual, setMesAtual] = useState(() => {
+    const d = new Date(dataSelecionada + 'T12:00:00')
+    return { year: d.getFullYear(), month: d.getMonth() }
+  })
 
   const cells = useMemo(() => buildCalendar(mesAtual.year, mesAtual.month), [mesAtual])
 
@@ -154,21 +188,47 @@ function RouteComponent() {
   const gridFrom = cells[0].date
   const gridTo = cells[cells.length - 1].date
   const scheduleQuery = useQuery({
-    queryKey: ['admin', 'room-schedule', { from: gridFrom, to: gridTo }],
-    queryFn: () => fetchRoomSchedule({ from: gridFrom, to: gridTo }),
+    queryKey: ['admin', 'room-schedule', { from: gridFrom, to: gridTo, roomId: sala }],
+    queryFn: () => fetchRoomSchedule({ from: gridFrom, to: gridTo, roomId: sala }),
     enabled: canReadCourses,
   })
   // Dia selecionado fora da grade (trocou de mês sem clicar em outro dia).
   const selectedOutsideGrid = dataSelecionada < gridFrom || dataSelecionada > gridTo
   const selectedDayQuery = useQuery({
-    queryKey: ['admin', 'room-schedule', { from: dataSelecionada, to: dataSelecionada }],
-    queryFn: () => fetchRoomSchedule({ from: dataSelecionada, to: dataSelecionada }),
+    queryKey: ['admin', 'room-schedule', { from: dataSelecionada, to: dataSelecionada, roomId: sala }],
+    queryFn: () => fetchRoomSchedule({ from: dataSelecionada, to: dataSelecionada, roomId: sala }),
     enabled: canReadCourses && selectedOutsideGrid,
   })
 
+  const mostrarCursos = tipo === 'all' || tipo === 'COURSE'
+  const mostrarReservas = tipo !== 'COURSE'
+
+  // Curso não guarda sala na listagem: com filtro de sala, vale o que a agenda devolveu.
+  const filtrarCursos = useMemo(() => {
+    return (agenda: RoomScheduleItem[] | undefined) => {
+      if (!mostrarCursos) return []
+      const todos = cursos ?? []
+      if (!sala) return todos
+      const ids = courseIdsOf(agenda)
+      return todos.filter(c => ids.has(c.id))
+    }
+  }, [cursos, sala, mostrarCursos])
+
+  const reservasDoPeriodo = selectedOutsideGrid ? selectedDayQuery.data : scheduleQuery.data
+  const reservasErro = selectedOutsideGrid ? selectedDayQuery.isError : scheduleQuery.isError
+
+  const reservasDaGrade = useMemo(
+    () => (mostrarReservas ? (scheduleQuery.data ?? []).filter(i => tipo === 'all' || i.kind === tipo) : []),
+    [scheduleQuery.data, tipo, mostrarReservas],
+  )
+  const reservasDoDia = useMemo(
+    () => (mostrarReservas ? (reservasDoPeriodo ?? []).filter(i => tipo === 'all' || i.kind === tipo) : []),
+    [reservasDoPeriodo, tipo, mostrarReservas],
+  )
+
   const diasComReserva = useMemo(
-    () => bookingDays(scheduleQuery.data ?? [], gridFrom, gridTo),
-    [scheduleQuery.data, gridFrom, gridTo],
+    () => bookingDays(reservasDaGrade, gridFrom, gridTo),
+    [reservasDaGrade, gridFrom, gridTo],
   )
 
   const cursosPublicos = (cursos ?? []).filter(c => c.status === 'PUBLIC')
@@ -176,7 +236,7 @@ function RouteComponent() {
   // Dias com cursos (para marcar no calendário)
   const diasComCurso = useMemo(() => {
     const set = new Set<string>()
-    ;(cursos ?? []).forEach(c => {
+    filtrarCursos(scheduleQuery.data).forEach(c => {
       if (!c.startDate) return
       // Usa a MESMA base da lista (data fatiada, sem fuso). Ancorar ao meio-dia
       // local evita o off-by-one: antes `new Date(startDate)` (instante UTC) +
@@ -190,21 +250,12 @@ function RouteComponent() {
       }
     })
     return set
-  }, [cursos])
+  }, [filtrarCursos, scheduleQuery.data])
 
   const cursosDoDia = useMemo(
-    () => coursesInRange(cursos ?? [], dataSelecionada),
-    [cursos, dataSelecionada]
+    () => coursesInRange(filtrarCursos(reservasDoPeriodo), dataSelecionada),
+    [filtrarCursos, reservasDoPeriodo, dataSelecionada],
   )
-
-  const reservasDoPeriodo = selectedOutsideGrid ? selectedDayQuery.data : scheduleQuery.data
-  const reservasErro = selectedOutsideGrid ? selectedDayQuery.isError : scheduleQuery.isError
-  const agendaDoDia = useMemo(
-    () => dayAgenda(cursosDoDia, reservasDoPeriodo ?? [], dataSelecionada),
-    [cursosDoDia, reservasDoPeriodo, dataSelecionada],
-  )
-  const reservasDoDia = agendaDoDia.length - cursosDoDia.length
-  const contagemDoDia = dayCountLabel(cursosDoDia.length, reservasDoDia)
 
   function prevMonth() {
     setMesAtual(prev => {
@@ -220,16 +271,13 @@ function RouteComponent() {
     })
   }
 
-  function ptDayOfWeek(date: string) {
-    const d = new Date(date + 'T12:00:00')
-    return ['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado'][d.getDay()]
-  }
-
   return (
-    <div className="p-6 flex flex-col gap-6">
+    <div className="flex flex-col gap-6 p-4 sm:p-6">
       <div>
         <h1 className="text-2xl font-bold tracking-tight text-foreground">Painel Geral</h1>
-        <p className="text-sm text-muted-foreground">Visão geral do sistema de gestão de cursos</p>
+        <p className="text-sm text-muted-foreground">
+          Cursos, eventos e reuniões das salas, e os números do sistema.
+        </p>
       </div>
 
       {statsError && (
@@ -283,7 +331,33 @@ function RouteComponent() {
         )}
       </div>
 
-      {/* Calendário + Agenda */}
+      {/* Filtros da agenda */}
+      {canReadCourses && (
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          <div role="group" aria-label="Filtrar por tipo" className="flex flex-wrap gap-2">
+            <Chip active={tipo === 'all'} onClick={() => setSearch({ tipo: undefined })}>Todos</Chip>
+            {(['COURSE', 'EVENT', 'MEETING'] as ScheduleKind[]).map(kind => (
+              <Chip key={kind} kind={kind} active={tipo === kind} onClick={() => setSearch({ tipo: kind })}>
+                {KIND_LABEL[kind]}
+              </Chip>
+            ))}
+          </div>
+          <div>
+            <label htmlFor="agenda-sala" className="sr-only">Sala</label>
+            <NativeSelect
+              id="agenda-sala"
+              className="h-9 w-full sm:min-w-48"
+              value={sala ?? ''}
+              onChange={e => setSearch({ sala: e.target.value || undefined })}
+            >
+              <option value="">Todas as salas</option>
+              {salas?.map(room => <option key={room.id} value={room.id}>{room.name}</option>)}
+            </NativeSelect>
+          </div>
+        </div>
+      )}
+
+      {/* Calendário + Agenda do dia */}
       <div className="grid gap-6 lg:grid-cols-[380px_1fr]">
         {/* Calendário */}
         <Card>
@@ -302,7 +376,7 @@ function RouteComponent() {
                   className="h-8 text-xs"
                   onClick={() => {
                     setMesAtual({ year: today.getFullYear(), month: today.getMonth() })
-                    setDataSelecionada(todayStr)
+                    setSearch({ dia: undefined })
                   }}
                 >
                   Hoje
@@ -328,7 +402,7 @@ function RouteComponent() {
                 return (
                   <button
                     key={date}
-                    onClick={() => setDataSelecionada(date)}
+                    onClick={() => setSearch({ dia: date })}
                     className={[
                       'relative flex h-11 flex-col items-center justify-center rounded-lg text-sm transition-all',
                       current ? 'text-foreground hover:bg-muted' : 'text-muted-foreground/40',
@@ -354,10 +428,12 @@ function RouteComponent() {
               })}
             </div>
             <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 border-t pt-4 text-xs text-muted-foreground">
-              <span className="flex items-center gap-1.5">
-                <span className="size-2 rounded-full bg-primary" /> Cursos
-              </span>
-              {canReadCourses && (
+              {mostrarCursos && (
+                <span className="flex items-center gap-1.5">
+                  <span className="size-2 rounded-full bg-primary" /> Cursos
+                </span>
+              )}
+              {canReadCourses && mostrarReservas && (
                 <span className="flex items-center gap-1.5">
                   <span className="size-2 rounded-full bg-amber-500" /> Eventos e reuniões
                 </span>
@@ -369,94 +445,16 @@ function RouteComponent() {
           </CardContent>
         </Card>
 
-        {/* Agenda do dia */}
-        <Card>
-          <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-base flex items-center gap-2">
-                <Calendar className="size-4 text-primary" />
-                <span className="capitalize">{ptDayOfWeek(dataSelecionada)}, {formatDateFromString(dataSelecionada)}</span>
-              </CardTitle>
-              {contagemDoDia && <Badge variant="secondary">{contagemDoDia}</Badge>}
-            </div>
-          </CardHeader>
-          <CardContent>
-            {canReadCourses && reservasErro && (
-              <p className="mb-3 text-sm text-destructive">Erro ao carregar as reservas de sala.</p>
-            )}
-            {agendaDoDia.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-12 text-center">
-                <div className="mb-3 rounded-full bg-muted p-4">
-                  <Calendar className="size-6 text-muted-foreground" />
-                </div>
-                <p className="text-sm font-medium text-foreground">
-                  {canReadCourses ? 'Nenhum curso ou reserva neste dia' : 'Nenhum curso neste dia'}
-                </p>
-                <p className="text-xs text-muted-foreground">Selecione outro dia no calendário</p>
-              </div>
-            ) : (
-              <div className="grid gap-3 sm:grid-cols-2">
-                {agendaDoDia.map(entry => {
-                  if (entry.kind !== 'COURSE') {
-                    const booking = entry.item
-                    return (
-                      <Link
-                        key={entry.key}
-                        to="/admin/agenda"
-                        search={{ week: weekStart(dataSelecionada) }}
-                        className="flex items-start gap-3 rounded-xl border border-border bg-card p-4 text-foreground transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                      >
-                        <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400">
-                          <CalendarClock className="size-5" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-start justify-between gap-2">
-                            <p className="truncate text-sm font-semibold">{booking.title}</p>
-                            <KindBadge kind={entry.kind} />
-                          </div>
-                          <div className="mt-1.5 flex flex-col gap-1 text-xs text-muted-foreground">
-                            <span>{timeRangeLabel(booking)}</span>
-                            {booking.roomName && <span>{booking.roomName}</span>}
-                          </div>
-                        </div>
-                      </Link>
-                    )
-                  }
-                  const course = entry.item
-                  const i = cursosDoDia.indexOf(course)
-                  const colors = [
-                    'bg-primary/10 text-primary border-primary/20',
-                    'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400 border-emerald-200',
-                    'bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400 border-amber-200',
-                    'bg-rose-100 text-rose-700 dark:bg-rose-950/40 dark:text-rose-400 border-rose-200',
-                    'bg-sky-100 text-sky-700 dark:bg-sky-950/40 dark:text-sky-400 border-sky-200',
-                  ]
-                  const cls = colors[i % colors.length]
-                  return (
-                    <div key={entry.key} className={`flex items-start gap-3 rounded-xl border p-4 ${cls}`}>
-                      <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-background/80">
-                        <GraduationCap className="size-5" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-start justify-between gap-2">
-                          <p className="truncate text-sm font-semibold">{course.title}</p>
-                          <KindBadge kind="COURSE" />
-                        </div>
-                        <div className="mt-1.5 flex flex-col gap-1 text-xs opacity-80">
-                          {course.startTime && (
-                            <span>{course.startTime} – {course.endTime}</span>
-                          )}
-                          {course.location && <span>{course.location}</span>}
-                          {course.instructorName && <span>{course.instructorName}</span>}
-                        </div>
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-            )}
-          </CardContent>
-        </Card>
+        {/* Agenda do dia: é aqui que se marca, edita e exclui reserva de sala. */}
+        <DayAgendaPanel
+          date={dataSelecionada}
+          courses={cursosDoDia}
+          bookings={reservasDoDia}
+          roomId={sala}
+          bookingType={tipo === 'EVENT' || tipo === 'MEETING' ? tipo : undefined}
+          loadError={canReadCourses && reservasErro}
+          onOpenCourse={id => navigate({ to: '/admin/cursos', search: { curso: id } })}
+        />
       </div>
 
       {/* Cursos públicos + Cadastros incompletos */}

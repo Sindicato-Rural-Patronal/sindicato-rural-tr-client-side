@@ -20,7 +20,6 @@ import { Route as PublicSobreRouteImport } from './routes/_public/sobre'
 import { Route as ConviteTokenRouteImport } from './routes/convite/$token'
 import { Route as AdminAdminIndexRouteImport } from './routes/_admin/admin/index'
 import { Route as AdminAdminAdministradoresRouteImport } from './routes/_admin/admin/administradores'
-import { Route as AdminAdminAgendaRouteImport } from './routes/_admin/admin/agenda'
 import { Route as AdminAdminBannersRouteImport } from './routes/_admin/admin/banners'
 import { Route as AdminAdminConfiguracoesRouteImport } from './routes/_admin/admin/configuracoes'
 import { Route as AdminAdminCursosRouteImport } from './routes/_admin/admin/cursos'
@@ -108,11 +107,6 @@ const AdminAdminAdministradoresRoute =
     path: '/admin/administradores',
     getParentRoute: () => AdminRoute,
   } as any)
-const AdminAdminAgendaRoute = AdminAdminAgendaRouteImport.update({
-  id: '/admin/agenda',
-  path: '/admin/agenda',
-  getParentRoute: () => AdminRoute,
-} as any)
 const AdminAdminBannersRoute = AdminAdminBannersRouteImport.update({
   id: '/admin/banners',
   path: '/admin/banners',
@@ -287,7 +281,6 @@ export interface FileRoutesByFullPath {
   '/sobre': typeof PublicSobreRoute
   '/convite/$token': typeof ConviteTokenRoute
   '/admin/administradores': typeof AdminAdminAdministradoresRouteWithChildren
-  '/admin/agenda': typeof AdminAdminAgendaRoute
   '/admin/banners': typeof AdminAdminBannersRoute
   '/admin/configuracoes': typeof AdminAdminConfiguracoesRoute
   '/admin/cursos': typeof AdminAdminCursosRouteWithChildren
@@ -330,7 +323,6 @@ export interface FileRoutesByTo {
   '/eventos': typeof PublicEventosRoute
   '/sobre': typeof PublicSobreRoute
   '/convite/$token': typeof ConviteTokenRoute
-  '/admin/agenda': typeof AdminAdminAgendaRoute
   '/admin/banners': typeof AdminAdminBannersRoute
   '/admin/configuracoes': typeof AdminAdminConfiguracoesRoute
   '/admin/dashboard': typeof AdminAdminDashboardRoute
@@ -373,7 +365,6 @@ export interface FileRoutesById {
   '/convite/$token': typeof ConviteTokenRoute
   '/_public/': typeof PublicIndexRoute
   '/_admin/admin/administradores': typeof AdminAdminAdministradoresRouteWithChildren
-  '/_admin/admin/agenda': typeof AdminAdminAgendaRoute
   '/_admin/admin/banners': typeof AdminAdminBannersRoute
   '/_admin/admin/configuracoes': typeof AdminAdminConfiguracoesRoute
   '/_admin/admin/cursos': typeof AdminAdminCursosRouteWithChildren
@@ -419,7 +410,6 @@ export interface FileRouteTypes {
     | '/sobre'
     | '/convite/$token'
     | '/admin/administradores'
-    | '/admin/agenda'
     | '/admin/banners'
     | '/admin/configuracoes'
     | '/admin/cursos'
@@ -462,7 +452,6 @@ export interface FileRouteTypes {
     | '/eventos'
     | '/sobre'
     | '/convite/$token'
-    | '/admin/agenda'
     | '/admin/banners'
     | '/admin/configuracoes'
     | '/admin/dashboard'
@@ -504,7 +493,6 @@ export interface FileRouteTypes {
     | '/convite/$token'
     | '/_public/'
     | '/_admin/admin/administradores'
-    | '/_admin/admin/agenda'
     | '/_admin/admin/banners'
     | '/_admin/admin/configuracoes'
     | '/_admin/admin/cursos'
@@ -624,13 +612,6 @@ declare module '@tanstack/react-router' {
       path: '/admin/administradores'
       fullPath: '/admin/administradores'
       preLoaderRoute: typeof AdminAdminAdministradoresRouteImport
-      parentRoute: typeof AdminRoute
-    }
-    '/_admin/admin/agenda': {
-      id: '/_admin/admin/agenda'
-      path: '/admin/agenda'
-      fullPath: '/admin/agenda'
-      preLoaderRoute: typeof AdminAdminAgendaRouteImport
       parentRoute: typeof AdminRoute
     }
     '/_admin/admin/banners': {
@@ -925,7 +906,6 @@ const AdminAdminUsuariosRouteWithChildren =
 
 interface AdminRouteChildren {
   AdminAdminAdministradoresRoute: typeof AdminAdminAdministradoresRouteWithChildren
-  AdminAdminAgendaRoute: typeof AdminAdminAgendaRoute
   AdminAdminBannersRoute: typeof AdminAdminBannersRoute
   AdminAdminConfiguracoesRoute: typeof AdminAdminConfiguracoesRoute
   AdminAdminCursosRoute: typeof AdminAdminCursosRouteWithChildren
@@ -950,7 +930,6 @@ interface AdminRouteChildren {
 
 const AdminRouteChildren: AdminRouteChildren = {
   AdminAdminAdministradoresRoute: AdminAdminAdministradoresRouteWithChildren,
-  AdminAdminAgendaRoute: AdminAdminAgendaRoute,
   AdminAdminBannersRoute: AdminAdminBannersRoute,
   AdminAdminConfiguracoesRoute: AdminAdminConfiguracoesRoute,
   AdminAdminCursosRoute: AdminAdminCursosRouteWithChildren,

@@ -1,21 +1,12 @@
 import type { RoomBooking, RoomBookingBody } from '@/hooks/useRoomBookings'
 
-// Agenda das salas (cursos, eventos e reuniões). Funções puras: datas "YYYY-MM-DD"
-// e horários "de parede" — igual aos cursos, a API guarda 08:00 como
-// "…T08:00:00.000Z" e a tela fatia o ISO. Nada aqui usa o fuso do navegador.
+// Agenda das salas (cursos, eventos e reuniões), hoje dentro do Painel Geral.
+// Funções puras: datas "YYYY-MM-DD" e horários "de parede" — igual aos cursos,
+// a API guarda 08:00 como "…T08:00:00.000Z" e a tela fatia o ISO. Nada aqui
+// usa o fuso do navegador.
 
 export type ScheduleKind = 'COURSE' | 'EVENT' | 'MEETING'
 export type BookingType = 'EVENT' | 'MEETING'
-
-export type AgendaView = 'semana' | 'lista'
-export type AgendaTypeFilter = 'all' | ScheduleKind
-
-export type AgendaSearch = {
-  week?: string
-  roomId?: string
-  type?: ScheduleKind
-  view?: AgendaView
-}
 
 /** O mínimo que a agenda precisa de um item (curso ou reserva). */
 export type AgendaItemLike = { startTime: string; endTime: string }
@@ -33,13 +24,6 @@ export const KIND_BADGE_CLASS: Record<ScheduleKind, string> = {
   MEETING: 'bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-950/50 dark:text-emerald-300 dark:border-emerald-900',
 }
 
-/** Faixa colorida à esquerda do cartão do item. */
-export const KIND_ACCENT_CLASS: Record<ScheduleKind, string> = {
-  COURSE: 'border-l-sky-500',
-  EVENT: 'border-l-violet-500',
-  MEETING: 'border-l-emerald-500',
-}
-
 /** Bolinha de cor dos filtros por tipo. */
 export const KIND_DOT_CLASS: Record<ScheduleKind, string> = {
   COURSE: 'bg-sky-500',
@@ -47,11 +31,6 @@ export const KIND_DOT_CLASS: Record<ScheduleKind, string> = {
   MEETING: 'bg-emerald-500',
 }
 
-const MONTHS = [
-  'janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho',
-  'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro',
-]
-const WEEKDAYS_SHORT = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']
 const WEEKDAYS_LONG = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado']
 
 const YMD_RE = /^(\d{4})-(\d{2})-(\d{2})$/
@@ -76,34 +55,8 @@ export function addDays(ymd: string, days: number): string {
 }
 
 /** 0 = domingo … 6 = sábado. */
-export function weekdayOf(ymd: string): number {
+function weekdayOf(ymd: string): number {
   return parseYmdUtc(ymd)?.getUTCDay() ?? 0
-}
-
-/** Segunda-feira da semana da data (semana de segunda a domingo). */
-export function weekStart(ymd: string): string {
-  const offset = (weekdayOf(ymd) + 6) % 7
-  return addDays(ymd, -offset)
-}
-
-/** Os 7 dias (seg → dom) a partir da segunda-feira. */
-export function weekDays(monday: string): string[] {
-  return Array.from({ length: 7 }, (_, i) => addDays(monday, i))
-}
-
-function parts(ymd: string) {
-  const [y, m, d] = ymd.split('-')
-  return { year: y, month: MONTHS[Number(m) - 1], day: d }
-}
-
-/** "05–11 de outubro de 2026"; mês ou ano diferentes aparecem nas duas pontas. */
-export function weekLabel(monday: string): string {
-  const sunday = addDays(monday, 6)
-  const a = parts(monday)
-  const b = parts(sunday)
-  if (a.year !== b.year) return `${a.day} de ${a.month} de ${a.year} – ${b.day} de ${b.month} de ${b.year}`
-  if (a.month !== b.month) return `${a.day} de ${a.month} – ${b.day} de ${b.month} de ${b.year}`
-  return `${a.day}–${b.day} de ${a.month} de ${a.year}`
 }
 
 /** "dd/mm/aaaa". */
@@ -113,12 +66,8 @@ export function formatDateBr(ymd: string): string {
 }
 
 /** "dd/mm". */
-export function formatDayMonth(ymd: string): string {
+function formatDayMonth(ymd: string): string {
   return formatDateBr(ymd).slice(0, 5)
-}
-
-export function weekdayShort(ymd: string): string {
-  return WEEKDAYS_SHORT[weekdayOf(ymd)]
 }
 
 export function weekdayLong(ymd: string): string {
@@ -157,34 +106,12 @@ export function isMultiDay(item: AgendaItemLike): boolean {
   return lastDayOf(item) > wallDate(item.startTime)
 }
 
-/** Itens que ocupam o dia (inclusive os de vários dias), em ordem de horário. */
-export function itemsForDay<T extends AgendaItemLike>(items: T[], ymd: string): T[] {
-  return items
-    .filter(item => wallDate(item.startTime) <= ymd && lastDayOf(item) >= ymd)
-    .sort((a, b) => a.startTime.localeCompare(b.startTime) || a.endTime.localeCompare(b.endTime))
-}
-
 /** "08:00–12:00"; em vários dias: "05/10 08:00 – 07/10 12:00". */
 export function timeRangeLabel(item: AgendaItemLike): string {
   const start = wallTime(item.startTime)
   const end = wallTime(item.endTime)
   if (!isMultiDay(item)) return `${start}–${end}`
   return `${formatDayMonth(wallDate(item.startTime))} ${start} – ${formatDayMonth(wallDate(item.endTime))} ${end}`
-}
-
-// ── Parâmetros da URL ───────────────────────────────────────────────────────
-
-const KINDS: ScheduleKind[] = ['COURSE', 'EVENT', 'MEETING']
-
-export function parseAgendaSearch(s: Record<string, unknown>): AgendaSearch {
-  const roomId = typeof s.roomId === 'number' ? String(s.roomId) : s.roomId
-  return {
-    // Qualquer dia vira a segunda-feira da semana.
-    week: isValidYmd(s.week) ? weekStart(s.week) : undefined,
-    roomId: typeof roomId === 'string' && roomId ? roomId : undefined,
-    type: KINDS.includes(s.type as ScheduleKind) ? (s.type as ScheduleKind) : undefined,
-    view: s.view === 'lista' ? 'lista' : s.view === 'semana' ? 'semana' : undefined,
-  }
 }
 
 // ── Formulário de reserva ───────────────────────────────────────────────────
@@ -333,9 +260,4 @@ export function bookingFormToBody(values: BookingFormValues, { creating }: { cre
     body.responsibleName = freeName
   }
   return body
-}
-
-/** Nome de quem responde pela reserva (pessoa do cadastro ou nome digitado). */
-export function responsibleLabel(booking: Pick<RoomBooking, 'responsible' | 'responsibleName'>): string {
-  return booking.responsible?.name ?? booking.responsibleName ?? ''
 }

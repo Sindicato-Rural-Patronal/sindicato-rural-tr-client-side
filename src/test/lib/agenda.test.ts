@@ -1,40 +1,23 @@
 import { describe, it, expect } from 'vitest'
 import {
-  addDays, bookingFormToBody, bookingToForm, emptyBookingForm, formatDateBr, isMultiDay, itemsForDay,
-  parseAgendaSearch, timeRangeLabel, toWallIso, validateBookingForm, wallDate, wallTime, weekDays,
-  weekLabel, weekStart, weekdayShort, type BookingFormValues,
+  addDays, bookingFormToBody, bookingToForm, emptyBookingForm, formatDateBr, isMultiDay, lastDayOf,
+  timeRangeLabel, toWallIso, validateBookingForm, wallDate, wallTime, weekdayLong,
+  type BookingFormValues,
 } from '@/lib/agenda'
 import type { RoomBooking } from '@/hooks/useRoomBookings'
 
 const item = (id: string, start: string, end: string) => ({ id, startTime: start, endTime: end })
 
-describe('semana', () => {
-  it('weekStart devolve a segunda-feira (domingo pertence à semana anterior)', () => {
-    expect(weekStart('2026-10-05')).toBe('2026-10-05') // segunda
-    expect(weekStart('2026-10-08')).toBe('2026-10-05') // quinta
-    expect(weekStart('2026-10-11')).toBe('2026-10-05') // domingo
-    expect(weekStart('2026-10-12')).toBe('2026-10-12')
-    expect(weekStart('2027-01-01')).toBe('2026-12-28') // vira o ano
-  })
-
-  it('weekDays lista seg → dom', () => {
-    const days = weekDays('2026-10-05')
-    expect(days).toHaveLength(7)
-    expect(days[0]).toBe('2026-10-05')
-    expect(days[6]).toBe('2026-10-11')
-    expect(days.map(weekdayShort)).toEqual(['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'])
-  })
-
+describe('datas', () => {
   it('addDays atravessa mês e ano bissexto', () => {
     expect(addDays('2026-10-31', 1)).toBe('2026-11-01')
     expect(addDays('2028-02-28', 1)).toBe('2028-02-29')
     expect(addDays('2026-01-01', -1)).toBe('2025-12-31')
   })
 
-  it('weekLabel no mesmo mês, entre meses e entre anos', () => {
-    expect(weekLabel('2026-10-05')).toBe('05–11 de outubro de 2026')
-    expect(weekLabel('2026-09-28')).toBe('28 de setembro – 04 de outubro de 2026')
-    expect(weekLabel('2026-12-28')).toBe('28 de dezembro de 2026 – 03 de janeiro de 2027')
+  it('weekdayLong nomeia o dia da semana', () => {
+    expect(weekdayLong('2026-10-05')).toBe('Segunda-feira')
+    expect(weekdayLong('2026-10-11')).toBe('Domingo')
   })
 })
 
@@ -53,33 +36,17 @@ describe('horário de parede', () => {
   })
 })
 
-describe('itemsForDay', () => {
-  const items = [
-    item('tarde', '2026-10-06T14:00:00.000Z', '2026-10-06T17:00:00.000Z'),
-    item('manha', '2026-10-06T08:00:00.000Z', '2026-10-06T12:00:00.000Z'),
-    item('longo', '2026-10-05T19:00:00.000Z', '2026-10-07T11:00:00.000Z'),
-    item('meia-noite', '2026-10-08T20:00:00.000Z', '2026-10-09T00:00:00.000Z'),
-  ]
-
-  it('ordena por horário e inclui itens de vários dias em cada dia', () => {
-    expect(itemsForDay(items, '2026-10-05').map(i => i.id)).toEqual(['longo'])
-    expect(itemsForDay(items, '2026-10-06').map(i => i.id)).toEqual(['longo', 'manha', 'tarde'])
-    expect(itemsForDay(items, '2026-10-07').map(i => i.id)).toEqual(['longo'])
+describe('último dia ocupado', () => {
+  it('item de vários dias ocupa até o dia do término', () => {
+    const longo = item('longo', '2026-10-05T19:00:00.000Z', '2026-10-07T11:00:00.000Z')
+    expect(lastDayOf(longo)).toBe('2026-10-07')
+    expect(isMultiDay(longo)).toBe(true)
   })
 
   it('terminar à 00:00 não ocupa o dia seguinte', () => {
-    expect(itemsForDay(items, '2026-10-08').map(i => i.id)).toEqual(['meia-noite'])
-    expect(itemsForDay(items, '2026-10-09')).toEqual([])
-    expect(isMultiDay(items[3])).toBe(false)
-  })
-})
-
-describe('parseAgendaSearch', () => {
-  it('normaliza a semana para a segunda e ignora valores inválidos', () => {
-    expect(parseAgendaSearch({ week: '2026-10-08', roomId: 12, type: 'MEETING', view: 'lista' }))
-      .toEqual({ week: '2026-10-05', roomId: '12', type: 'MEETING', view: 'lista' })
-    expect(parseAgendaSearch({ week: '2026-02-31', roomId: '', type: 'X', view: 'mes' }))
-      .toEqual({ week: undefined, roomId: undefined, type: undefined, view: undefined })
+    const meiaNoite = item('meia-noite', '2026-10-08T20:00:00.000Z', '2026-10-09T00:00:00.000Z')
+    expect(lastDayOf(meiaNoite)).toBe('2026-10-08')
+    expect(isMultiDay(meiaNoite)).toBe(false)
   })
 })
 

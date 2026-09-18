@@ -11,9 +11,8 @@ export type NavItem = {
 }
 
 export const NAV_ITEMS: NavItem[] = [
-  { label: 'Painel Geral', to: '/admin/dashboard', perm: null, hint: 'inicio dashboard calendario' },
+  { label: 'Painel Geral', to: '/admin/dashboard', perm: null, hint: 'inicio dashboard calendario agenda reunião evento reserva sala' },
   { label: 'Cursos', to: '/admin/cursos', perm: 'READ_COURSE', hint: 'inscricoes alunos' },
-  { label: 'Agenda das salas', to: '/admin/agenda', perm: 'READ_COURSE', hint: 'agenda reunião evento reserva sala calendario' },
   { label: 'Notícias', to: '/admin/noticias', perm: 'READ_NEWS' },
   { label: 'Usuários', to: '/admin/usuarios', perm: 'READ_USER', hint: 'associados pessoas cadastro' },
   { label: 'Empresas', to: '/admin/usuarios', search: { tab: 'empresas' }, perm: 'READ_USER', hint: 'cnpj parceiros cadastro' },
