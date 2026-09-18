@@ -19,14 +19,14 @@ import { formatDateFromString } from '@/utils/format-data-from-string'
 import { formatBRL } from '@/utils/format-currency'
 import { calcAge } from '@/utils/age'
 import { hasCourseStarted } from '@/utils/course-status'
-import { attendanceCounts, attendanceSummary, canReceiveCertificate } from '@/utils/course-attendance'
+import { attendanceCounts, attendanceSummary } from '@/utils/course-attendance'
 import { upperNoAccents } from '@/utils/text-format'
 import { maskCPF, maskPhone } from '@/utils/masks'
 import { markdownToPlainText } from '@/lib/markdown-text'
 import { whatsappUrl, telHref, uniqueContactLines, phoneKey } from '@/lib/contact-links'
 import { copyText } from '@/lib/copy-text'
 import { cn } from '@/lib/utils'
-import { Plus, Building2, GraduationCap, Calendar, Search, BookOpen, Images, ChevronLeft, ChevronRight, X, Pencil, Trash2, Clock, MapPin, User, ImageUp, ImagePlus, UserCheck, UserX, FileDown, Loader2, CheckCircle2, Circle, PlayCircle, Paperclip, Eye, FileSpreadsheet, Award, CopyPlus, MoreVertical, CheckCheck, UserPlus, Mail, Phone, ExternalLink, Link2, ClipboardList, UserRoundCheck, UserRoundX, CircleCheckBig } from 'lucide-react'
+import { Plus, Building2, GraduationCap, Calendar, Search, BookOpen, Images, ChevronLeft, ChevronRight, X, Pencil, Trash2, Clock, MapPin, User, ImageUp, ImagePlus, UserCheck, UserX, FileDown, Loader2, CheckCircle2, Circle, PlayCircle, Paperclip, Eye, FileSpreadsheet, CopyPlus, MoreVertical, CheckCheck, UserPlus, Mail, Phone, ExternalLink, Link2, ClipboardList, UserRoundCheck, UserRoundX, CircleCheckBig } from 'lucide-react'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
@@ -421,8 +421,6 @@ function RegistrationsTab({
   const [fichaId, setFichaId] = useState<string | null>(null)
   const [exportingAll, setExportingAll] = useState(false)
   const [exportingCsv, setExportingCsv] = useState(false)
-  const [certId, setCertId] = useState<string | null>(null)
-  const [exportingCerts, setExportingCerts] = useState(false)
   const [startOpen, setStartOpen] = useState(false)
   const setAttendance = useSetRegistrationAttendance(courseId)
   const markAllPresent = useMarkUnmarkedAttendance(courseId)
@@ -678,61 +676,6 @@ function RegistrationsTab({
     }
   }
 
-  function certCourse() {
-    return {
-      title: courseTitle,
-      eventNumber,
-      workloadHours: courseDetail?.workloadHours ?? null,
-      startDate: courseDetail?.startDate ?? null,
-      endDate: courseDetail?.endDate ?? null,
-      location: courseDetail?.location ?? null,
-    }
-  }
-
-  async function certOne(reg: Registration) {
-    setCertId(reg.id)
-    try {
-      const { downloadCertificadoPdf } = await import('@/lib/certificado-pdf')
-      await downloadCertificadoPdf(
-        [{ course: certCourse(), participant: { name: reg.userData.name, cpf: reg.userData.cpf } }],
-        `certificado-${reg.userData.name}`,
-      )
-    } catch {
-      toast.error('Erro ao gerar o certificado.')
-    } finally {
-      setCertId(null)
-    }
-  }
-
-  async function certAll() {
-    setExportingCerts(true)
-    try {
-      const { downloadCertificadoPdf } = await import('@/lib/certificado-pdf')
-      const regs = await fetchAllCourseRegistrations(courseId)
-      // Confirmadas que não foram marcadas como falta.
-      const eligible = regs.filter(canReceiveCertificate)
-      const absent = regs.filter(r => r.confirmed && r.attended === false).length
-      if (eligible.length === 0) {
-        toast.error(absent > 0
-          ? 'Nenhum certificado a emitir: as inscrições confirmadas estão marcadas como falta.'
-          : 'Nenhuma inscrição confirmada para emitir certificado.')
-        return
-      }
-      const course = certCourse()
-      await downloadCertificadoPdf(
-        eligible.map(r => ({ course, participant: { name: r.userData.name, cpf: r.userData.cpf } })),
-        `certificados-${courseTitle}`,
-      )
-      const done = eligible.length === 1 ? '1 certificado gerado.' : `${eligible.length} certificados gerados.`
-      toast.success(absent > 0
-        ? `${done} ${absent === 1 ? '1 pessoa marcada como falta ficou' : `${absent} pessoas marcadas como falta ficaram`} de fora.`
-        : done)
-    } catch {
-      toast.error('Erro ao gerar os certificados.')
-    } finally {
-      setExportingCerts(false)
-    }
-  }
 
   return (
     <div className="flex flex-col gap-4">
@@ -806,10 +749,6 @@ function RegistrationsTab({
             <Button size="sm" variant="outline" className="h-8 gap-1.5" disabled={exportingLista} onClick={downloadListaPresenca} title="Lista de presença para imprimir (inscrições confirmadas)">
               {exportingLista ? <Loader2 className="size-3.5 animate-spin" /> : <ClipboardList className="size-3.5" />}
               Lista de presença
-            </Button>
-            <Button size="sm" variant="outline" className="h-8 gap-1.5" disabled={exportingCerts} onClick={certAll} title="Certificados dos confirmados que não faltaram">
-              {exportingCerts ? <Loader2 className="size-3.5 animate-spin" /> : <Award className="size-3.5" />}
-              Certificados
             </Button>
           </div>
         )}
@@ -946,17 +885,6 @@ function RegistrationsTab({
                 {fichaId === reg.userDataId ? <Loader2 className="size-3.5 animate-spin" /> : <FileDown className="size-3.5" />}
                 <span className="hidden lg:inline">{t('admin.courses.ficha')}</span>
               </RowAction>
-              {canReceiveCertificate(reg) && (
-                <RowAction
-                  label="Emitir certificado de conclusão"
-                  className="text-amber-600 hover:text-amber-700 hover:bg-amber-50 dark:hover:bg-amber-950/30"
-                  disabled={certId === reg.id}
-                  onClick={() => certOne(reg)}
-                >
-                  {certId === reg.id ? <Loader2 className="size-3.5 animate-spin" /> : <Award className="size-3.5" />}
-                  <span className="hidden lg:inline">Certificado</span>
-                </RowAction>
-              )}
               {minor && (
                 <RowAction
                   label="Baixar termo de autorização do responsável (menor de idade)"

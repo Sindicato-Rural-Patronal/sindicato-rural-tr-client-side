@@ -26,11 +26,6 @@ export function attendanceSummary({ present, absent, unmarked }: AttendanceCount
   ].join(' · ')
 }
 
-/** Certificado: inscrição confirmada que não foi marcada como falta. */
-export function canReceiveCertificate(reg: AttendanceItem): boolean {
-  return reg.confirmed && reg.attended !== false
-}
-
 /**
  * Dias do curso ("YYYY-MM-DD"), do início ao fim, um por folha da lista de
  * presença. Data inválida ou fim antes do início → só o dia do início. Limite de

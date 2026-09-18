@@ -2,7 +2,6 @@ import { describe, it, expect } from 'vitest'
 import {
   attendanceCounts,
   attendanceSummary,
-  canReceiveCertificate,
   courseDays,
   sortByName,
 } from '@/utils/course-attendance'
@@ -23,18 +22,6 @@ describe('attendanceCounts / attendanceSummary', () => {
 
   it('singular e zero', () => {
     expect(attendanceSummary({ present: 1, absent: 0, unmarked: 0 })).toBe('1 presente · 0 faltas · 0 sem marcar')
-  })
-})
-
-describe('canReceiveCertificate', () => {
-  it('confirmada e sem falta (presente ou sem marcar)', () => {
-    expect(canReceiveCertificate({ confirmed: true, attended: true })).toBe(true)
-    expect(canReceiveCertificate({ confirmed: true, attended: null })).toBe(true)
-  })
-
-  it('falta ou não confirmada ficam de fora', () => {
-    expect(canReceiveCertificate({ confirmed: true, attended: false })).toBe(false)
-    expect(canReceiveCertificate({ confirmed: false, attended: true })).toBe(false)
   })
 })
 
