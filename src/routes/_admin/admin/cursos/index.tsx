@@ -1630,7 +1630,7 @@ function RouteComponent() {
 
   function clearLink() {
     if (linkedId || aba) {
-      navigate({ search: prev => ({ ...prev, curso: undefined, aba: undefined }), replace: true })
+      navigate({ search: prev => ({ ...prev, curso: undefined, aba: undefined }), replace: true, resetScroll: false })
     }
   }
 
@@ -1644,7 +1644,7 @@ function RouteComponent() {
   useEffect(() => {
     if (!linkedId || !linkedError) return
     toast.error('Não foi possível abrir o curso do link.')
-    navigate({ search: prev => ({ ...prev, curso: undefined, aba: undefined }), replace: true })
+    navigate({ search: prev => ({ ...prev, curso: undefined, aba: undefined }), replace: true, resetScroll: false })
   }, [linkedId, linkedError, navigate])
 
   const courses = data?.data ?? []

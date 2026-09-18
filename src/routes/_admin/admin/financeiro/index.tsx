@@ -115,8 +115,9 @@ function RouteComponent() {
   const enabled = !permLoading && can('READ_FINANCE')
   const search = Route.useSearch()
   const navigate = Route.useNavigate()
+  // Trocar filtro não é sair de tela: só virar de página leva de volta ao topo.
   const setSearch = (patch: Partial<FinanceSearch>) =>
-    navigate({ search: prev => ({ ...prev, ...patch }), replace: true })
+    navigate({ search: prev => ({ ...prev, ...patch }), replace: true, resetScroll: 'page' in patch })
 
   // Lançamentos recorrentes: ao abrir a tela, o backend cria os que faltam até o
   // mês atual. É idempotente, então rodar de novo não duplica nada — mas basta

@@ -131,7 +131,9 @@ function RouteComponent() {
   const search = Route.useSearch()
   const navigate = Route.useNavigate()
   const setSearch = useCallback(
-    (patch: Partial<AuditSearch>) => navigate({ search: prev => ({ ...prev, ...patch }), replace: true }),
+    // Trocar filtro não é sair de tela: só virar de página leva de volta ao topo.
+    (patch: Partial<AuditSearch>) =>
+      navigate({ search: prev => ({ ...prev, ...patch }), replace: true, resetScroll: 'page' in patch }),
     [navigate],
   )
   const page = search.page ?? 1
