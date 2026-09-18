@@ -47,6 +47,7 @@ Site institucional do **Sindicato Rural de Terra Roxa** (Paraná, Brasil). Plata
 /admin/banners              → _admin/admin/banners.tsx (período em dias de Brasília; selo Agendado/No ar/Expirado/Inativo)
 /admin/mensagens            → _admin/admin/mensagens.tsx (responder por e-mail/WhatsApp, marcar como não lida)
 /admin/salas                → _admin/admin/salas/index.tsx (nome = lista fixa de salas)
+/admin/agenda               → _admin/admin/agenda.tsx (Agenda das salas: ?week=<segunda>&roomId&type=COURSE|EVENT|MEETING&view=semana|lista; componentes em components/agenda)
 /admin/administradores      → _admin/admin/administradores/index.tsx
 /admin/cotacoes             → _admin/admin/cotacoes/index.tsx (lançamento do dia: produtos fixos, preço + manhã/tarde; unidade por produto; fonte)
 /admin/galerias             → _admin/admin/galerias/index.tsx (redireciona p/ /admin/configuracoes?tab=galerias)
@@ -56,7 +57,7 @@ Site institucional do **Sindicato Rural de Terra Roxa** (Paraná, Brasil). Plata
 /admin/convenios/$id        → _admin/admin/convenios/$id.tsx (editor com pré-visualização)
 /admin/auditoria            → _admin/admin/auditoria/index.tsx (trilha de auditoria; linha abre IP, local, navegador e "O que mudou"; filtros na URL, inclusive ?ip=)
 /admin/financeiro           → _admin/admin/financeiro/index.tsx (Financeiro: dashboard, lançamentos, categorias, caixas)
-/admin/dashboard            → _admin/admin/dashboard.tsx (painel: stats + calendário de cursos + cadastros incompletos; pendências ficam no sino)
+/admin/dashboard            → _admin/admin/dashboard.tsx (painel: stats + calendário de cursos e reservas de sala + cadastros incompletos; pendências ficam no sino)
 /convite/:token             → convite/$token.tsx (público: ativar acesso de admin por convite)
 ```
 
@@ -97,6 +98,9 @@ src/
 │   ├── PersonPicker.tsx             # Busca de pessoa do cadastro (lista suspensa; "Cadastrar nova pessoa" em outra aba)
 │   ├── export/ExportMenu.tsx        # Exportação CSV: ExportMenu (selecionados / todos com filtros / extras),
 │   │                                #   ExportOneButton (um registro), SelectCheckbox, SelectionInfo
+│   ├── agenda/                      # Agenda das salas: AgendaPage (semana/lista, filtros na URL), AgendaWeekView,
+│   │                                #   AgendaListView (busca, exportar), BookingDialog (nova/editar reserva),
+│   │                                #   DeleteBookingDialog (só esta / esta e as próximas), KindBadge (Curso/Evento/Reunião)
 │   ├── galerias/                    # Admin: GalleryAlbumCard (fotos, legenda, ordem), GalleryAlbumDialog
 │   ├── site-config/                 # Abas de Configurações do site: OrgInfoPanel (dados do sindicato +
 │   │                                #   texto do Sobre), SocialLinksPanel, GalleriesPanel, PartnersPanel
@@ -131,6 +135,7 @@ src/
 │   ├── useNews.ts                   # Hooks de notícias (admin + público)
 │   ├── useBanner.ts                 # Hooks de banners
 │   ├── useRooms.ts                  # useRooms, useCreateRoom
+│   ├── useRoomBookings.ts           # Reservas de sala: useRoomBookings, useRoomSchedule, useCreate/Update/DeleteRoomBooking
 │   ├── useRowSelection.ts           # Seleção de linhas por id (continua entre páginas) para exportar
 │   ├── useAuditTrail.ts             # Auditoria: useAuditTrail (filtros action/entity/actorId/ip/from/to/q) + AuditTrailItem
 │   ├── usePermissions.ts            # Hook de permissões do usuário logado
@@ -151,8 +156,11 @@ src/
 │   │                                #   firstInvalidField, focusFieldById (cadastro novo e edição de pessoa)
 │   ├── org-contact.ts               # Dados padrão do sindicato (fallback) + phoneDigits
 │   ├── room-names.ts                # Nomes fixos das salas + opções do select
+│   ├── agenda.ts                    # Agenda das salas: semana (weekStart, weekLabel), itemsForDay (vários dias), horário de parede,
+│   │                                #   parseAgendaSearch, validação/corpo do formulário de reserva
 │   ├── calendar-links.ts            # Curso na agenda/WhatsApp: buildCourseIcs (.ics, hora de Brasília → UTC, repete por dia),
 │   │                                #   googleCalendarUrl, whatsappShareUrl (só nome, data, horário, local e link)
+│   ├── dashboard-agenda.ts          # Calendário do painel: dias com reserva, lista do dia (cursos + reservas), contagem
 │   ├── quote-utils.ts               # Cotações: período (manhã/tarde), rótulo dos produtos, unidades (QUOTE_UNIT_OPTIONS), trendOf
 │   ├── relative-time.ts             # relativeTime ("agora", "há 5 min", "há 2 h", "ontem", "12/09") + fullDateTime
 │   ├── audit-fields.ts              # Auditoria "O que mudou": AUDIT_FIELD_LABELS (campo → português), formatAuditValue, auditChanges
@@ -363,6 +371,11 @@ photoGallery: { id, url, caption }[], instructors: CourseInstructor[]
 - `GET /api/rooms` — lista
 - `POST /api/rooms` — criar · `PATCH /api/rooms/:id` · `DELETE /api/rooms/:id`
 
+**Reservas de sala (agenda)** — eventos e reuniões; READ/CREATE/UPDATE/DELETE_COURSE; horário de parede no ISO (igual aos cursos)
+- `GET /api/admin/room-bookings?from&to[&roomId][&type=EVENT|MEETING][&search]` — reservas (responsável = pessoa ou nome, `seriesId`)
+- `GET /api/admin/room-schedule?from&to[&roomId]` — cursos + reservas (`kind` COURSE|EVENT|MEETING)
+- `POST /api/admin/room-bookings` (`repeat: { frequency: WEEKLY|MONTHLY, until }` opcional) → `{ ids, seriesId }` · `PATCH /:id` (só esta data) · `DELETE /:id?scope=one|future` — sala ocupada → 409 com a mensagem do conflito
+
 **Convênios** — gated por `*_CONVENIO`; preço em centavos (Int); listas em JSON
 - `GET /api/convenios` — menu público (ativos: id, slug, name, subtitle, logoUrl, order)
 - `GET /api/convenios/:slug` — página pública (inativo/inexistente → 404)
@@ -389,7 +402,7 @@ photoGallery: { id, url, caption }[], instructors: CourseInstructor[]
 - Cada linha também traz de onde veio — `ip`, `location` ("Terra Roxa, PR, Brasil", aproximado pelo IP; o backend consulta o ipwho.is), `device` ("Chrome no Windows"), `userAgent` — e `changes` (`[{ field, before, after }]` em edições/exclusões; senha trocada = `password` "alterada", sem valor). Linhas antigas: tudo null. Tentativas de login ficam na trilha (LOGIN, LOGIN_FAILED, LOGIN_BLOCKED), com o usuário digitado e nunca a senha
 
 **Exportação CSV** — `POST /api/admin/export/:dataset` (corpo JSON; GET com query também existe) (planilha `;` com BOM, abre no Excel; cada exportação vai para a auditoria como "Exportou")
-- Datasets: `people`, `companies`, `properties` (`ownerIds`), `unimed` (READ_USER) · `admins` (READ_USER_ADMIN) · `courses`, `registrations` (`courseIds`) (READ_COURSE) · `contact-messages` (READ_CONTACT) · `audit-logs` (READ_AUDIT)
+- Datasets: `people`, `companies`, `properties` (`ownerIds`), `unimed` (READ_USER) · `admins` (READ_USER_ADMIN) · `courses`, `registrations` (`courseIds`) (READ_COURSE) · `contact-messages` (READ_CONTACT) · `audit-logs` (READ_AUDIT) · `room-bookings` (READ_COURSE; from/to/roomId/type/search)
 - `ids=a,b` = selecionados ou um registro; sem `ids` = mesmos filtros da listagem
 - Telas: checkboxes + "Exportar" em Associados, Empresas, Administradores, Unimed, Cursos (cards), Mensagens; ícone de download por linha; "Exportar" no detalhe de pessoa/empresa/curso/mensagem; botão na Auditoria e na aba Inscrições do curso
 
@@ -426,8 +439,8 @@ photoGallery: { id, url, caption }[], instructors: CourseInstructor[]
 - **Redes sociais** (Configurações do site): o WhatsApp é digitado como telefone ((44) 99999-9999) e salvo como `https://wa.me/55…`; link colado também serve. "Alterações não salvas" e Salvar só com mudança.
 - Notícias, salas, admins e parceiros implementados.
 - **Empresas separadas de pessoas** (set/2026): `Company` tem vínculos N:N com pessoas (`CompanyMember`, cada um com título livre, ex.: SOCIO, CONTADOR), propriedades próprias (endereços; `Property` pertence a uma pessoa OU a uma empresa) e a parceria (antes flags em `UserData`). Lista na aba "Empresas" de `/admin/usuarios`. O CNPJ saiu do formulário de pessoa; as colunas `cnpj`/`isPartner`/`partner*` de `UserData` foram removidas (valores antigos de CNPJ e de tipo de membro fora da lista foram para as observações do associado). A migration criou uma empresa para cada pessoa ativa que era parceira ou tinha CNPJ, com a pessoa como RESPONSAVEL.
-- Dashboard admin **implementado** — stats + calendário de cursos + lista de cadastros incompletos (não é mais stub).
-- **Notificações** (set/2026): sino no topo da barra lateral (embaixo do logo com a barra recolhida) e no topo da tela no celular. Número = avisos não lidos + pendências `warning` ("9+" acima de 9). Painel com "Pendências" (calculadas no backend; importantes primeiro, em âmbar) e "Avisos" (30 dias; clicar marca como lido e abre o `link`; "Marcar todas como lidas"). Links abrem pelo roteador (`navigate({ href })`, só caminhos `/admin`): `/admin/cursos?curso=<id>&aba=inscricoes`, `/admin/usuarios?incomplete=true` ou `?tab=admins` (a tela de usuários acompanha a URL mesmo já aberta), `/admin/configuracoes?tab=...`, `/admin/mensagens`, `/admin/cotacoes`. Alertas de pendência não ficam no painel geral.
+- Dashboard admin **implementado** — stats + calendário + lista de cadastros incompletos (não é mais stub). Calendário: cursos (lista de cursos) e, com `READ_COURSE`, eventos/reuniões de `GET /admin/room-schedule` para os dias visíveis (mesma chave de cache da Agenda); bolinhas separadas (Cursos / Eventos e reuniões) e lista do dia pela hora com horário, sala e selo de tipo (Curso/Evento/Reunião). Reserva abre `/admin/agenda?week=<segunda-feira do dia>`; curso continua sem link.
+- **Notificações** (set/2026): sino no topo da barra lateral (embaixo do logo com a barra recolhida) e no topo da tela no celular. Número = avisos não lidos + pendências `warning` ("9+" acima de 9). Painel com "Pendências" (calculadas no backend; importantes primeiro, em âmbar) e "Avisos" (30 dias; clicar marca como lido e abre o `link`; "Marcar todas como lidas"). Links abrem pelo roteador (`navigate({ href })`, só caminhos `/admin`): `/admin/cursos?curso=<id>&aba=inscricoes`, `/admin/usuarios?incomplete=true` ou `?tab=admins` (a tela de usuários acompanha a URL mesmo já aberta), `/admin/configuracoes?tab=...`, `/admin/mensagens`, `/admin/cotacoes`, `/admin/agenda` (reservas de sala de hoje). Alertas de pendência não ficam no painel geral.
 - Trilha de auditoria e convites de admin implementados.
 - **Ajustes de cadastro (set/2026)**: tipo de membro é select (Aluno, Produtor rural, Trabalhador rural assalariado/autônomo; o backend recusa valor fora da lista); CAD/PRO até 5; salas com nome de lista fixa; empresa com razão social (`name`), nome fantasia (`tradeName`, exibido quando houver — `companyDisplayName`) e endereço da sede no próprio cadastro (CEP com busca).
 - **Cotações**: produtos fixos; o admin só lança preço (centavos) e período manhã/tarde; a data é a do dia; a unidade de cada produto é escolhida na mesma tela (saca 60/50/40 kg, tonelada, quilo, arroba ou sem unidade) e só é salva no "Salvar cotações", junto com os preços (PATCH das unidades alteradas, depois PUT daily se houver preço; erro mostrado por produto). Preço >20% diferente do último lançado abre confirmação ("Corrigir" / "Salvar mesmo assim"); "Repetir último" preenche o preço anterior; Enter no preço vai para o próximo (não envia). Home mostra preço + unidade + dia/período + fonte (editável no admin de cotações) e linka para `/cotacoes` (histórico em gráfico/tabela).
@@ -440,6 +453,7 @@ photoGallery: { id, url, caption }[], instructors: CourseInstructor[]
 - **Configurações do site** (`/admin/configuracoes`): centraliza o que é do site público — Dados do sindicato (telefone, e-mail, endereço, horário, busca do mapa e texto do Sobre; usados no rodapé, Contato, Sobre e convênios via `useOrgInfo`), Redes sociais, Galerias, Parceiros da home (adicionar empresa, logo, link, ordem, tirar) e Contatos públicos ("Nossa Equipe": qualquer pessoa do cadastro, com cargo e ordem). Permissões: Dados/Redes/Galerias `*_BANNER`; Parceiros e Contatos `*_USER`. A empresa não tem mais aba Parceria e o diálogo de admin não marca mais contato público — ambos apontam para cá.
 - **Convênios**: cada convênio ativo é um item próprio no menu do header público (entre Notícias e Sobre; sem submenu — pedido do usuário, são poucos); cada um tem página em `/convenios/$slug` (tabela de valores por faixa, documentos para adesão, destaques e texto). Conteúdo 100% editável em `/admin/convenios` (`ConvenioEditor` + `ConvenioPageView` compartilhado com a pré-visualização). Hooks em `useConvenios.ts`. Unimed semeado com os dados da página antiga (`ruraltr.com.br/pgs/print_unimed.php`). Regras com `UPDATE_BANNER` receberam as permissões `*_CONVENIO` na migration.
 - **Financeiro** (admin): lançamentos de caixa (valor em centavos Int), categorias, dashboard, comprovantes (anexo em Bytes no banco), export CSV, multi-caixa e transferência entre caixas, relatório PDF do período. Gated por `READ/CREATE/UPDATE/DELETE_FINANCE`. Filtros dos lançamentos vivem na URL (search params). Aba Lançamentos: totais (Entradas, Saídas, Saldo) dos filtros atuais vindos do backend (`totals`); "Registrar e novo" (mantém data/tipo/categoria/caixa/método); "Repetir" por linha (novo lançamento copiado, data de hoje, sem comprovantes nem números da nota); remover comprovante pede confirmação.
+- **Agenda das salas** (`/admin/agenda`, set/2026): semana seg–dom (7 colunas em tela larga, um cartão por dia no celular) com cursos, eventos e reuniões; item de vários dias aparece em cada dia; selo com texto e cor por tipo; Hoje / semana anterior / próxima, filtro de sala e de tipo na URL. Curso abre `/admin/cursos?curso=<id>`; reserva abre o `BookingDialog` (Tipo, Título, Sala, Data, Início/Término, "Termina em outro dia", responsável do cadastro ou nome digitado, descrição, repetir toda semana/todo mês até uma data — só ao criar). 409 (sala ocupada) aparece dentro do diálogo. Reserva de uma repetição: editar muda só a data; excluir pergunta "Só esta data" / "Esta e as próximas". Visão Lista: só eventos/reuniões da semana, busca, Editar/Excluir e exportar CSV. Ao editar, campos opcionais vazios vão como `null`. Item "Agenda das salas" na barra lateral (depois de Cursos) e na paleta Ctrl+K.
 - Deploy em produção via Docker (Dockerfile + docker-compose.prod.yml; servidor Node/Fastify em `server/index.mjs`).
 - **Conexão fraca / site público (set/2026)**: consultas repetem até 2x em falha de rede/5xx; home, listas, cotações e notícia mostram "Não foi possível carregar" + "Tentar de novo" (nunca "nenhum curso" quando a API falhou; notícia só diz "não existe" em 404); 404/erro/carregamento em português no router; cards de curso usam `coverImageThumb` (cursos antigos: capa inteira) e descrição sem markdown; faixa de cotações parada e rolável no toque; botão flutuante do WhatsApp; alvos de toque de 44px no menu e chamadas do site.
 

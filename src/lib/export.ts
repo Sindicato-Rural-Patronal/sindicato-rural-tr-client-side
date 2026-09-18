@@ -15,6 +15,7 @@ export type ExportDataset =
   | 'contact-messages'
   | 'unimed'
   | 'audit-logs'
+  | 'room-bookings'
 
 export type ExportParams = Record<string, string | number | boolean | string[] | null | undefined>
 
@@ -28,6 +29,7 @@ const FALLBACK_NAME: Record<ExportDataset, string> = {
   'contact-messages': 'mensagens',
   unimed: 'unimed',
   'audit-logs': 'auditoria',
+  'room-bookings': 'agenda-salas',
 }
 
 /**

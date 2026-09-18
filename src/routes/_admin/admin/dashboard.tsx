@@ -9,13 +9,15 @@ import { useAdminStats, useAdminUsers } from '@/hooks/useAdmin'
 import { useRooms } from '@/hooks/useRooms'
 import { usePermissions } from '@/hooks/usePermissions'
 import { memberTypeLabel } from '@/lib/member-types'
+import { KIND_LABEL, timeRangeLabel, weekStart, type ScheduleKind } from '@/lib/agenda'
+import { bookingDays, dayAgenda, dayCountLabel, type ScheduleEntryLike } from '@/lib/dashboard-agenda'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
   BookOpen, Users, ChevronLeft, ChevronRight,
-  Calendar, Shield, GraduationCap, DoorOpen, UserX, ArrowRight,
+  Calendar, Shield, GraduationCap, DoorOpen, UserX, ArrowRight, CalendarClock,
 } from 'lucide-react'
 
 export const Route = createFileRoute('/_admin/admin/dashboard')({
@@ -33,6 +35,23 @@ async function fetchAllAdminCourses(): Promise<CourseCardItem[]> {
     if (page >= (json.totalPages ?? 1)) break
   }
   return all
+}
+
+// Reservas de sala (eventos e reuniões) do período, mesma rota e chave da Agenda
+// (salvar uma reserva lá atualiza aqui). Horários "de parede", como os cursos.
+type ScheduleItem = ScheduleEntryLike & {
+  id: string
+  title: string
+  roomId: string
+  roomName: string
+  status: string | null
+  seriesId: string | null
+}
+
+async function fetchRoomSchedule(range: { from: string; to: string }): Promise<ScheduleItem[]> {
+  const qs = new URLSearchParams(range)
+  const json = await apiFetch(`/admin/room-schedule?${qs}`).then(r => r.json())
+  return Array.isArray(json) ? json : (json?.data ?? [])
 }
 
 // ─── calendar helpers ─────────────────────────────────────────────────────────
@@ -69,6 +88,15 @@ function coursesInRange<T extends { startDate?: string | null; endDate?: string 
     if (!start) return false
     return date >= start && date <= (end ?? start)
   })
+}
+
+// Tipo do item na lista do dia, em texto (não só pela cor).
+function KindBadge({ kind }: { kind: ScheduleKind }) {
+  return (
+    <span className="shrink-0 rounded-full border border-current/20 bg-background/80 px-2 py-0.5 text-[11px] font-medium leading-none">
+      {KIND_LABEL[kind]}
+    </span>
+  )
 }
 
 // ─── stat card ────────────────────────────────────────────────────────────────
@@ -108,6 +136,7 @@ function RouteComponent() {
   // Cadastros incompletos só para quem pode ver pessoas (sem READ_USER a API recusa).
   const { can } = usePermissions()
   const canReadUsers = can('READ_USER')
+  const canReadCourses = can('READ_COURSE')
   const { data: incompletosData, isError: incompletosError } = useAdminUsers(
     { page: 1, limit: 5, incompleteRegistration: true },
     { enabled: canReadUsers },
@@ -120,6 +149,27 @@ function RouteComponent() {
   const [dataSelecionada, setDataSelecionada] = useState(todayStr)
 
   const cells = useMemo(() => buildCalendar(mesAtual.year, mesAtual.month), [mesAtual])
+
+  // Reservas dos dias visíveis no calendário (inclui as pontas dos meses vizinhos).
+  const gridFrom = cells[0].date
+  const gridTo = cells[cells.length - 1].date
+  const scheduleQuery = useQuery({
+    queryKey: ['admin', 'room-schedule', { from: gridFrom, to: gridTo }],
+    queryFn: () => fetchRoomSchedule({ from: gridFrom, to: gridTo }),
+    enabled: canReadCourses,
+  })
+  // Dia selecionado fora da grade (trocou de mês sem clicar em outro dia).
+  const selectedOutsideGrid = dataSelecionada < gridFrom || dataSelecionada > gridTo
+  const selectedDayQuery = useQuery({
+    queryKey: ['admin', 'room-schedule', { from: dataSelecionada, to: dataSelecionada }],
+    queryFn: () => fetchRoomSchedule({ from: dataSelecionada, to: dataSelecionada }),
+    enabled: canReadCourses && selectedOutsideGrid,
+  })
+
+  const diasComReserva = useMemo(
+    () => bookingDays(scheduleQuery.data ?? [], gridFrom, gridTo),
+    [scheduleQuery.data, gridFrom, gridTo],
+  )
 
   const cursosPublicos = (cursos ?? []).filter(c => c.status === 'PUBLIC')
 
@@ -146,6 +196,15 @@ function RouteComponent() {
     () => coursesInRange(cursos ?? [], dataSelecionada),
     [cursos, dataSelecionada]
   )
+
+  const reservasDoPeriodo = selectedOutsideGrid ? selectedDayQuery.data : scheduleQuery.data
+  const reservasErro = selectedOutsideGrid ? selectedDayQuery.isError : scheduleQuery.isError
+  const agendaDoDia = useMemo(
+    () => dayAgenda(cursosDoDia, reservasDoPeriodo ?? [], dataSelecionada),
+    [cursosDoDia, reservasDoPeriodo, dataSelecionada],
+  )
+  const reservasDoDia = agendaDoDia.length - cursosDoDia.length
+  const contagemDoDia = dayCountLabel(cursosDoDia.length, reservasDoDia)
 
   function prevMonth() {
     setMesAtual(prev => {
@@ -265,6 +324,7 @@ function RouteComponent() {
                 const selected = date === dataSelecionada
                 const isToday = date === todayStr
                 const hasCurso = diasComCurso.has(date)
+                const hasReserva = diasComReserva.has(date)
                 return (
                   <button
                     key={date}
@@ -279,17 +339,29 @@ function RouteComponent() {
                     <span className={`font-medium ${selected ? 'text-primary-foreground' : ''}`}>
                       {date.split('-')[2].replace(/^0/, '')}
                     </span>
-                    {hasCurso && (
-                      <span className={`size-1.5 rounded-full mt-0.5 ${selected ? 'bg-primary-foreground/80' : 'bg-primary'}`} />
+                    {(hasCurso || hasReserva) && (
+                      <span className="mt-0.5 flex items-center gap-0.5">
+                        {hasCurso && (
+                          <span className={`size-1.5 rounded-full ${selected ? 'bg-primary-foreground/80' : 'bg-primary'}`} />
+                        )}
+                        {hasReserva && (
+                          <span className={`size-1.5 rounded-full ${selected ? 'bg-amber-300' : 'bg-amber-500'}`} />
+                        )}
+                      </span>
                     )}
                   </button>
                 )
               })}
             </div>
-            <div className="mt-4 flex items-center gap-4 border-t pt-4 text-xs text-muted-foreground">
+            <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 border-t pt-4 text-xs text-muted-foreground">
               <span className="flex items-center gap-1.5">
-                <span className="size-2 rounded-full bg-primary" /> Dias com cursos
+                <span className="size-2 rounded-full bg-primary" /> Cursos
               </span>
+              {canReadCourses && (
+                <span className="flex items-center gap-1.5">
+                  <span className="size-2 rounded-full bg-amber-500" /> Eventos e reuniões
+                </span>
+              )}
               <span className="flex items-center gap-1.5">
                 <span className="size-4 rounded ring-1 ring-primary/50" /> Hoje
               </span>
@@ -305,23 +377,53 @@ function RouteComponent() {
                 <Calendar className="size-4 text-primary" />
                 <span className="capitalize">{ptDayOfWeek(dataSelecionada)}, {formatDateFromString(dataSelecionada)}</span>
               </CardTitle>
-              {cursosDoDia.length > 0 && (
-                <Badge variant="secondary">{cursosDoDia.length} curso{cursosDoDia.length > 1 ? 's' : ''}</Badge>
-              )}
+              {contagemDoDia && <Badge variant="secondary">{contagemDoDia}</Badge>}
             </div>
           </CardHeader>
           <CardContent>
-            {cursosDoDia.length === 0 ? (
+            {canReadCourses && reservasErro && (
+              <p className="mb-3 text-sm text-destructive">Erro ao carregar as reservas de sala.</p>
+            )}
+            {agendaDoDia.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-12 text-center">
                 <div className="mb-3 rounded-full bg-muted p-4">
                   <Calendar className="size-6 text-muted-foreground" />
                 </div>
-                <p className="text-sm font-medium text-foreground">Nenhum curso neste dia</p>
+                <p className="text-sm font-medium text-foreground">
+                  {canReadCourses ? 'Nenhum curso ou reserva neste dia' : 'Nenhum curso neste dia'}
+                </p>
                 <p className="text-xs text-muted-foreground">Selecione outro dia no calendário</p>
               </div>
             ) : (
               <div className="grid gap-3 sm:grid-cols-2">
-                {cursosDoDia.map((course, i) => {
+                {agendaDoDia.map(entry => {
+                  if (entry.kind !== 'COURSE') {
+                    const booking = entry.item
+                    return (
+                      <Link
+                        key={entry.key}
+                        to="/admin/agenda"
+                        search={{ week: weekStart(dataSelecionada) }}
+                        className="flex items-start gap-3 rounded-xl border border-border bg-card p-4 text-foreground transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      >
+                        <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400">
+                          <CalendarClock className="size-5" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-start justify-between gap-2">
+                            <p className="truncate text-sm font-semibold">{booking.title}</p>
+                            <KindBadge kind={entry.kind} />
+                          </div>
+                          <div className="mt-1.5 flex flex-col gap-1 text-xs text-muted-foreground">
+                            <span>{timeRangeLabel(booking)}</span>
+                            {booking.roomName && <span>{booking.roomName}</span>}
+                          </div>
+                        </div>
+                      </Link>
+                    )
+                  }
+                  const course = entry.item
+                  const i = cursosDoDia.indexOf(course)
                   const colors = [
                     'bg-primary/10 text-primary border-primary/20',
                     'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400 border-emerald-200',
@@ -331,12 +433,15 @@ function RouteComponent() {
                   ]
                   const cls = colors[i % colors.length]
                   return (
-                    <div key={course.id} className={`flex items-start gap-3 rounded-xl border p-4 ${cls}`}>
+                    <div key={entry.key} className={`flex items-start gap-3 rounded-xl border p-4 ${cls}`}>
                       <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-background/80">
                         <GraduationCap className="size-5" />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="truncate text-sm font-semibold">{course.title}</p>
+                        <div className="flex items-start justify-between gap-2">
+                          <p className="truncate text-sm font-semibold">{course.title}</p>
+                          <KindBadge kind="COURSE" />
+                        </div>
                         <div className="mt-1.5 flex flex-col gap-1 text-xs opacity-80">
                           {course.startTime && (
                             <span>{course.startTime} – {course.endTime}</span>
