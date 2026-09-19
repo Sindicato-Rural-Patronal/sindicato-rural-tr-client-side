@@ -31,7 +31,11 @@ vi.mock('@/hooks/usePermissions', () => ({
   usePermissions: () => ({ can: () => true, cannot: () => false, isLoading: false, perms: [] }),
 }))
 vi.mock('@/hooks/useRooms', () => ({
-  useRooms: () => ({ data: [{ id: 'r1', name: 'AUDITORIO' }, { id: 'r2', name: 'SALA 1' }], isLoading: false }),
+  // SALA 2 fica sem nada marcado: é a sala "livre o dia todo" da ocupação.
+  useRooms: () => ({
+    data: [{ id: 'r1', name: 'AUDITORIO' }, { id: 'r2', name: 'SALA 1' }, { id: 'r3', name: 'SALA 2' }],
+    isLoading: false,
+  }),
 }))
 vi.mock('@/hooks/useRoomBookings', () => ({
   useRoomBookings: (filters: RoomBookingFilters) => {
@@ -162,18 +166,31 @@ describe('AgendaSection', () => {
     expect(screen.getByRole('button', { name: /Imprimir/ })).toBeInTheDocument()
   })
 
-  it('a faixa de ocupação abre com uma linha por sala e marca o horário no clique', () => {
+  it('a ocupação abre com uma linha por sala e marca o horário no clique', () => {
     renderSection()
     const faixa = screen.getByRole('button', { name: /Ocupação das salas/ })
     expect(faixa).toHaveAttribute('aria-expanded', 'true')
-    const livre = screen.getByRole('button', { name: 'Marcar na sala SALA 1 neste dia' })
-    expect(screen.getByRole('button', { name: 'Marcar na sala AUDITORIO neste dia' })).toBeInTheDocument()
-    fireEvent.click(livre, { clientX: 0 })
+    const ocupado = screen.getByRole('button', { name: 'Marcar reserva na sala SALA 1 neste dia' })
+    expect(screen.getByRole('button', { name: 'Marcar reserva na sala AUDITORIO neste dia' })).toBeInTheDocument()
+    fireEvent.click(ocupado, { clientX: 0 })
     const dialog = screen.getByRole('dialog')
     expect(within(dialog).getByRole('heading', { name: 'Nova reserva' })).toBeInTheDocument()
     expect(byId('booking-room').value).toBe('r2')
     // Sem largura no jsdom o clique cai no começo da faixa (07:00).
     expect(byId('booking-start').value).toBe('07:00')
     expect(byId('booking-end').value).toBe('08:00')
+  })
+
+  it('a ocupação diz o horário por escrito e avisa qual sala está livre', () => {
+    renderSection()
+    // O horário vem escrito (lista do celular e barra do gráfico), não só na
+    // posição da barra. O leitor de tela ouve sala, tipo, título e horário.
+    expect(screen.getAllByRole('button', { name: 'AUDITORIO: Curso MANEJO DE PASTAGEM, 08:00 às 12:00' }).length)
+      .toBeGreaterThan(0)
+    expect(screen.getAllByText('14:00 às 16:00').length).toBeGreaterThan(0)
+    // Sala sem nada marcado diz que está livre, por escrito.
+    expect(screen.getAllByText('Livre o dia todo').length).toBeGreaterThan(0)
+    expect(screen.getByRole('button', { name: 'Sala SALA 2 livre o dia todo. Clique para marcar uma reserva.' }))
+      .toBeInTheDocument()
   })
 })

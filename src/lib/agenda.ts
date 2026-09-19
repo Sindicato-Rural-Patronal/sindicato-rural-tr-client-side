@@ -432,6 +432,38 @@ export function minutesToWall(minutes: number): string {
   return `${String(Math.floor(clamped / 60)).padStart(2, '0')}:${String(clamped % 60).padStart(2, '0')}`
 }
 
+/**
+ * Horário escrito de um item no dia, do jeito que se fala: "08:00 às 12:00".
+ * Quando o item atravessa a virada do dia o rótulo mostra as datas e o aviso
+ * explica a relação com o dia que está na tela — a pessoa não precisa deduzir
+ * nada olhando o tamanho da barra.
+ */
+export function occupancyTimeLabel(item: AgendaItemLike, ymd: string): { time: string; note: string | null } {
+  const startDay = wallDate(item.startTime)
+  const start = wallTime(item.startTime)
+  const end = wallTime(item.endTime)
+  const before = startDay < ymd
+  const after = lastDayOf(item) > ymd
+  if (!before && !after) return { time: `${start} às ${end}`, note: null }
+  const time = `${formatDayMonth(startDay)} ${start} às ${formatDayMonth(wallDate(item.endTime))} ${end}`
+  if (before && after) return { time, note: 'Ocupa o dia inteiro' }
+  return { time, note: before ? 'Começou antes deste dia' : 'Termina em outro dia' }
+}
+
+/** Onde o horário do bloco cabe escrito: dentro da barra, ao lado dela ou em lugar nenhum. */
+export type OccupancyLabelPlacement = 'inside' | 'after' | 'before' | 'none'
+
+/**
+ * Quanto da faixa (em %) um texto de `chars` letras precisa para caber escrito.
+ * A faixa mais estreita em que o gráfico aparece tem uns 500px, então 1% ≈ 5px;
+ * cada letra do miudinho da barra mede uns 5,5px e ainda sobra um respiro de
+ * 12px. Conta pelo TAMANHO do texto porque "08:00 às 12:00" e "23/09 20:00 às
+ * 24/09 10:00" não pedem o mesmo espaço — o segundo, com data, é quase o dobro.
+ */
+export function occupancyLabelMinWidth(chars: number): number {
+  return (chars * 5.5 + 12) / 5
+}
+
 /** Bloco ocupado na faixa de uma sala (medidas em % da faixa). */
 export type OccupancyBlock = {
   key: string
@@ -440,13 +472,35 @@ export type OccupancyBlock = {
   title: string
   left: number
   width: number
-  /** "08:00–12:00 · MANEJO DE PASTAGEM" (o que aparece ao passar o dedo/mouse). */
+  /** "08:00 às 12:00" — o horário escrito, que a barra mostra sempre que couber. */
+  time: string
+  /** Aviso de virada de dia ("Começou antes deste dia"), quando houver. */
+  note: string | null
+  /** "08:00 às 12:00 · MANEJO DE PASTAGEM" (o que aparece ao passar o dedo/mouse). */
   label: string
   /** Começou antes das 07:00 (ou em outro dia) / termina depois das 22:00. */
   cutBefore: boolean
   cutAfter: boolean
   /** Linha dentro da sala, para quando dois itens se sobrepõem. */
   lane: number
+  /** Espaço livre antes e depois do bloco na MESMA linha (em % da faixa). */
+  gapBefore: number
+  gapAfter: number
+  /** Onde escrever o horário e quanto espaço ele tem (em % da faixa). */
+  labelPlacement: OccupancyLabelPlacement
+  labelSpace: number
+}
+
+/** Uma linha escrita da ocupação da sala: é o que a lista do celular mostra. */
+export type OccupancyLine = {
+  key: string
+  kind: ScheduleKind
+  title: string
+  /** "08:00 às 12:00". */
+  time: string
+  note: string | null
+  /** Fora das 07:00–22:00: não cabe no gráfico, mas continua na lista. */
+  outside: boolean
 }
 
 export type OccupancyRow = {
@@ -457,6 +511,39 @@ export type OccupancyRow = {
   lanes: number
   /** Itens do dia que ficam fora das 07:00–22:00 (só entram no aviso). */
   outside: AgendaEntry[]
+  /** TODOS os itens do dia na sala, com o horário escrito e em ordem. */
+  lines: OccupancyLine[]
+}
+
+/**
+ * Onde escrever o horário de cada bloco de UMA linha da sala: dentro da barra,
+ * no vazio depois dela, no vazio antes dela — ou em lugar nenhum, e aí a tela
+ * escreve o horário embaixo da sala. Um mesmo vazio interessa aos dois vizinhos,
+ * então quando os dois precisam dele cada um fica com metade e os rótulos nunca
+ * caem um por cima do outro.
+ */
+function placeLaneLabels(lane: OccupancyBlock[]): void {
+  const precisa = lane.map(block => block.width < occupancyLabelMinWidth(block.time.length))
+  lane.forEach((block, i) => {
+    if (!precisa[i]) {
+      block.labelPlacement = 'inside'
+      block.labelSpace = block.width
+      return
+    }
+    const min = occupancyLabelMinWidth(block.time.length)
+    const depois = block.gapAfter / (precisa[i + 1] ? 2 : 1)
+    const antes = block.gapBefore / (precisa[i - 1] ? 2 : 1)
+    if (depois >= min) {
+      block.labelPlacement = 'after'
+      block.labelSpace = depois
+    } else if (antes >= min) {
+      block.labelPlacement = 'before'
+      block.labelSpace = antes
+    } else {
+      block.labelPlacement = 'none'
+      block.labelSpace = 0
+    }
+  })
 }
 
 /** Minutos ocupados pelo item no dia (item de outro dia entra/sai pelas pontas). */
@@ -477,20 +564,25 @@ export function occupancyRows(
   ymd: string,
 ): OccupancyRow[] {
   const rows = new Map<string, OccupancyRow>()
-  for (const room of rooms) {
-    rows.set(room.id, { roomId: room.id, roomName: room.name, blocks: [], lanes: 1, outside: [] })
-  }
+  const newRow = (roomId: string, roomName: string): OccupancyRow =>
+    ({ roomId, roomName, blocks: [], lanes: 1, outside: [], lines: [] })
+  for (const room of rooms) rows.set(room.id, newRow(room.id, room.name))
   for (const item of itemsOfDay(items, ymd)) {
     let row = rows.get(item.roomId)
     if (!row) {
       // Sala fora da lista (ou que ainda não carregou): mostra a linha assim mesmo.
-      row = { roomId: item.roomId, roomName: item.roomName, blocks: [], lanes: 1, outside: [] }
+      row = newRow(item.roomId, item.roomName)
       rows.set(item.roomId, row)
     }
     const { start, end } = spanOfDay(item, ymd)
     const from = Math.max(start, OCCUPANCY_START_MIN)
     const to = Math.min(end, OCCUPANCY_END_MIN)
-    if (to <= from) {
+    const { time, note } = occupancyTimeLabel(item, ymd)
+    const outside = to <= from
+    // A lista escrita leva TUDO o que ocupa a sala no dia, inclusive o que não
+    // cabe no gráfico — é ela que o celular mostra.
+    row.lines.push({ key: item.key, kind: item.kind, title: item.title, time, note, outside })
+    if (outside) {
       row.outside.push(item)
       continue
     }
@@ -504,21 +596,38 @@ export function occupancyRows(
       title: item.title,
       left,
       width,
-      label: `${timeRangeLabel(item)} · ${item.title}`,
+      time,
+      note,
+      label: `${time} · ${item.title}`,
       cutBefore: start < OCCUPANCY_START_MIN,
       cutAfter: end > OCCUPANCY_END_MIN,
       lane: 0,
+      gapBefore: left,
+      gapAfter: 100 - (left + width),
+      labelPlacement: 'none',
+      labelSpace: 0,
     })
   }
   for (const row of rows.values()) {
     // Sobreposição (curso e evento na mesma sala): cada um na sua linha.
     const laneEnds: number[] = []
+    // Os blocos de cada linha, em ordem de horário — é assim que se mede o
+    // espaço vazio entre um e outro (o de trás é sempre o anterior).
+    const lanes: OccupancyBlock[][] = []
     for (const block of row.blocks) {
       let lane = laneEnds.findIndex(end => end <= block.left + 0.001)
       if (lane === -1) lane = laneEnds.length
       laneEnds[lane] = block.left + block.width
       block.lane = lane
+      const fila = lanes[lane] ?? (lanes[lane] = [])
+      const prev = fila.at(-1)
+      if (prev) {
+        prev.gapAfter = block.left - (prev.left + prev.width)
+        block.gapBefore = prev.gapAfter
+      }
+      fila.push(block)
     }
+    for (const fila of lanes) placeLaneLabels(fila)
     row.lanes = Math.max(1, laneEnds.length)
   }
   return [...rows.values()]
@@ -532,19 +641,45 @@ export function hourAtFraction(fraction: number, stepMinutes = 30): string {
   return minutesToWall(Math.max(OCCUPANCY_START_MIN, Math.min(stepped, OCCUPANCY_END_MIN - 60)))
 }
 
+/**
+ * Hora sugerida para marcar nesta sala: logo depois do último item do dia,
+ * arredondada para cima de meia em meia hora (sala vazia começa às 07:00). É o
+ * que o botão "Marcar reserva nesta sala" da lista usa, já que ali não dá para
+ * apontar a hora com o dedo como se faz na faixa.
+ */
+export function suggestedFreeHour(row: OccupancyRow): string {
+  const endPct = row.blocks.reduce((max, block) => Math.max(max, block.left + block.width), 0)
+  const minutes = OCCUPANCY_START_MIN + (endPct / 100) * OCCUPANCY_SPAN
+  const stepped = Math.ceil(minutes / 30) * 30
+  // Sempre sobra pelo menos uma hora até o fim da faixa.
+  return minutesToWall(Math.max(OCCUPANCY_START_MIN, Math.min(stepped, OCCUPANCY_END_MIN - 60)))
+}
+
 /** Uma hora depois de "HH:MM" (término sugerido da nova reserva). */
 export function plusOneHour(hhmm: string): string {
   return minutesToWall(Math.min(wallMinutes(hhmm) + 60, DAY_MIN))
 }
 
+/** Marca de hora da régua da faixa. */
+export type OccupancyTick = {
+  minutes: number
+  left: number
+  label: string
+  /** Hora "cheia" de 3 em 3 (07:00, 10:00, 13:00…): linha mais forte e rótulo sempre visível. */
+  major: boolean
+}
+
 /** Marcas de hora da faixa (07:00, 08:00 … 22:00). */
-export function occupancyTicks(everyMinutes = 60): { minutes: number; left: number; label: string }[] {
-  const ticks: { minutes: number; left: number; label: string }[] = []
+export function occupancyTicks(everyMinutes = 60): OccupancyTick[] {
+  const ticks: OccupancyTick[] = []
   for (let m = OCCUPANCY_START_MIN; m <= OCCUPANCY_END_MIN; m += everyMinutes) {
     ticks.push({
       minutes: m,
       left: ((m - OCCUPANCY_START_MIN) / OCCUPANCY_SPAN) * 100,
       label: minutesToWall(m),
+      // De 3 em 3 horas a partir das 07:00; o fim da faixa também fica em
+      // destaque, para a régua nunca terminar numa marca apagada.
+      major: (m - OCCUPANCY_START_MIN) % 180 === 0 || m === OCCUPANCY_END_MIN,
     })
   }
   return ticks

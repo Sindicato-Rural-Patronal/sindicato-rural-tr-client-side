@@ -1,6 +1,8 @@
 import { describe, it, expect } from 'vitest'
 import {
-  DEFAULT_ORDER, blockOrder, groupBlocks, moveBlock, normalizePrefs, toggleHidden, visibleBlocks,
+  DEFAULT_ORDER, DEFAULT_SIZES, applyOrder, blockOrder, blockSizes, buildRows, defaultDraft,
+  dropBlock, editableBlocks, moveBlock, normalizePrefs, prefsDraft, prefsToSave, sameDraft,
+  setBlockSize, toggleHidden, visibleBlocks,
   type DashboardBlockId,
 } from '@/components/dashboard/dashboard-prefs'
 import { quotesNotice } from '@/components/dashboard/quotes-notice'
@@ -18,10 +20,18 @@ describe('personalização do painel', () => {
 
   it('preferências estragadas não derrubam o layout padrão', () => {
     expect(normalizePrefs({ hidden: 'nada', order: ['bloco-que-nao-existe', 'cursos', 'cursos'] }))
-      .toEqual({ hidden: [], order: ['cursos'] })
+      .toEqual({ hidden: [], order: ['cursos'], sizes: {} })
     // Bloco que não estava na ordem salva continua aparecendo (no lugar de fábrica).
     expect(visibleBlocks({ order: ['auditoria'] }, TODOS)[0]).toBe('auditoria')
     expect(visibleBlocks({ order: ['auditoria'] }, TODOS)).toHaveLength(DEFAULT_ORDER.length)
+  })
+
+  it('preferência que não é objeto vira o padrão', () => {
+    for (const lixo of [null, undefined, 'x', 42, [1, 2]]) {
+      expect(normalizePrefs(lixo)).toEqual({ hidden: [], order: [], sizes: {} })
+    }
+    expect(blockOrder('x' as never)).toEqual(DEFAULT_ORDER)
+    expect(blockSizes(undefined)).toEqual(DEFAULT_SIZES)
   })
 
   it('esconde o que o admin desmarcou e o que ele não pode ver', () => {
@@ -41,9 +51,85 @@ describe('personalização do painel', () => {
     expect(toggleHidden(['cursos'], 'cursos')).toEqual([])
   })
 
-  it('junta os cartões pequenos vizinhos numa linha só', () => {
-    expect(groupBlocks(['numeros', 'cursos', 'incompletos', 'agenda', 'auditoria']))
-      .toEqual([['numeros'], ['cursos', 'incompletos'], ['agenda'], ['auditoria']])
+  it('arrastar leva o bloco para o lugar do outro', () => {
+    const ordem: DashboardBlockId[] = ['acoes', 'numeros', 'agenda', 'cursos']
+    expect(dropBlock(ordem, 'cursos', 'numeros')).toEqual(['acoes', 'cursos', 'numeros', 'agenda'])
+    expect(dropBlock(ordem, 'acoes', 'agenda')).toEqual(['numeros', 'agenda', 'acoes', 'cursos'])
+    // Soltar no mesmo lugar (ou bloco que não está na lista) não mexe em nada.
+    expect(dropBlock(ordem, 'acoes', 'acoes')).toEqual(ordem)
+    expect(dropBlock(ordem, 'incompletos', 'acoes')).toEqual(ordem)
+  })
+
+  it('mexer na ordem não bagunça o bloco que o admin não pode ver', () => {
+    // 'financeiro' está na ordem salva mas não na lista de disponíveis.
+    const completa: DashboardBlockId[] = ['acoes', 'financeiro', 'numeros', 'agenda']
+    const disponiveis: DashboardBlockId[] = ['acoes', 'numeros', 'agenda']
+    expect(editableBlocks(completa, disponiveis)).toEqual(['acoes', 'numeros', 'agenda'])
+    const visiveis = moveBlock(editableBlocks(completa, disponiveis), 'agenda', -1)
+    // 'financeiro' continua no mesmo índice; os visíveis é que trocaram.
+    expect(applyOrder(completa, disponiveis, visiveis)).toEqual(['acoes', 'financeiro', 'agenda', 'numeros'])
+  })
+})
+
+describe('largura dos blocos', () => {
+  it('de fábrica o painel fica igual ao de sempre', () => {
+    // Agenda, números, ações, cotações e financeiro ocupam a linha; os cartões
+    // pequenos dividem — e o que sobra sozinho ocupa a linha toda.
+    expect(buildRows(DEFAULT_ORDER, DEFAULT_SIZES).map(l => l.map(c => c.id))).toEqual([
+      ['acoes'], ['numeros'], ['cotacoes'], ['financeiro'], ['agenda'],
+      ['cursos', 'incompletos'], ['auditoria'],
+    ])
+  })
+
+  it('dois "metade" seguidos dividem a linha; "inteira" fica sozinho', () => {
+    const sizes = { ...DEFAULT_SIZES, numeros: 'half' as const, agenda: 'half' as const }
+    expect(buildRows(['numeros', 'agenda', 'cursos'], sizes).map(l => l.map(c => c.id)))
+      .toEqual([['numeros', 'agenda'], ['cursos']])
+    // Três metades seguidas: no máximo duas por linha.
+    expect(buildRows(['numeros', 'agenda', 'cursos', 'incompletos'], sizes).map(l => l.length))
+      .toEqual([2, 2])
+  })
+
+  it('troca a largura de um bloco só', () => {
+    const sizes = setBlockSize(DEFAULT_SIZES, 'agenda', 'half')
+    expect(sizes.agenda).toBe('half')
+    expect(sizes.numeros).toBe('full')
+    expect(DEFAULT_SIZES.agenda).toBe('full') // não estraga o padrão
+  })
+
+  it('largura inventada no servidor cai no padrão', () => {
+    expect(blockSizes({ sizes: { agenda: 'gigante', cursos: 'full', nada: 'half' } }))
+      .toEqual({ ...DEFAULT_SIZES, cursos: 'full' })
+    expect(blockSizes({ sizes: ['half'] as never })).toEqual(DEFAULT_SIZES)
+  })
+})
+
+describe('rascunho do modo de organizar', () => {
+  it('começa do que está salvo e sabe dizer se mudou', () => {
+    const salvo = prefsDraft({ hidden: ['cursos'], order: ['auditoria'], sizes: { agenda: 'half' } })
+    expect(salvo.order[0]).toBe('auditoria')
+    expect(salvo.hidden).toEqual(['cursos'])
+    expect(salvo.sizes.agenda).toBe('half')
+
+    expect(sameDraft(salvo, prefsDraft({ hidden: ['cursos'], order: ['auditoria'], sizes: { agenda: 'half' } }))).toBe(true)
+    expect(sameDraft(salvo, { ...salvo, hidden: [] })).toBe(false)
+    expect(sameDraft(salvo, { ...salvo, sizes: setBlockSize(salvo.sizes, 'agenda', 'full') })).toBe(false)
+    expect(sameDraft(salvo, { ...salvo, order: moveBlock(salvo.order, 'auditoria', 1) })).toBe(false)
+  })
+
+  it('"Restaurar padrão" volta ao layout de fábrica', () => {
+    const padrao = defaultDraft()
+    expect(padrao).toEqual({ order: DEFAULT_ORDER, hidden: [], sizes: DEFAULT_SIZES })
+    expect(sameDraft(padrao, prefsDraft(null))).toBe(true)
+  })
+
+  it('o que vai para o servidor é pequeno e tem os três campos', () => {
+    const corpo = prefsToSave(defaultDraft())
+    expect(Object.keys(corpo).sort()).toEqual(['hidden', 'order', 'sizes'])
+    expect(corpo.order).toHaveLength(DEFAULT_ORDER.length)
+    expect(corpo.sizes).toEqual(DEFAULT_SIZES)
+    // O backend só aceita até 4096 bytes de JSON.
+    expect(JSON.stringify(corpo).length).toBeLessThan(4096)
   })
 })
 

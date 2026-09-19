@@ -1,8 +1,9 @@
 import { describe, it, expect } from 'vitest'
 import {
   agendaCountLabel, agendaEntries, agendaFileName, hourAtFraction, itemsByDay, itemsOfDay,
-  minutesToWall, occupancyRows, occupancyTicks, occupiedDays, plusOneHour, rangeLabel,
-  startOfWeek, visibleRange, wallMinutes, weekDays,
+  minutesToWall, occupancyLabelMinWidth, occupancyRows, occupancyTicks, occupancyTimeLabel,
+  occupiedDays, plusOneHour, rangeLabel, startOfWeek, suggestedFreeHour, visibleRange,
+  wallMinutes, weekDays,
   type AgendaEntry,
 } from '@/lib/agenda'
 import type { RoomBooking, RoomScheduleItem } from '@/hooks/useRoomBookings'
@@ -109,20 +110,122 @@ describe('faixa de ocupação', () => {
     expect(occupancyTicks()).toHaveLength(16)
   })
 
+  it('a régua marca todas as horas e destaca de 3 em 3 (e o fim da faixa)', () => {
+    const ticks = occupancyTicks()
+    expect(ticks.filter(t => t.major).map(t => t.label)).toEqual([
+      '07:00', '10:00', '13:00', '16:00', '19:00', '22:00',
+    ])
+    expect(ticks[1]).toMatchObject({ label: '08:00', major: false })
+  })
+
   it('uma linha por sala, mesmo a sala vazia', () => {
     const rows = occupancyRows(agendaEntries([curso()], []), salas, '2026-10-05')
     expect(rows.map(r => r.roomName)).toEqual(['AUDITORIO', 'SALA 1'])
     expect(rows[1].blocks).toHaveLength(0)
+    // Sala vazia também não tem nada escrito: é assim que a tela diz "livre".
+    expect(rows[1].lines).toHaveLength(0)
   })
 
-  it('o bloco mede o pedaço do dia dentro das 07:00–22:00', () => {
+  it('o bloco mede o pedaço do dia dentro das 07:00–22:00 e traz o horário escrito', () => {
     const [aud] = occupancyRows(agendaEntries([curso()], []), salas, '2026-10-05')
     const bloco = aud.blocks[0]
     expect(bloco.left).toBeCloseTo((60 / 900) * 100, 5)
     expect(bloco.width).toBeCloseTo((240 / 900) * 100, 5)
     expect(bloco.cutBefore).toBe(false)
     expect(bloco.cutAfter).toBe(false)
-    expect(bloco.label).toBe('08:00–12:00 · MANEJO DE PASTAGEM')
+    expect(bloco.time).toBe('08:00 às 12:00')
+    expect(bloco.note).toBeNull()
+    expect(bloco.label).toBe('08:00 às 12:00 · MANEJO DE PASTAGEM')
+  })
+
+  it('cada sala traz a lista escrita do dia, em ordem de horário', () => {
+    const items = agendaEntries([curso()], [
+      reserva({ id: 'b1', roomId: 'r1', roomName: 'AUDITORIO', startTime: '2026-10-05T14:00:00.000Z', endTime: '2026-10-05T16:00:00.000Z' }),
+      // Fora das 07:00–22:00: sai do gráfico, mas continua na lista escrita.
+      reserva({ id: 'b2', roomId: 'r1', roomName: 'AUDITORIO', title: 'ENTREGA', startTime: '2026-10-05T05:00:00.000Z', endTime: '2026-10-05T06:30:00.000Z' }),
+    ])
+    const [aud] = occupancyRows(items, salas, '2026-10-05')
+    expect(aud.lines.map(l => `${l.time} ${l.title}`)).toEqual([
+      '05:00 às 06:30 ENTREGA',
+      '08:00 às 12:00 MANEJO DE PASTAGEM',
+      '14:00 às 16:00 REUNIAO DA DIRETORIA',
+    ])
+    expect(aud.lines.map(l => l.outside)).toEqual([true, false, false])
+    expect(aud.blocks).toHaveLength(2)
+  })
+
+  it('horário escrito de quem atravessa a virada do dia', () => {
+    const noDia = { startTime: '2026-10-05T08:00:00.000Z', endTime: '2026-10-05T12:00:00.000Z' }
+    expect(occupancyTimeLabel(noDia, '2026-10-05')).toEqual({ time: '08:00 às 12:00', note: null })
+
+    const veioDeOntem = { startTime: '2026-10-04T20:00:00.000Z', endTime: '2026-10-05T10:00:00.000Z' }
+    expect(occupancyTimeLabel(veioDeOntem, '2026-10-05')).toEqual({
+      time: '04/10 20:00 às 05/10 10:00', note: 'Começou antes deste dia',
+    })
+
+    const vaiAteAmanha = { startTime: '2026-10-05T20:00:00.000Z', endTime: '2026-10-06T10:00:00.000Z' }
+    expect(occupancyTimeLabel(vaiAteAmanha, '2026-10-05')).toEqual({
+      time: '05/10 20:00 às 06/10 10:00', note: 'Termina em outro dia',
+    })
+
+    const diaInteiro = { startTime: '2026-10-04T20:00:00.000Z', endTime: '2026-10-06T10:00:00.000Z' }
+    expect(occupancyTimeLabel(diaInteiro, '2026-10-05')).toEqual({
+      time: '04/10 20:00 às 06/10 10:00', note: 'Ocupa o dia inteiro',
+    })
+  })
+
+  it('o horário cabe dentro da barra larga e ao lado da barra estreita', () => {
+    const items = [
+      // 4 horas (26,7% da faixa): o horário cabe escrito dentro da barra.
+      entry({ id: 'a', key: 'a', kind: 'COURSE', title: 'CURSO' }),
+      // 1 hora (6,7%): não cabe dentro, e sobra faixa depois dela.
+      entry({ id: 'b', key: 'b', roomId: 'r2', title: 'REUNIAO', startTime: '2026-10-05T09:00:00.000Z', endTime: '2026-10-05T10:00:00.000Z' }),
+    ]
+    const [aud, sala1] = occupancyRows(items, salas, '2026-10-05')
+    expect(aud.blocks[0].labelPlacement).toBe('inside')
+    expect(sala1.blocks[0].labelPlacement).toBe('after')
+    // O espaço do rótulo vai só até o fim da faixa (nada de estourar a borda).
+    expect(sala1.blocks[0].labelSpace).toBeCloseTo(100 - (120 / 900) * 100 - (60 / 900) * 100, 5)
+  })
+
+  it('barra estreita colada no fim da faixa escreve o horário à esquerda', () => {
+    const items = [entry({ id: 'f', key: 'f', title: 'FECHAMENTO', startTime: '2026-10-05T21:30:00.000Z', endTime: '2026-10-05T22:00:00.000Z' })]
+    const [aud] = occupancyRows(items, salas, '2026-10-05')
+    expect(aud.blocks[0].labelPlacement).toBe('before')
+  })
+
+  it('horário com data pede mais espaço que horário sem data', () => {
+    // "08:00 às 12:00" cabe em 20% da faixa; "04/10 20:00 às 06/10 10:00", não.
+    expect(occupancyLabelMinWidth('08:00 às 12:00'.length)).toBeLessThan(20)
+    expect(occupancyLabelMinWidth('04/10 20:00 às 06/10 10:00'.length)).toBeGreaterThan(20)
+  })
+
+  it('dois vizinhos que precisam do mesmo vazio ficam com metade cada um', () => {
+    // Um vem da véspera até as 10:00, o outro sai às 21:00 para o dia seguinte:
+    // os dois têm barra curta e disputam o vazio do meio.
+    const items = [
+      entry({ id: 'v', key: 'v', title: 'VELORIO', startTime: '2026-10-04T20:00:00.000Z', endTime: '2026-10-05T10:00:00.000Z' }),
+      entry({ id: 'p', key: 'p', title: 'PLANTAO', startTime: '2026-10-05T21:00:00.000Z', endTime: '2026-10-06T02:00:00.000Z' }),
+    ]
+    const [aud] = occupancyRows(items, salas, '2026-10-05')
+    expect(aud.blocks.map(b => b.labelPlacement)).toEqual(['after', 'before'])
+    // O vazio entre as duas barras tem 73,33% e cada rótulo fica com metade —
+    // um começa onde a barra acaba, o outro termina onde a outra começa.
+    const vazio = aud.blocks[1].left - (aud.blocks[0].left + aud.blocks[0].width)
+    expect(aud.blocks[0].labelSpace + aud.blocks[1].labelSpace).toBeCloseTo(vazio, 5)
+  })
+
+  it('sem espaço de nenhum lado, o horário sai da faixa e vai para o texto de baixo', () => {
+    // Três reservas curtas grudadas: nenhuma tem 15% de folga ao lado.
+    const items = [
+      entry({ id: '1', key: '1', title: 'A', startTime: '2026-10-05T07:00:00.000Z', endTime: '2026-10-05T07:30:00.000Z' }),
+      entry({ id: '2', key: '2', title: 'B', startTime: '2026-10-05T07:30:00.000Z', endTime: '2026-10-05T08:00:00.000Z' }),
+      entry({ id: '3', key: '3', title: 'C', startTime: '2026-10-05T08:00:00.000Z', endTime: '2026-10-05T08:30:00.000Z' }),
+    ]
+    const [aud] = occupancyRows(items, salas, '2026-10-05')
+    expect(aud.blocks.map(b => b.labelPlacement)).toEqual(['none', 'none', 'after'])
+    // Quem ficou sem rótulo continua com o horário escrito para a tela mostrar.
+    expect(aud.blocks[0].time).toBe('07:00 às 07:30')
   })
 
   it('itens que se sobrepõem ficam em linhas diferentes', () => {
@@ -162,6 +265,27 @@ describe('faixa de ocupação', () => {
     const items = [entry({ id: 'z', key: 'z', roomId: 'r9', roomName: 'SALA APL' })]
     const rows = occupancyRows(items, salas, '2026-10-05')
     expect(rows.map(r => r.roomName)).toEqual(['AUDITORIO', 'SALA 1', 'SALA APL'])
+  })
+
+  it('o botão da lista sugere o primeiro horário livre da sala', () => {
+    const [aud, sala1] = occupancyRows(agendaEntries([curso()], []), salas, '2026-10-05')
+    // AUDITORIO ocupado até as 12:00 → sugere 12:00; SALA 1 vazia → 07:00.
+    expect(suggestedFreeHour(aud)).toBe('12:00')
+    expect(suggestedFreeHour(sala1)).toBe('07:00')
+
+    // Terminou 13:40 → arredonda para cima (14:00), nunca para trás.
+    const [quebrado] = occupancyRows(
+      [entry({ id: 'q', key: 'q', startTime: '2026-10-05T09:00:00.000Z', endTime: '2026-10-05T13:40:00.000Z' })],
+      salas, '2026-10-05',
+    )
+    expect(suggestedFreeHour(quebrado)).toBe('14:00')
+
+    // Ocupada até o fim da faixa: ainda sobra uma hora para a nova reserva.
+    const [cheio] = occupancyRows(
+      [entry({ id: 'c', key: 'c', startTime: '2026-10-05T09:00:00.000Z', endTime: '2026-10-05T22:00:00.000Z' })],
+      salas, '2026-10-05',
+    )
+    expect(suggestedFreeHour(cheio)).toBe('21:00')
   })
 
   it('o clique na faixa vira horário de meia em meia hora', () => {

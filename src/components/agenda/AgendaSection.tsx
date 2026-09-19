@@ -360,7 +360,9 @@ export function AgendaSection({
           </ul>
         )}
 
-        {/* Faixa de ocupação das salas do dia (fechada no celular). */}
+        {/* Ocupação das salas no dia (fechada no celular). O horário aparece
+            escrito em cada linha, então o título não precisa mais dizer a faixa
+            — no celular a lista mostra até o que cai fora das 07:00–22:00. */}
         {view === 'day' && !erro && (
           <div className="border-t pt-3">
             <Button
@@ -369,7 +371,7 @@ export function AgendaSection({
               aria-expanded={showOccupancy}
               onClick={() => setShowOccupancy(v => !v)}
             >
-              Ocupação das salas (07:00 às 22:00)
+              Ocupação das salas neste dia
               <ChevronRight className={cn('size-4 transition-transform', showOccupancy && 'rotate-90')} aria-hidden />
             </Button>
             {showOccupancy && (

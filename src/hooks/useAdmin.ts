@@ -98,6 +98,8 @@ export type PaginatedResponse<T> = {
 export type DashboardPrefs = {
   hidden?: string[]
   order?: string[]
+  /** Largura de cada bloco: 'full' (linha inteira) ou 'half' (meia linha). */
+  sizes?: Record<string, string>
 }
 
 export type AdminMe = {

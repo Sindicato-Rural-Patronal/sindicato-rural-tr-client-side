@@ -1,12 +1,20 @@
 import { useState, useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
+import { toast } from 'sonner'
+import {
+  DndContext, closestCenter, KeyboardSensor, PointerSensor,
+  useSensor, useSensors, type DragEndEvent,
+} from '@dnd-kit/core'
+import { SortableContext, rectSortingStrategy, sortableKeyboardCoordinates } from '@dnd-kit/sortable'
 import { apiFetch } from '@/lib/api'
+import { apiErrorMessage } from '@/lib/api-error-message'
 import { toYmd } from '@/utils/dates'
 import { brasiliaToday } from '@/utils/course-status'
 import type { RoomScheduleItem } from '@/hooks/useRoomBookings'
-import { useAdminStats, useMe } from '@/hooks/useAdmin'
+import { useAdminStats, useMe, useUpdateDashboardPrefs } from '@/hooks/useAdmin'
 import { useRooms } from '@/hooks/useRooms'
 import { usePermissions } from '@/hooks/usePermissions'
+import { useUnsavedGuard } from '@/hooks/use-unsaved-guard'
 import { KIND_DOT_CLASS, KIND_LABEL, KIND_LABEL_PLURAL, type ScheduleKind } from '@/lib/agenda'
 import { kindDays, type DashboardSearch, type DashboardTypeFilter } from '@/lib/dashboard-agenda'
 import { AgendaSection } from '@/components/agenda/AgendaSection'
@@ -17,8 +25,13 @@ import { FinanceMonthCard } from '@/components/dashboard/FinanceMonthCard'
 import { PublicCoursesCard } from '@/components/dashboard/PublicCoursesCard'
 import { IncompleteUsersCard } from '@/components/dashboard/IncompleteUsersCard'
 import { RecentAuditCard } from '@/components/dashboard/RecentAuditCard'
-import { CustomizeDialog } from '@/components/dashboard/CustomizeDialog'
-import { groupBlocks, visibleBlocks, type DashboardBlockId } from '@/components/dashboard/dashboard-prefs'
+import { EditModeBar } from '@/components/dashboard/EditModeBar'
+import { EditableBlock } from '@/components/dashboard/EditableBlock'
+import {
+  DASHBOARD_BLOCKS, applyOrder, blockSizes, buildRows, defaultDraft, dropBlock, editableBlocks,
+  moveBlock, prefsDraft, prefsToSave, sameDraft, setBlockSize, toggleHidden, visibleBlocks,
+  type DashboardBlockId, type DashboardBlockSize, type DashboardCell, type DashboardDraft,
+} from '@/components/dashboard/dashboard-prefs'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { NativeSelect } from '@/components/ui/native-select'
@@ -74,6 +87,9 @@ function diaPorExtenso(ymd: string): string {
   return `${day} de ${MESES[(month || 1) - 1]} de ${year}`
 }
 
+/** Nome e explicação de cada bloco, para o modo de organizar. */
+const META = new Map(DASHBOARD_BLOCKS.map(b => [b.id, b] as const))
+
 /** Botão redondo dos filtros por tipo. */
 function Chip({ active, onClick, children, kind }: {
   active: boolean
@@ -120,7 +136,12 @@ export function DashboardPage({ search, onSearch, onOpenCourse }: {
   const { data: stats, isLoading: statsLoading, isError: statsError } = useAdminStats()
   const { data: salas } = useRooms()
 
-  const [personalizando, setPersonalizando] = useState(false)
+  // Rascunho do modo de organizar. null = painel normal (é assim que a tela
+  // sabe se está editando); só o clique em Salvar grava no servidor.
+  const [rascunho, setRascunho] = useState<DashboardDraft | null>(null)
+  // Altura da barra de organizar, medida por ela (ver o respiro no fim da tela).
+  const [alturaBarra, setAlturaBarra] = useState(0)
+  const salvarPrefs = useUpdateDashboardPrefs()
 
   // "Hoje" é o de Brasília (igual ao backend), não o do computador de quem abre.
   const hoje = brasiliaToday()
@@ -183,7 +204,65 @@ export function DashboardPage({ search, onSearch, onOpenCourse }: {
     return lista
   }, [stats?.quotesToday, podeVerFinanceiro, podeVerCursos, podeVerPessoas, podeVerAuditoria])
 
-  const blocos = visibleBlocks(me?.dashboardPrefs, disponiveis)
+  // ─── modo de organizar ──────────────────────────────────────────────────
+  const editando = rascunho !== null
+  const salvo = useMemo(() => prefsDraft(me?.dashboardPrefs), [me?.dashboardPrefs])
+  const alterado = rascunho !== null && !sameDraft(rascunho, salvo)
+  // Sair da tela com o rascunho pela metade pergunta antes (diálogo do painel).
+  useUnsavedGuard(alterado)
+
+  // Ordem dos blocos que ESTE admin mexe (os sem permissão nem aparecem aqui).
+  const ordemEdicao = rascunho ? editableBlocks(rascunho.order, disponiveis) : []
+
+  const linhas: DashboardCell[][] = rascunho
+    ? buildRows(ordemEdicao, rascunho.sizes)
+    : buildRows(visibleBlocks(me?.dashboardPrefs, disponiveis), blockSizes(me?.dashboardPrefs))
+
+  // Arrastar precisa de um empurrãozinho antes de valer: sem isso, um toque na
+  // alça já viraria arrasto e a pessoa moveria o bloco sem querer.
+  const sensores = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  )
+
+  /** Mexe só na parte visível da ordem e devolve a lista completa. */
+  function reordenar(muda: (visiveis: DashboardBlockId[]) => DashboardBlockId[]) {
+    setRascunho(prev => {
+      if (!prev) return prev
+      const visiveis = editableBlocks(prev.order, disponiveis)
+      return { ...prev, order: applyOrder(prev.order, disponiveis, muda(visiveis)) }
+    })
+  }
+
+  function aoSoltar(e: DragEndEvent) {
+    const { active, over } = e
+    if (!over || active.id === over.id) return
+    reordenar(v => dropBlock(v, active.id as DashboardBlockId, over.id as DashboardBlockId))
+  }
+
+  function mudarLargura(id: DashboardBlockId, size: DashboardBlockSize) {
+    setRascunho(prev => (prev ? { ...prev, sizes: setBlockSize(prev.sizes, id, size) } : prev))
+  }
+
+  function esconderMostrar(id: DashboardBlockId) {
+    setRascunho(prev => (prev ? { ...prev, hidden: toggleHidden(prev.hidden, id) } : prev))
+  }
+
+  async function salvarPainel() {
+    if (!rascunho) return
+    try {
+      await salvarPrefs.mutateAsync(prefsToSave(rascunho))
+      setRascunho(null)
+      toast.success('Painel salvo do seu jeito')
+    } catch (e) {
+      toast.error(apiErrorMessage(e, 'Não foi possível salvar. O painel continua como estava.'))
+    }
+  }
+
+  function restaurarPadrao() {
+    setRascunho(defaultDraft())
+    toast.success('Voltou ao padrão. Clique em Salvar para guardar.')
+  }
 
   const calendario = (
     <div id="agenda-painel" className="flex flex-col gap-4">
@@ -331,37 +410,89 @@ export function DashboardPage({ search, onSearch, onOpenCourse }: {
     }
   }
 
+  /** Um bloco na tela: no modo de organizar vai dentro da moldura com os controles. */
+  function celula({ id, size }: DashboardCell) {
+    if (!rascunho) return <div key={id}>{bloco(id)}</div>
+    const meta = META.get(id)
+    const posicao = ordemEdicao.indexOf(id)
+    return (
+      <EditableBlock
+        key={id}
+        id={id}
+        label={meta?.label ?? id}
+        hint={meta?.hint ?? ''}
+        size={size}
+        escondido={rascunho.hidden.includes(id)}
+        primeiro={posicao === 0}
+        ultimo={posicao === ordemEdicao.length - 1}
+        onMover={delta => reordenar(v => moveBlock(v, id, delta))}
+        onLargura={largura => mudarLargura(id, largura)}
+        onEsconder={() => esconderMostrar(id)}
+      >
+        {bloco(id)}
+      </EditableBlock>
+    )
+  }
+
+  // As linhas são iguais no painel normal e no modo de organizar: é o mesmo
+  // desenho, por isso a pessoa vê de verdade o que vai ficar salvo.
+  const corpo = linhas.map(linha => (
+    linha.length > 1 ? (
+      <div key={linha.map(c => c.id).join('-')} className="grid gap-6 lg:grid-cols-2">
+        {linha.map(celula)}
+      </div>
+    ) : (
+      <div key={linha[0].id}>{celula(linha[0])}</div>
+    )
+  ))
+
   return (
-    <div className="flex flex-col gap-6 p-4 sm:p-6">
+    // No celular a barra de organizar fica no pé da tela. O respiro embaixo vem
+    // da ALTURA MEDIDA dela (ela quebra em duas ou três linhas conforme o
+    // aparelho): com um valor fixo o último bloco ficava escondido atrás.
+    <div
+      className={cn('flex flex-col gap-6 p-4 sm:p-6', editando && 'pb-[calc(var(--barra-organizar)+1.5rem)] md:pb-6')}
+      style={editando ? ({ '--barra-organizar': `${alturaBarra}px` } as React.CSSProperties) : undefined}
+    >
+      {editando && (
+        <EditModeBar
+          alterado={alterado}
+          salvando={salvarPrefs.isPending}
+          onSalvar={() => void salvarPainel()}
+          onCancelar={() => setRascunho(null)}
+          onRestaurar={restaurarPadrao}
+          onAltura={setAlturaBarra}
+        />
+      )}
+
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-foreground">Painel Geral</h1>
           <p className="text-sm text-muted-foreground">
-            O que precisa de atenção hoje, a agenda das salas e os números do sistema.
+            {editando
+              ? 'Mude a ordem, a largura e o que aparece. O painel vai mudando aqui embaixo.'
+              : 'O que precisa de atenção hoje, a agenda das salas e os números do sistema.'}
           </p>
         </div>
-        <Button variant="outline" className="h-10 gap-2" onClick={() => setPersonalizando(true)}>
-          <SlidersHorizontal className="size-4" aria-hidden /> Personalizar
-        </Button>
+        {!editando && (
+          <Button
+            variant="outline"
+            className="h-11 gap-2 px-3"
+            onClick={() => setRascunho(prefsDraft(me?.dashboardPrefs))}
+          >
+            <SlidersHorizontal className="size-4" aria-hidden /> Personalizar
+          </Button>
+        )}
       </div>
 
-      {groupBlocks(blocos).map(grupo => (
-        grupo.length > 1 ? (
-          <div key={grupo.join('-')} className="grid gap-6 lg:grid-cols-2">
-            {grupo.map(id => <div key={id}>{bloco(id)}</div>)}
-          </div>
-        ) : (
-          <div key={grupo[0]}>{bloco(grupo[0])}</div>
-        )
-      ))}
-
-      {personalizando && (
-        <CustomizeDialog
-          open
-          onOpenChange={setPersonalizando}
-          prefs={me?.dashboardPrefs}
-        />
-      )}
+      {rascunho ? (
+        <DndContext sensors={sensores} collisionDetection={closestCenter} onDragEnd={aoSoltar}>
+          {/* A lista do arrastar é plana (a ordem dos blocos); as linhas são só o desenho. */}
+          <SortableContext items={ordemEdicao} strategy={rectSortingStrategy}>
+            <div className="flex flex-col gap-6">{corpo}</div>
+          </SortableContext>
+        </DndContext>
+      ) : corpo}
     </div>
   )
 }
