@@ -64,8 +64,12 @@ export function EditModeBar({
                 </span>
               )}
             </p>
-            {/* Uma linha só: o resto a pessoa descobre olhando os blocos. */}
-            <p className="text-sm text-muted-foreground">Segure e arraste um bloco para mudar a ordem.</p>
+            {/* Uma linha só: o resto a pessoa descobre olhando os blocos. A
+                alça do canto não se explica sozinha, então entra aqui. */}
+            <p className="text-sm text-muted-foreground">
+              Segure e arraste um bloco para mudar a ordem.
+              <span className="hidden lg:inline"> Puxe o canto de baixo para mudar a largura.</span>
+            </p>
           </div>
 
           <div className="flex flex-wrap items-center gap-2 lg:shrink-0 lg:flex-nowrap">

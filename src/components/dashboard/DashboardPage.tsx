@@ -28,9 +28,9 @@ import { RecentAuditCard } from '@/components/dashboard/RecentAuditCard'
 import { EditModeBar } from '@/components/dashboard/EditModeBar'
 import { EditableBlock } from '@/components/dashboard/EditableBlock'
 import {
-  DASHBOARD_BLOCKS, applyOrder, blockSizes, buildRows, defaultDraft, dropBlock, editableBlocks,
+  DASHBOARD_BLOCKS, applyOrder, blockSizes, dashboardLayout, defaultDraft, dropBlock, editableBlocks,
   prefsDraft, prefsToSave, sameDraft, setBlockSize, toggleHidden, visibleBlocks,
-  type DashboardBlockId, type DashboardCell, type DashboardDraft,
+  type DashboardBlockId, type DashboardBlockSize, type DashboardCell, type DashboardDraft,
 } from '@/components/dashboard/dashboard-prefs'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -240,9 +240,9 @@ export function DashboardPage({ search, onSearch, onOpenCourse }: {
     ? editableBlocks(rascunho.order, disponiveis).filter(id => rascunho.hidden.includes(id))
     : []
 
-  const linhas: DashboardCell[][] = rascunho
-    ? buildRows(noPainel, rascunho.sizes)
-    : buildRows(visibleBlocks(me?.dashboardPrefs, disponiveis), blockSizes(me?.dashboardPrefs))
+  const celulas: DashboardCell[] = rascunho
+    ? dashboardLayout(noPainel, rascunho.sizes)
+    : dashboardLayout(visibleBlocks(me?.dashboardPrefs, disponiveis), blockSizes(me?.dashboardPrefs))
 
   // O cartão inteiro é a alça, então arrastar precisa de um empurrãozinho antes
   // de valer: no mouse, andar um pouco; no dedo, apertar e segurar (como mover
@@ -268,11 +268,15 @@ export function DashboardPage({ search, onSearch, onOpenCourse }: {
     })
   }
 
-  /** Alterna entre a linha inteira e meia linha. */
-  function mudarLargura(id: DashboardBlockId) {
-    setRascunho(prev => (prev
-      ? { ...prev, sizes: setBlockSize(prev.sizes, id, prev.sizes[id] === 'full' ? 'half' : 'full') }
-      : prev))
+  /** Nova largura escolhida na alça do canto do bloco. */
+  function mudarLargura(id: DashboardBlockId, size: DashboardBlockSize) {
+    setRascunho(prev => {
+      // A alça avisa a cada movimento do dedo/mouse: se a largura é a mesma,
+      // devolver o rascunho anterior evita repintar a tela e marcar
+      // "Alterações não salvas" à toa.
+      if (!prev || prev.sizes[id] === size) return prev
+      return { ...prev, sizes: setBlockSize(prev.sizes, id, size) }
+    })
   }
 
   /** Tira o bloco do painel ou traz de volta (o lugar dele na ordem não muda). */
@@ -443,15 +447,18 @@ export function DashboardPage({ search, onSearch, onOpenCourse }: {
   }
 
   /** Um bloco na tela: no modo de organizar vai dentro da moldura arrastável. */
-  function celula({ id, size }: DashboardCell) {
-    if (!rascunho) return <div key={id}>{bloco(id)}</div>
+  function celula({ id, size, span }: DashboardCell) {
+    if (!rascunho) {
+      // Meia largura ocupa UMA coluna mesmo sem vizinho (deixa o lado vazio).
+      return <div key={id} data-bloco={id} className={cn(span === 2 && 'lg:col-span-2')}>{bloco(id)}</div>
+    }
     return (
       <EditableBlock
         key={id}
         id={id}
         label={nomeDoBloco(id)}
         size={size}
-        onLargura={() => mudarLargura(id)}
+        onTamanho={novo => mudarLargura(id, novo)}
         onRemover={() => removerOuAdicionar(id)}
       >
         {bloco(id)}
@@ -459,17 +466,16 @@ export function DashboardPage({ search, onSearch, onOpenCourse }: {
     )
   }
 
-  // As linhas são iguais no painel normal e no modo de organizar: é o mesmo
-  // desenho, por isso a pessoa vê de verdade o que vai ficar salvo.
-  const corpo = linhas.map(linha => (
-    linha.length > 1 ? (
-      <div key={linha.map(c => c.id).join('-')} className="grid gap-6 lg:grid-cols-2">
-        {linha.map(celula)}
-      </div>
-    ) : (
-      <div key={linha[0].id}>{celula(linha[0])}</div>
-    )
-  ))
+  // UMA grade só para o painel inteiro, igual no modo normal e no de organizar
+  // (é o mesmo desenho, por isso a pessoa vê de verdade o que vai ficar salvo).
+  // Juntar dois blocos de meia largura lado a lado é a grade que faz sozinha —
+  // e, como nenhum bloco troca de pai ao mudar de largura, puxar a alça não
+  // desmonta o cartão no meio do gesto.
+  const corpo = (
+    <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+      {celulas.map(celula)}
+    </div>
+  )
 
   return (
     // No celular a barra de organizar fica no pé da tela. O respiro embaixo vem
@@ -518,9 +524,9 @@ export function DashboardPage({ search, onSearch, onOpenCourse }: {
           // da borda não dá para levar um bloco do fim para o começo.
           autoScroll={{ threshold: { x: 0, y: 0.2 }, acceleration: 14 }}
         >
-          {/* A lista do arrastar é plana (a ordem dos blocos); as linhas são só o desenho. */}
+          {/* A lista do arrastar é plana (a ordem dos blocos); a grade é só o desenho. */}
           <SortableContext items={noPainel} strategy={rectSortingStrategy}>
-            <div className="flex flex-col gap-6">{corpo}</div>
+            {corpo}
           </SortableContext>
         </DndContext>
       ) : corpo}

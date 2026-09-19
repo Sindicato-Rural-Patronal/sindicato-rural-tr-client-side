@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import {
-  DEFAULT_ORDER, DEFAULT_SIZES, applyOrder, blockOrder, blockSizes, buildRows, defaultDraft,
-  dropBlock, editableBlocks, normalizePrefs, prefsDraft, prefsToSave, sameDraft,
+  DEFAULT_ORDER, DEFAULT_SIZES, applyOrder, blockOrder, blockSizes, blockSpan, dashboardLayout,
+  defaultDraft, dropBlock, editableBlocks, normalizePrefs, prefsDraft, prefsToSave, sameDraft,
   setBlockSize, toggleHidden, visibleBlocks,
   type DashboardBlockId,
 } from '@/components/dashboard/dashboard-prefs'
@@ -75,22 +75,41 @@ describe('personalização do painel', () => {
 })
 
 describe('largura dos blocos', () => {
-  it('de fábrica o painel fica igual ao de sempre', () => {
-    // Agenda, números, ações, cotações e financeiro ocupam a linha; os cartões
-    // pequenos dividem — e o que sobra sozinho ocupa a linha toda.
-    expect(buildRows(DEFAULT_ORDER, DEFAULT_SIZES).map(l => l.map(c => c.id))).toEqual([
-      ['acoes'], ['numeros'], ['cotacoes'], ['financeiro'], ['agenda'],
-      ['cursos', 'incompletos'], ['auditoria'],
+  it('metade ocupa 1 coluna e inteira ocupa as 2', () => {
+    expect(blockSpan('half')).toBe(1)
+    expect(blockSpan('full')).toBe(2)
+  })
+
+  it('de fábrica: os grandes ocupam as 2 colunas e os cartões pequenos 1', () => {
+    expect(dashboardLayout(DEFAULT_ORDER, DEFAULT_SIZES).map(c => [c.id, c.span])).toEqual([
+      ['acoes', 2], ['numeros', 2], ['cotacoes', 2], ['financeiro', 2], ['agenda', 2],
+      ['cursos', 1], ['incompletos', 1], ['auditoria', 1],
     ])
   })
 
-  it('dois "metade" seguidos dividem a linha; "inteira" fica sozinho', () => {
+  it('bloco de meia largura SOZINHO continua com meia largura', () => {
+    // Era o bug: um "half" sem vizinho "half" virava linha de um item só e a
+    // tela desenhava em largura cheia — diminuir não mudava nada na tela.
+    expect(dashboardLayout(['numeros'], { ...DEFAULT_SIZES, numeros: 'half' }))
+      .toEqual([{ id: 'numeros', size: 'half', span: 1 }])
+
+    // Mesmo cercado por blocos de largura inteira, ele fica com 1 coluna.
+    const sizes = { ...DEFAULT_SIZES, numeros: 'half' as const }
+    expect(dashboardLayout(['acoes', 'numeros', 'agenda'], sizes).map(c => c.span)).toEqual([2, 1, 2])
+
+    // E o último da lista também (não sobra "esticar porque acabou a lista").
+    expect(dashboardLayout(['acoes', 'auditoria'], DEFAULT_SIZES).map(c => c.span)).toEqual([2, 1])
+  })
+
+  it('meia largura seguida de meia largura divide a linha (a grade junta as duas)', () => {
     const sizes = { ...DEFAULT_SIZES, numeros: 'half' as const, agenda: 'half' as const }
-    expect(buildRows(['numeros', 'agenda', 'cursos'], sizes).map(l => l.map(c => c.id)))
-      .toEqual([['numeros', 'agenda'], ['cursos']])
-    // Três metades seguidas: no máximo duas por linha.
-    expect(buildRows(['numeros', 'agenda', 'cursos', 'incompletos'], sizes).map(l => l.length))
-      .toEqual([2, 2])
+    expect(dashboardLayout(['numeros', 'agenda', 'cursos'], sizes).map(c => c.span)).toEqual([1, 1, 1])
+  })
+
+  it('largura que o servidor não conhece cai no padrão do bloco', () => {
+    // `sizes` sem a chave do bloco: vale a largura de fábrica dele.
+    const vazio = {} as Record<DashboardBlockId, 'full' | 'half'>
+    expect(dashboardLayout(['agenda', 'cursos'], vazio).map(c => c.span)).toEqual([2, 1])
   })
 
   it('troca a largura de um bloco só', () => {

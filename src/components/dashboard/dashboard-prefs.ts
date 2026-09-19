@@ -33,8 +33,9 @@ export const DASHBOARD_BLOCKS: { id: DashboardBlockId; label: string }[] = [
 export const DEFAULT_ORDER: DashboardBlockId[] = DASHBOARD_BLOCKS.map(b => b.id)
 
 /**
- * Largura de fábrica. É o desenho que o painel sempre teve: agenda, números,
- * ações, cotações e financeiro ocupam a linha; os três cartões pequenos dividem.
+ * Largura de fábrica: agenda, números, ações, cotações e financeiro ocupam a
+ * linha inteira; os três cartões pequenos ficam em meia linha (cursos e
+ * cadastros incompletos dividem uma linha, últimas ações fica na seguinte).
  */
 export const DEFAULT_SIZES: Record<DashboardBlockId, DashboardBlockSize> = {
   acoes: 'full',
@@ -143,27 +144,35 @@ export function setBlockSize(
   return { ...sizes, [id]: size }
 }
 
-// ─── linhas do painel ────────────────────────────────────────────────────────
+// ─── desenho do painel ───────────────────────────────────────────────────────
 
-export type DashboardCell = { id: DashboardBlockId; size: DashboardBlockSize }
+/** Quantas das 2 colunas o bloco ocupa no computador. */
+export type DashboardSpan = 1 | 2
+
+export type DashboardCell = { id: DashboardBlockId; size: DashboardBlockSize; span: DashboardSpan }
+
+/** Colunas que a largura ocupa: metade = 1 coluna, inteira = as 2. */
+export function blockSpan(size: DashboardBlockSize): DashboardSpan {
+  return size === 'full' ? 2 : 1
+}
 
 /**
- * Monta as linhas do painel a partir da largura de cada bloco: "inteira" fica
- * sozinho na linha e dois "metade" seguidos dividem a mesma linha. Meia largura
- * sem vizinho de meia largura ocupa a linha toda (não deixa buraco na tela).
+ * Os blocos na ordem em que a tela desenha, cada um já com quantas colunas
+ * ocupa. O painel é UMA grade de 2 colunas (no celular, 1): quem está em
+ * "metade" ocupa uma coluna MESMO SOZINHO — deixa o espaço do lado vazio em vez
+ * de esticar — e quem está em "inteira" ocupa as duas. Não existe mais
+ * "empacotar em linhas": juntar dois blocos de meia largura lado a lado é a
+ * própria grade que faz. Assim diminuir um bloco tem efeito na hora, e o bloco
+ * nunca troca de pai no meio de um arrasto (o que cancelaria o gesto).
  */
-export function buildRows(
+export function dashboardLayout(
   ids: readonly DashboardBlockId[],
   sizes: Record<DashboardBlockId, DashboardBlockSize>,
-): DashboardCell[][] {
-  const rows: DashboardCell[][] = []
-  for (const id of ids) {
+): DashboardCell[] {
+  return ids.map(id => {
     const size = sizes[id] ?? DEFAULT_SIZES[id]
-    const last = rows[rows.length - 1]
-    if (size === 'half' && last && last.length === 1 && last[0].size === 'half') last.push({ id, size })
-    else rows.push([{ id, size }])
-  }
-  return rows
+    return { id, size, span: blockSpan(size) }
+  })
 }
 
 // ─── rascunho do modo de organizar ───────────────────────────────────────────

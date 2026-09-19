@@ -83,6 +83,16 @@ function Painel() {
   return <DashboardPage search={searchParams} onSearch={onSearch} onOpenCourse={onOpenCourse} />
 }
 
+/**
+ * Largura desenhada de um bloco. A grade do painel tem 2 colunas no computador:
+ * `lg:col-span-2` = linha inteira; sem a classe = meia linha.
+ */
+function larguraDe(id: string): 'inteira' | 'metade' {
+  const el = document.querySelector(`[data-bloco="${id}"]`)
+  if (!el) throw new Error(`Bloco "${id}" não está na tela`)
+  return el.classList.contains('lg:col-span-2') ? 'inteira' : 'metade'
+}
+
 const TODAS = [
   'READ_USER', 'CREATE_USER', 'READ_COURSE', 'CREATE_COURSE',
   'READ_FINANCE', 'READ_AUDIT', 'UPDATE_MARKET_QUOTE', 'READ_CONTACT',
@@ -191,11 +201,13 @@ describe('Painel Geral', () => {
     expect(screen.getByTestId('agenda')).toBeInTheDocument()
   })
 
-  it('a largura salva monta as linhas do painel', () => {
-    prefs = { hidden: [], order: [], sizes: { cursos: 'full', incompletos: 'full' } }
+  it('a largura salva desenha o bloco com 1 ou 2 colunas', () => {
+    prefs = { hidden: [], order: [], sizes: { cursos: 'full', incompletos: 'half', auditoria: 'half' } }
     render(<Painel />)
-    // Sem par de meia largura, cada cartão fica sozinho: nenhuma linha de duas colunas.
-    expect(document.querySelectorAll('.lg\\:grid-cols-2')).toHaveLength(0)
+    expect(larguraDe('cursos')).toBe('inteira')
+    expect(larguraDe('incompletos')).toBe('metade')
+    // Sozinho no fim da lista, o bloco de meia largura NÃO estica (era o bug).
+    expect(larguraDe('auditoria')).toBe('metade')
   })
 
   it('fora do modo de organizar não há controles de bloco', () => {
@@ -203,6 +215,8 @@ describe('Painel Geral', () => {
     expect(screen.queryByRole('region', { name: 'Organizar o painel' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /^Remover/ })).not.toBeInTheDocument()
     expect(screen.queryByRole('group', { name: /Segure e arraste para mudar de lugar/ })).not.toBeInTheDocument()
+    // Nem alça de redimensionar: o painel normal não se mexe.
+    expect(screen.queryByRole('slider')).not.toBeInTheDocument()
   })
 })
 
@@ -238,11 +252,13 @@ describe('Painel Geral — organizar os blocos', () => {
 
     const cartao = moldura('Cursos públicos')
     expect(within(cartao).getByRole('button', { name: 'Remover Cursos públicos do painel' })).toBeInTheDocument()
-    // "Cursos públicos" nasce com meia linha, então o botão oferece aumentar.
-    expect(within(cartao).getByRole('button', { name: /^Aumentar Cursos públicos/ })).toBeInTheDocument()
+    // A alça do canto diz de quem é e qual o tamanho de agora.
+    const alca = within(cartao).getByRole('slider', { name: 'Largura de Cursos públicos' })
+    expect(alca).toHaveAttribute('aria-valuetext', 'Metade da linha')
+    expect(alca).toHaveAttribute('tabindex', '0')
 
-    // Tudo o que sobrava saiu: alça, setas, rótulo de largura e esconder.
-    for (const sumiu of [/^Arrastar/, /^Subir/, /^Descer/, /^Esconder/, /^Mostrar/, /^Inteira$/, /^Metade$/]) {
+    // Botão de aumentar/diminuir não existe mais: quem manda é a alça.
+    for (const sumiu of [/^Arrastar/, /^Subir/, /^Descer/, /^Aumentar/, /^Diminuir/, /^Esconder/, /^Mostrar/]) {
       expect(screen.queryByRole('button', { name: sumiu })).not.toBeInTheDocument()
     }
   })
@@ -269,15 +285,58 @@ describe('Painel Geral — organizar os blocos', () => {
     await waitFor(() => expect(screen.queryByRole('region', { name: 'Organizar o painel' })).not.toBeInTheDocument())
   })
 
-  it('um botão só alterna a largura, dizendo o que vai acontecer', async () => {
+  it('as setas na alça mudam a largura do bloco e a tela acompanha', async () => {
     organizar()
-    // Bloco inteiro oferece "Diminuir"; depois de diminuir, oferece "Aumentar".
-    fireEvent.click(screen.getByRole('button', { name: /^Diminuir Calendário e agenda das salas/ }))
-    expect(screen.getByRole('button', { name: /^Aumentar Calendário e agenda das salas/ })).toBeInTheDocument()
+    const alca = screen.getByRole('slider', { name: 'Largura de Calendário e agenda das salas' })
+    expect(alca).toHaveAttribute('aria-valuetext', 'Linha inteira')
+    expect(larguraDe('agenda')).toBe('inteira')
+
+    // ← encolhe para meia linha (e o desenho muda de verdade, não só o rótulo).
+    fireEvent.keyDown(alca, { key: 'ArrowLeft' })
+    expect(larguraDe('agenda')).toBe('metade')
+    expect(screen.getByRole('slider', { name: 'Largura de Calendário e agenda das salas' }))
+      .toHaveAttribute('aria-valuetext', 'Metade da linha')
+
+    // → volta para a linha inteira; ← de novo encolhe.
+    fireEvent.keyDown(alca, { key: 'ArrowRight' })
+    expect(larguraDe('agenda')).toBe('inteira')
+    fireEvent.keyDown(alca, { key: 'ArrowDown' })
+    expect(larguraDe('agenda')).toBe('metade')
 
     fireEvent.click(screen.getByRole('button', { name: 'Salvar' }))
     await waitFor(() => expect(salvarPrefs).toHaveBeenCalled())
     expect(enviado().sizes).toMatchObject({ agenda: 'half', numeros: 'full', cursos: 'half' })
+  })
+
+  it('bloco de meia largura sozinho no painel não estica', () => {
+    organizar()
+    // Sem vizinho de meia largura, "Últimas ações" continua com meia linha.
+    expect(larguraDe('auditoria')).toBe('metade')
+    fireEvent.click(screen.getByRole('button', { name: 'Remover Cadastros incompletos do painel' }))
+    expect(larguraDe('cursos')).toBe('metade')
+    expect(larguraDe('auditoria')).toBe('metade')
+  })
+
+  it('a alça não começa a mover o bloco nem dispara o teclado do arrasto', () => {
+    organizar()
+    const alca = screen.getByRole('slider', { name: 'Largura de Últimas ações' })
+    // O cartão inteiro (e o @dnd-kit dentro dele) escuta ponteiro e teclado: a
+    // alça precisa interromper os dois, senão puxar o canto sairia arrastando o
+    // bloco de lugar e as setas o mandariam para outra posição. Um ouvinte no
+    // documento só é chamado se o evento passar batido pelo cartão.
+    const escapou = vi.fn()
+    document.addEventListener('pointerdown', escapou)
+    document.addEventListener('keydown', escapou)
+    try {
+      fireEvent.pointerDown(alca, { button: 0, clientX: 100, pointerId: 1 })
+      fireEvent.keyDown(alca, { key: 'ArrowRight' })
+      expect(escapou).not.toHaveBeenCalled()
+    } finally {
+      document.removeEventListener('pointerdown', escapou)
+      document.removeEventListener('keydown', escapou)
+    }
+    // ...mas a largura mudou, que é o trabalho dela.
+    expect(larguraDe('auditoria')).toBe('inteira')
   })
 
   it('Cancelar joga fora o rascunho e não salva nada', () => {
@@ -310,7 +369,11 @@ describe('Painel Geral — organizar os blocos', () => {
   it('avisa que há alterações não salvas', () => {
     organizar()
     expect(screen.queryByText('Alterações não salvas')).not.toBeInTheDocument()
-    fireEvent.click(screen.getByRole('button', { name: /^Diminuir Financeiro do mês/ }))
+    const alca = screen.getByRole('slider', { name: 'Largura de Financeiro do mês' })
+    // Encolher já conta como alteração; repetir a mesma largura não muda nada.
+    fireEvent.keyDown(alca, { key: 'ArrowRight' })
+    expect(screen.queryByText('Alterações não salvas')).not.toBeInTheDocument()
+    fireEvent.keyDown(alca, { key: 'ArrowLeft' })
     expect(screen.getByText('Alterações não salvas')).toBeInTheDocument()
   })
 
