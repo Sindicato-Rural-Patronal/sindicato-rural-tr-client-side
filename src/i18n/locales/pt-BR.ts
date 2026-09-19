@@ -176,8 +176,8 @@ const ptBR = {
       search: 'Buscar…',
     },
     settings: {
-      title: 'Configurações do site',
-      subtitle: 'O que aparece no site público: dados do sindicato, redes sociais, galerias, parceiros e contatos.',
+      title: 'Configurações',
+      subtitle: 'O que aparece no site público (dados do sindicato, redes sociais, galerias, parceiros e contatos) e as salas do sindicato.',
       hint: 'Cole a URL completa (com https://). Deixe em branco para ocultar do rodapé.',
       save: 'Salvar',
       saving: 'Salvando...',

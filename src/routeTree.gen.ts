@@ -27,7 +27,6 @@ import { Route as AdminAdminDashboardRouteImport } from './routes/_admin/admin/d
 import { Route as AdminAdminMensagensRouteImport } from './routes/_admin/admin/mensagens'
 import { Route as AdminAdminMinhaContaRouteImport } from './routes/_admin/admin/minha-conta'
 import { Route as AdminAdminNoticiasRouteImport } from './routes/_admin/admin/noticias'
-import { Route as AdminAdminSalasRouteImport } from './routes/_admin/admin/salas'
 import { Route as AdminAdminUnimedRouteImport } from './routes/_admin/admin/unimed'
 import { Route as AdminAdminUsuariosRouteImport } from './routes/_admin/admin/usuarios'
 import { Route as PublicConveniosIndexRouteImport } from './routes/_public/convenios/index'
@@ -142,11 +141,6 @@ const AdminAdminNoticiasRoute = AdminAdminNoticiasRouteImport.update({
   path: '/admin/noticias',
   getParentRoute: () => AdminRoute,
 } as any)
-const AdminAdminSalasRoute = AdminAdminSalasRouteImport.update({
-  id: '/admin/salas',
-  path: '/admin/salas',
-  getParentRoute: () => AdminRoute,
-} as any)
 const AdminAdminUnimedRoute = AdminAdminUnimedRouteImport.update({
   id: '/admin/unimed',
   path: '/admin/unimed',
@@ -252,9 +246,9 @@ const AdminAdminNoticiasIndexRoute = AdminAdminNoticiasIndexRouteImport.update({
   getParentRoute: () => AdminAdminNoticiasRoute,
 } as any)
 const AdminAdminSalasIndexRoute = AdminAdminSalasIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => AdminAdminSalasRoute,
+  id: '/admin/salas/',
+  path: '/admin/salas/',
+  getParentRoute: () => AdminRoute,
 } as any)
 const AdminAdminUsuariosIndexRoute = AdminAdminUsuariosIndexRouteImport.update({
   id: '/',
@@ -288,7 +282,6 @@ export interface FileRoutesByFullPath {
   '/admin/mensagens': typeof AdminAdminMensagensRoute
   '/admin/minha-conta': typeof AdminAdminMinhaContaRoute
   '/admin/noticias': typeof AdminAdminNoticiasRouteWithChildren
-  '/admin/salas': typeof AdminAdminSalasRouteWithChildren
   '/admin/unimed': typeof AdminAdminUnimedRoute
   '/admin/usuarios': typeof AdminAdminUsuariosRouteWithChildren
   '/convenios/$slug': typeof PublicConveniosSlugRoute
@@ -372,7 +365,6 @@ export interface FileRoutesById {
   '/_admin/admin/mensagens': typeof AdminAdminMensagensRoute
   '/_admin/admin/minha-conta': typeof AdminAdminMinhaContaRoute
   '/_admin/admin/noticias': typeof AdminAdminNoticiasRouteWithChildren
-  '/_admin/admin/salas': typeof AdminAdminSalasRouteWithChildren
   '/_admin/admin/unimed': typeof AdminAdminUnimedRoute
   '/_admin/admin/usuarios': typeof AdminAdminUsuariosRouteWithChildren
   '/_public/convenios/$slug': typeof PublicConveniosSlugRoute
@@ -417,7 +409,6 @@ export interface FileRouteTypes {
     | '/admin/mensagens'
     | '/admin/minha-conta'
     | '/admin/noticias'
-    | '/admin/salas'
     | '/admin/unimed'
     | '/admin/usuarios'
     | '/convenios/$slug'
@@ -500,7 +491,6 @@ export interface FileRouteTypes {
     | '/_admin/admin/mensagens'
     | '/_admin/admin/minha-conta'
     | '/_admin/admin/noticias'
-    | '/_admin/admin/salas'
     | '/_admin/admin/unimed'
     | '/_admin/admin/usuarios'
     | '/_public/convenios/$slug'
@@ -663,13 +653,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminAdminNoticiasRouteImport
       parentRoute: typeof AdminRoute
     }
-    '/_admin/admin/salas': {
-      id: '/_admin/admin/salas'
-      path: '/admin/salas'
-      fullPath: '/admin/salas'
-      preLoaderRoute: typeof AdminAdminSalasRouteImport
-      parentRoute: typeof AdminRoute
-    }
     '/_admin/admin/unimed': {
       id: '/_admin/admin/unimed'
       path: '/admin/unimed'
@@ -812,10 +795,10 @@ declare module '@tanstack/react-router' {
     }
     '/_admin/admin/salas/': {
       id: '/_admin/admin/salas/'
-      path: '/'
+      path: '/admin/salas'
       fullPath: '/admin/salas/'
       preLoaderRoute: typeof AdminAdminSalasIndexRouteImport
-      parentRoute: typeof AdminAdminSalasRoute
+      parentRoute: typeof AdminRoute
     }
     '/_admin/admin/usuarios/': {
       id: '/_admin/admin/usuarios/'
@@ -877,18 +860,6 @@ const AdminAdminNoticiasRouteChildren: AdminAdminNoticiasRouteChildren = {
 const AdminAdminNoticiasRouteWithChildren =
   AdminAdminNoticiasRoute._addFileChildren(AdminAdminNoticiasRouteChildren)
 
-interface AdminAdminSalasRouteChildren {
-  AdminAdminSalasIndexRoute: typeof AdminAdminSalasIndexRoute
-}
-
-const AdminAdminSalasRouteChildren: AdminAdminSalasRouteChildren = {
-  AdminAdminSalasIndexRoute: AdminAdminSalasIndexRoute,
-}
-
-const AdminAdminSalasRouteWithChildren = AdminAdminSalasRoute._addFileChildren(
-  AdminAdminSalasRouteChildren,
-)
-
 interface AdminAdminUsuariosRouteChildren {
   AdminAdminUsuariosIdRoute: typeof AdminAdminUsuariosIdRoute
   AdminAdminUsuariosNovoRoute: typeof AdminAdminUsuariosNovoRoute
@@ -913,7 +884,6 @@ interface AdminRouteChildren {
   AdminAdminMensagensRoute: typeof AdminAdminMensagensRoute
   AdminAdminMinhaContaRoute: typeof AdminAdminMinhaContaRoute
   AdminAdminNoticiasRoute: typeof AdminAdminNoticiasRouteWithChildren
-  AdminAdminSalasRoute: typeof AdminAdminSalasRouteWithChildren
   AdminAdminUnimedRoute: typeof AdminAdminUnimedRoute
   AdminAdminUsuariosRoute: typeof AdminAdminUsuariosRouteWithChildren
   AdminAdminIndexRoute: typeof AdminAdminIndexRoute
@@ -926,6 +896,7 @@ interface AdminRouteChildren {
   AdminAdminCotacoesIndexRoute: typeof AdminAdminCotacoesIndexRoute
   AdminAdminFinanceiroIndexRoute: typeof AdminAdminFinanceiroIndexRoute
   AdminAdminGaleriasIndexRoute: typeof AdminAdminGaleriasIndexRoute
+  AdminAdminSalasIndexRoute: typeof AdminAdminSalasIndexRoute
 }
 
 const AdminRouteChildren: AdminRouteChildren = {
@@ -937,7 +908,6 @@ const AdminRouteChildren: AdminRouteChildren = {
   AdminAdminMensagensRoute: AdminAdminMensagensRoute,
   AdminAdminMinhaContaRoute: AdminAdminMinhaContaRoute,
   AdminAdminNoticiasRoute: AdminAdminNoticiasRouteWithChildren,
-  AdminAdminSalasRoute: AdminAdminSalasRouteWithChildren,
   AdminAdminUnimedRoute: AdminAdminUnimedRoute,
   AdminAdminUsuariosRoute: AdminAdminUsuariosRouteWithChildren,
   AdminAdminIndexRoute: AdminAdminIndexRoute,
@@ -950,6 +920,7 @@ const AdminRouteChildren: AdminRouteChildren = {
   AdminAdminCotacoesIndexRoute: AdminAdminCotacoesIndexRoute,
   AdminAdminFinanceiroIndexRoute: AdminAdminFinanceiroIndexRoute,
   AdminAdminGaleriasIndexRoute: AdminAdminGaleriasIndexRoute,
+  AdminAdminSalasIndexRoute: AdminAdminSalasIndexRoute,
 }
 
 const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)

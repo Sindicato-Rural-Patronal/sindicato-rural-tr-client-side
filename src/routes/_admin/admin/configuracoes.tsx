@@ -1,5 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { Building, Globe, Handshake, Images, Settings, Users } from 'lucide-react'
+import { Building, DoorOpen, Globe, Handshake, Images, Settings, Users } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { usePermissions } from '@/hooks/usePermissions'
 import { NoPermission } from '@/components/NoPermission'
@@ -10,8 +10,9 @@ import { SocialLinksPanel } from '@/components/site-config/SocialLinksPanel'
 import { GalleriesPanel } from '@/components/site-config/GalleriesPanel'
 import { PartnersPanel } from '@/components/site-config/PartnersPanel'
 import { PublicContactsPanel } from '@/components/site-config/PublicContactsPanel'
+import { RoomsPanel } from '@/components/site-config/RoomsPanel'
 
-const TABS = ['dados', 'redes', 'galerias', 'parceiros', 'contatos'] as const
+const TABS = ['dados', 'redes', 'galerias', 'parceiros', 'contatos', 'salas'] as const
 type Tab = (typeof TABS)[number]
 
 export const Route = createFileRoute('/_admin/admin/configuracoes')({
@@ -22,9 +23,9 @@ export const Route = createFileRoute('/_admin/admin/configuracoes')({
   component: ConfiguracoesPage,
 })
 
-// Tudo o que aparece no site público e é ajustado pelo painel. Cada aba segue
-// a permissão da área de origem: conteúdo do site (banners) e empresas/pessoas
-// (usuários).
+// Ajustes do sistema: o que aparece no site público e as salas onde acontecem
+// cursos, eventos e reuniões. Cada aba segue a permissão da área de origem:
+// conteúdo do site (banners), empresas/pessoas (usuários) e salas (cursos).
 function ConfiguracoesPage() {
   const { t } = useTranslation()
   const { can, isLoading } = usePermissions()
@@ -37,6 +38,7 @@ function ConfiguracoesPage() {
     galerias: can('READ_BANNER'),
     parceiros: can('READ_USER'),
     contatos: can('READ_USER'),
+    salas: can('READ_COURSE'),
   }
   const visible = TABS.filter(k => available[k])
   const current = tab && available[tab] ? tab : visible[0]
@@ -62,6 +64,7 @@ function ConfiguracoesPage() {
           {available.galerias && <TabsTrigger value="galerias"><Images className="mr-1.5 size-3.5" /> Galerias</TabsTrigger>}
           {available.parceiros && <TabsTrigger value="parceiros"><Handshake className="mr-1.5 size-3.5" /> Parceiros</TabsTrigger>}
           {available.contatos && <TabsTrigger value="contatos"><Users className="mr-1.5 size-3.5" /> Contatos públicos</TabsTrigger>}
+          {available.salas && <TabsTrigger value="salas"><DoorOpen className="mr-1.5 size-3.5" /> Salas</TabsTrigger>}
         </TabsList>
 
         {/* Abas com formulário ficam montadas (só escondidas) para não perder o que foi digitado ao trocar de aba */}
@@ -85,6 +88,15 @@ function ConfiguracoesPage() {
         )}
         {available.contatos && (
           <TabsContent value="contatos"><PublicContactsPanel canEdit={can('UPDATE_USER')} /></TabsContent>
+        )}
+        {available.salas && (
+          <TabsContent value="salas">
+            <RoomsPanel
+              canCreate={can('CREATE_COURSE')}
+              canEdit={can('UPDATE_COURSE')}
+              canDelete={can('DELETE_COURSE')}
+            />
+          </TabsContent>
         )}
       </Tabs>
     </div>

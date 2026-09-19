@@ -187,194 +187,199 @@ function BookingDialogSession({ open, booking, defaults, canUpdate = true, canDe
           </DialogHeader>
 
           <form onSubmit={handleSubmit} noValidate className="flex min-h-0 flex-1 flex-col">
-            <fieldset disabled={readOnly || pending} className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-5 py-4">
-              {booking?.seriesId && (
-                <p className="flex items-start gap-2 rounded-lg border bg-muted/40 px-3 py-2 text-sm text-muted-foreground">
-                  <Repeat className="mt-0.5 size-4 shrink-0" aria-hidden />
-                  Esta reserva faz parte de uma repetição. As alterações valem só para esta data.
-                </p>
-              )}
-
-              <Field label="Tipo *">
-                <Segmented
-                  label="Tipo"
-                  value={values.type}
-                  options={[{ value: 'EVENT', label: 'Evento' }, { value: 'MEETING', label: 'Reunião' }]}
-                  onChange={v => set('type', v)}
-                />
-              </Field>
-
-              <Field label="Título *" htmlFor="booking-title" error={errors.title}>
-                <Input
-                  id="booking-title"
-                  className="h-10"
-                  value={values.title}
-                  onChange={e => set('title', upperNoAccents(e.target.value))}
-                  placeholder="Ex: Reunião da diretoria"
-                  aria-invalid={!!errors.title || undefined}
-                  autoFocus={creating}
-                />
-              </Field>
-
-              <Field label="Sala *" htmlFor="booking-room" error={errors.roomId}>
-                <NativeSelect
-                  id="booking-room"
-                  className="h-10"
-                  value={values.roomId}
-                  onChange={e => set('roomId', e.target.value)}
-                  aria-invalid={!!errors.roomId || undefined}
-                >
-                  <option value="">{roomsLoading ? 'Carregando salas…' : 'Escolha a sala'}</option>
-                  {rooms?.map(room => <option key={room.id} value={room.id}>{room.name}</option>)}
-                </NativeSelect>
-              </Field>
-
-              <div className="grid gap-4 sm:grid-cols-3">
-                <Field label="Data *" htmlFor="booking-date" error={errors.date}>
-                  <DatePicker id="booking-date" className="h-10" value={values.date} onChange={v => set('date', v)} />
-                </Field>
-                <Field label="Início *" htmlFor="booking-start" error={errors.startHour}>
-                  <Input
-                    id="booking-start"
-                    type="time"
-                    className="h-10"
-                    value={values.startHour}
-                    onChange={e => set('startHour', e.target.value)}
-                    aria-invalid={!!errors.startHour || undefined}
-                  />
-                </Field>
-                <Field label="Término *" htmlFor="booking-end" error={errors.endHour}>
-                  <Input
-                    id="booking-end"
-                    type="time"
-                    className="h-10"
-                    value={values.endHour}
-                    onChange={e => set('endHour', e.target.value)}
-                    aria-invalid={!!errors.endHour || undefined}
-                  />
-                </Field>
-              </div>
-
-              <label className="flex w-fit cursor-pointer items-center gap-2 text-sm">
-                <input
-                  type="checkbox"
-                  className="size-5 accent-primary"
-                  checked={values.multiDay}
-                  onChange={e => set('multiDay', e.target.checked)}
-                />
-                Termina em outro dia
-              </label>
-              {values.multiDay && (
-                <Field label="Data de término *" htmlFor="booking-end-date" error={errors.endDate} className="sm:max-w-[calc(33.333%-0.667rem)]">
-                  <DatePicker id="booking-end-date" className="h-10" value={values.endDate} onChange={v => set('endDate', v)} />
-                </Field>
-              )}
-
-              <Field label="Responsável">
-                <Segmented
-                  label="Como informar o responsável"
-                  value={values.responsibleMode}
-                  options={[{ value: 'person', label: 'Pessoa do cadastro' }, { value: 'name', label: 'Digitar o nome' }]}
-                  onChange={v => set('responsibleMode', v)}
-                />
-                {values.responsibleMode === 'person' ? (
-                  values.responsible ? (
-                    <div className="flex h-10 items-center justify-between gap-2 rounded-md border bg-muted/30 pl-3 pr-1 text-sm">
-                      <span className="truncate font-medium">{values.responsible.name}</span>
-                      {!readOnly && (
-                        <Button type="button" variant="ghost" size="sm" className="h-8" onClick={() => set('responsible', null)}>
-                          <X className="size-4" /> Trocar
-                        </Button>
-                      )}
-                    </div>
-                  ) : readOnly ? (
-                    <p className="text-sm text-muted-foreground">Sem responsável.</p>
-                  ) : (
-                    <PersonPicker
-                      id="booking-responsible"
-                      onPick={person => set('responsible', { id: person.id, name: person.name })}
-                      placeholder="Buscar por nome, e-mail ou CPF (opcional)"
-                    />
-                  )
-                ) : (
-                  <Input
-                    id="booking-responsible-name"
-                    aria-label="Nome do responsável"
-                    className="h-10"
-                    value={values.responsibleName}
-                    onChange={e => set('responsibleName', upperNoAccents(e.target.value))}
-                    placeholder="Nome de quem não está no cadastro (opcional)"
-                  />
-                )}
-              </Field>
-
-              <Field label="Descrição" htmlFor="booking-description">
-                <Textarea
-                  id="booking-description"
-                  rows={3}
-                  value={values.description}
-                  onChange={e => set('description', e.target.value)}
-                  placeholder="Observações para a equipe (opcional)"
-                />
-              </Field>
-
-              {/* Só evento pode ir para o site; reunião fica sempre interna. */}
-              {values.type === 'EVENT' && (
-                <div className="flex flex-col gap-2 rounded-lg border bg-muted/30 p-3">
-                  <label className="flex w-fit cursor-pointer items-center gap-2 text-sm font-medium">
-                    <input
-                      id="booking-public"
-                      type="checkbox"
-                      role="switch"
-                      className="size-5 accent-primary"
-                      checked={values.publicOnSite}
-                      onChange={e => set('publicOnSite', e.target.checked)}
-                    />
-                    <Globe className="size-4 text-muted-foreground" aria-hidden />
-                    Mostrar no site
-                  </label>
-                  <p className="text-sm text-muted-foreground">
-                    O título, a data, o horário e a sala aparecem na página de eventos do site.
-                    A descrição acima continua só para a equipe.
+            {/* A rolagem fica numa div, não no <fieldset>: o navegador desenha os
+                filhos do fieldset numa caixa interna e não recorta o que passa
+                dele, então os campos de baixo vazavam por trás do rodapé. */}
+            <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
+              <fieldset disabled={readOnly || pending} className="flex flex-col gap-4 px-5 py-4">
+                {booking?.seriesId && (
+                  <p className="flex items-start gap-2 rounded-lg border bg-muted/40 px-3 py-2 text-sm text-muted-foreground">
+                    <Repeat className="mt-0.5 size-4 shrink-0" aria-hidden />
+                    Esta reserva faz parte de uma repetição. As alterações valem só para esta data.
                   </p>
-                  {values.publicOnSite && (
-                    <Field label="Texto do evento no site" htmlFor="booking-public-description">
-                      <Textarea
-                        id="booking-public-description"
-                        rows={3}
-                        value={values.publicDescription}
-                        onChange={e => set('publicDescription', e.target.value)}
-                        placeholder="O que o público vê sobre o evento (opcional)"
-                      />
-                    </Field>
-                  )}
-                </div>
-              )}
+                )}
 
-              {creating && (
-                <Field label="Repetir">
-                  <Segmented label="Repetir" value={values.repeat} options={REPEAT_OPTIONS} onChange={v => set('repeat', v)} />
-                  {values.repeat !== 'NONE' && (
-                    <div className="flex flex-col gap-1.5 sm:max-w-[calc(50%-0.5rem)]">
-                      <Label htmlFor="booking-repeat-until" className="text-sm font-medium">Repetir até *</Label>
-                      <DatePicker
-                        id="booking-repeat-until"
-                        className="h-10"
-                        value={values.repeatUntil}
-                        onChange={v => set('repeatUntil', v)}
+                <Field label="Tipo *">
+                  <Segmented
+                    label="Tipo"
+                    value={values.type}
+                    options={[{ value: 'EVENT', label: 'Evento' }, { value: 'MEETING', label: 'Reunião' }]}
+                    onChange={v => set('type', v)}
+                  />
+                </Field>
+
+                <Field label="Título *" htmlFor="booking-title" error={errors.title}>
+                  <Input
+                    id="booking-title"
+                    className="h-10"
+                    value={values.title}
+                    onChange={e => set('title', upperNoAccents(e.target.value))}
+                    placeholder="Ex: Reunião da diretoria"
+                    aria-invalid={!!errors.title || undefined}
+                    autoFocus={creating}
+                  />
+                </Field>
+
+                <Field label="Sala *" htmlFor="booking-room" error={errors.roomId}>
+                  <NativeSelect
+                    id="booking-room"
+                    className="h-10"
+                    value={values.roomId}
+                    onChange={e => set('roomId', e.target.value)}
+                    aria-invalid={!!errors.roomId || undefined}
+                  >
+                    <option value="">{roomsLoading ? 'Carregando salas…' : 'Escolha a sala'}</option>
+                    {rooms?.map(room => <option key={room.id} value={room.id}>{room.name}</option>)}
+                  </NativeSelect>
+                </Field>
+
+                <div className="grid gap-4 sm:grid-cols-3">
+                  <Field label="Data *" htmlFor="booking-date" error={errors.date}>
+                    <DatePicker id="booking-date" className="h-10" value={values.date} onChange={v => set('date', v)} />
+                  </Field>
+                  <Field label="Início *" htmlFor="booking-start" error={errors.startHour}>
+                    <Input
+                      id="booking-start"
+                      type="time"
+                      className="h-10"
+                      value={values.startHour}
+                      onChange={e => set('startHour', e.target.value)}
+                      aria-invalid={!!errors.startHour || undefined}
+                    />
+                  </Field>
+                  <Field label="Término *" htmlFor="booking-end" error={errors.endHour}>
+                    <Input
+                      id="booking-end"
+                      type="time"
+                      className="h-10"
+                      value={values.endHour}
+                      onChange={e => set('endHour', e.target.value)}
+                      aria-invalid={!!errors.endHour || undefined}
+                    />
+                  </Field>
+                </div>
+
+                <label className="flex w-fit cursor-pointer items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    className="size-5 accent-primary"
+                    checked={values.multiDay}
+                    onChange={e => set('multiDay', e.target.checked)}
+                  />
+                  Termina em outro dia
+                </label>
+                {values.multiDay && (
+                  <Field label="Data de término *" htmlFor="booking-end-date" error={errors.endDate} className="sm:max-w-[calc(33.333%-0.667rem)]">
+                    <DatePicker id="booking-end-date" className="h-10" value={values.endDate} onChange={v => set('endDate', v)} />
+                  </Field>
+                )}
+
+                <Field label="Responsável">
+                  <Segmented
+                    label="Como informar o responsável"
+                    value={values.responsibleMode}
+                    options={[{ value: 'person', label: 'Pessoa do cadastro' }, { value: 'name', label: 'Digitar o nome' }]}
+                    onChange={v => set('responsibleMode', v)}
+                  />
+                  {values.responsibleMode === 'person' ? (
+                    values.responsible ? (
+                      <div className="flex h-10 items-center justify-between gap-2 rounded-md border bg-muted/30 pl-3 pr-1 text-sm">
+                        <span className="truncate font-medium">{values.responsible.name}</span>
+                        {!readOnly && (
+                          <Button type="button" variant="ghost" size="sm" className="h-8" onClick={() => set('responsible', null)}>
+                            <X className="size-4" /> Trocar
+                          </Button>
+                        )}
+                      </div>
+                    ) : readOnly ? (
+                      <p className="text-sm text-muted-foreground">Sem responsável.</p>
+                    ) : (
+                      <PersonPicker
+                        id="booking-responsible"
+                        onPick={person => set('responsible', { id: person.id, name: person.name })}
+                        placeholder="Buscar por nome, e-mail ou CPF (opcional)"
                       />
-                      {errors.repeatUntil && <p role="alert" className="text-sm text-destructive">{errors.repeatUntil}</p>}
-                    </div>
+                    )
+                  ) : (
+                    <Input
+                      id="booking-responsible-name"
+                      aria-label="Nome do responsável"
+                      className="h-10"
+                      value={values.responsibleName}
+                      onChange={e => set('responsibleName', upperNoAccents(e.target.value))}
+                      placeholder="Nome de quem não está no cadastro (opcional)"
+                    />
                   )}
                 </Field>
-              )}
 
-              {serverError && (
-                <div role="alert">
-                  <ErrorAlert message={serverError} />
-                </div>
-              )}
-            </fieldset>
+                <Field label="Descrição" htmlFor="booking-description">
+                  <Textarea
+                    id="booking-description"
+                    rows={3}
+                    value={values.description}
+                    onChange={e => set('description', e.target.value)}
+                    placeholder="Observações para a equipe (opcional)"
+                  />
+                </Field>
+
+                {/* Só evento pode ir para o site; reunião fica sempre interna. */}
+                {values.type === 'EVENT' && (
+                  <div className="flex flex-col gap-2 rounded-lg border bg-muted/30 p-3">
+                    <label className="flex w-fit cursor-pointer items-center gap-2 text-sm font-medium">
+                      <input
+                        id="booking-public"
+                        type="checkbox"
+                        role="switch"
+                        className="size-5 accent-primary"
+                        checked={values.publicOnSite}
+                        onChange={e => set('publicOnSite', e.target.checked)}
+                      />
+                      <Globe className="size-4 text-muted-foreground" aria-hidden />
+                      Mostrar no site
+                    </label>
+                    <p className="text-sm text-muted-foreground">
+                      O título, a data, o horário e a sala aparecem na página de eventos do site.
+                      A descrição acima continua só para a equipe.
+                    </p>
+                    {values.publicOnSite && (
+                      <Field label="Texto do evento no site" htmlFor="booking-public-description">
+                        <Textarea
+                          id="booking-public-description"
+                          rows={3}
+                          value={values.publicDescription}
+                          onChange={e => set('publicDescription', e.target.value)}
+                          placeholder="O que o público vê sobre o evento (opcional)"
+                        />
+                      </Field>
+                    )}
+                  </div>
+                )}
+
+                {creating && (
+                  <Field label="Repetir">
+                    <Segmented label="Repetir" value={values.repeat} options={REPEAT_OPTIONS} onChange={v => set('repeat', v)} />
+                    {values.repeat !== 'NONE' && (
+                      <div className="flex flex-col gap-1.5 sm:max-w-[calc(50%-0.5rem)]">
+                        <Label htmlFor="booking-repeat-until" className="text-sm font-medium">Repetir até *</Label>
+                        <DatePicker
+                          id="booking-repeat-until"
+                          className="h-10"
+                          value={values.repeatUntil}
+                          onChange={v => set('repeatUntil', v)}
+                        />
+                        {errors.repeatUntil && <p role="alert" className="text-sm text-destructive">{errors.repeatUntil}</p>}
+                      </div>
+                    )}
+                  </Field>
+                )}
+
+                {serverError && (
+                  <div role="alert">
+                    <ErrorAlert message={serverError} />
+                  </div>
+                )}
+              </fieldset>
+            </div>
 
             <div className="flex shrink-0 flex-wrap items-center gap-2 border-t bg-muted/30 px-5 py-3">
               {!creating && canDelete && (

@@ -1702,7 +1702,9 @@ function RouteComponent() {
         <div className="flex gap-2 shrink-0">
           {can('READ_COURSE') && (
             <Button asChild variant="outline">
-              <Link to="/admin/salas"><Building2 className="size-4" /> {t('admin.rooms.title')}</Link>
+              <Link to="/admin/configuracoes" search={{ tab: 'salas' as const }}>
+                <Building2 className="size-4" /> {t('admin.rooms.title')}
+              </Link>
             </Button>
           )}
           <PermissionButton

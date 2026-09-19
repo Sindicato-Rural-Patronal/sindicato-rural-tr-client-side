@@ -10,8 +10,8 @@ describe('filterNavItems', () => {
     expect(labels('noticias')).toContain('Notícias')
     expect(labels('NOTÍCIAS')).toContain('Notícias')
     expect(labels('configuracoes')).toEqual(expect.arrayContaining([
-      'Configurações do site · Dados do sindicato',
-      'Configurações do site · Galerias',
+      'Configurações · Dados do sindicato',
+      'Configurações · Galerias',
     ]))
     expect(labels('cotacoes')).toEqual(['Cotações'])
   })
@@ -26,7 +26,12 @@ describe('filterNavItems', () => {
   })
 
   it('várias palavras: todas precisam aparecer (nome ou palavras extras)', () => {
-    expect(labels('configuracoes galerias')).toEqual(['Configurações do site · Galerias'])
+    expect(labels('configuracoes galerias')).toEqual(['Configurações · Galerias'])
+  })
+
+  it('"salas" leva à aba de Configurações (a tela própria saiu)', () => {
+    expect(labels('salas')).toEqual(['Configurações · Salas'])
+    expect(labels('auditorio')).toEqual(['Configurações · Salas'])
   })
 
   it('busca vazia lista tudo que a pessoa pode ver', () => {

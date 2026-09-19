@@ -24,3 +24,6 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Temporários do gerador de rotas do TanStack Router
+.tanstack/
