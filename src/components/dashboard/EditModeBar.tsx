@@ -55,7 +55,7 @@ export function EditModeBar({
         )}
       >
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-          <div className="min-w-0 lg:max-w-xl">
+          <div className="min-w-0">
             <p className="flex flex-wrap items-center gap-2 text-sm font-semibold text-foreground">
               Organizando o painel
               {alterado && (
@@ -64,11 +64,8 @@ export function EditModeBar({
                 </span>
               )}
             </p>
-            {/* No celular a explicação já está embaixo do título da página. */}
-            <p className="hidden text-sm text-muted-foreground md:block">
-              Arraste pela alça, use Subir e Descer, escolha a largura e esconda o que não usa.
-              Só vale depois de clicar em Salvar.
-            </p>
+            {/* Uma linha só: o resto a pessoa descobre olhando os blocos. */}
+            <p className="text-sm text-muted-foreground">Segure e arraste um bloco para mudar a ordem.</p>
           </div>
 
           <div className="flex flex-wrap items-center gap-2 lg:shrink-0 lg:flex-nowrap">

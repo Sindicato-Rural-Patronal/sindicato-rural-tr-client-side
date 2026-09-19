@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   DEFAULT_ORDER, DEFAULT_SIZES, applyOrder, blockOrder, blockSizes, buildRows, defaultDraft,
-  dropBlock, editableBlocks, moveBlock, normalizePrefs, prefsDraft, prefsToSave, sameDraft,
+  dropBlock, editableBlocks, normalizePrefs, prefsDraft, prefsToSave, sameDraft,
   setBlockSize, toggleHidden, visibleBlocks,
   type DashboardBlockId,
 } from '@/components/dashboard/dashboard-prefs'
@@ -39,14 +39,7 @@ describe('personalização do painel', () => {
     expect(visibleBlocks({ hidden: ['numeros'] }, disponiveis)).toEqual(['acoes', 'agenda', 'cursos'])
   })
 
-  it('sobe e desce blocos, sem sair das pontas', () => {
-    const ordem: DashboardBlockId[] = ['acoes', 'numeros', 'agenda']
-    expect(moveBlock(ordem, 'agenda', -1)).toEqual(['acoes', 'agenda', 'numeros'])
-    expect(moveBlock(ordem, 'acoes', -1)).toEqual(ordem)
-    expect(moveBlock(ordem, 'agenda', 1)).toEqual(ordem)
-  })
-
-  it('marcar/desmarcar um bloco', () => {
+  it('tirar/trazer de volta um bloco', () => {
     expect(toggleHidden([], 'cursos')).toEqual(['cursos'])
     expect(toggleHidden(['cursos'], 'cursos')).toEqual([])
   })
@@ -60,14 +53,24 @@ describe('personalização do painel', () => {
     expect(dropBlock(ordem, 'incompletos', 'acoes')).toEqual(ordem)
   })
 
-  it('mexer na ordem não bagunça o bloco que o admin não pode ver', () => {
+  it('arrastar não bagunça o bloco que o admin não pode ver', () => {
     // 'financeiro' está na ordem salva mas não na lista de disponíveis.
     const completa: DashboardBlockId[] = ['acoes', 'financeiro', 'numeros', 'agenda']
     const disponiveis: DashboardBlockId[] = ['acoes', 'numeros', 'agenda']
     expect(editableBlocks(completa, disponiveis)).toEqual(['acoes', 'numeros', 'agenda'])
-    const visiveis = moveBlock(editableBlocks(completa, disponiveis), 'agenda', -1)
+    const visiveis = dropBlock(editableBlocks(completa, disponiveis), 'agenda', 'numeros')
     // 'financeiro' continua no mesmo índice; os visíveis é que trocaram.
     expect(applyOrder(completa, disponiveis, visiveis)).toEqual(['acoes', 'financeiro', 'agenda', 'numeros'])
+  })
+
+  it('bloco removido não entra no arrasto e volta no lugar de sempre', () => {
+    // 'numeros' foi removido do painel: só 'acoes' e 'agenda' se mexem.
+    const completa: DashboardBlockId[] = ['acoes', 'numeros', 'agenda']
+    const mexiveis: DashboardBlockId[] = ['acoes', 'agenda']
+    const nova = applyOrder(completa, mexiveis, dropBlock(mexiveis, 'agenda', 'acoes'))
+    expect(nova).toEqual(['agenda', 'numeros', 'acoes'])
+    // Trazer de volta só mexe em `hidden`: o lugar dele na ordem continua o mesmo.
+    expect(visibleBlocks({ order: nova, hidden: [] }, completa)).toEqual(['agenda', 'numeros', 'acoes'])
   })
 })
 
@@ -114,7 +117,7 @@ describe('rascunho do modo de organizar', () => {
     expect(sameDraft(salvo, prefsDraft({ hidden: ['cursos'], order: ['auditoria'], sizes: { agenda: 'half' } }))).toBe(true)
     expect(sameDraft(salvo, { ...salvo, hidden: [] })).toBe(false)
     expect(sameDraft(salvo, { ...salvo, sizes: setBlockSize(salvo.sizes, 'agenda', 'full') })).toBe(false)
-    expect(sameDraft(salvo, { ...salvo, order: moveBlock(salvo.order, 'auditoria', 1) })).toBe(false)
+    expect(sameDraft(salvo, { ...salvo, order: dropBlock(salvo.order, 'auditoria', 'acoes') })).toBe(false)
   })
 
   it('"Restaurar padrão" volta ao layout de fábrica', () => {

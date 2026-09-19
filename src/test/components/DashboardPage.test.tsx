@@ -201,15 +201,21 @@ describe('Painel Geral', () => {
   it('fora do modo de organizar não há controles de bloco', () => {
     render(<Painel />)
     expect(screen.queryByRole('region', { name: 'Organizar o painel' })).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /Arrastar/ })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /^Remover/ })).not.toBeInTheDocument()
+    expect(screen.queryByRole('group', { name: /Segure e arraste para mudar de lugar/ })).not.toBeInTheDocument()
   })
 })
 
 // ─── modo de organizar (edição direto no painel) ─────────────────────────────
 
-/** Abre o modo de organizar e devolve a moldura de um bloco. */
+/** Abre o modo de organizar e devolve a moldura arrastável de um bloco. */
 function moldura(nome: string) {
-  return screen.getByRole('region', { name: `Bloco ${nome}` })
+  return screen.getByRole('group', { name: new RegExp(`^${nome}\\. Segure e arraste`) })
+}
+
+/** Todas as molduras que estão no painel agora. */
+function molduras() {
+  return screen.queryAllByRole('group', { name: /Segure e arraste para mudar de lugar/ })
 }
 
 function organizar() {
@@ -222,63 +228,61 @@ function enviado() {
 }
 
 describe('Painel Geral — organizar os blocos', () => {
-  it('"Personalizar" liga a edição na própria tela (sem janela)', () => {
+  it('"Personalizar" congela o painel e deixa só dois controles por bloco', () => {
     organizar()
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     expect(screen.getByRole('region', { name: 'Organizar o painel' })).toBeInTheDocument()
-    // Os blocos continuam desenhados, agora dentro da moldura com os controles.
-    expect(moldura('Cursos públicos')).toBeInTheDocument()
+    // Os blocos continuam desenhados inteiros, agora congelados e arrastáveis.
+    expect(molduras()).toHaveLength(8)
     expect(screen.getByTestId('agenda')).toBeInTheDocument()
-    expect(screen.getAllByRole('button', { name: /^Arrastar/ })).toHaveLength(8)
-  })
-
-  it('esconder deixa o bloco à vista, apagadinho, com "Mostrar"', async () => {
-    organizar()
-    fireEvent.click(within(moldura('Cursos públicos')).getByRole('button', { name: 'Esconder Cursos públicos' }))
 
     const cartao = moldura('Cursos públicos')
-    expect(within(cartao).getByText('Escondido')).toBeInTheDocument()
-    expect(within(cartao).getByRole('button', { name: 'Mostrar Cursos públicos' })).toBeInTheDocument()
+    expect(within(cartao).getByRole('button', { name: 'Remover Cursos públicos do painel' })).toBeInTheDocument()
+    // "Cursos públicos" nasce com meia linha, então o botão oferece aumentar.
+    expect(within(cartao).getByRole('button', { name: /^Aumentar Cursos públicos/ })).toBeInTheDocument()
 
+    // Tudo o que sobrava saiu: alça, setas, rótulo de largura e esconder.
+    for (const sumiu of [/^Arrastar/, /^Subir/, /^Descer/, /^Esconder/, /^Mostrar/, /^Inteira$/, /^Metade$/]) {
+      expect(screen.queryByRole('button', { name: sumiu })).not.toBeInTheDocument()
+    }
+  })
+
+  it('"Remover" tira o bloco do painel e o "Adicionar" traz de volta', async () => {
+    organizar()
+    fireEvent.click(screen.getByRole('button', { name: 'Remover Cursos públicos do painel' }))
+
+    // Some do painel (não fica apagadinho no meio) e vira botão no fim da tela.
+    expect(molduras()).toHaveLength(7)
+    const fora = screen.getByRole('region', { name: 'Blocos que não estão no painel' })
+    const voltar = within(fora).getByRole('button', { name: 'Adicionar Cursos públicos' })
+
+    fireEvent.click(voltar)
+    expect(molduras()).toHaveLength(8)
+    expect(screen.queryByRole('region', { name: 'Blocos que não estão no painel' })).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Remover Últimas ações do painel' }))
     fireEvent.click(screen.getByRole('button', { name: 'Salvar' }))
     await waitFor(() => expect(salvarPrefs).toHaveBeenCalled())
-    expect(enviado().hidden).toEqual(['cursos'])
+    expect(enviado().hidden).toEqual(['auditoria'])
     expect(enviado().order).toHaveLength(8)
-    // Depois de salvar a tela volta ao normal e o bloco some.
+    // Depois de salvar a tela volta ao normal.
     await waitFor(() => expect(screen.queryByRole('region', { name: 'Organizar o painel' })).not.toBeInTheDocument())
   })
 
-  it('a largura muda o desenho na hora e vai junto no Salvar', async () => {
+  it('um botão só alterna a largura, dizendo o que vai acontecer', async () => {
     organizar()
-    const agenda = moldura('Calendário e agenda das salas')
-    expect(within(agenda).getByRole('button', { name: 'Inteira' })).toHaveAttribute('aria-pressed', 'true')
-    fireEvent.click(within(agenda).getByRole('button', { name: 'Metade' }))
-    expect(within(moldura('Calendário e agenda das salas')).getByRole('button', { name: 'Metade' }))
-      .toHaveAttribute('aria-pressed', 'true')
+    // Bloco inteiro oferece "Diminuir"; depois de diminuir, oferece "Aumentar".
+    fireEvent.click(screen.getByRole('button', { name: /^Diminuir Calendário e agenda das salas/ }))
+    expect(screen.getByRole('button', { name: /^Aumentar Calendário e agenda das salas/ })).toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: 'Salvar' }))
     await waitFor(() => expect(salvarPrefs).toHaveBeenCalled())
     expect(enviado().sizes).toMatchObject({ agenda: 'half', numeros: 'full', cursos: 'half' })
   })
 
-  it('as setas mudam a ordem (caminho de quem não consegue arrastar)', async () => {
-    organizar()
-    fireEvent.click(within(moldura('Cursos públicos')).getByRole('button', { name: 'Subir Cursos públicos' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Salvar' }))
-
-    await waitFor(() => expect(salvarPrefs).toHaveBeenCalled())
-    expect(enviado().order.slice(4, 6)).toEqual(['cursos', 'agenda'])
-  })
-
-  it('o primeiro não sobe e o último não desce', () => {
-    organizar()
-    expect(within(moldura('Ações rápidas')).getByRole('button', { name: /^Subir/ })).toBeDisabled()
-    expect(within(moldura('Últimas ações')).getByRole('button', { name: /^Descer/ })).toBeDisabled()
-  })
-
   it('Cancelar joga fora o rascunho e não salva nada', () => {
     organizar()
-    fireEvent.click(within(moldura('Cursos públicos')).getByRole('button', { name: /^Esconder/ }))
+    fireEvent.click(screen.getByRole('button', { name: 'Remover Cursos públicos do painel' }))
     fireEvent.click(screen.getByRole('button', { name: /Cancelar/ }))
 
     expect(salvarPrefs).not.toHaveBeenCalled()
@@ -289,10 +293,12 @@ describe('Painel Geral — organizar os blocos', () => {
   it('"Restaurar padrão" volta ao layout de fábrica (e só salva ao clicar em Salvar)', async () => {
     prefs = { hidden: ['cursos', 'auditoria'], order: ['auditoria', 'acoes'], sizes: { agenda: 'half' } }
     organizar()
+    expect(molduras()).toHaveLength(6)
     fireEvent.click(screen.getByRole('button', { name: /Restaurar padrão/ }))
 
     expect(salvarPrefs).not.toHaveBeenCalled()
-    expect(within(moldura('Cursos públicos')).queryByText('Escondido')).not.toBeInTheDocument()
+    expect(molduras()).toHaveLength(8)
+    expect(screen.queryByRole('region', { name: 'Blocos que não estão no painel' })).not.toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: 'Salvar' }))
     await waitFor(() => expect(salvarPrefs).toHaveBeenCalled())
@@ -304,22 +310,22 @@ describe('Painel Geral — organizar os blocos', () => {
   it('avisa que há alterações não salvas', () => {
     organizar()
     expect(screen.queryByText('Alterações não salvas')).not.toBeInTheDocument()
-    fireEvent.click(within(moldura('Financeiro do mês')).getByRole('button', { name: 'Metade' }))
+    fireEvent.click(screen.getByRole('button', { name: /^Diminuir Financeiro do mês/ }))
     expect(screen.getByText('Alterações não salvas')).toBeInTheDocument()
   })
 
   it('bloco sem permissão nem entra na organização', () => {
     permissoes = ['READ_USER', 'READ_COURSE', 'CREATE_USER']
     organizar()
-    expect(screen.queryByRole('region', { name: 'Bloco Financeiro do mês' })).not.toBeInTheDocument()
-    expect(screen.queryByRole('region', { name: 'Bloco Últimas ações' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /^Remover Financeiro do mês/ })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /^Remover Últimas ações/ })).not.toBeInTheDocument()
     expect(moldura('Cadastros incompletos')).toBeInTheDocument()
   })
 
   it('erro ao salvar avisa e mantém o modo de organizar aberto', async () => {
     salvarPrefs.mockRejectedValueOnce(new Error('sem rede'))
     organizar()
-    fireEvent.click(within(moldura('Cursos públicos')).getByRole('button', { name: /^Esconder/ }))
+    fireEvent.click(screen.getByRole('button', { name: 'Remover Cursos públicos do painel' }))
     fireEvent.click(screen.getByRole('button', { name: 'Salvar' }))
 
     await waitFor(() => expect(salvarPrefs).toHaveBeenCalled())

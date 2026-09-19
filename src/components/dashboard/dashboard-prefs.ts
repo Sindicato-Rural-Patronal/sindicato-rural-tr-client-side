@@ -18,15 +18,15 @@ export type DashboardBlockId =
 export type DashboardBlockSize = 'full' | 'half'
 
 /** Nome de cada bloco no modo de organizar (é o que o admin lê). */
-export const DASHBOARD_BLOCKS: { id: DashboardBlockId; label: string; hint: string }[] = [
-  { id: 'acoes', label: 'Ações rápidas', hint: 'Botões de novo associado, novo curso, reserva e cotação' },
-  { id: 'numeros', label: 'Números do sistema', hint: 'Cartões com o que precisa de atenção' },
-  { id: 'cotacoes', label: 'Aviso das cotações', hint: 'Lembrete de lançar as cotações do dia' },
-  { id: 'financeiro', label: 'Financeiro do mês', hint: 'Entradas, saídas e saldo do mês atual' },
-  { id: 'agenda', label: 'Calendário e agenda das salas', hint: 'Cursos, eventos e reuniões' },
-  { id: 'cursos', label: 'Cursos públicos', hint: 'Vagas e prazo de inscrição' },
-  { id: 'incompletos', label: 'Cadastros incompletos', hint: 'Pessoas com cadastro pela metade' },
-  { id: 'auditoria', label: 'Últimas ações', hint: 'O que foi feito no sistema há pouco' },
+export const DASHBOARD_BLOCKS: { id: DashboardBlockId; label: string }[] = [
+  { id: 'acoes', label: 'Ações rápidas' },
+  { id: 'numeros', label: 'Números do sistema' },
+  { id: 'cotacoes', label: 'Aviso das cotações' },
+  { id: 'financeiro', label: 'Financeiro do mês' },
+  { id: 'agenda', label: 'Calendário e agenda das salas' },
+  { id: 'cursos', label: 'Cursos públicos' },
+  { id: 'incompletos', label: 'Cadastros incompletos' },
+  { id: 'auditoria', label: 'Últimas ações' },
 ]
 
 /** Ordem de fábrica (quem nunca personalizou vê exatamente isto). */
@@ -115,30 +115,21 @@ export function visibleBlocks(
   return blockOrder(prefs).filter(id => allowed.has(id) && !hidden.has(id))
 }
 
-/** Sobe (−1) ou desce (+1) um bloco na ordem. Nas pontas, não faz nada. */
-export function moveBlock(order: DashboardBlockId[], id: DashboardBlockId, delta: number): DashboardBlockId[] {
-  const from = order.indexOf(id)
-  if (from < 0) return order
-  return placeAt(order, from, from + delta)
-}
-
-/** Solta o bloco arrastado no lugar de outro (é o que o arrastar faz). */
+/** Solta o bloco arrastado no lugar de outro (é o único jeito de mover). */
 export function dropBlock(
   order: DashboardBlockId[],
   id: DashboardBlockId,
   targetId: DashboardBlockId,
 ): DashboardBlockId[] {
-  return placeAt(order, order.indexOf(id), order.indexOf(targetId))
-}
-
-function placeAt(order: DashboardBlockId[], from: number, to: number): DashboardBlockId[] {
-  if (from < 0 || to < 0 || to >= order.length || from === to) return order
+  const from = order.indexOf(id)
+  const to = order.indexOf(targetId)
+  if (from < 0 || to < 0 || from === to) return order
   const next = [...order]
   next.splice(to, 0, ...next.splice(from, 1))
   return next
 }
 
-/** Marca/desmarca um bloco como escondido. */
+/** Tira o bloco do painel / traz de volta. */
 export function toggleHidden(hidden: DashboardBlockId[], id: DashboardBlockId): DashboardBlockId[] {
   return hidden.includes(id) ? hidden.filter(h => h !== id) : [...hidden, id]
 }
@@ -223,9 +214,10 @@ export function editableBlocks(
 }
 
 /**
- * Devolve a ordem completa depois de mexer só nos blocos que o admin vê. O que
- * ele não pode ver (permissão) fica exatamente onde estava — senão "Subir"
- * trocaria de lugar com um bloco invisível e pareceria que nada aconteceu.
+ * Devolve a ordem completa depois de mexer só nos blocos que estão na tela. O
+ * que não está (sem permissão, ou removido do painel) fica exatamente onde
+ * estava — senão arrastar trocaria de lugar com um bloco invisível e pareceria
+ * que nada aconteceu.
  */
 export function applyOrder(
   full: readonly DashboardBlockId[],

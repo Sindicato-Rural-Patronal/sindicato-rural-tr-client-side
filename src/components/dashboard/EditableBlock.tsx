@@ -1,156 +1,91 @@
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { ArrowDown, ArrowUp, Eye, EyeOff, GripVertical } from 'lucide-react'
-import { Button } from '@/components/ui/button'
+import { Maximize2, Minimize2, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { DashboardBlockId, DashboardBlockSize } from '@/components/dashboard/dashboard-prefs'
 
-// Um bloco do painel dentro do modo de organizar: o conteúdo de verdade
-// aparece embaixo dos controles, então a pessoa vê o resultado enquanto mexe.
-// Nada de ícone sozinho — todo botão tem a palavra do lado.
-
-/** Altura máxima da amostra: com 8 blocos inteiros ninguém consegue arrastar. */
-const AMOSTRA = 'max-h-64'
+// Um bloco do painel no modo de organizar. O bloco continua sendo o bloco de
+// verdade, inteiro (nada de amostra cortada): a pessoa quer ver a tela dela.
+// Só fica congelado (`inert`, sem clique nem foco) e ganha DOIS botõezinhos no
+// canto — aumentar/diminuir e remover. Mover é arrastar o cartão todo.
 
 export function EditableBlock({
-  id, label, hint, size, escondido, primeiro, ultimo,
-  onMover, onLargura, onEsconder, children,
+  id, label, size, onLargura, onRemover, children,
 }: {
   id: DashboardBlockId
   label: string
-  hint: string
   size: DashboardBlockSize
-  escondido: boolean
-  primeiro: boolean
-  ultimo: boolean
-  /** −1 sobe, +1 desce. */
-  onMover: (delta: number) => void
-  onLargura: (size: DashboardBlockSize) => void
-  onEsconder: () => void
+  /** Alterna entre a linha inteira e meia linha. */
+  onLargura: () => void
+  onRemover: () => void
   children: React.ReactNode
 }) {
-  const {
-    attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging,
-  } = useSortable({ id })
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id })
+  const inteiro = size === 'full'
 
   return (
     <section
       ref={setNodeRef}
       style={{ transform: CSS.Transform.toString(transform), transition }}
-      aria-label={`Bloco ${label}`}
+      {...attributes}
+      {...listeners}
+      // O cartão inteiro é a alça, então ele não pode virar um `role="button"`
+      // (os dois botões de dentro ficariam inalcançáveis em alguns leitores de
+      // tela). Como grupo focável, Espaço/setas do @dnd-kit continuam valendo.
+      role="group"
+      aria-roledescription="Bloco do painel"
+      aria-label={`${label}. Segure e arraste para mudar de lugar, ou aperte a barra de espaço.`}
       className={cn(
-        'flex flex-col gap-3 rounded-xl border-2 border-dashed border-border bg-card/40 p-3',
-        isDragging && 'relative z-10 border-primary opacity-80 shadow-lg',
-        escondido && 'border-muted bg-muted/30',
+        'relative cursor-grab rounded-xl border-2 border-dashed border-border bg-card/40 p-2',
+        'active:cursor-grabbing focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+        // touch-none só enquanto arrasta: se valesse sempre, o dedo não rolaria
+        // mais a página (o cartão ocupa a tela toda no celular).
+        isDragging && 'z-10 touch-none border-primary opacity-80 shadow-lg',
       )}
     >
-      <div className="flex flex-col gap-2">
-        <div className="min-w-0">
-          <h3 className="text-sm font-semibold text-foreground">
-            {label}
-            {escondido && (
-              <span className="ml-2 rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
-                Escondido
-              </span>
-            )}
-          </h3>
-          <p className="text-xs text-muted-foreground">
-            {escondido ? 'Não aparece no painel. Clique em Mostrar para trazer de volta.' : hint}
-          </p>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-2">
-          {/* touch-none: sem isso o navegador do celular rola a página em vez de arrastar. */}
-          <button
-            type="button"
-            ref={setActivatorNodeRef}
-            {...attributes}
-            {...listeners}
-            aria-label={`Arrastar ${label} para outro lugar`}
-            className={cn(
-              'inline-flex h-11 cursor-grab touch-none items-center gap-1.5 rounded-lg border border-border',
-              'bg-background px-3 text-sm font-medium active:cursor-grabbing',
-              'hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-            )}
-          >
-            <GripVertical className="size-4 text-muted-foreground" aria-hidden /> Arrastar
-          </button>
-
-          <Button
-            type="button"
-            variant="outline"
-            className="h-11 gap-1.5 px-3"
-            disabled={primeiro}
-            onClick={() => onMover(-1)}
-            aria-label={`Subir ${label}`}
-          >
-            <ArrowUp className="size-4" aria-hidden /> Subir
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            className="h-11 gap-1.5 px-3"
-            disabled={ultimo}
-            onClick={() => onMover(1)}
-            aria-label={`Descer ${label}`}
-          >
-            <ArrowDown className="size-4" aria-hidden /> Descer
-          </Button>
-
-          {/* Largura: dois botões que ficam marcados, mais fácil de entender que um menu. */}
-          <div
-            role="group"
-            aria-label={`Largura de ${label}`}
-            className="inline-flex items-center gap-1 rounded-lg border border-border bg-background p-1"
-          >
-            {/* No celular todo bloco ocupa a linha inteira, então a escolha só
-                aparece no computador — dizer isso evita a impressão de que o
-                botão não funcionou. */}
-            <span className="pl-1.5 text-xs text-muted-foreground">
-              Largura<span className="lg:hidden"> no computador</span>
-            </span>
-            <LarguraBotao ativo={size === 'full'} onClick={() => onLargura('full')}>Inteira</LarguraBotao>
-            <LarguraBotao ativo={size === 'half'} onClick={() => onLargura('half')}>Metade</LarguraBotao>
-          </div>
-
-          <Button
-            type="button"
-            variant="outline"
-            className="h-11 gap-1.5 px-3"
-            onClick={onEsconder}
-            aria-label={escondido ? `Mostrar ${label}` : `Esconder ${label}`}
-          >
-            {escondido
-              ? <><Eye className="size-4" aria-hidden /> Mostrar</>
-              : <><EyeOff className="size-4" aria-hidden /> Esconder</>}
-          </Button>
-        </div>
+      {/* Em cima da borda, não do conteúdo: assim os botões não tapam o número
+          nem o título do bloco (cabem no respiro de 24px entre um e outro). */}
+      <div className="absolute -top-5 right-2 z-10 flex gap-2">
+        {/* Abaixo de lg todo bloco ocupa a linha toda: o botão não teria efeito. */}
+        <BotaoCanto
+          className="hidden lg:inline-flex"
+          onClick={onLargura}
+          aria-label={inteiro ? `Diminuir ${label} para meia linha` : `Aumentar ${label} para a linha inteira`}
+        >
+          {inteiro
+            ? <><Minimize2 className="size-4" aria-hidden /> Diminuir</>
+            : <><Maximize2 className="size-4" aria-hidden /> Aumentar</>}
+        </BotaoCanto>
+        <BotaoCanto onClick={onRemover} aria-label={`Remover ${label} do painel`}>
+          <X className="size-4" aria-hidden /> Remover
+        </BotaoCanto>
       </div>
 
-      {/* Amostra do bloco: só para reconhecer, por isso não recebe clique nem foco. */}
-      <div className={cn('relative overflow-hidden rounded-lg', AMOSTRA, escondido && 'opacity-40')}>
-        <div inert>{children}</div>
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-8 bg-linear-to-t from-background to-transparent" aria-hidden />
-      </div>
+      {/* O bloco de verdade, congelado: não recebe clique nem foco. O respiro
+          em cima é o lugar dos botões: metade deles cai dentro do cartão, e sem
+          isto eles tapavam o que estivesse no canto (o seletor de salas da
+          agenda, por exemplo). */}
+      <div inert className="pt-6">{children}</div>
     </section>
   )
 }
 
-function LarguraBotao({ ativo, onClick, children }: {
-  ativo: boolean
-  onClick: () => void
-  children: React.ReactNode
-}) {
+/** Botãozinho sobreposto ao bloco. Texto sempre à vista e 44px de altura. */
+function BotaoCanto({ className, children, ...props }: React.ComponentProps<'button'>) {
   return (
     <button
       type="button"
-      aria-pressed={ativo}
-      onClick={onClick}
+      // O cartão inteiro escuta ponteiro e teclado para arrastar: sem barrar
+      // aqui, clicar no botão começaria um arrasto e Espaço/Enter também.
+      onPointerDown={e => e.stopPropagation()}
+      onKeyDown={e => e.stopPropagation()}
       className={cn(
-        'inline-flex h-11 items-center rounded-md px-3 text-sm font-medium transition-colors',
+        'inline-flex h-11 items-center gap-1.5 rounded-lg border border-border bg-background px-3',
+        'text-sm font-medium shadow-md hover:bg-muted',
         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-        ativo ? 'bg-primary text-primary-foreground' : 'text-foreground hover:bg-muted',
+        className,
       )}
+      {...props}
     >
       {children}
     </button>

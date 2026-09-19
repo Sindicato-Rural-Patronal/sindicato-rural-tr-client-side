@@ -2,8 +2,8 @@ import { useState, useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import {
-  DndContext, closestCenter, KeyboardSensor, PointerSensor,
-  useSensor, useSensors, type DragEndEvent,
+  DndContext, closestCenter, KeyboardSensor, MouseSensor, TouchSensor,
+  useSensor, useSensors, type Announcements, type DragEndEvent, type ScreenReaderInstructions,
 } from '@dnd-kit/core'
 import { SortableContext, rectSortingStrategy, sortableKeyboardCoordinates } from '@dnd-kit/sortable'
 import { apiFetch } from '@/lib/api'
@@ -29,14 +29,14 @@ import { EditModeBar } from '@/components/dashboard/EditModeBar'
 import { EditableBlock } from '@/components/dashboard/EditableBlock'
 import {
   DASHBOARD_BLOCKS, applyOrder, blockSizes, buildRows, defaultDraft, dropBlock, editableBlocks,
-  moveBlock, prefsDraft, prefsToSave, sameDraft, setBlockSize, toggleHidden, visibleBlocks,
-  type DashboardBlockId, type DashboardBlockSize, type DashboardCell, type DashboardDraft,
+  prefsDraft, prefsToSave, sameDraft, setBlockSize, toggleHidden, visibleBlocks,
+  type DashboardBlockId, type DashboardCell, type DashboardDraft,
 } from '@/components/dashboard/dashboard-prefs'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { NativeSelect } from '@/components/ui/native-select'
 import { cn } from '@/lib/utils'
-import { ChevronLeft, ChevronRight, SlidersHorizontal } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Plus, SlidersHorizontal } from 'lucide-react'
 
 // Agenda das salas do período (cursos, eventos e reuniões) — uma consulta só.
 // O painel NÃO pagina mais a lista de cursos para pintar o calendário.
@@ -87,8 +87,29 @@ function diaPorExtenso(ymd: string): string {
   return `${day} de ${MESES[(month || 1) - 1]} de ${year}`
 }
 
-/** Nome e explicação de cada bloco, para o modo de organizar. */
-const META = new Map(DASHBOARD_BLOCKS.map(b => [b.id, b] as const))
+/** Nome de cada bloco, para o modo de organizar. */
+const META = new Map(DASHBOARD_BLOCKS.map(b => [b.id, b.label] as const))
+
+const nomeDoBloco = (id: string | number) => META.get(id as DashboardBlockId) ?? String(id)
+
+// O @dnd-kit narra o arrasto para quem usa leitor de tela — em inglês, se a
+// gente não escrever. O sistema é só em português, então aqui está o texto.
+const INSTRUCOES_LEITOR: ScreenReaderInstructions = {
+  draggable:
+    'Aperte a barra de espaço para pegar o bloco. Use as setas para escolher o lugar, '
+    + 'a barra de espaço de novo para soltar e Esc para desistir.',
+}
+
+const AVISOS_LEITOR: Announcements = {
+  onDragStart: ({ active }) => `Pegou o bloco ${nomeDoBloco(active.id)}.`,
+  onDragOver: ({ active, over }) =>
+    over ? `${nomeDoBloco(active.id)} vai para o lugar de ${nomeDoBloco(over.id)}.` : undefined,
+  onDragEnd: ({ active, over }) =>
+    over
+      ? `${nomeDoBloco(active.id)} ficou no lugar de ${nomeDoBloco(over.id)}.`
+      : `${nomeDoBloco(active.id)} voltou para o lugar.`,
+  onDragCancel: ({ active }) => `Desistiu de mover. ${nomeDoBloco(active.id)} voltou para o lugar.`,
+}
 
 /** Botão redondo dos filtros por tipo. */
 function Chip({ active, onClick, children, kind }: {
@@ -211,40 +232,51 @@ export function DashboardPage({ search, onSearch, onOpenCourse }: {
   // Sair da tela com o rascunho pela metade pergunta antes (diálogo do painel).
   useUnsavedGuard(alterado)
 
-  // Ordem dos blocos que ESTE admin mexe (os sem permissão nem aparecem aqui).
-  const ordemEdicao = rascunho ? editableBlocks(rascunho.order, disponiveis) : []
+  // Blocos que ESTE admin mexe: os que estão no painel e os que ele removeu.
+  const noPainel = rascunho
+    ? editableBlocks(rascunho.order, disponiveis).filter(id => !rascunho.hidden.includes(id))
+    : []
+  const foraDoPainel = rascunho
+    ? editableBlocks(rascunho.order, disponiveis).filter(id => rascunho.hidden.includes(id))
+    : []
 
   const linhas: DashboardCell[][] = rascunho
-    ? buildRows(ordemEdicao, rascunho.sizes)
+    ? buildRows(noPainel, rascunho.sizes)
     : buildRows(visibleBlocks(me?.dashboardPrefs, disponiveis), blockSizes(me?.dashboardPrefs))
 
-  // Arrastar precisa de um empurrãozinho antes de valer: sem isso, um toque na
-  // alça já viraria arrasto e a pessoa moveria o bloco sem querer.
+  // O cartão inteiro é a alça, então arrastar precisa de um empurrãozinho antes
+  // de valer: no mouse, andar um pouco; no dedo, apertar e segurar (como mover
+  // ícone de celular), senão a pessoa moveria o bloco ao rolar a página.
+  // Mouse e toque são sensores SEPARADOS de propósito — com o PointerSensor,
+  // que atende os dois, o toque ganhava a regra da distância e o navegador
+  // cancelava o arrasto assim que entendia o gesto como rolagem.
   const sensores = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(MouseSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 8 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   )
 
-  /** Mexe só na parte visível da ordem e devolve a lista completa. */
-  function reordenar(muda: (visiveis: DashboardBlockId[]) => DashboardBlockId[]) {
+  function aoSoltar({ active, over }: DragEndEvent) {
+    if (!over || active.id === over.id) return
     setRascunho(prev => {
       if (!prev) return prev
-      const visiveis = editableBlocks(prev.order, disponiveis)
-      return { ...prev, order: applyOrder(prev.order, disponiveis, muda(visiveis)) }
+      // Só os blocos que estão na tela trocam de lugar; o resto (sem permissão
+      // ou removido) fica no mesmo índice da ordem salva.
+      const mexiveis = editableBlocks(prev.order, disponiveis).filter(id => !prev.hidden.includes(id))
+      const nova = dropBlock(mexiveis, active.id as DashboardBlockId, over.id as DashboardBlockId)
+      return { ...prev, order: applyOrder(prev.order, mexiveis, nova) }
     })
   }
 
-  function aoSoltar(e: DragEndEvent) {
-    const { active, over } = e
-    if (!over || active.id === over.id) return
-    reordenar(v => dropBlock(v, active.id as DashboardBlockId, over.id as DashboardBlockId))
+  /** Alterna entre a linha inteira e meia linha. */
+  function mudarLargura(id: DashboardBlockId) {
+    setRascunho(prev => (prev
+      ? { ...prev, sizes: setBlockSize(prev.sizes, id, prev.sizes[id] === 'full' ? 'half' : 'full') }
+      : prev))
   }
 
-  function mudarLargura(id: DashboardBlockId, size: DashboardBlockSize) {
-    setRascunho(prev => (prev ? { ...prev, sizes: setBlockSize(prev.sizes, id, size) } : prev))
-  }
-
-  function esconderMostrar(id: DashboardBlockId) {
+  /** Tira o bloco do painel ou traz de volta (o lugar dele na ordem não muda). */
+  function removerOuAdicionar(id: DashboardBlockId) {
     setRascunho(prev => (prev ? { ...prev, hidden: toggleHidden(prev.hidden, id) } : prev))
   }
 
@@ -410,24 +442,17 @@ export function DashboardPage({ search, onSearch, onOpenCourse }: {
     }
   }
 
-  /** Um bloco na tela: no modo de organizar vai dentro da moldura com os controles. */
+  /** Um bloco na tela: no modo de organizar vai dentro da moldura arrastável. */
   function celula({ id, size }: DashboardCell) {
     if (!rascunho) return <div key={id}>{bloco(id)}</div>
-    const meta = META.get(id)
-    const posicao = ordemEdicao.indexOf(id)
     return (
       <EditableBlock
         key={id}
         id={id}
-        label={meta?.label ?? id}
-        hint={meta?.hint ?? ''}
+        label={nomeDoBloco(id)}
         size={size}
-        escondido={rascunho.hidden.includes(id)}
-        primeiro={posicao === 0}
-        ultimo={posicao === ordemEdicao.length - 1}
-        onMover={delta => reordenar(v => moveBlock(v, id, delta))}
-        onLargura={largura => mudarLargura(id, largura)}
-        onEsconder={() => esconderMostrar(id)}
+        onLargura={() => mudarLargura(id)}
+        onRemover={() => removerOuAdicionar(id)}
       >
         {bloco(id)}
       </EditableBlock>
@@ -469,9 +494,7 @@ export function DashboardPage({ search, onSearch, onOpenCourse }: {
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-foreground">Painel Geral</h1>
           <p className="text-sm text-muted-foreground">
-            {editando
-              ? 'Mude a ordem, a largura e o que aparece. O painel vai mudando aqui embaixo.'
-              : 'O que precisa de atenção hoje, a agenda das salas e os números do sistema.'}
+            O que precisa de atenção hoje, a agenda das salas e os números do sistema.
           </p>
         </div>
         {!editando && (
@@ -486,13 +509,44 @@ export function DashboardPage({ search, onSearch, onOpenCourse }: {
       </div>
 
       {rascunho ? (
-        <DndContext sensors={sensores} collisionDetection={closestCenter} onDragEnd={aoSoltar}>
+        <DndContext
+          sensors={sensores}
+          collisionDetection={closestCenter}
+          onDragEnd={aoSoltar}
+          accessibility={{ announcements: AVISOS_LEITOR, screenReaderInstructions: INSTRUCOES_LEITOR }}
+          // Os blocos são inteiros e a página é longa: sem rolar sozinha perto
+          // da borda não dá para levar um bloco do fim para o começo.
+          autoScroll={{ threshold: { x: 0, y: 0.2 }, acceleration: 14 }}
+        >
           {/* A lista do arrastar é plana (a ordem dos blocos); as linhas são só o desenho. */}
-          <SortableContext items={ordemEdicao} strategy={rectSortingStrategy}>
+          <SortableContext items={noPainel} strategy={rectSortingStrategy}>
             <div className="flex flex-col gap-6">{corpo}</div>
           </SortableContext>
         </DndContext>
       ) : corpo}
+
+      {/* Bloco removido some do painel; volta por aqui, no fim da tela. */}
+      {foraDoPainel.length > 0 && (
+        <section
+          aria-label="Blocos que não estão no painel"
+          className="rounded-xl border border-dashed border-border bg-muted/30 p-4"
+        >
+          <h2 className="text-sm font-semibold text-foreground">Blocos que não estão no painel</h2>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {foraDoPainel.map(id => (
+              <Button
+                key={id}
+                type="button"
+                variant="outline"
+                className="h-11 gap-2 px-3"
+                onClick={() => removerOuAdicionar(id)}
+              >
+                <Plus className="size-4" aria-hidden /> Adicionar {nomeDoBloco(id)}
+              </Button>
+            ))}
+          </div>
+        </section>
+      )}
     </div>
   )
 }
