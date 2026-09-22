@@ -1,9 +1,10 @@
-import { useRef, useState, useMemo } from 'react'
+import { useState, useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import {
-  DndContext, MeasuringStrategy, closestCorners, KeyboardSensor, MouseSensor, TouchSensor,
-  useSensor, useSensors, type Announcements, type DragOverEvent, type ScreenReaderInstructions,
+  DndContext, closestCorners, KeyboardSensor, MouseSensor, TouchSensor,
+  useSensor, useSensors, type Announcements, type DragEndEvent, type DragOverEvent,
+  type ScreenReaderInstructions,
 } from '@dnd-kit/core'
 import { SortableContext, sortableKeyboardCoordinates } from '@dnd-kit/sortable'
 import { apiFetch } from '@/lib/api'
@@ -96,9 +97,9 @@ const nomeDoBloco = (id: string | number) => META.get(id as DashboardBlockId) ??
 // inteira ao lado de "Últimas ações"). As estratégias prontas do @dnd-kit
 // (rectSortingStrategy e companhia) desenham a prévia trocando os retângulos
 // medidos de lugar e aplicando escala — com blocos desiguais isso esticava um
-// por cima do outro e a tela virava um borrão. Aqui a prévia é a própria grade:
-// a ordem muda de verdade enquanto se arrasta, o CSS reposiciona tudo sozinho e
-// nenhum bloco ganha transformação inventada.
+// por cima do outro e a tela virava um borrão. Aqui NINGUÉM se mexe durante o
+// arrasto: os blocos ficam parados, o que vai receber acende, e a ordem só muda
+// quando se solta.
 const SEM_PREVIA_FALSA = () => null
 
 // O @dnd-kit narra o arrasto para quem usa leitor de tela — em inglês, se a
@@ -265,20 +266,18 @@ export function DashboardPage({ search, onSearch, onOpenCourse }: {
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   )
 
-  // A ordem de antes do arrasto, para o Esc (ou soltar fora) devolver tudo ao
-  // lugar — a ordem muda ENQUANTO se arrasta, então desistir precisa voltar.
-  const ordemAntesDoArrasto = useRef<DashboardBlockId[] | null>(null)
+  // Bloco sob o cursor: é só a MARCA de onde vai cair. A ordem não muda
+  // enquanto se arrasta — mudar ali fazia a grade refluir, o que trocava o
+  // bloco que está embaixo do cursor, que reordenava de novo: os dois ficavam
+  // se alternando sem parar enquanto a mão estivesse parada.
+  const [alvo, setAlvo] = useState<DashboardBlockId | null>(null)
 
-  function aoPegar() {
-    ordemAntesDoArrasto.current = rascunho?.order ?? null
+  function aoPassarPorCima({ active, over }: DragOverEvent) {
+    setAlvo(over && over.id !== active.id ? (over.id as DashboardBlockId) : null)
   }
 
-  /**
-   * Passar por cima de outro bloco já muda a ordem de verdade: a prévia é a
-   * própria grade se reorganizando, com as larguras certas, igual ao que vai
-   * ficar depois de soltar.
-   */
-  function aoPassarPorCima({ active, over }: DragOverEvent) {
+  function aoSoltar({ active, over }: DragEndEvent) {
+    setAlvo(null)
     if (!over || active.id === over.id) return
     setRascunho(prev => {
       if (!prev) return prev
@@ -291,17 +290,8 @@ export function DashboardPage({ search, onSearch, onOpenCourse }: {
     })
   }
 
-  /** Soltar só encerra: a ordem já foi mudando durante o arrasto. */
-  function aoSoltar() {
-    ordemAntesDoArrasto.current = null
-  }
-
-  /** Esc (ou soltar fora da grade) devolve a ordem de antes do arrasto. */
   function aoDesistir() {
-    const anterior = ordemAntesDoArrasto.current
-    ordemAntesDoArrasto.current = null
-    if (!anterior) return
-    setRascunho(prev => (prev ? { ...prev, order: anterior } : prev))
+    setAlvo(null)
   }
 
   /** Nova largura escolhida na alça do canto do bloco. */
@@ -496,6 +486,7 @@ export function DashboardPage({ search, onSearch, onOpenCourse }: {
         size={size}
         onTamanho={novo => mudarLargura(id, novo)}
         onRemover={() => removerOuAdicionar(id)}
+        alvo={alvo === id}
       >
         {bloco(id)}
       </EditableBlock>
@@ -557,10 +548,6 @@ export function DashboardPage({ search, onSearch, onOpenCourse }: {
           // a pessoa está realmente cobrindo. Pelo centro, um bloco alto ganhava
           // de um baixinho que estava embaixo do cursor.
           collisionDetection={closestCorners}
-          // A grade se reorganiza no meio do arrasto, então os retângulos de
-          // antes não valem mais: sem medir de novo, o alvo fica no lugar velho.
-          measuring={{ droppable: { strategy: MeasuringStrategy.Always } }}
-          onDragStart={aoPegar}
           onDragOver={aoPassarPorCima}
           onDragEnd={aoSoltar}
           onDragCancel={aoDesistir}

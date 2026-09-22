@@ -20,7 +20,7 @@ const NOME_TAMANHO: Record<DashboardBlockSize, string> = {
 }
 
 export function EditableBlock({
-  id, label, size, onTamanho, onRemover, children,
+  id, label, size, onTamanho, onRemover, alvo = false, children,
 }: {
   id: DashboardBlockId
   label: string
@@ -28,6 +28,8 @@ export function EditableBlock({
   /** Nova largura escolhida na alça (já grudada em "metade" ou "inteira"). */
   onTamanho: (size: DashboardBlockSize) => void
   onRemover: () => void
+  /** É este o bloco que está embaixo do cursor agora (vai receber o arrastado). */
+  alvo?: boolean
   children: React.ReactNode
 }) {
   // `animateLayoutChanges: false` porque a ordem muda DURANTE o arrasto (ver
@@ -116,9 +118,24 @@ export function EditableBlock({
         // touch-none só enquanto arrasta: se valesse sempre, o dedo não rolaria
         // mais a página (o cartão ocupa a tela toda no celular).
         isDragging && 'z-10 touch-none border-primary opacity-80 shadow-lg',
+        // Nada se mexe durante o arrasto: quem diz onde o bloco vai cair é este
+        // destaque no cartão de baixo do cursor.
+        alvo && 'border-primary bg-primary/10 ring-2 ring-primary/40',
         puxando && 'border-primary bg-primary/5',
       )}
     >
+      {/* Sem prévia que reorganiza a tela, o aviso precisa estar escrito. */}
+      {alvo && (
+        <span
+          aria-hidden
+          className={cn(
+            'pointer-events-none absolute -top-3 left-3 z-10 rounded-md bg-primary px-2 py-0.5',
+            'text-xs font-medium text-primary-foreground shadow-md',
+          )}
+        >
+          Solte aqui
+        </span>
+      )}
       {/* Em cima da borda, não do conteúdo: assim o botão não tapa o número
           nem o título do bloco (cabe no respiro de 24px entre um e outro). */}
       <div className="absolute -top-5 right-2 z-10 flex gap-2">
