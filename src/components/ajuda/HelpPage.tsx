@@ -54,6 +54,24 @@ export function HelpPage({ topico, q, onChange }: Props) {
     return () => window.removeEventListener('keydown', atalho)
   }, [])
 
+  // Manual inteiro: fica fora da tela e só existe no papel. A impressão abre
+  // depois que o navegador desenhou os artigos (daí os dois quadros de espera).
+  const [imprimindoTudo, setImprimindoTudo] = useState(false)
+  useEffect(() => {
+    if (!imprimindoTudo) return
+    let quadro = 0
+    const primeiro = requestAnimationFrame(() => {
+      quadro = requestAnimationFrame(() => {
+        window.print()
+        setImprimindoTudo(false)
+      })
+    })
+    return () => {
+      cancelAnimationFrame(primeiro)
+      cancelAnimationFrame(quadro)
+    }
+  }, [imprimindoTudo])
+
   function search(value: string) {
     setDraft(value)
     onChange({ topico, q: value || undefined })
@@ -70,38 +88,51 @@ export function HelpPage({ topico, q, onChange }: Props) {
         </p>
       </header>
 
-      <div className="relative mb-6 max-w-lg print:hidden">
-        <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-        <Input
-          ref={campoBusca}
-          value={draft}
-          onChange={e => search(e.target.value)}
-          placeholder="Buscar na ajuda (ex.: banner, cotação, senha)…"
-          aria-label="Buscar na ajuda"
-          className="pl-9 pr-9"
-        />
-        {draft
-          ? (
-            <button
-              type="button"
-              onClick={() => search('')}
-              aria-label="Limpar busca"
-              className="absolute right-1 top-1/2 flex size-8 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground hover:text-foreground"
-            >
-              <X className="size-4" />
-            </button>
-          )
-          : (
-            <kbd className="pointer-events-none absolute right-3 top-1/2 hidden -translate-y-1/2 rounded border border-border px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground md:block">
-              /
-            </kbd>
-          )}
+      <div className="mb-6 flex flex-wrap items-center gap-3 print:hidden">
+        <div className="relative w-full max-w-lg">
+          <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            ref={campoBusca}
+            value={draft}
+            onChange={e => search(e.target.value)}
+            placeholder="Buscar na ajuda (ex.: banner, cotação, senha)…"
+            aria-label="Buscar na ajuda"
+            className="pl-9 pr-9"
+          />
+          {draft
+            ? (
+              <button
+                type="button"
+                onClick={() => search('')}
+                aria-label="Limpar busca"
+                className="absolute right-1 top-1/2 flex size-8 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground hover:text-foreground"
+              >
+                <X className="size-4" />
+              </button>
+            )
+            : (
+              <kbd className="pointer-events-none absolute right-3 top-1/2 hidden -translate-y-1/2 rounded border border-border px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground md:block">
+                /
+              </kbd>
+            )}
+        </div>
+
+        {/* Internet caindo, computador do balcão ocupado: o manual na gaveta
+            resolve. Sai só o que esta pessoa pode ver. */}
+        <Button
+          variant="outline"
+          onClick={() => setImprimindoTudo(true)}
+          disabled={isLoading || mine.length === 0}
+          className="h-11 gap-2"
+        >
+          <Printer className="size-4" aria-hidden /> Imprimir tudo
+        </Button>
       </div>
 
       {isLoading
         ? <HelpSkeleton />
         : (
-          <div className="grid gap-6 lg:grid-cols-[17rem_minmax(0,1fr)]">
+          <div className={cn('grid gap-6 lg:grid-cols-[17rem_minmax(0,1fr)]', imprimindoTudo && 'print:hidden')}>
             <HelpNav articles={found} currentId={current?.id} q={draft} />
             <div className={cn('min-w-0', current ? '' : 'hidden lg:block')}>
               {current
@@ -110,6 +141,39 @@ export function HelpPage({ topico, q, onChange }: Props) {
             </div>
           </div>
         )}
+
+      {imprimindoTudo && <ManualCompleto articles={mine} />}
+    </div>
+  )
+}
+
+/** Todos os artigos em sequência, só para a impressão (na tela não aparece). */
+function ManualCompleto({ articles }: { articles: HelpArticle[] }) {
+  const hoje = new Date().toLocaleDateString('pt-BR')
+  return (
+    <div className="hidden print:block">
+      <h1 className="text-2xl font-bold text-foreground">Manual do Painel</h1>
+      <p className="mt-1 text-sm text-muted-foreground">
+        Sindicato Rural de Terra Roxa — impresso em {hoje}. Contém os {articles.length} assuntos
+        liberados para este acesso; outro administrador pode ter mais ou menos.
+      </p>
+
+      {groupArticles(articles).map(group => (
+        <section key={group.id}>
+          {group.articles.map(article => (
+            <article key={article.id} className="mt-8" style={{ breakBefore: 'page' }}>
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                {group.label}
+              </p>
+              <h2 className="text-xl font-bold text-foreground">{article.title}</h2>
+              <p className="mt-1 text-sm text-muted-foreground">{article.summary}</p>
+              <div className="prose prose-sm mt-3 max-w-none text-muted-foreground prose-headings:text-foreground prose-headings:font-semibold prose-strong:text-foreground prose-th:text-foreground">
+                <ReactMarkdown remarkPlugins={[remarkGfm]}>{article.body}</ReactMarkdown>
+              </div>
+            </article>
+          ))}
+        </section>
+      ))}
     </div>
   )
 }

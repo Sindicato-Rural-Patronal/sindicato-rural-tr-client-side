@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import {
-  HELP_ARTICLES, HELP_GROUPS, articleSections, filterArticles, groupArticles, relatedArticles,
-  searchExcerpt, slug, visibleArticles,
+  HELP_ARTICLES, HELP_GROUPS, HELP_PERMISSOES, articleSections, filterArticles, groupArticles,
+  relatedArticles, searchExcerpt, slug, visibleArticles,
 } from '@/lib/help'
 
 const all = () => true
@@ -43,6 +43,21 @@ describe('artigos da ajuda', () => {
     for (const article of HELP_ARTICLES) {
       if (article.perm) expect(real, article.id).toContain(article.perm)
     }
+  })
+})
+
+describe('atalho do "sem permissão"', () => {
+  it('leva a um artigo que QUALQUER admin pode abrir', () => {
+    // Quem vê o aviso é justamente quem não tem permissão: mandá-lo para um
+    // artigo com permissão seria uma porta fechada atrás da outra.
+    const artigo = HELP_ARTICLES.find(a => a.id === HELP_PERMISSOES.topico)
+    expect(artigo, HELP_PERMISSOES.topico).toBeDefined()
+    expect(artigo!.perm).toBeNull()
+  })
+
+  it('a seção apontada existe no artigo', () => {
+    const artigo = HELP_ARTICLES.find(a => a.id === HELP_PERMISSOES.topico)!
+    expect(articleSections(artigo.body).map(s => s.id)).toContain(HELP_PERMISSOES.hash)
   })
 })
 
@@ -186,6 +201,23 @@ describe('o "?" das telas (AjudaLink)', () => {
     const known = new Set(ids(HELP_ARTICLES))
     expect(usos.length).toBeGreaterThan(0)
     for (const uso of usos) {
+      expect(known, `${uso.arquivo} → ${uso.topico}`).toContain(uso.topico)
+    }
+  })
+
+  it('todo `topico` de estado vazio também aponta para artigo existente', () => {
+    // A prop aparece de duas formas: topico="cursos" e a condicional
+    // topico={filtrando ? undefined : 'empresas'}. Em vez de uma expressão
+    // regular que dê conta das duas, pega-se o texto logo depois do `topico=`
+    // e dele os nomes entre aspas.
+    const known = new Set(ids(HELP_ARTICLES))
+    const usados = Object.entries(sources).flatMap(([arquivo, code]) =>
+      [...code.matchAll(/topico=([^\n]{0,80})/g)]
+        .flatMap(m => [...m[1].matchAll(/['"]([a-z0-9-]+)['"]/g)].map(n => n[1]))
+        .map(topico => ({ arquivo, topico })),
+    )
+    expect(usados.length).toBeGreaterThan(0)
+    for (const uso of usados) {
       expect(known, `${uso.arquivo} → ${uso.topico}`).toContain(uso.topico)
     }
   })

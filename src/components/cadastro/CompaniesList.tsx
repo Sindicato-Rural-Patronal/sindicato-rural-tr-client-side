@@ -158,6 +158,7 @@ export function CompaniesList() {
                       icon={Building2}
                       title={filtering ? 'Nenhuma empresa encontrada' : 'Nenhuma empresa cadastrada'}
                       description={filtering ? 'Ajuste a busca ou os filtros.' : 'Clique em "Nova empresa" para cadastrar.'}
+                      topico={filtering ? undefined : 'empresas'}
                     />
                   </TableCell>
                 </TableRow>

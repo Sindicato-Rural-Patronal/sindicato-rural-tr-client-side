@@ -1133,6 +1133,7 @@ function RouteComponent() {
             icon={Newspaper}
             title="Nenhuma notícia cadastrada"
             description="Crie a primeira notícia para exibição no site"
+            topico="noticias"
             action={
               <Button onClick={openCreate}>
                 <Plus className="size-4" /> {t('admin.news.newNews')}

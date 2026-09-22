@@ -1790,6 +1790,7 @@ function RouteComponent() {
           icon={GraduationCap}
           title={search ? t('courses.notFound') : t('admin.courses.empty')}
           description={search ? t('courses.notFoundHint') : t('admin.courses.emptyHint')}
+          topico={search ? undefined : 'cursos'}
           action={!search ? (
             <Button onClick={() => setFormDialog({ open: true, editing: null, duplicateOf: null })}>
               <Plus className="size-4" /> {t('admin.courses.newCourse')}

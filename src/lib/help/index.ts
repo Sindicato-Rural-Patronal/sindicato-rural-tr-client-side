@@ -104,6 +104,17 @@ export function filterArticles(articles: HelpArticle[], query: string): HelpArti
   })
 }
 
+/**
+ * Para onde mandar quem esbarrou num "sem permissão". Aponta para a seção do
+ * artigo de boas-vindas, que NÃO exige permissão nenhuma — o artigo de
+ * administradores explicaria melhor, mas quem está vendo o aviso é justamente
+ * quem não pode abri-lo.
+ */
+export const HELP_PERMISSOES = {
+  topico: 'primeiros-passos',
+  hash: 'por-que-voce-nao-ve-tudo-o-que-seu-colega-ve',
+}
+
 /** Os artigos de "Ver também" que este admin pode mesmo abrir. */
 export function relatedArticles(article: HelpArticle, visible: readonly HelpArticle[]): HelpArticle[] {
   return article.related

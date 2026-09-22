@@ -95,6 +95,7 @@ function ConveniosAdminPage() {
                       icon={HeartHandshake}
                       title="Nenhum convênio"
                       description='Clique em "Novo convênio" para criar a primeira página.'
+                      topico="convenios"
                     />
                   </TableCell>
                 </TableRow>
