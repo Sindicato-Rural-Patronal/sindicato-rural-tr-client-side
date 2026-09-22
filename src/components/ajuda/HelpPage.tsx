@@ -1,11 +1,12 @@
-import { useMemo, useState } from 'react'
+import { Children, isValidElement, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate } from '@tanstack/react-router'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
-import { ArrowLeft, BookOpen, HelpCircle, Printer, Search, X } from 'lucide-react'
+import { ArrowLeft, ArrowRight, BookOpen, HelpCircle, List, Printer, Search, X } from 'lucide-react'
 import { usePermissions } from '@/hooks/usePermissions'
 import {
-  HELP_ARTICLES, filterArticles, groupArticles, visibleArticles, type HelpArticle,
+  HELP_ARTICLES, articleSections, filterArticles, groupArticles, relatedArticles, searchExcerpt,
+  slug, visibleArticles, type HelpArticle,
 } from '@/lib/help'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -18,14 +19,40 @@ type Props = {
   onChange: (next: { topico?: string; q?: string }) => void
 }
 
+/** O texto de dentro de um título, para virar âncora. */
+function textoDe(children: React.ReactNode): string {
+  return Children.toArray(children)
+    .map(filho => {
+      if (typeof filho === 'string' || typeof filho === 'number') return String(filho)
+      if (isValidElement<{ children?: React.ReactNode }>(filho)) return textoDe(filho.props.children)
+      return ''
+    })
+    .join('')
+}
+
 export function HelpPage({ topico, q, onChange }: Props) {
   const { can, isLoading } = usePermissions()
   // O campo responde na hora; a URL guarda o que foi digitado.
   const [draft, setDraft] = useState(q ?? '')
+  const campoBusca = useRef<HTMLInputElement>(null)
 
   const mine = useMemo(() => (isLoading ? [] : visibleArticles(HELP_ARTICLES, can)), [isLoading, can])
   const found = useMemo(() => filterArticles(mine, draft), [mine, draft])
   const current = topico ? mine.find(a => a.id === topico) : undefined
+
+  // "/" leva ao campo de busca, como na maioria dos sites de ajuda.
+  useEffect(() => {
+    function atalho(e: KeyboardEvent) {
+      const alvo = e.target as HTMLElement | null
+      const digitando = alvo?.tagName === 'INPUT' || alvo?.tagName === 'TEXTAREA' || alvo?.isContentEditable
+      if (e.key !== '/' || digitando || e.ctrlKey || e.metaKey || e.altKey) return
+      e.preventDefault()
+      campoBusca.current?.focus()
+      campoBusca.current?.select()
+    }
+    window.addEventListener('keydown', atalho)
+    return () => window.removeEventListener('keydown', atalho)
+  }, [])
 
   function search(value: string) {
     setDraft(value)
@@ -46,22 +73,29 @@ export function HelpPage({ topico, q, onChange }: Props) {
       <div className="relative mb-6 max-w-lg print:hidden">
         <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
         <Input
+          ref={campoBusca}
           value={draft}
           onChange={e => search(e.target.value)}
           placeholder="Buscar na ajuda (ex.: banner, cotação, senha)…"
           aria-label="Buscar na ajuda"
           className="pl-9 pr-9"
         />
-        {draft && (
-          <button
-            type="button"
-            onClick={() => search('')}
-            aria-label="Limpar busca"
-            className="absolute right-1 top-1/2 flex size-8 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground hover:text-foreground"
-          >
-            <X className="size-4" />
-          </button>
-        )}
+        {draft
+          ? (
+            <button
+              type="button"
+              onClick={() => search('')}
+              aria-label="Limpar busca"
+              className="absolute right-1 top-1/2 flex size-8 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground hover:text-foreground"
+            >
+              <X className="size-4" />
+            </button>
+          )
+          : (
+            <kbd className="pointer-events-none absolute right-3 top-1/2 hidden -translate-y-1/2 rounded border border-border px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground md:block">
+              /
+            </kbd>
+          )}
       </div>
 
       {isLoading
@@ -71,8 +105,8 @@ export function HelpPage({ topico, q, onChange }: Props) {
             <HelpNav articles={found} currentId={current?.id} q={draft} />
             <div className={cn('min-w-0', current ? '' : 'hidden lg:block')}>
               {current
-                ? <HelpArticleView article={current} q={draft} />
-                : <HelpWelcome total={found.length} />}
+                ? <HelpArticleView article={current} visible={mine} q={draft} />
+                : <HelpWelcome articles={found} q={draft} />}
             </div>
           </div>
         )}
@@ -110,22 +144,29 @@ function HelpNav({ articles, currentId, q }: { articles: HelpArticle[]; currentI
             {group.label}
           </h2>
           <ul className="flex flex-col">
-            {group.articles.map(article => (
-              <li key={article.id}>
-                <Link
-                  to="/admin/ajuda"
-                  search={{ topico: article.id, q: q || undefined }}
-                  className={cn(
-                    'flex min-h-11 items-center rounded-lg px-3 py-2 text-sm transition-colors',
-                    article.id === currentId
-                      ? 'bg-accent font-medium text-accent-foreground'
-                      : 'text-muted-foreground hover:bg-accent/50 hover:text-foreground',
-                  )}
-                >
-                  {article.title}
-                </Link>
-              </li>
-            ))}
+            {group.articles.map(article => {
+              // Buscando, mostra POR QUE o artigo apareceu — só o título não diz.
+              const trecho = q ? searchExcerpt(article, q) : null
+              return (
+                <li key={article.id}>
+                  <Link
+                    to="/admin/ajuda"
+                    search={{ topico: article.id, q: q || undefined }}
+                    className={cn(
+                      'flex min-h-11 flex-col justify-center rounded-lg px-3 py-2 text-sm transition-colors',
+                      article.id === currentId
+                        ? 'bg-accent font-medium text-accent-foreground'
+                        : 'text-muted-foreground hover:bg-accent/50 hover:text-foreground',
+                    )}
+                  >
+                    <span>{article.title}</span>
+                    {trecho && (
+                      <span className="mt-0.5 line-clamp-2 text-xs text-muted-foreground/80">{trecho}</span>
+                    )}
+                  </Link>
+                </li>
+              )
+            })}
           </ul>
         </div>
       ))}
@@ -133,21 +174,39 @@ function HelpNav({ articles, currentId, q }: { articles: HelpArticle[]; currentI
   )
 }
 
-function HelpWelcome({ total }: { total: number }) {
+function HelpWelcome({ articles, q }: { articles: HelpArticle[]; q: string }) {
   return (
     <div className="rounded-lg border border-border bg-card p-6">
       <BookOpen className="mb-3 size-6 text-muted-foreground" />
-      <h2 className="text-lg font-semibold text-foreground">Escolha um assunto ao lado</h2>
+      <h2 className="text-lg font-semibold text-foreground">
+        {q ? `${articles.length} ${articles.length === 1 ? 'assunto encontrado' : 'assuntos encontrados'}` : 'Escolha um assunto ao lado'}
+      </h2>
       <p className="mt-2 max-w-prose text-sm text-muted-foreground">
-        São {total} {total === 1 ? 'assunto' : 'assuntos'} — só os das telas que a sua permissão
-        libera. Se você é novo(a) por aqui, comece por <strong>Como funciona o painel</strong>.
+        {q
+          ? 'Clique em um deles na lista ao lado para abrir.'
+          : (
+            <>
+              São {articles.length} assuntos — só os das telas que a sua permissão libera. Se você é
+              novo(a) por aqui, comece por <strong>Como funciona o painel</strong>.
+            </>
+          )}
       </p>
     </div>
   )
 }
 
-function HelpArticleView({ article, q }: { article: HelpArticle; q: string }) {
+function HelpArticleView({ article, visible, q }: {
+  article: HelpArticle
+  visible: HelpArticle[]
+  q: string
+}) {
   const navigate = useNavigate()
+  const secoes = articleSections(article.body)
+  const veja = relatedArticles(article, visible)
+
+  function abrir(topico: string) {
+    navigate({ to: '/admin/ajuda', search: { topico, q: q || undefined } })
+  }
 
   return (
     <article className="rounded-lg border border-border bg-card p-4 md:p-6">
@@ -173,20 +232,45 @@ function HelpArticleView({ article, q }: { article: HelpArticle; q: string }) {
         </Button>
       </div>
 
+      {/* Artigo comprido: os títulos das seções, para ir direto ao que interessa. */}
+      {secoes.length >= 3 && (
+        <nav aria-label="Nesta página" className="mb-5 rounded-lg border border-border bg-muted/30 p-3 print:hidden">
+          <h3 className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            <List className="size-3.5" aria-hidden /> Nesta página
+          </h3>
+          <ul className="flex flex-wrap gap-x-4 gap-y-1">
+            {secoes.map(secao => (
+              <li key={secao.id}>
+                <a href={`#${secao.id}`} className="text-sm text-primary hover:underline">
+                  {secao.titulo}
+                </a>
+              </li>
+            ))}
+          </ul>
+        </nav>
+      )}
+
       <div className="prose prose-sm dark:prose-invert max-w-none text-muted-foreground prose-headings:text-foreground prose-headings:font-semibold prose-strong:text-foreground prose-a:text-primary prose-th:text-foreground">
         <ReactMarkdown
           remarkPlugins={[remarkGfm]}
           components={{
+            // Título ganha âncora para o "Nesta página" conseguir chegar nele.
+            h2: ({ children, ...rest }) => (
+              <h2 id={slug(textoDe(children))} className="scroll-mt-4" {...rest}>{children}</h2>
+            ),
             // "?topico=outro-artigo" anda dentro da ajuda em vez de recarregar a página.
             a: ({ href, children, ...rest }) => {
               const topico = href?.startsWith('?topico=') ? href.slice('?topico='.length) : null
-              if (!topico) return <a href={href} target="_blank" rel="noreferrer" {...rest}>{children}</a>
+              if (!topico) {
+                const interno = href?.startsWith('#')
+                return <a href={href} target={interno ? undefined : '_blank'} rel={interno ? undefined : 'noreferrer'} {...rest}>{children}</a>
+              }
               return (
                 <a
                   href={href}
                   onClick={e => {
                     e.preventDefault()
-                    navigate({ to: '/admin/ajuda', search: { topico, q: q || undefined } })
+                    abrir(topico)
                   }}
                   {...rest}
                 >
@@ -199,6 +283,29 @@ function HelpArticleView({ article, q }: { article: HelpArticle; q: string }) {
           {article.body}
         </ReactMarkdown>
       </div>
+
+      {veja.length > 0 && (
+        <footer className="mt-6 border-t border-border pt-4">
+          <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            Ver também
+          </h3>
+          <ul className="flex flex-col gap-1">
+            {veja.map(outro => (
+              <li key={outro.id}>
+                <Link
+                  to="/admin/ajuda"
+                  search={{ topico: outro.id, q: q || undefined }}
+                  className="group inline-flex min-h-9 items-center gap-1.5 text-sm text-primary hover:underline"
+                >
+                  <ArrowRight className="size-3.5 shrink-0" aria-hidden />
+                  {outro.title}
+                  <span className="text-muted-foreground group-hover:no-underline">— {outro.summary}</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </footer>
+      )}
     </article>
   )
 }

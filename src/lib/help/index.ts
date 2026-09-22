@@ -9,6 +9,7 @@
 //   permissao: permissão necessária para ler; vazio = todos (opcional)
 //   ordem:   número que ordena dentro do grupo              (opcional)
 //   busca:   palavras extras que também encontram o artigo  (opcional)
+//   veja:    ids de outros artigos, separados por vírgula    (opcional)
 import { upperNoAccents } from '@/utils/text-format'
 
 export type HelpGroupId = 'primeiros-passos' | 'dia-a-dia' | 'site' | 'gestao' | 'conta'
@@ -20,6 +21,8 @@ export type HelpArticle = {
   group: HelpGroupId
   perm: string | null
   keywords: string
+  /** Ids de artigos ligados a este (viram "Ver também" no fim da página). */
+  related: string[]
   body: string
 }
 
@@ -63,6 +66,7 @@ function build(): HelpArticle[] {
         group,
         perm: meta.permissao || null,
         keywords: meta.busca || '',
+        related: (meta.veja || '').split(',').map(v => v.trim()).filter(Boolean),
         body,
       } satisfies HelpArticle,
       order: Number.isFinite(order) ? order : 999,
@@ -98,6 +102,67 @@ export function filterArticles(articles: HelpArticle[], query: string): HelpArti
     const text = upperNoAccents(`${a.title} ${a.summary} ${a.keywords} ${a.body}`)
     return words.every(word => text.includes(word))
   })
+}
+
+/** Os artigos de "Ver também" que este admin pode mesmo abrir. */
+export function relatedArticles(article: HelpArticle, visible: readonly HelpArticle[]): HelpArticle[] {
+  return article.related
+    .map(id => visible.find(a => a.id === id))
+    .filter((a): a is HelpArticle => Boolean(a))
+}
+
+/** Transforma um título em âncora ("Como funciona" → "como-funciona"). */
+export function slug(texto: string): string {
+  return texto
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '')
+}
+
+/**
+ * Os títulos de seção do artigo (as linhas `## `), para o "Nesta página".
+ * Artigo curto não ganha sumário — quem chama decide pelo tamanho da lista.
+ */
+export function articleSections(body: string): { titulo: string; id: string }[] {
+  const secoes: { titulo: string; id: string }[] = []
+  let emBlocoDeCodigo = false
+  for (const linha of body.split(/\r?\n/)) {
+    if (linha.startsWith('```')) emBlocoDeCodigo = !emBlocoDeCodigo
+    if (emBlocoDeCodigo) continue
+    const titulo = /^##\s+(.+?)\s*$/.exec(linha)?.[1]
+    if (titulo) secoes.push({ titulo, id: slug(titulo) })
+  }
+  return secoes
+}
+
+/**
+ * Um pedaço do texto em volta da primeira palavra buscada, para a pessoa ver
+ * POR QUE o artigo apareceu na lista (só o título não diz).
+ */
+export function searchExcerpt(article: HelpArticle, query: string, tamanho = 120): string | null {
+  const palavras = upperNoAccents(query).split(/\s+/).filter(Boolean)
+  if (palavras.length === 0) return null
+
+  // Sem a formatação do markdown, senão o trecho sai cheio de `#`, `*` e links.
+  const texto = article.body
+    .replace(/```[\s\S]*?```/g, ' ')
+    .replace(/^#{1,6}\s+/gm, '')
+    .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1')
+    .replace(/[*_`>|-]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+
+  const alvo = upperNoAccents(texto)
+  const onde = palavras.map(p => alvo.indexOf(p)).filter(i => i >= 0).sort((a, b) => a - b)[0]
+  if (onde === undefined) return null
+
+  // Começa uma palavra antes para o trecho não cortar no meio de uma.
+  const de = Math.max(0, texto.lastIndexOf(' ', Math.max(0, onde - tamanho / 3)) + 1)
+  const ate = Math.min(texto.length, de + tamanho)
+  const corte = texto.slice(de, ate).trim()
+  return `${de > 0 ? '…' : ''}${corte}${ate < texto.length ? '…' : ''}`
 }
 
 /** Agrupa para o menu, já sem os grupos que ficaram vazios. */

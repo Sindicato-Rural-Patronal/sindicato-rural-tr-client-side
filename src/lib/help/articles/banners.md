@@ -4,6 +4,7 @@ resumo: As imagens em destaque da página inicial e o período em que ficam no a
 grupo: site
 ordem: 2
 permissao: READ_BANNER
+veja: noticias, eventos-no-site, fotos-e-imagens
 busca: banner destaque home imagem carrossel periodo agendado no ar expirado inativo
 ---
 

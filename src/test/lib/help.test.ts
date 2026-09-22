@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import {
-  HELP_ARTICLES, HELP_GROUPS, filterArticles, groupArticles, visibleArticles,
+  HELP_ARTICLES, HELP_GROUPS, articleSections, filterArticles, groupArticles, relatedArticles,
+  searchExcerpt, slug, visibleArticles,
 } from '@/lib/help'
 
 const all = () => true
@@ -42,6 +43,77 @@ describe('artigos da ajuda', () => {
     for (const article of HELP_ARTICLES) {
       if (article.perm) expect(real, article.id).toContain(article.perm)
     }
+  })
+})
+
+describe('"Ver também"', () => {
+  it('todo artigo apontado existe, e nenhum aponta para si mesmo', () => {
+    const known = new Set(ids(HELP_ARTICLES))
+    for (const article of HELP_ARTICLES) {
+      for (const alvo of article.related) {
+        expect(known, `${article.id} → ${alvo}`).toContain(alvo)
+        expect(alvo, article.id).not.toBe(article.id)
+      }
+    }
+  })
+
+  it('só oferece o que a pessoa pode abrir', () => {
+    // Quem só tem READ_USER não pode cair num "Ver também" para o Financeiro.
+    const onlyUsers = (perm: string) => perm === 'READ_USER'
+    const visible = visibleArticles(HELP_ARTICLES, onlyUsers)
+    for (const article of visible) {
+      for (const outro of relatedArticles(article, visible)) {
+        expect(outro.perm === null || outro.perm === 'READ_USER', `${article.id} → ${outro.id}`).toBe(true)
+      }
+    }
+  })
+})
+
+describe('slug e articleSections', () => {
+  it('título vira âncora sem acento nem maiúscula', () => {
+    expect(slug('Prazo de inscrição')).toBe('prazo-de-inscricao')
+    expect(slug('  Ações rápidas!  ')).toBe('acoes-rapidas')
+  })
+
+  it('lista os títulos de seção do artigo', () => {
+    const cursos = HELP_ARTICLES.find(a => a.id === 'cursos')!
+    const secoes = articleSections(cursos.body)
+    expect(secoes.map(s => s.titulo)).toContain('Presença')
+    expect(secoes.find(s => s.titulo === 'Presença')?.id).toBe('presenca')
+  })
+
+  it('não confunde subtítulo (###) nem linha de bloco de código', () => {
+    const body = [
+      '## Um', 'texto', '### Não é seção', '```', '## Dentro do código', '```', '## Dois',
+    ].join('\n')
+    expect(articleSections(body).map(s => s.titulo)).toEqual(['Um', 'Dois'])
+  })
+
+  it('os artigos que ganham sumário têm âncoras únicas', () => {
+    for (const article of HELP_ARTICLES) {
+      const ids = articleSections(article.body).map(s => s.id)
+      expect(new Set(ids).size, article.id).toBe(ids.length)
+    }
+  })
+})
+
+describe('searchExcerpt', () => {
+  it('devolve um trecho em volta da palavra buscada', () => {
+    const usuarios = HELP_ARTICLES.find(a => a.id === 'usuarios')!
+    const trecho = searchExcerpt(usuarios, 'duplicados')!
+    expect(trecho.toLowerCase()).toContain('duplicados')
+    expect(trecho.length).toBeLessThan(200)
+  })
+
+  it('tira a formatação do markdown do trecho', () => {
+    const trecho = searchExcerpt(HELP_ARTICLES.find(a => a.id === 'cursos')!, 'sala')!
+    expect(trecho).not.toMatch(/[*#`|]/)
+  })
+
+  it('sem busca, ou sem achar a palavra, não devolve trecho', () => {
+    const artigo = HELP_ARTICLES[0]
+    expect(searchExcerpt(artigo, '   ')).toBeNull()
+    expect(searchExcerpt(artigo, 'jabuticaba')).toBeNull()
   })
 })
 

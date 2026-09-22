@@ -3,6 +3,7 @@ titulo: Minha conta
 resumo: Trocar sua foto, seu nome, sua senha e o tema do painel.
 grupo: conta
 ordem: 1
+veja: seguranca, administradores
 busca: conta perfil senha foto avatar tema claro escuro preferencias usuario
 ---
 

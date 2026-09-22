@@ -4,6 +4,7 @@ resumo: As páginas de convênio do site, com tabela de valores e documentos.
 grupo: site
 ordem: 4
 permissao: READ_CONVENIO
+veja: configuracoes, fotos-e-imagens
 busca: convenio unimed tabela valores faixa documentos adesao previa menu
 ---
 

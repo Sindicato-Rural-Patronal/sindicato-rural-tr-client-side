@@ -4,6 +4,7 @@ resumo: As mensagens enviadas pelo formulário do site e como responder.
 grupo: dia-a-dia
 ordem: 6
 permissao: READ_CONTACT
+veja: configuracoes, notificacoes
 busca: mensagem contato formulario email whatsapp responder nao lida
 ---
 

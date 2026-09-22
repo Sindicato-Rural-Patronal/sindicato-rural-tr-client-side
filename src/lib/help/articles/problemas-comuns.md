@@ -3,6 +3,7 @@ titulo: Problemas comuns
 resumo: O que fazer quando algo não abre, não salva ou não aparece no site.
 grupo: primeiros-passos
 ordem: 3
+veja: primeiros-passos, glossario, auditoria
 busca: erro problema duvida nao abre nao salva sessao expirada permissao sumiu lento tentar de novo
 ---
 

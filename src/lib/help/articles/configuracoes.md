@@ -4,6 +4,7 @@ resumo: Dados do sindicato, redes sociais, galerias, parceiros, contatos e salas
 grupo: site
 ordem: 5
 permissao: READ_BANNER
+veja: banners, empresas, salas-e-agenda, fotos-e-imagens
 busca: configuracoes dados endereco telefone horario mapa sobre redes whatsapp facebook instagram galeria parceiros contatos equipe salas
 ---
 

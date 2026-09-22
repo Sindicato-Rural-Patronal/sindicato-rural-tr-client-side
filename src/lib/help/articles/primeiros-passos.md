@@ -3,6 +3,7 @@ titulo: Como funciona o painel
 resumo: O básico para quem está abrindo o sistema pela primeira vez.
 grupo: primeiros-passos
 ordem: 1
+veja: painel-geral, busca-e-filtros, notificacoes, glossario, problemas-comuns
 busca: comecar inicio novo administrador entrar login sair senha menu barra lateral
 ---
 

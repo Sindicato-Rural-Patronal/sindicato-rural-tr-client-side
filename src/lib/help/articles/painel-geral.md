@@ -3,6 +3,7 @@ titulo: Painel Geral
 resumo: A tela de abertura: o que cada bloco mostra e como deixá-la do seu jeito.
 grupo: primeiros-passos
 ordem: 2
+veja: salas-e-agenda, notificacoes, rotina-sugerida
 busca: dashboard inicio calendario agenda numeros acoes rapidas personalizar blocos
 ---
 
