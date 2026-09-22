@@ -1,11 +1,11 @@
-import { useState, useMemo } from 'react'
+import { useRef, useState, useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import {
-  DndContext, closestCenter, KeyboardSensor, MouseSensor, TouchSensor,
-  useSensor, useSensors, type Announcements, type DragEndEvent, type ScreenReaderInstructions,
+  DndContext, MeasuringStrategy, closestCorners, KeyboardSensor, MouseSensor, TouchSensor,
+  useSensor, useSensors, type Announcements, type DragOverEvent, type ScreenReaderInstructions,
 } from '@dnd-kit/core'
-import { SortableContext, rectSortingStrategy, sortableKeyboardCoordinates } from '@dnd-kit/sortable'
+import { SortableContext, sortableKeyboardCoordinates } from '@dnd-kit/sortable'
 import { apiFetch } from '@/lib/api'
 import { apiErrorMessage } from '@/lib/api-error-message'
 import { toYmd } from '@/utils/dates'
@@ -91,6 +91,15 @@ function diaPorExtenso(ymd: string): string {
 const META = new Map(DASHBOARD_BLOCKS.map(b => [b.id, b.label] as const))
 
 const nomeDoBloco = (id: string | number) => META.get(id as DashboardBlockId) ?? String(id)
+
+// A grade do painel tem blocos de larguras e alturas MUITO diferentes (a agenda
+// inteira ao lado de "Últimas ações"). As estratégias prontas do @dnd-kit
+// (rectSortingStrategy e companhia) desenham a prévia trocando os retângulos
+// medidos de lugar e aplicando escala — com blocos desiguais isso esticava um
+// por cima do outro e a tela virava um borrão. Aqui a prévia é a própria grade:
+// a ordem muda de verdade enquanto se arrasta, o CSS reposiciona tudo sozinho e
+// nenhum bloco ganha transformação inventada.
+const SEM_PREVIA_FALSA = () => null
 
 // O @dnd-kit narra o arrasto para quem usa leitor de tela — em inglês, se a
 // gente não escrever. O sistema é só em português, então aqui está o texto.
@@ -256,7 +265,20 @@ export function DashboardPage({ search, onSearch, onOpenCourse }: {
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   )
 
-  function aoSoltar({ active, over }: DragEndEvent) {
+  // A ordem de antes do arrasto, para o Esc (ou soltar fora) devolver tudo ao
+  // lugar — a ordem muda ENQUANTO se arrasta, então desistir precisa voltar.
+  const ordemAntesDoArrasto = useRef<DashboardBlockId[] | null>(null)
+
+  function aoPegar() {
+    ordemAntesDoArrasto.current = rascunho?.order ?? null
+  }
+
+  /**
+   * Passar por cima de outro bloco já muda a ordem de verdade: a prévia é a
+   * própria grade se reorganizando, com as larguras certas, igual ao que vai
+   * ficar depois de soltar.
+   */
+  function aoPassarPorCima({ active, over }: DragOverEvent) {
     if (!over || active.id === over.id) return
     setRascunho(prev => {
       if (!prev) return prev
@@ -264,8 +286,22 @@ export function DashboardPage({ search, onSearch, onOpenCourse }: {
       // ou removido) fica no mesmo índice da ordem salva.
       const mexiveis = editableBlocks(prev.order, disponiveis).filter(id => !prev.hidden.includes(id))
       const nova = dropBlock(mexiveis, active.id as DashboardBlockId, over.id as DashboardBlockId)
+      if (nova === mexiveis) return prev
       return { ...prev, order: applyOrder(prev.order, mexiveis, nova) }
     })
+  }
+
+  /** Soltar só encerra: a ordem já foi mudando durante o arrasto. */
+  function aoSoltar() {
+    ordemAntesDoArrasto.current = null
+  }
+
+  /** Esc (ou soltar fora da grade) devolve a ordem de antes do arrasto. */
+  function aoDesistir() {
+    const anterior = ordemAntesDoArrasto.current
+    ordemAntesDoArrasto.current = null
+    if (!anterior) return
+    setRascunho(prev => (prev ? { ...prev, order: anterior } : prev))
   }
 
   /** Nova largura escolhida na alça do canto do bloco. */
@@ -517,15 +553,24 @@ export function DashboardPage({ search, onSearch, onOpenCourse }: {
       {rascunho ? (
         <DndContext
           sensors={sensores}
-          collisionDetection={closestCenter}
+          // Blocos de tamanhos bem diferentes: pelos cantos o alvo é o bloco que
+          // a pessoa está realmente cobrindo. Pelo centro, um bloco alto ganhava
+          // de um baixinho que estava embaixo do cursor.
+          collisionDetection={closestCorners}
+          // A grade se reorganiza no meio do arrasto, então os retângulos de
+          // antes não valem mais: sem medir de novo, o alvo fica no lugar velho.
+          measuring={{ droppable: { strategy: MeasuringStrategy.Always } }}
+          onDragStart={aoPegar}
+          onDragOver={aoPassarPorCima}
           onDragEnd={aoSoltar}
+          onDragCancel={aoDesistir}
           accessibility={{ announcements: AVISOS_LEITOR, screenReaderInstructions: INSTRUCOES_LEITOR }}
           // Os blocos são inteiros e a página é longa: sem rolar sozinha perto
           // da borda não dá para levar um bloco do fim para o começo.
           autoScroll={{ threshold: { x: 0, y: 0.2 }, acceleration: 14 }}
         >
           {/* A lista do arrastar é plana (a ordem dos blocos); a grade é só o desenho. */}
-          <SortableContext items={noPainel} strategy={rectSortingStrategy}>
+          <SortableContext items={noPainel} strategy={SEM_PREVIA_FALSA}>
             {corpo}
           </SortableContext>
         </DndContext>

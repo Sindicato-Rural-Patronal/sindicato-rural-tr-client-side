@@ -53,6 +53,25 @@ describe('personalização do painel', () => {
     expect(dropBlock(ordem, 'incompletos', 'acoes')).toEqual(ordem)
   })
 
+  it('sem mexer, devolve a MESMA lista (o arrasto conta com isso)', () => {
+    // A ordem muda enquanto se arrasta: o painel só chama setRascunho quando
+    // dropBlock devolve uma lista nova. Se aqui viesse uma cópia, cada mexidinha
+    // do mouse repintaria a tela e marcaria "Alterações não salvas" à toa.
+    const ordem: DashboardBlockId[] = ['acoes', 'numeros', 'agenda']
+    expect(dropBlock(ordem, 'acoes', 'acoes')).toBe(ordem)
+    expect(dropBlock(ordem, 'incompletos', 'acoes')).toBe(ordem)
+  })
+
+  it('passar pelo mesmo alvo várias vezes não fica indo e voltando', () => {
+    // O arrasto avisa a cada movimento do ponteiro. Depois que 'agenda' já está
+    // no lugar de 'acoes', repetir o mesmo alvo tem de parar de mexer, senão os
+    // dois ficariam trocando de lugar sem parar enquanto o dedo estiver parado.
+    const ordem: DashboardBlockId[] = ['acoes', 'numeros', 'agenda']
+    const uma = dropBlock(ordem, 'agenda', 'acoes')
+    expect(uma).toEqual(['agenda', 'acoes', 'numeros'])
+    expect(dropBlock(uma, 'agenda', 'agenda')).toBe(uma)
+  })
+
   it('arrastar não bagunça o bloco que o admin não pode ver', () => {
     // 'financeiro' está na ordem salva mas não na lista de disponíveis.
     const completa: DashboardBlockId[] = ['acoes', 'financeiro', 'numeros', 'agenda']

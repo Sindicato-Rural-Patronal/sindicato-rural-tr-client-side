@@ -30,7 +30,13 @@ export function EditableBlock({
   onRemover: () => void
   children: React.ReactNode
 }) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id })
+  // `animateLayoutChanges: false` porque a ordem muda DURANTE o arrasto (ver
+  // DashboardPage): a animação de "voltar do lugar antigo" do @dnd-kit brigava
+  // com o bloco que está seguindo o cursor e ele saía tremendo.
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id,
+    animateLayoutChanges: () => false,
+  })
   // Enquanto a pessoa puxa a alça: muda o contorno e mostra o nome do tamanho.
   const [puxando, setPuxando] = useState(false)
   // Medidas tiradas no começo do arrasto — a largura do bloco muda no meio do
@@ -91,7 +97,9 @@ export function EditableBlock({
     <section
       ref={setNodeRef}
       data-bloco={id}
-      style={{ transform: CSS.Transform.toString(transform), transition }}
+      // Translate, não Transform: `Transform` também escreve scaleX/scaleY, e
+      // com blocos de tamanhos diferentes isso esticava o cartão no arrasto.
+      style={{ transform: CSS.Translate.toString(transform), transition }}
       {...attributes}
       {...listeners}
       // O cartão inteiro é a alça, então ele não pode virar um `role="button"`
