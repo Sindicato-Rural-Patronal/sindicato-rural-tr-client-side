@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { BookOpen, HeartHandshake, HeartPulse, Images, LayoutDashboard, Mail, Newspaper, ScrollText, Search, Settings, TrendingUp, Users, Wallet } from 'lucide-react'
+import { BookOpen, HeartHandshake, HeartPulse, HelpCircle, Images, LayoutDashboard, Mail, Newspaper, ScrollText, Search, Settings, TrendingUp, Users, Wallet } from 'lucide-react'
 import { Link, useRouterState } from '@tanstack/react-router'
 import { useTranslation } from 'react-i18next'
 import { NavUser } from '@/components/nav-user'
@@ -72,6 +72,13 @@ export function AdminSideBar({ ...props }: React.ComponentProps<typeof Sidebar>)
       label: t('admin.sidebar.settings'),
       items: [
         { title: t('admin.sidebar.settings'), url: '/admin/configuracoes', icon: Settings, perm: ['READ_BANNER', 'READ_USER'] },
+      ],
+    },
+    {
+      // Documentação interna do painel: aberta a qualquer administrador.
+      label: t('admin.sidebar.support'),
+      items: [
+        { title: t('admin.sidebar.help'), url: '/admin/ajuda', icon: HelpCircle, perm: null },
       ],
     },
   ]

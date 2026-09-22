@@ -30,6 +30,7 @@ export const NAV_ITEMS: NavItem[] = [
   { label: 'Configurações · Parceiros', to: '/admin/configuracoes', search: { tab: 'parceiros' }, perm: 'READ_USER', hint: 'parcerias logos home empresas' },
   { label: 'Configurações · Contatos públicos', to: '/admin/configuracoes', search: { tab: 'contatos' }, perm: 'READ_USER', hint: 'nossa equipe contato' },
   { label: 'Minha conta', to: '/admin/minha-conta', perm: null, hint: 'perfil senha usuario foto idioma tema' },
+  { label: 'Ajuda', to: '/admin/ajuda', perm: null, hint: 'ajuda duvida manual documentacao tutorial como usar suporte' },
 ]
 
 // Busca sem diferenciar maiúsculas nem acentos ("noticias" acha "Notícias").

@@ -40,7 +40,7 @@ describe('filterNavItems', () => {
 
   it('respeita permissões (telas sem permissão somem)', () => {
     const onlyNews = (perm: string) => perm === 'READ_NEWS'
-    expect(labels('', onlyNews)).toEqual(['Painel Geral', 'Notícias', 'Minha conta'])
+    expect(labels('', onlyNews)).toEqual(['Painel Geral', 'Notícias', 'Minha conta', 'Ajuda'])
     expect(labels('unimed', onlyNews)).toEqual([])
   })
 })

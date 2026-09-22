@@ -36,6 +36,7 @@ import { Route as PublicCursosIdRouteImport } from './routes/_public/cursos/$id'
 import { Route as PublicNoticiasIndexRouteImport } from './routes/_public/noticias/index'
 import { Route as PublicNoticiasIdRouteImport } from './routes/_public/noticias/$id'
 import { Route as AdminAdminAdministradoresIndexRouteImport } from './routes/_admin/admin/administradores/index'
+import { Route as AdminAdminAjudaIndexRouteImport } from './routes/_admin/admin/ajuda/index'
 import { Route as AdminAdminAuditoriaIndexRouteImport } from './routes/_admin/admin/auditoria/index'
 import { Route as AdminAdminConveniosIndexRouteImport } from './routes/_admin/admin/convenios/index'
 import { Route as AdminAdminConveniosIdRouteImport } from './routes/_admin/admin/convenios/$id'
@@ -187,6 +188,11 @@ const AdminAdminAdministradoresIndexRoute =
     path: '/',
     getParentRoute: () => AdminAdminAdministradoresRoute,
   } as any)
+const AdminAdminAjudaIndexRoute = AdminAdminAjudaIndexRouteImport.update({
+  id: '/admin/ajuda/',
+  path: '/admin/ajuda/',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminAdminAuditoriaIndexRoute =
   AdminAdminAuditoriaIndexRouteImport.update({
     id: '/admin/auditoria/',
@@ -298,6 +304,7 @@ export interface FileRoutesByFullPath {
   '/admin/usuarios/$id': typeof AdminAdminUsuariosIdRoute
   '/admin/usuarios/novo': typeof AdminAdminUsuariosNovoRoute
   '/admin/administradores/': typeof AdminAdminAdministradoresIndexRoute
+  '/admin/ajuda/': typeof AdminAdminAjudaIndexRoute
   '/admin/auditoria/': typeof AdminAdminAuditoriaIndexRoute
   '/admin/convenios/': typeof AdminAdminConveniosIndexRoute
   '/admin/cotacoes/': typeof AdminAdminCotacoesIndexRoute
@@ -336,6 +343,7 @@ export interface FileRoutesByTo {
   '/admin/usuarios/$id': typeof AdminAdminUsuariosIdRoute
   '/admin/usuarios/novo': typeof AdminAdminUsuariosNovoRoute
   '/admin/administradores': typeof AdminAdminAdministradoresIndexRoute
+  '/admin/ajuda': typeof AdminAdminAjudaIndexRoute
   '/admin/auditoria': typeof AdminAdminAuditoriaIndexRoute
   '/admin/convenios': typeof AdminAdminConveniosIndexRoute
   '/admin/cotacoes': typeof AdminAdminCotacoesIndexRoute
@@ -381,6 +389,7 @@ export interface FileRoutesById {
   '/_admin/admin/usuarios/$id': typeof AdminAdminUsuariosIdRoute
   '/_admin/admin/usuarios/novo': typeof AdminAdminUsuariosNovoRoute
   '/_admin/admin/administradores/': typeof AdminAdminAdministradoresIndexRoute
+  '/_admin/admin/ajuda/': typeof AdminAdminAjudaIndexRoute
   '/_admin/admin/auditoria/': typeof AdminAdminAuditoriaIndexRoute
   '/_admin/admin/convenios/': typeof AdminAdminConveniosIndexRoute
   '/_admin/admin/cotacoes/': typeof AdminAdminCotacoesIndexRoute
@@ -425,6 +434,7 @@ export interface FileRouteTypes {
     | '/admin/usuarios/$id'
     | '/admin/usuarios/novo'
     | '/admin/administradores/'
+    | '/admin/ajuda/'
     | '/admin/auditoria/'
     | '/admin/convenios/'
     | '/admin/cotacoes/'
@@ -463,6 +473,7 @@ export interface FileRouteTypes {
     | '/admin/usuarios/$id'
     | '/admin/usuarios/novo'
     | '/admin/administradores'
+    | '/admin/ajuda'
     | '/admin/auditoria'
     | '/admin/convenios'
     | '/admin/cotacoes'
@@ -507,6 +518,7 @@ export interface FileRouteTypes {
     | '/_admin/admin/usuarios/$id'
     | '/_admin/admin/usuarios/novo'
     | '/_admin/admin/administradores/'
+    | '/_admin/admin/ajuda/'
     | '/_admin/admin/auditoria/'
     | '/_admin/admin/convenios/'
     | '/_admin/admin/cotacoes/'
@@ -716,6 +728,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminAdminAdministradoresIndexRouteImport
       parentRoute: typeof AdminAdminAdministradoresRoute
     }
+    '/_admin/admin/ajuda/': {
+      id: '/_admin/admin/ajuda/'
+      path: '/admin/ajuda'
+      fullPath: '/admin/ajuda/'
+      preLoaderRoute: typeof AdminAdminAjudaIndexRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/_admin/admin/auditoria/': {
       id: '/_admin/admin/auditoria/'
       path: '/admin/auditoria'
@@ -891,6 +910,7 @@ interface AdminRouteChildren {
   AdminAdminConveniosNovoRoute: typeof AdminAdminConveniosNovoRoute
   AdminAdminEmpresasIdRoute: typeof AdminAdminEmpresasIdRoute
   AdminAdminEmpresasNovoRoute: typeof AdminAdminEmpresasNovoRoute
+  AdminAdminAjudaIndexRoute: typeof AdminAdminAjudaIndexRoute
   AdminAdminAuditoriaIndexRoute: typeof AdminAdminAuditoriaIndexRoute
   AdminAdminConveniosIndexRoute: typeof AdminAdminConveniosIndexRoute
   AdminAdminCotacoesIndexRoute: typeof AdminAdminCotacoesIndexRoute
@@ -915,6 +935,7 @@ const AdminRouteChildren: AdminRouteChildren = {
   AdminAdminConveniosNovoRoute: AdminAdminConveniosNovoRoute,
   AdminAdminEmpresasIdRoute: AdminAdminEmpresasIdRoute,
   AdminAdminEmpresasNovoRoute: AdminAdminEmpresasNovoRoute,
+  AdminAdminAjudaIndexRoute: AdminAdminAjudaIndexRoute,
   AdminAdminAuditoriaIndexRoute: AdminAdminAuditoriaIndexRoute,
   AdminAdminConveniosIndexRoute: AdminAdminConveniosIndexRoute,
   AdminAdminCotacoesIndexRoute: AdminAdminCotacoesIndexRoute,

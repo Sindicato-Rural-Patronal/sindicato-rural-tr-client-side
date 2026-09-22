@@ -174,6 +174,8 @@ const ptBR = {
       audit: 'Auditoria',
       finance: 'Financeiro',
       search: 'Buscar…',
+      help: 'Ajuda',
+      support: 'Suporte',
     },
     settings: {
       title: 'Configurações',
