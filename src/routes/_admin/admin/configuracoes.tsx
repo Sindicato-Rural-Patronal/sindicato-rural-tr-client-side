@@ -11,6 +11,7 @@ import { GalleriesPanel } from '@/components/site-config/GalleriesPanel'
 import { PartnersPanel } from '@/components/site-config/PartnersPanel'
 import { PublicContactsPanel } from '@/components/site-config/PublicContactsPanel'
 import { RoomsPanel } from '@/components/site-config/RoomsPanel'
+import { AjudaLink } from '@/components/ajuda/AjudaLink'
 
 const TABS = ['dados', 'redes', 'galerias', 'parceiros', 'contatos', 'salas'] as const
 type Tab = (typeof TABS)[number]
@@ -51,9 +52,12 @@ function ConfiguracoesPage() {
   return (
     <div className="flex flex-col gap-6 p-4 md:p-6">
       <div>
-        <h1 className="flex items-center gap-2 text-2xl font-bold text-foreground">
-          <Settings className="size-6" /> {t('admin.settings.title')}
-        </h1>
+        <div className="flex items-center gap-1">
+          <h1 className="flex items-center gap-2 text-2xl font-bold text-foreground">
+            <Settings className="size-6" /> {t('admin.settings.title')}
+          </h1>
+          <AjudaLink topico="configuracoes" titulo="Configurações do site" />
+        </div>
         <p className="mt-1 text-sm text-muted-foreground">{t('admin.settings.subtitle')}</p>
       </div>
 

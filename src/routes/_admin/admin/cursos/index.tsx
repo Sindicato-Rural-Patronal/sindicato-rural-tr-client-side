@@ -54,6 +54,7 @@ import { downloadExport } from '@/lib/export'
 import { ExportMenu, ExportOneButton, SelectCheckbox, SelectionInfo } from '@/components/export/ExportMenu'
 import { CourseFormDialog } from '@/components/courses/CourseFormDialog'
 import { PhotoGrid } from '@/components/courses/PhotoGrid'
+import { AjudaLink } from '@/components/ajuda/AjudaLink'
 import { useConfirmDeletePhoto, photoCountLabel } from '@/hooks/useConfirmDeletePhoto'
 
 function calcDaysUntil(startDate: string) {
@@ -1694,7 +1695,10 @@ function RouteComponent() {
     <div className="p-6 flex flex-col gap-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">{t('admin.courses.title')}</h1>
+          <div className="flex items-center gap-1">
+            <h1 className="text-2xl font-bold tracking-tight text-foreground">{t('admin.courses.title')}</h1>
+            <AjudaLink topico="cursos" titulo="Cursos" />
+          </div>
           <p className="text-sm text-muted-foreground">
             {data ? `${total} curso${total !== 1 ? 's' : ''}` : t('common.loading')}
           </p>

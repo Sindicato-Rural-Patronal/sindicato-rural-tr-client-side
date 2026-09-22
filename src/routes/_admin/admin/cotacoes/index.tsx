@@ -26,6 +26,7 @@ import {
 } from '@/components/ui/alert-dialog'
 import { LoadErrorBanner } from '@/components/LoadErrorBanner'
 import { NoPermission } from '@/components/NoPermission'
+import { AjudaLink } from '@/components/ajuda/AjudaLink'
 
 export const Route = createFileRoute('/_admin/admin/cotacoes/')({
   component: RouteComponent,
@@ -301,7 +302,10 @@ function RouteComponent() {
   return (
     <div className="flex flex-col gap-6 p-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight text-foreground">Cotações</h1>
+        <div className="flex items-center gap-1">
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">Cotações</h1>
+          <AjudaLink topico="cotacoes" titulo="Cotações" />
+        </div>
         <p className="text-sm text-muted-foreground">
           Produtos fixos exibidos na página inicial. Lance só os preços e o período — a data é a de hoje.
         </p>

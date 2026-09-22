@@ -23,6 +23,7 @@ import { Pagination } from '@/components/ui/pagination'
 import { NativeSelect } from '@/components/ui/native-select'
 import { LoadErrorBanner } from '@/components/LoadErrorBanner'
 import { NoPermission } from '@/components/NoPermission'
+import { AjudaLink } from '@/components/ajuda/AjudaLink'
 import { useDebouncedValue } from '@/hooks/useDebouncedValue'
 
 type AuditSearch = {
@@ -205,7 +206,10 @@ function RouteComponent() {
   return (
     <div className="p-6 flex flex-col gap-5">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight text-foreground">Auditoria</h1>
+        <div className="flex items-center gap-1">
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">Auditoria</h1>
+          <AjudaLink topico="auditoria" titulo="Auditoria" />
+        </div>
         <p className="text-sm text-muted-foreground">
           Registro de criações, edições, exclusões, exportações e tentativas de login, com o IP e o aparelho de origem.
         </p>

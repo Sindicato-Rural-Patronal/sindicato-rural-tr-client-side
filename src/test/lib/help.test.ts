@@ -168,3 +168,35 @@ describe('groupArticles', () => {
     expect(first.articles[0].id).toBe('primeiros-passos')
   })
 })
+
+// Código do app (sem os testes), para conferir os "?" das telas.
+const sources = import.meta.glob<string>(
+  ['/src/**/*.tsx', '!/src/test/**'],
+  { query: '?raw', import: 'default', eager: true },
+)
+
+describe('o "?" das telas (AjudaLink)', () => {
+  const usos = Object.entries(sources).flatMap(([arquivo, code]) =>
+    [...code.matchAll(/<AjudaLink[^>]*\stopico="([^"]+)"/g)].map(m => ({ arquivo, topico: m[1] })),
+  )
+
+  it('toda tela aponta para um artigo que existe', () => {
+    // Renomear um .md e esquecer a tela levaria a pessoa a um artigo vazio —
+    // logo ela, que clicou no "?" porque já estava perdida.
+    const known = new Set(ids(HELP_ARTICLES))
+    expect(usos.length).toBeGreaterThan(0)
+    for (const uso of usos) {
+      expect(known, `${uso.arquivo} → ${uso.topico}`).toContain(uso.topico)
+    }
+  })
+
+  it('as telas do menu principal têm o "?"', () => {
+    const cobertos = new Set(usos.map(u => u.topico))
+    for (const topico of [
+      'painel-geral', 'cursos', 'noticias', 'usuarios', 'unimed', 'banners',
+      'cotacoes', 'convenios', 'mensagens', 'auditoria', 'financeiro', 'configuracoes',
+    ]) {
+      expect(cobertos, topico).toContain(topico)
+    }
+  })
+})

@@ -16,6 +16,7 @@ import { maskCPF, maskPhone, maskCEP, maskRG, maskCNH, maskMoney } from '@/utils
 import { AgeHint } from '@/components/AgeHint'
 import { useUnsavedGuard } from '@/hooks/use-unsaved-guard'
 import { CadproFields } from '@/components/CadproFields'
+import { AjudaLink } from '@/components/ajuda/AjudaLink'
 import {
   validatePersonFields, firstInvalidField, focusFieldById,
   type PersonField, type PersonFieldErrors,
@@ -382,7 +383,10 @@ function RouteComponent() {
           <Link to="/admin/usuarios" aria-label="Voltar"><ArrowLeft className="size-4" /></Link>
         </Button>
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">Novo associado</h1>
+          <div className="flex items-center gap-1">
+            <h1 className="text-2xl font-bold tracking-tight text-foreground">Novo associado</h1>
+            <AjudaLink topico="usuarios" titulo="Novo associado" />
+          </div>
           <p className="text-sm text-muted-foreground">Cadastre a ficha completa de uma vez</p>
         </div>
       </div>

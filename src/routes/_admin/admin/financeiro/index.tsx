@@ -45,6 +45,7 @@ import { useCrudDialog } from '@/hooks/useCrudDialog'
 import { RecurringTab } from '@/components/financeiro/RecurringTab'
 import { ClosingTab } from '@/components/financeiro/ClosingTab'
 import { PaymentMethodSelect } from '@/components/financeiro/PaymentMethodSelect'
+import { AjudaLink } from '@/components/ajuda/AjudaLink'
 
 type FinanceTab = 'dashboard' | 'lancamentos' | 'recorrentes' | 'categorias' | 'caixas' | 'fechamento'
 type FinanceSearch = {
@@ -151,7 +152,10 @@ function RouteComponent() {
   return (
     <div className="p-6 flex flex-col gap-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight text-foreground">Financeiro</h1>
+        <div className="flex items-center gap-1">
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">Financeiro</h1>
+          <AjudaLink topico="financeiro" titulo="Financeiro" />
+        </div>
         <p className="text-sm text-muted-foreground">
           Controle de entradas e saídas de caixa, com dashboard e categorização.
         </p>

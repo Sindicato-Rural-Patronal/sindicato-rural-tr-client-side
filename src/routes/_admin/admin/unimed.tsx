@@ -44,6 +44,7 @@ import { LoadErrorBanner } from '@/components/LoadErrorBanner'
 import { EmptyState } from '@/components/EmptyState'
 import { ExportMenu, SelectCheckbox, SelectionInfo } from '@/components/export/ExportMenu'
 import { Pagination } from '@/components/ui/pagination'
+import { AjudaLink } from '@/components/ajuda/AjudaLink'
 
 export const Route = createFileRoute('/_admin/admin/unimed')({
   beforeLoad: () => requirePermission('READ_USER'),
@@ -491,7 +492,10 @@ function RouteComponent() {
     <div className="p-6 flex flex-col gap-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">Unimed — Beneficiários</h1>
+          <div className="flex items-center gap-1">
+            <h1 className="text-2xl font-bold tracking-tight text-foreground">Unimed — Beneficiários</h1>
+            <AjudaLink topico="unimed" titulo="Unimed — Beneficiários" />
+          </div>
           <p className="text-sm text-muted-foreground">
             Beneficiários do plano de saúde vinculados aos usuários cadastrados.
           </p>

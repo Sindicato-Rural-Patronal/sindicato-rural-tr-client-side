@@ -28,8 +28,11 @@ function Convite() {
     if (form.password !== form.confirm) { setErr('As senhas não coincidem.'); return }
     try {
       await accept.mutateAsync({ username: form.username.trim(), password: form.password })
-      toast.success('Acesso criado! Faça login.')
-      navigate({ to: '/login' })
+      toast.success('Acesso criado! Faça login para começar.')
+      // Quem aceita um convite nunca usou o painel — é o único momento em que
+      // dá para ter certeza disso. Em vez de largar a pessoa no painel sem
+      // contexto, o login a leva para a Central de Ajuda.
+      navigate({ to: '/login', search: { redirect: '/admin/ajuda' } })
     } catch (e) {
       const m = e instanceof Error ? e.message : 'Falha ao ativar o acesso'
       setErr(m)

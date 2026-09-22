@@ -39,6 +39,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { NativeSelect } from '@/components/ui/native-select'
+import { AjudaLink } from '@/components/ajuda/AjudaLink'
 import { cn } from '@/lib/utils'
 import { ChevronLeft, ChevronRight, Plus, SlidersHorizontal } from 'lucide-react'
 
@@ -530,7 +531,10 @@ export function DashboardPage({ search, onSearch, onOpenCourse }: {
 
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">Painel Geral</h1>
+          <div className="flex items-center gap-1">
+            <h1 className="text-2xl font-bold tracking-tight text-foreground">Painel Geral</h1>
+            <AjudaLink topico="painel-geral" titulo="Painel Geral" />
+          </div>
           <p className="text-sm text-muted-foreground">
             O que precisa de atenção hoje, a agenda das salas e os números do sistema.
           </p>

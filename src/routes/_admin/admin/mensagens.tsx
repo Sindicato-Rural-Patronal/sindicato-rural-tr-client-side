@@ -23,6 +23,7 @@ import { Mail, MailOpen, Phone, AtSign, Trash2, Search, X, CheckCheck, Download,
 import { FaWhatsapp } from 'react-icons/fa'
 import { toast } from 'sonner'
 import { Input } from '@/components/ui/input'
+import { AjudaLink } from '@/components/ajuda/AjudaLink'
 
 export const Route = createFileRoute('/_admin/admin/mensagens')({
   beforeLoad: () => requirePermission('READ_CONTACT'),
@@ -268,6 +269,7 @@ function RouteComponent() {
             {unreadCount > 0 && (
               <Badge className="text-xs">{unreadCount} não lida{unreadCount > 1 ? 's' : ''}</Badge>
             )}
+            <AjudaLink topico="mensagens" titulo="Mensagens de contato" />
           </h1>
           <p className="text-sm text-muted-foreground">Mensagens enviadas pelo formulário de contato do site</p>
         </div>

@@ -47,6 +47,7 @@ import { downloadExport, type ExportDataset, type ExportParams } from '@/lib/exp
 import { useRowSelection } from '@/hooks/useRowSelection'
 import { ExportMenu, SelectCheckbox, SelectionInfo } from '@/components/export/ExportMenu'
 import { PersonPicker, type PickedPerson } from '@/components/PersonPicker'
+import { AjudaLink } from '@/components/ajuda/AjudaLink'
 import { useDebouncedValue } from '@/hooks/useDebouncedValue'
 import { maskCPF } from '@/utils/masks'
 
@@ -899,7 +900,10 @@ function RouteComponent() {
       <Tabs value={activeTab} onValueChange={handleTabChange}>
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-6">
           <div>
-            <h1 className="text-2xl font-bold tracking-tight text-foreground">Usuários</h1>
+            <div className="flex items-center gap-1">
+              <h1 className="text-2xl font-bold tracking-tight text-foreground">Usuários</h1>
+              <AjudaLink topico="usuarios" titulo="Usuários" />
+            </div>
             <p className="text-sm text-muted-foreground">Associados, empresas e administradores do sistema</p>
           </div>
           <div className="flex items-center gap-2">

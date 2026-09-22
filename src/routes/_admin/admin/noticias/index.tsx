@@ -42,6 +42,7 @@ import { Pagination } from '@/components/ui/pagination'
 import { DatePicker } from '@/components/ui/date-picker'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { AjudaLink } from '@/components/ajuda/AjudaLink'
 import { useDebouncedValue } from '@/hooks/useDebouncedValue'
 import type { News, ContentBlock, ParagraphBlock, ImageBlock, ImageTextBlock } from '@/@types/news'
 import { parseBlocks, serializeBlocks } from '@/@types/news'
@@ -1035,7 +1036,10 @@ function RouteComponent() {
     <div className="p-6 flex flex-col gap-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">{t('admin.news.title')}</h1>
+          <div className="flex items-center gap-1">
+            <h1 className="text-2xl font-bold tracking-tight">{t('admin.news.title')}</h1>
+            <AjudaLink topico="noticias" titulo="Notícias" />
+          </div>
           <p className="text-sm text-muted-foreground">Gerencie as notícias publicadas no site</p>
         </div>
         <div className="flex flex-wrap items-center gap-2 shrink-0">

@@ -15,6 +15,7 @@ import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@
 import { DeleteConfirmDialog } from '@/components/DeleteConfirmDialog'
 import { LoadErrorBanner } from '@/components/LoadErrorBanner'
 import { EmptyState } from '@/components/EmptyState'
+import { AjudaLink } from '@/components/ajuda/AjudaLink'
 
 export const Route = createFileRoute('/_admin/admin/convenios/')({
   beforeLoad: () => requirePermission('READ_CONVENIO'),
@@ -43,7 +44,10 @@ function ConveniosAdminPage() {
     <div className="p-6 flex flex-col gap-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">Convênios</h1>
+          <div className="flex items-center gap-1">
+            <h1 className="text-2xl font-bold tracking-tight text-foreground">Convênios</h1>
+            <AjudaLink topico="convenios" titulo="Convênios" />
+          </div>
           <p className="text-sm text-muted-foreground">
             Páginas públicas do menu "Convênios" do site: tabela de valores, documentos e informações.
           </p>

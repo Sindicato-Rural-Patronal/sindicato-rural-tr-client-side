@@ -24,6 +24,7 @@ import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { DeleteConfirmDialog } from '@/components/DeleteConfirmDialog'
+import { AjudaLink } from '@/components/ajuda/AjudaLink'
 import {
   Plus, Pencil, Trash2, ChevronUp, ChevronDown, ImageUp, X, ExternalLink,
   Image as ImageIcon, CalendarRange,
@@ -421,7 +422,10 @@ function RouteComponent() {
     <div className="p-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Banners</h1>
+          <div className="flex items-center gap-1">
+            <h1 className="text-2xl font-bold tracking-tight">Banners</h1>
+            <AjudaLink topico="banners" titulo="Banners" />
+          </div>
           <p className="text-sm text-muted-foreground">Gerencie os banners exibidos na página inicial</p>
         </div>
         <Button onClick={() => openSheet({ mode: 'create' })} className="gap-1.5 shrink-0">
