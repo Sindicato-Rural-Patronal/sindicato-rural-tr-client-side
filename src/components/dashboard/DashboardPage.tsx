@@ -6,7 +6,10 @@ import {
   useSensor, useSensors, type Announcements, type DragEndEvent, type DragOverEvent,
   type ScreenReaderInstructions,
 } from '@dnd-kit/core'
-import { SortableContext, sortableKeyboardCoordinates } from '@dnd-kit/sortable'
+import {
+  SortableContext, sortableKeyboardCoordinates, type SortingStrategy,
+} from '@dnd-kit/sortable'
+import { previaDoArrasto } from '@/components/dashboard/dashboard-drag'
 import { apiFetch } from '@/lib/api'
 import { apiErrorMessage } from '@/lib/api-error-message'
 import { toYmd } from '@/utils/dates'
@@ -93,14 +96,16 @@ const META = new Map(DASHBOARD_BLOCKS.map(b => [b.id, b.label] as const))
 
 const nomeDoBloco = (id: string | number) => META.get(id as DashboardBlockId) ?? String(id)
 
-// A grade do painel tem blocos de larguras e alturas MUITO diferentes (a agenda
-// inteira ao lado de "Últimas ações"). As estratégias prontas do @dnd-kit
-// (rectSortingStrategy e companhia) desenham a prévia trocando os retângulos
-// medidos de lugar e aplicando escala — com blocos desiguais isso esticava um
-// por cima do outro e a tela virava um borrão. Aqui NINGUÉM se mexe durante o
-// arrasto: os blocos ficam parados, o que vai receber acende, e a ordem só muda
-// quando se solta.
-const SEM_PREVIA_FALSA = () => null
+// A prévia do arrasto: os blocos andam para onde vão ficar, refazendo a conta
+// da grade (ver dashboard-drag.ts). É só `transform`, então nada reflui e o
+// alvo debaixo do cursor não muda — foi mexer na ordem DE VERDADE durante o
+// gesto que fazia os blocos ficarem se alternando sem parar.
+const ESTRATEGIA_DO_PAINEL: SortingStrategy = ({ rects, activeIndex, overIndex, index }) => {
+  const andar = previaDoArrasto(rects, activeIndex, overIndex, index)
+  // scale 1: quem desenha é o CSS.Translate do bloco, que ignora escala de
+  // propósito (ver EditableBlock) — aqui é só para fechar o tipo do @dnd-kit.
+  return andar ? { ...andar, scaleX: 1, scaleY: 1 } : null
+}
 
 // O @dnd-kit narra o arrasto para quem usa leitor de tela — em inglês, se a
 // gente não escrever. O sistema é só em português, então aqui está o texto.
@@ -557,7 +562,7 @@ export function DashboardPage({ search, onSearch, onOpenCourse }: {
           autoScroll={{ threshold: { x: 0, y: 0.2 }, acceleration: 14 }}
         >
           {/* A lista do arrastar é plana (a ordem dos blocos); a grade é só o desenho. */}
-          <SortableContext items={noPainel} strategy={SEM_PREVIA_FALSA}>
+          <SortableContext items={noPainel} strategy={ESTRATEGIA_DO_PAINEL}>
             {corpo}
           </SortableContext>
         </DndContext>
