@@ -98,8 +98,12 @@ export type PaginatedResponse<T> = {
 export type DashboardPrefs = {
   hidden?: string[]
   order?: string[]
-  /** Largura de cada bloco: 'full' (linha inteira) ou 'half' (meia linha). */
-  sizes?: Record<string, string>
+  /**
+   * Largura de cada bloco, em colunas da grade de 4 (2, 3 ou 4). O tipo é
+   * frouxo porque o que vem do servidor pode ser qualquer coisa — inclusive o
+   * 'full'/'half' gravado antes das 4 colunas, que `normalizePrefs` converte.
+   */
+  sizes?: Record<string, unknown>
 }
 
 export type AdminMe = {

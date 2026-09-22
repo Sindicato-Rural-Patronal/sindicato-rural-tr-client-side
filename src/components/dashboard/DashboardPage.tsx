@@ -32,9 +32,9 @@ import { RecentAuditCard } from '@/components/dashboard/RecentAuditCard'
 import { EditModeBar } from '@/components/dashboard/EditModeBar'
 import { EditableBlock } from '@/components/dashboard/EditableBlock'
 import {
-  DASHBOARD_BLOCKS, applyOrder, blockSizes, dashboardLayout, defaultDraft, dropBlock, editableBlocks,
+  CLASSE_SPAN, DASHBOARD_BLOCKS, applyOrder, blockSizes, dashboardLayout, defaultDraft, dropBlock, editableBlocks,
   prefsDraft, prefsToSave, sameDraft, setBlockSize, toggleHidden, visibleBlocks,
-  type DashboardBlockId, type DashboardBlockSize, type DashboardCell, type DashboardDraft,
+  type DashboardBlockId, type DashboardCell, type DashboardDraft, type DashboardSpan,
 } from '@/components/dashboard/dashboard-prefs'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -300,7 +300,7 @@ export function DashboardPage({ search, onSearch, onOpenCourse }: {
   }
 
   /** Nova largura escolhida na alça do canto do bloco. */
-  function mudarLargura(id: DashboardBlockId, size: DashboardBlockSize) {
+  function mudarLargura(id: DashboardBlockId, size: DashboardSpan) {
     setRascunho(prev => {
       // A alça avisa a cada movimento do dedo/mouse: se a largura é a mesma,
       // devolver o rascunho anterior evita repintar a tela e marcar
@@ -478,17 +478,17 @@ export function DashboardPage({ search, onSearch, onOpenCourse }: {
   }
 
   /** Um bloco na tela: no modo de organizar vai dentro da moldura arrastável. */
-  function celula({ id, size, span }: DashboardCell) {
+  function celula({ id, span }: DashboardCell) {
     if (!rascunho) {
-      // Meia largura ocupa UMA coluna mesmo sem vizinho (deixa o lado vazio).
-      return <div key={id} data-bloco={id} className={cn(span === 2 && 'lg:col-span-2')}>{bloco(id)}</div>
+      // O bloco ocupa as colunas dele mesmo sem vizinho (deixa o resto vazio).
+      return <div key={id} data-bloco={id} className={CLASSE_SPAN[span]}>{bloco(id)}</div>
     }
     return (
       <EditableBlock
         key={id}
         id={id}
         label={nomeDoBloco(id)}
-        size={size}
+        size={span}
         onTamanho={novo => mudarLargura(id, novo)}
         onRemover={() => removerOuAdicionar(id)}
         alvo={alvo === id}
@@ -504,7 +504,7 @@ export function DashboardPage({ search, onSearch, onOpenCourse }: {
   // e, como nenhum bloco troca de pai ao mudar de largura, puxar a alça não
   // desmonta o cartão no meio do gesto.
   const corpo = (
-    <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+    <div className="grid grid-cols-1 gap-6 lg:grid-cols-4">
       {celulas.map(celula)}
     </div>
   )

@@ -3,15 +3,16 @@ import {
   lerGrade, ordemArrastada, posicoesDaGrade, previaDoArrasto, spanMedido, type Medida,
 } from '@/components/dashboard/dashboard-drag'
 
-// Um painel de verdade medido no computador: grade de 1000px, duas colunas de
-// 488 e vão de 24 (o `gap-6`). Ordem: dois blocos de linha inteira, dois de
-// meia linha dividindo a linha e um de meia linha sozinho no fim.
+// Um painel de verdade medido no computador: grade de 1000px com 4 colunas de
+// 232 e vão de 24 (o `gap-6`). Daí as larguras: 2 colunas = 488, 3 = 744 e
+// 4 = 1000. Ordem: dois blocos de linha inteira, dois de 2 colunas dividindo a
+// linha e um de 2 colunas sozinho no fim.
 const PAINEL: Medida[] = [
-  { left: 0, top: 0, width: 1000, height: 100 },   // 0 ações      (inteira)
-  { left: 0, top: 124, width: 1000, height: 140 }, // 1 números    (inteira)
-  { left: 0, top: 288, width: 488, height: 200 },  // 2 cursos     (metade)
-  { left: 512, top: 288, width: 488, height: 200 },// 3 incompletos(metade)
-  { left: 0, top: 512, width: 488, height: 160 },  // 4 auditoria  (metade)
+  { left: 0, top: 0, width: 1000, height: 100 },   // 0 ações       (4 colunas)
+  { left: 0, top: 124, width: 1000, height: 140 }, // 1 números     (4 colunas)
+  { left: 0, top: 288, width: 488, height: 200 },  // 2 cursos      (2 colunas)
+  { left: 512, top: 288, width: 488, height: 200 },// 3 incompletos (2 colunas)
+  { left: 0, top: 512, width: 488, height: 160 },  // 4 auditoria   (2 colunas)
 ]
 
 // O mesmo painel no celular: uma coluna, todo bloco na linha inteira.
@@ -22,13 +23,13 @@ const CELULAR: Medida[] = [
 ]
 
 describe('lerGrade', () => {
-  it('lê as duas colunas, a largura e o vão pelas medidas', () => {
+  it('lê as quatro colunas, a largura de uma e o vão pelas medidas', () => {
     expect(lerGrade(PAINEL)).toEqual({
-      colunas: 2, left: 0, top: 0, larguraColuna: 488, vao: 24,
+      colunas: 4, left: 0, top: 0, larguraColuna: 232, vao: 24,
     })
   })
 
-  it('sem nenhum bloco de meia largura, entende que é uma coluna só', () => {
+  it('com todos ocupando a linha toda, trata como uma coluna só', () => {
     const grade = lerGrade(CELULAR)
     expect(grade?.colunas).toBe(1)
     expect(grade?.larguraColuna).toBe(360)
@@ -41,15 +42,23 @@ describe('lerGrade', () => {
 })
 
 describe('spanMedido', () => {
-  it('separa linha inteira de meia linha pela largura', () => {
+  it('tira as colunas de volta da largura medida', () => {
     const grade = lerGrade(PAINEL)!
-    expect(spanMedido(PAINEL[0], grade)).toBe(2)
-    expect(spanMedido(PAINEL[2], grade)).toBe(1)
+    expect(spanMedido(PAINEL[0], grade)).toBe(4)
+    expect(spanMedido(PAINEL[2], grade)).toBe(2)
+    // 3 colunas = 3*232 + 2*24.
+    expect(spanMedido({ left: 0, top: 0, width: 744, height: 10 }, grade)).toBe(3)
+  })
+
+  it('nunca devolve menos de 2 nem mais de 4 colunas', () => {
+    const grade = lerGrade(PAINEL)!
+    expect(spanMedido({ left: 0, top: 0, width: 232, height: 10 }, grade)).toBe(2)
+    expect(spanMedido({ left: 0, top: 0, width: 5000, height: 10 }, grade)).toBe(4)
   })
 
   it('no celular todo bloco ocupa a linha', () => {
     const grade = lerGrade(CELULAR)!
-    expect(spanMedido(CELULAR[0], grade)).toBe(2)
+    expect(spanMedido(CELULAR[0], grade)).toBe(4)
   })
 })
 
@@ -64,23 +73,38 @@ describe('posicoesDaGrade', () => {
     )
   })
 
-  it('bloco de linha inteira não divide linha: desce e deixa o lado vazio', () => {
+  it('duas de 2 colunas dividem a linha; a terceira desce', () => {
     const grade = lerGrade(PAINEL)!
     const posicoes = posicoesDaGrade([
-      { span: 1, height: 160 }, // meia linha, abre a linha
-      { span: 2, height: 100 }, // inteira: não cabe ao lado, desce
+      { span: 2, height: 100 },
+      { span: 2, height: 250 }, // o mais alto manda na altura da linha
+      { span: 2, height: 80 },
+    ], grade)
+    expect(posicoes).toEqual([
+      { left: 0, top: 0 }, { left: 512, top: 0 }, { left: 0, top: 274 },
+    ])
+  })
+
+  it('o que não cabe no resto da linha desce e deixa o vão vazio', () => {
+    const grade = lerGrade(PAINEL)!
+    // 3 colunas + 2 colunas não cabem juntas (passa de 4): a de 2 desce, e
+    // sobra uma coluna vazia à direita da de 3. É o preço de permitir 3.
+    const posicoes = posicoesDaGrade([
+      { span: 3, height: 160 },
+      { span: 2, height: 100 },
     ], grade)
     expect(posicoes).toEqual([{ left: 0, top: 0 }, { left: 0, top: 184 }])
   })
 
-  it('a altura da linha é a do bloco mais alto dela', () => {
+  it('2 + 2 enche a linha certinho', () => {
     const grade = lerGrade(PAINEL)!
-    const posicoes = posicoesDaGrade([
-      { span: 1, height: 100 },
-      { span: 1, height: 250 }, // o alto manda na linha
-      { span: 1, height: 80 },
-    ], grade)
-    expect(posicoes[2]).toEqual({ left: 0, top: 274 })
+    expect(posicoesDaGrade([
+      { span: 2, height: 100 },
+      { span: 2, height: 100 },
+      { span: 4, height: 90 },
+    ], grade)).toEqual([
+      { left: 0, top: 0 }, { left: 512, top: 0 }, { left: 0, top: 124 },
+    ])
   })
 })
 
@@ -106,7 +130,7 @@ describe('previaDoArrasto', () => {
   })
 
   it('o bloco que trocou de coluna anda para o lado, não só para baixo', () => {
-    // cursos (2) vai para o lugar de incompletos (3): eles trocam de coluna.
+    // cursos (2) vai para o lugar de incompletos (3): trocam de coluna.
     expect(previaDoArrasto(PAINEL, 2, 3, 2)).toEqual({ x: 512, y: 0 })
     expect(previaDoArrasto(PAINEL, 2, 3, 3)).toEqual({ x: -512, y: 0 })
   })

@@ -84,13 +84,16 @@ function Painel() {
 }
 
 /**
- * Largura desenhada de um bloco. A grade do painel tem 2 colunas no computador:
- * `lg:col-span-2` = linha inteira; sem a classe = meia linha.
+ * Quantas colunas o bloco ocupa no desenho. A grade do painel tem 4 colunas no
+ * computador e todo bloco cobre de 2 a 4 (`lg:col-span-N`).
  */
-function larguraDe(id: string): 'inteira' | 'metade' {
+function larguraDe(id: string): 2 | 3 | 4 {
   const el = document.querySelector(`[data-bloco="${id}"]`)
   if (!el) throw new Error(`Bloco "${id}" não está na tela`)
-  return el.classList.contains('lg:col-span-2') ? 'inteira' : 'metade'
+  for (const span of [2, 3, 4] as const) {
+    if (el.classList.contains(`lg:col-span-${span}`)) return span
+  }
+  throw new Error(`Bloco "${id}" está sem classe de largura`)
 }
 
 const TODAS = [
@@ -201,13 +204,13 @@ describe('Painel Geral', () => {
     expect(screen.getByTestId('agenda')).toBeInTheDocument()
   })
 
-  it('a largura salva desenha o bloco com 1 ou 2 colunas', () => {
+  it('largura salva no formato antigo continua valendo (full/half → 4/2)', () => {
     prefs = { hidden: [], order: [], sizes: { cursos: 'full', incompletos: 'half', auditoria: 'half' } }
     render(<Painel />)
-    expect(larguraDe('cursos')).toBe('inteira')
-    expect(larguraDe('incompletos')).toBe('metade')
-    // Sozinho no fim da lista, o bloco de meia largura NÃO estica (era o bug).
-    expect(larguraDe('auditoria')).toBe('metade')
+    expect(larguraDe('cursos')).toBe(4)
+    expect(larguraDe('incompletos')).toBe(2)
+    // Sozinho no fim da lista, o bloco estreito NÃO estica (era o bug).
+    expect(larguraDe('auditoria')).toBe(2)
   })
 
   it('fora do modo de organizar não há controles de bloco', () => {
@@ -238,7 +241,7 @@ function organizar() {
 }
 
 function enviado() {
-  return salvarPrefs.mock.calls[0][0] as { hidden: string[]; order: string[]; sizes: Record<string, string> }
+  return salvarPrefs.mock.calls[0][0] as { hidden: string[]; order: string[]; sizes: Record<string, unknown> }
 }
 
 describe('Painel Geral — organizar os blocos', () => {
@@ -254,7 +257,7 @@ describe('Painel Geral — organizar os blocos', () => {
     expect(within(cartao).getByRole('button', { name: 'Remover Cursos públicos do painel' })).toBeInTheDocument()
     // A alça do canto diz de quem é e qual o tamanho de agora.
     const alca = within(cartao).getByRole('slider', { name: 'Largura de Cursos públicos' })
-    expect(alca).toHaveAttribute('aria-valuetext', 'Metade da linha')
+    expect(alca).toHaveAttribute('aria-valuetext', 'Meia linha')
     expect(alca).toHaveAttribute('tabindex', '0')
 
     // Botão de aumentar/diminuir não existe mais: quem manda é a alça.
@@ -285,36 +288,39 @@ describe('Painel Geral — organizar os blocos', () => {
     await waitFor(() => expect(screen.queryByRole('region', { name: 'Organizar o painel' })).not.toBeInTheDocument())
   })
 
-  it('as setas na alça mudam a largura do bloco e a tela acompanha', async () => {
+  it('as setas na alça andam de uma coluna por vez, entre 2 e 4', async () => {
     organizar()
     const alca = screen.getByRole('slider', { name: 'Largura de Calendário e agenda das salas' })
     expect(alca).toHaveAttribute('aria-valuetext', 'Linha inteira')
-    expect(larguraDe('agenda')).toBe('inteira')
+    expect(larguraDe('agenda')).toBe(4)
 
-    // ← encolhe para meia linha (e o desenho muda de verdade, não só o rótulo).
+    // ← encolhe uma coluna (e o desenho muda de verdade, não só o rótulo).
     fireEvent.keyDown(alca, { key: 'ArrowLeft' })
-    expect(larguraDe('agenda')).toBe('metade')
+    expect(larguraDe('agenda')).toBe(3)
     expect(screen.getByRole('slider', { name: 'Largura de Calendário e agenda das salas' }))
-      .toHaveAttribute('aria-valuetext', 'Metade da linha')
+      .toHaveAttribute('aria-valuetext', 'Três quartos da linha')
 
-    // → volta para a linha inteira; ← de novo encolhe.
-    fireEvent.keyDown(alca, { key: 'ArrowRight' })
-    expect(larguraDe('agenda')).toBe('inteira')
     fireEvent.keyDown(alca, { key: 'ArrowDown' })
-    expect(larguraDe('agenda')).toBe('metade')
+    expect(larguraDe('agenda')).toBe(2)
+    // Não existe menos de 2: insistir no ← não encolhe mais.
+    fireEvent.keyDown(alca, { key: 'ArrowLeft' })
+    expect(larguraDe('agenda')).toBe(2)
+
+    fireEvent.keyDown(alca, { key: 'ArrowRight' })
+    expect(larguraDe('agenda')).toBe(3)
 
     fireEvent.click(screen.getByRole('button', { name: 'Salvar' }))
     await waitFor(() => expect(salvarPrefs).toHaveBeenCalled())
-    expect(enviado().sizes).toMatchObject({ agenda: 'half', numeros: 'full', cursos: 'half' })
+    expect(enviado().sizes).toMatchObject({ agenda: 3, numeros: 4, cursos: 2 })
   })
 
-  it('bloco de meia largura sozinho no painel não estica', () => {
+  it('bloco estreito sozinho no painel não estica', () => {
     organizar()
-    // Sem vizinho de meia largura, "Últimas ações" continua com meia linha.
-    expect(larguraDe('auditoria')).toBe('metade')
+    // Sem vizinho, "Últimas ações" continua com 2 colunas.
+    expect(larguraDe('auditoria')).toBe(2)
     fireEvent.click(screen.getByRole('button', { name: 'Remover Cadastros incompletos do painel' }))
-    expect(larguraDe('cursos')).toBe('metade')
-    expect(larguraDe('auditoria')).toBe('metade')
+    expect(larguraDe('cursos')).toBe(2)
+    expect(larguraDe('auditoria')).toBe(2)
   })
 
   it('a alça não começa a mover o bloco nem dispara o teclado do arrasto', () => {
@@ -335,8 +341,8 @@ describe('Painel Geral — organizar os blocos', () => {
       document.removeEventListener('pointerdown', escapou)
       document.removeEventListener('keydown', escapou)
     }
-    // ...mas a largura mudou, que é o trabalho dela.
-    expect(larguraDe('auditoria')).toBe('inteira')
+    // ...mas a largura mudou, que é o trabalho dela (2 → 3 colunas).
+    expect(larguraDe('auditoria')).toBe(3)
   })
 
   it('Cancelar joga fora o rascunho e não salva nada', () => {
@@ -350,7 +356,7 @@ describe('Painel Geral — organizar os blocos', () => {
   })
 
   it('"Restaurar padrão" volta ao layout de fábrica (e só salva ao clicar em Salvar)', async () => {
-    prefs = { hidden: ['cursos', 'auditoria'], order: ['auditoria', 'acoes'], sizes: { agenda: 'half' } }
+    prefs = { hidden: ['cursos', 'auditoria'], order: ['auditoria', 'acoes'], sizes: { agenda: 2 } }
     organizar()
     expect(molduras()).toHaveLength(6)
     fireEvent.click(screen.getByRole('button', { name: /Restaurar padrão/ }))
@@ -363,7 +369,7 @@ describe('Painel Geral — organizar os blocos', () => {
     await waitFor(() => expect(salvarPrefs).toHaveBeenCalled())
     expect(enviado().hidden).toEqual([])
     expect(enviado().order[0]).toBe('acoes')
-    expect(enviado().sizes.agenda).toBe('full')
+    expect(enviado().sizes.agenda).toBe(4)
   })
 
   it('avisa que há alterações não salvas', () => {

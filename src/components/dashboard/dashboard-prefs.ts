@@ -14,8 +14,37 @@ export type DashboardBlockId =
   | 'incompletos'
   | 'auditoria'
 
-/** Largura do bloco: a linha toda ou metade dela (no celular é sempre inteira). */
-export type DashboardBlockSize = 'full' | 'half'
+/**
+ * O painel é uma grade de 4 COLUNAS no computador (1 no celular, onde todo
+ * bloco ocupa a linha). A largura de um bloco é quantas dessas colunas ele
+ * cobre — no mínimo 2, no máximo 4. O mínimo de 2 é de propósito: com blocos de
+ * 1 coluna os cartões ficavam espremidos e de tamanhos muito diferentes uns dos
+ * outros, que era o que atrapalhava tanto na tela quanto no código.
+ */
+export const COLUNAS = 4
+
+export type DashboardSpan = 2 | 3 | 4
+
+/** As três larguras, da menor para a maior (a alça do canto anda por elas). */
+export const SPANS: DashboardSpan[] = [2, 3, 4]
+
+/** Como a pessoa (e o leitor de tela) ouve cada largura. */
+export const NOME_SPAN: Record<DashboardSpan, string> = {
+  2: 'Meia linha',
+  3: 'Três quartos da linha',
+  4: 'Linha inteira',
+}
+
+/** Classe da grade para cada largura (Tailwind precisa do nome inteiro escrito). */
+export const CLASSE_SPAN: Record<DashboardSpan, string> = {
+  2: 'lg:col-span-2',
+  3: 'lg:col-span-3',
+  4: 'lg:col-span-4',
+}
+
+function ehSpan(v: unknown): v is DashboardSpan {
+  return v === 2 || v === 3 || v === 4
+}
 
 /** Nome de cada bloco no modo de organizar (é o que o admin lê). */
 export const DASHBOARD_BLOCKS: { id: DashboardBlockId; label: string }[] = [
@@ -33,19 +62,19 @@ export const DASHBOARD_BLOCKS: { id: DashboardBlockId; label: string }[] = [
 export const DEFAULT_ORDER: DashboardBlockId[] = DASHBOARD_BLOCKS.map(b => b.id)
 
 /**
- * Largura de fábrica: agenda, números, ações, cotações e financeiro ocupam a
- * linha inteira; os três cartões pequenos ficam em meia linha (cursos e
- * cadastros incompletos dividem uma linha, últimas ações fica na seguinte).
+ * Largura de fábrica: agenda, números, ações, cotações e financeiro ocupam as 4
+ * colunas; os três cartões pequenos ficam com 2 (cursos e cadastros incompletos
+ * dividem uma linha, últimas ações fica na seguinte).
  */
-export const DEFAULT_SIZES: Record<DashboardBlockId, DashboardBlockSize> = {
-  acoes: 'full',
-  numeros: 'full',
-  cotacoes: 'full',
-  financeiro: 'full',
-  agenda: 'full',
-  cursos: 'half',
-  incompletos: 'half',
-  auditoria: 'half',
+export const DEFAULT_SIZES: Record<DashboardBlockId, DashboardSpan> = {
+  acoes: 4,
+  numeros: 4,
+  cotacoes: 4,
+  financeiro: 4,
+  agenda: 4,
+  cursos: 2,
+  incompletos: 2,
+  auditoria: 2,
 }
 
 const KNOWN = new Set<string>(DEFAULT_ORDER)
@@ -60,13 +89,16 @@ function onlyKnown(list: unknown): DashboardBlockId[] {
   })
 }
 
-function onlySizes(raw: unknown): Partial<Record<DashboardBlockId, DashboardBlockSize>> {
+function onlySizes(raw: unknown): Partial<Record<DashboardBlockId, DashboardSpan>> {
   // Só objeto simples entra: array, texto ou null viram "nenhuma largura salva".
   if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) return {}
-  const out: Partial<Record<DashboardBlockId, DashboardBlockSize>> = {}
+  const out: Partial<Record<DashboardBlockId, DashboardSpan>> = {}
   for (const [id, size] of Object.entries(raw as Record<string, unknown>)) {
     if (!KNOWN.has(id)) continue
-    if (size === 'full' || size === 'half') out[id as DashboardBlockId] = size
+    // Quem personalizou o painel antes das 4 colunas tem 'full'/'half' gravado:
+    // vira 4 e 2 em vez de cair no padrão e bagunçar o painel da pessoa.
+    const span = size === 'full' ? 4 : size === 'half' ? 2 : size
+    if (ehSpan(span)) out[id as DashboardBlockId] = span
   }
   return out
 }
@@ -75,7 +107,7 @@ function onlySizes(raw: unknown): Partial<Record<DashboardBlockId, DashboardBloc
 export type NormalizedPrefs = {
   hidden: DashboardBlockId[]
   order: DashboardBlockId[]
-  sizes: Partial<Record<DashboardBlockId, DashboardBlockSize>>
+  sizes: Partial<Record<DashboardBlockId, DashboardSpan>>
 }
 
 /**
@@ -99,7 +131,7 @@ export function blockOrder(prefs: DashboardPrefs | null | undefined): DashboardB
 }
 
 /** Largura de todos os blocos: a escolhida pelo admin ou a de fábrica. */
-export function blockSizes(prefs: DashboardPrefs | null | undefined): Record<DashboardBlockId, DashboardBlockSize> {
+export function blockSizes(prefs: DashboardPrefs | null | undefined): Record<DashboardBlockId, DashboardSpan> {
   return { ...DEFAULT_SIZES, ...normalizePrefs(prefs).sizes }
 }
 
@@ -137,42 +169,30 @@ export function toggleHidden(hidden: DashboardBlockId[], id: DashboardBlockId): 
 
 /** Troca a largura de um bloco. */
 export function setBlockSize(
-  sizes: Record<DashboardBlockId, DashboardBlockSize>,
+  sizes: Record<DashboardBlockId, DashboardSpan>,
   id: DashboardBlockId,
-  size: DashboardBlockSize,
-): Record<DashboardBlockId, DashboardBlockSize> {
+  size: DashboardSpan,
+): Record<DashboardBlockId, DashboardSpan> {
   return { ...sizes, [id]: size }
 }
 
 // ─── desenho do painel ───────────────────────────────────────────────────────
 
-/** Quantas das 2 colunas o bloco ocupa no computador. */
-export type DashboardSpan = 1 | 2
-
-export type DashboardCell = { id: DashboardBlockId; size: DashboardBlockSize; span: DashboardSpan }
-
-/** Colunas que a largura ocupa: metade = 1 coluna, inteira = as 2. */
-export function blockSpan(size: DashboardBlockSize): DashboardSpan {
-  return size === 'full' ? 2 : 1
-}
+export type DashboardCell = { id: DashboardBlockId; span: DashboardSpan }
 
 /**
- * Os blocos na ordem em que a tela desenha, cada um já com quantas colunas
- * ocupa. O painel é UMA grade de 2 colunas (no celular, 1): quem está em
- * "metade" ocupa uma coluna MESMO SOZINHO — deixa o espaço do lado vazio em vez
- * de esticar — e quem está em "inteira" ocupa as duas. Não existe mais
- * "empacotar em linhas": juntar dois blocos de meia largura lado a lado é a
- * própria grade que faz. Assim diminuir um bloco tem efeito na hora, e o bloco
- * nunca troca de pai no meio de um arrasto (o que cancelaria o gesto).
+ * Os blocos na ordem em que a tela desenha, cada um já com quantas das 4
+ * colunas ocupa. O painel é UMA grade só: o bloco ocupa as colunas dele MESMO
+ * SOZINHO — deixa o resto da linha vazio em vez de esticar. Não existe
+ * "empacotar em linhas"; juntar blocos lado a lado é a própria grade que faz.
+ * Assim diminuir um bloco tem efeito na hora e ele nunca troca de pai no meio
+ * de um arrasto (o que cancelaria o gesto).
  */
 export function dashboardLayout(
   ids: readonly DashboardBlockId[],
-  sizes: Record<DashboardBlockId, DashboardBlockSize>,
+  sizes: Record<DashboardBlockId, DashboardSpan>,
 ): DashboardCell[] {
-  return ids.map(id => {
-    const size = sizes[id] ?? DEFAULT_SIZES[id]
-    return { id, size, span: blockSpan(size) }
-  })
+  return ids.map(id => ({ id, span: sizes[id] ?? DEFAULT_SIZES[id] }))
 }
 
 // ─── rascunho do modo de organizar ───────────────────────────────────────────
@@ -181,7 +201,7 @@ export function dashboardLayout(
 export type DashboardDraft = {
   order: DashboardBlockId[]
   hidden: DashboardBlockId[]
-  sizes: Record<DashboardBlockId, DashboardBlockSize>
+  sizes: Record<DashboardBlockId, DashboardSpan>
 }
 
 /** Rascunho a partir do que está salvo (é o ponto de partida do modo de organizar). */
@@ -208,7 +228,7 @@ export function sameDraft(a: DashboardDraft, b: DashboardDraft): boolean {
  * campos por inteiro: o backend substitui o valor anterior, não mistura.
  */
 export function prefsToSave(draft: DashboardDraft): DashboardPrefs {
-  const sizes: Record<string, DashboardBlockSize> = {}
+  const sizes: Record<string, DashboardSpan> = {}
   for (const id of DEFAULT_ORDER) sizes[id] = draft.sizes[id] ?? DEFAULT_SIZES[id]
   return { order: [...draft.order], hidden: [...draft.hidden], sizes }
 }

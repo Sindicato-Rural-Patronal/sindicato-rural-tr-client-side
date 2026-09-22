@@ -1,9 +1,9 @@
 import { describe, it, expect } from 'vitest'
 import {
-  DEFAULT_ORDER, DEFAULT_SIZES, applyOrder, blockOrder, blockSizes, blockSpan, dashboardLayout,
+  DEFAULT_ORDER, DEFAULT_SIZES, applyOrder, blockOrder, blockSizes, dashboardLayout,
   defaultDraft, dropBlock, editableBlocks, normalizePrefs, prefsDraft, prefsToSave, sameDraft,
   setBlockSize, toggleHidden, visibleBlocks,
-  type DashboardBlockId,
+  type DashboardBlockId, type DashboardSpan,
 } from '@/components/dashboard/dashboard-prefs'
 import { quotesNotice } from '@/components/dashboard/quotes-notice'
 import { capacityLabel, capacityTone } from '@/components/dashboard/course-capacity'
@@ -94,67 +94,73 @@ describe('personalização do painel', () => {
 })
 
 describe('largura dos blocos', () => {
-  it('metade ocupa 1 coluna e inteira ocupa as 2', () => {
-    expect(blockSpan('half')).toBe(1)
-    expect(blockSpan('full')).toBe(2)
-  })
-
-  it('de fábrica: os grandes ocupam as 2 colunas e os cartões pequenos 1', () => {
+  it('de fábrica: os grandes ocupam as 4 colunas e os cartões pequenos 2', () => {
     expect(dashboardLayout(DEFAULT_ORDER, DEFAULT_SIZES).map(c => [c.id, c.span])).toEqual([
-      ['acoes', 2], ['numeros', 2], ['cotacoes', 2], ['financeiro', 2], ['agenda', 2],
-      ['cursos', 1], ['incompletos', 1], ['auditoria', 1],
+      ['acoes', 4], ['numeros', 4], ['cotacoes', 4], ['financeiro', 4], ['agenda', 4],
+      ['cursos', 2], ['incompletos', 2], ['auditoria', 2],
     ])
   })
 
-  it('bloco de meia largura SOZINHO continua com meia largura', () => {
-    // Era o bug: um "half" sem vizinho "half" virava linha de um item só e a
-    // tela desenhava em largura cheia — diminuir não mudava nada na tela.
-    expect(dashboardLayout(['numeros'], { ...DEFAULT_SIZES, numeros: 'half' }))
-      .toEqual([{ id: 'numeros', size: 'half', span: 1 }])
+  it('bloco estreito SOZINHO continua estreito', () => {
+    // Era o bug: um bloco sem vizinho virava linha de um item só e a tela
+    // desenhava em largura cheia — diminuir não mudava nada.
+    expect(dashboardLayout(['numeros'], { ...DEFAULT_SIZES, numeros: 2 }))
+      .toEqual([{ id: 'numeros', span: 2 }])
 
-    // Mesmo cercado por blocos de largura inteira, ele fica com 1 coluna.
-    const sizes = { ...DEFAULT_SIZES, numeros: 'half' as const }
-    expect(dashboardLayout(['acoes', 'numeros', 'agenda'], sizes).map(c => c.span)).toEqual([2, 1, 2])
+    // Mesmo cercado por blocos de linha inteira, ele fica com 2 colunas.
+    const sizes = { ...DEFAULT_SIZES, numeros: 2 as const }
+    expect(dashboardLayout(['acoes', 'numeros', 'agenda'], sizes).map(c => c.span)).toEqual([4, 2, 4])
 
     // E o último da lista também (não sobra "esticar porque acabou a lista").
-    expect(dashboardLayout(['acoes', 'auditoria'], DEFAULT_SIZES).map(c => c.span)).toEqual([2, 1])
+    expect(dashboardLayout(['acoes', 'auditoria'], DEFAULT_SIZES).map(c => c.span)).toEqual([4, 2])
   })
 
-  it('meia largura seguida de meia largura divide a linha (a grade junta as duas)', () => {
-    const sizes = { ...DEFAULT_SIZES, numeros: 'half' as const, agenda: 'half' as const }
-    expect(dashboardLayout(['numeros', 'agenda', 'cursos'], sizes).map(c => c.span)).toEqual([1, 1, 1])
+  it('as três larguras valem: 2, 3 e 4 colunas', () => {
+    const sizes = { ...DEFAULT_SIZES, numeros: 3 as const, agenda: 2 as const }
+    expect(dashboardLayout(['numeros', 'agenda', 'cursos'], sizes).map(c => c.span)).toEqual([3, 2, 2])
   })
 
-  it('largura que o servidor não conhece cai no padrão do bloco', () => {
-    // `sizes` sem a chave do bloco: vale a largura de fábrica dele.
-    const vazio = {} as Record<DashboardBlockId, 'full' | 'half'>
-    expect(dashboardLayout(['agenda', 'cursos'], vazio).map(c => c.span)).toEqual([2, 1])
+  it('largura que o servidor não mandou cai no padrão do bloco', () => {
+    const vazio = {} as Record<DashboardBlockId, DashboardSpan>
+    expect(dashboardLayout(['agenda', 'cursos'], vazio).map(c => c.span)).toEqual([4, 2])
   })
 
   it('troca a largura de um bloco só', () => {
-    const sizes = setBlockSize(DEFAULT_SIZES, 'agenda', 'half')
-    expect(sizes.agenda).toBe('half')
-    expect(sizes.numeros).toBe('full')
-    expect(DEFAULT_SIZES.agenda).toBe('full') // não estraga o padrão
+    const sizes = setBlockSize(DEFAULT_SIZES, 'agenda', 2)
+    expect(sizes.agenda).toBe(2)
+    expect(sizes.numeros).toBe(4)
+    expect(DEFAULT_SIZES.agenda).toBe(4) // não estraga o padrão
   })
 
-  it('largura inventada no servidor cai no padrão', () => {
-    expect(blockSizes({ sizes: { agenda: 'gigante', cursos: 'full', nada: 'half' } }))
-      .toEqual({ ...DEFAULT_SIZES, cursos: 'full' })
-    expect(blockSizes({ sizes: ['half'] as never })).toEqual(DEFAULT_SIZES)
+  it('painel personalizado antes das 4 colunas continua valendo', () => {
+    // Quem salvou no tempo do 'full'/'half' não pode ver o painel dele voltar
+    // ao padrão: 'full' vira 4 colunas e 'half' vira 2.
+    expect(blockSizes({ sizes: { agenda: 'half', numeros: 'full' } }))
+      .toEqual({ ...DEFAULT_SIZES, agenda: 2, numeros: 4 })
+  })
+
+  it('largura fora das três possíveis cai no padrão', () => {
+    // 1 e 5 colunas não existem; nem texto, nem fração.
+    expect(blockSizes({ sizes: { agenda: 1, cursos: 5, numeros: 2.5, cotacoes: 'gigante' } }))
+      .toEqual(DEFAULT_SIZES)
+  })
+
+  it('bloco que não existe e campo com tipo errado são ignorados', () => {
+    expect(blockSizes({ sizes: { nada: 3, cursos: 4 } })).toEqual({ ...DEFAULT_SIZES, cursos: 4 })
+    expect(blockSizes({ sizes: [2] as never })).toEqual(DEFAULT_SIZES)
   })
 })
 
 describe('rascunho do modo de organizar', () => {
   it('começa do que está salvo e sabe dizer se mudou', () => {
-    const salvo = prefsDraft({ hidden: ['cursos'], order: ['auditoria'], sizes: { agenda: 'half' } })
+    const salvo = prefsDraft({ hidden: ['cursos'], order: ['auditoria'], sizes: { agenda: 2 } })
     expect(salvo.order[0]).toBe('auditoria')
     expect(salvo.hidden).toEqual(['cursos'])
-    expect(salvo.sizes.agenda).toBe('half')
+    expect(salvo.sizes.agenda).toBe(2)
 
-    expect(sameDraft(salvo, prefsDraft({ hidden: ['cursos'], order: ['auditoria'], sizes: { agenda: 'half' } }))).toBe(true)
+    expect(sameDraft(salvo, prefsDraft({ hidden: ['cursos'], order: ['auditoria'], sizes: { agenda: 2 } }))).toBe(true)
     expect(sameDraft(salvo, { ...salvo, hidden: [] })).toBe(false)
-    expect(sameDraft(salvo, { ...salvo, sizes: setBlockSize(salvo.sizes, 'agenda', 'full') })).toBe(false)
+    expect(sameDraft(salvo, { ...salvo, sizes: setBlockSize(salvo.sizes, 'agenda', 4) })).toBe(false)
     expect(sameDraft(salvo, { ...salvo, order: dropBlock(salvo.order, 'auditoria', 'acoes') })).toBe(false)
   })
 
