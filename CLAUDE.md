@@ -37,8 +37,11 @@ Site institucional do **Sindicato Rural de Terra Roxa** (Paraná, Brasil). Plata
 /contato                    → _public/contato.tsx
 /convenios                  → _public/convenios/index.tsx (cartões dos convênios ativos)
 /convenios/$slug            → _public/convenios/$slug.tsx (tabela de valores, documentos, sobre)
-/cotacao                    → cotacao.tsx (tela enxuta para mandar em grupo: cotações do dia,
-                              "Copiar para o grupo" e WhatsApp; FORA do layout _public)
+/cotacao                    → cotacao.tsx (tela enxuta das cotações do dia, no espírito da página
+                              antiga /mobile/cotacao.php: logo, data, um cartão por produto e o dólar
+                              à parte; FORA do layout _public. Sem botão de copiar/compartilhar — para
+                              mandar em grupo basta copiar o endereço. O servidor injeta a prévia do
+                              link com os preços, ver server/cotacao-resumo.mjs)
 /login                      → login.tsx
 /admin                      → _admin/admin/index.tsx (redirect → /admin/cursos)
 /admin/cursos               → _admin/admin/cursos/index.tsx (CRUD completo em diálogos: criar, editar, duplicar, inscrições; ?curso=<id>&aba=inscricoes abre a janela do curso)
