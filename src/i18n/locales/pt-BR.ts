@@ -89,7 +89,6 @@ const ptBR = {
     instructor: 'Instrutor',
     instructors: 'Instrutores',
     spots: 'Vagas',
-    spotsCount: '{{enrolled}} / {{max}} inscritos',
     spotsLeft_one: '{{count}} vaga restante',
     spotsLeft_other: '{{count}} vagas restantes',
     spotsFull: 'Vagas esgotadas',

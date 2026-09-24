@@ -580,10 +580,9 @@ function RouteComponent() {
     )
   }
 
+  // Quantas vagas ainda há. Quantos JÁ se inscreveram não aparece no site: é
+  // informação interna do Sindicato, e o visitante só precisa saber se cabe ele.
   const spotsLeft = Math.max(0, course.maxStudents - course.enrolled)
-  const occupancyPercent = course.maxStudents > 0
-    ? Math.min(100, Math.round((course.enrolled / course.maxStudents) * 100))
-    : 100
   const isFull = spotsLeft <= 0
 
   // Prazo: até o fim do dia em Brasília, ou até a hora quando o painel informou;
@@ -755,16 +754,7 @@ function RouteComponent() {
                   <Users className="mt-0.5 size-4 shrink-0 text-primary" />
                   <div>
                     <p className="font-medium">{t('courseDetail.spots')}</p>
-                    <p className="text-muted-foreground">
-                      {t('courseDetail.spotsCount', { enrolled: course.enrolled, max: course.maxStudents })}
-                    </p>
-                    <div className="mt-1.5 h-1.5 w-full rounded-full bg-muted overflow-hidden">
-                      <div
-                        className={`h-full rounded-full transition-all ${isFull ? 'bg-destructive' : 'bg-primary'}`}
-                        style={{ width: `${occupancyPercent}%` }}
-                      />
-                    </div>
-                    <p className={`mt-1 text-xs ${isFull ? 'text-destructive font-medium' : 'text-muted-foreground'}`}>
+                    <p className={`text-sm ${isFull ? 'text-destructive font-medium' : 'text-muted-foreground'}`}>
                       {isFull
                         ? t('courseDetail.spotsFull')
                         : t('courseDetail.spotsLeft', { count: spotsLeft })}
