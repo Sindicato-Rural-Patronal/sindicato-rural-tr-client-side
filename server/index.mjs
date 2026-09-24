@@ -1,5 +1,5 @@
 // Servidor mínimo que serve o SPA (dist/) e injeta meta OpenGraph dinâmicas
-// em /cursos/:id e /noticias/:id — para preview de link em WhatsApp/redes,
+// em /cursos/:id, /noticias/:id e /cotacao — para preview de link em WhatsApp/redes,
 // cujos crawlers não executam JS. Demais rotas caem no index.html (SPA).
 import Fastify from 'fastify'
 import fastifyStatic from '@fastify/static'
@@ -8,6 +8,7 @@ import { existsSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { dirname, join, normalize } from 'node:path'
 import { markdownToText } from './markdown-text.mjs'
+import { diaDaCotacao, resumoDaCotacao } from './cotacao-resumo.mjs'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const DIST = join(__dirname, '..', 'dist')
@@ -92,6 +93,24 @@ app.get('/noticias/:id', async (req, reply) => {
   return sendHtml(
     reply,
     inject(indexHtml, { title: n.title, description: n.summary, image: n.bannerUrl, url: reqUrl(req) }),
+  )
+})
+
+// A tela enxuta das cotações é feita para circular em grupo de WhatsApp: a
+// prévia do link precisa JÁ mostrar os preços, senão o link no grupo não diz
+// nada e ninguém abre.
+app.get('/cotacao', async (req, reply) => {
+  const quotes = await fetchJson('/market-quotes')
+  if (!Array.isArray(quotes) || quotes.length === 0) return sendHtml(reply, indexHtml)
+  const dia = diaDaCotacao(quotes)
+  return sendHtml(
+    reply,
+    inject(indexHtml, {
+      title: dia ? `Cotações de ${dia}` : 'Cotações do dia',
+      description: resumoDaCotacao(quotes),
+      image: null,
+      url: reqUrl(req),
+    }),
   )
 })
 

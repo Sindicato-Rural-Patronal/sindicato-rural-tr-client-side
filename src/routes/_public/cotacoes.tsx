@@ -1,6 +1,6 @@
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, Link } from '@tanstack/react-router'
 import { useMemo, useState } from 'react'
-import { LineChart, Minus, Table2, TrendingDown, TrendingUp } from 'lucide-react'
+import { LineChart, Minus, Share2, Table2, TrendingDown, TrendingUp } from 'lucide-react'
 import { QuoteHistoryChart } from '@/components/cotacoes/QuoteHistoryChart'
 import { Skeleton } from '@/components/ui/skeleton'
 import { LoadErrorRetry } from '@/components/LoadErrorRetry'
@@ -87,6 +87,12 @@ function CotacoesPage() {
             <div className="mb-4 flex flex-wrap items-baseline gap-2">
               <h2 className="text-lg font-bold text-foreground">Cotações do dia</h2>
               {diaDeReferencia && <span className="text-sm text-muted-foreground">{diaDeReferencia}</span>}
+              <Link
+                to="/cotacao"
+                className="ml-auto inline-flex min-h-11 items-center gap-1.5 text-sm font-medium text-primary hover:underline sm:min-h-0"
+              >
+                <Share2 className="size-4" /> Mandar no grupo
+              </Link>
             </div>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
               {doDia.map(q => <QuoteDayCard key={q.id} quote={q} />)}

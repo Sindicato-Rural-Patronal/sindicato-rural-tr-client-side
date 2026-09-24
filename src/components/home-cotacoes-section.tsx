@@ -4,7 +4,7 @@ import { usePublicSiteSettings } from '@/hooks/useSiteSettings'
 import { useMarketQuotes, type MarketQuote } from '@/hooks/useMarketQuotes'
 import { LoadErrorRetry } from '@/components/LoadErrorRetry'
 import { QuoteDayCard } from '@/components/cotacoes/QuoteDayCard'
-import { ArrowRight, TrendingUp } from 'lucide-react'
+import { ArrowRight, Share2, TrendingUp } from 'lucide-react'
 
 function timeAgo(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime()
@@ -124,6 +124,12 @@ export function CotacoesSection() {
                 Atualizado {timeAgo(lastUpdated)}
               </span>
             )}
+            <Link
+              to="/cotacao"
+              className="inline-flex min-h-11 items-center gap-1 text-xs font-medium text-primary hover:underline sm:min-h-0"
+            >
+              <Share2 className="size-3.5" /> Mandar no grupo
+            </Link>
             <Link
               to="/cotacoes"
               className="inline-flex min-h-11 items-center gap-1 text-xs font-medium text-primary hover:underline sm:min-h-0"
