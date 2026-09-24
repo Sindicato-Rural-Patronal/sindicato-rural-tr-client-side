@@ -789,12 +789,29 @@ function RegistrationsTab({
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-1.5 flex-wrap">
                   <p className="text-sm font-medium text-foreground wrap-break-word">{reg.userData.name}</p>
-                  {minor && (
+                  {/* A idade aparece para TODO mundo: quem organiza o curso precisa
+                      saber a faixa da turma, não só quem é menor. Vermelho só para
+                      o menor, que exige assinatura do responsável. */}
+                  {age === null ? (
+                    <span
+                      className="inline-flex items-center rounded-full border border-border bg-muted px-1.5 text-[10px] font-medium text-muted-foreground"
+                      title="Sem data de nascimento no cadastro"
+                    >
+                      Idade não informada
+                    </span>
+                  ) : minor ? (
                     <span
                       className="inline-flex items-center rounded-full border border-red-300 bg-red-100 px-1.5 text-[10px] font-semibold text-red-700 dark:border-red-900 dark:bg-red-950/40 dark:text-red-400"
                       title="Menor de idade — precisa da assinatura do responsável na ficha"
                     >
                       Menor · {age} anos
+                    </span>
+                  ) : (
+                    <span
+                      className="inline-flex items-center rounded-full border border-sky-200 bg-sky-100 px-1.5 text-[10px] font-medium text-sky-700 dark:border-sky-900 dark:bg-sky-950/40 dark:text-sky-400"
+                      title="Maior de idade"
+                    >
+                      {age} anos
                     </span>
                   )}
                   {isActiveMember(reg.userData.memberStatus, reg.userData.membershipValidUntil) && (
