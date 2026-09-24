@@ -38,7 +38,7 @@ import {
 } from '@/components/ui/dialog'
 import {
   ArrowLeft, Calendar, CalendarPlus, CheckCircle2, Clock, FileDown, GraduationCap, MapPin, RefreshCw,
-  User, Users, Search, UserCheck, WifiOff,
+  User, Search, UserCheck, WifiOff,
 } from 'lucide-react'
 import { FaLinkedin, FaInstagram, FaFacebook, FaWhatsapp } from 'react-icons/fa'
 
@@ -580,11 +580,6 @@ function RouteComponent() {
     )
   }
 
-  // Quantas vagas ainda há. Quantos JÁ se inscreveram não aparece no site: é
-  // informação interna do Sindicato, e o visitante só precisa saber se cabe ele.
-  const spotsLeft = Math.max(0, course.maxStudents - course.enrolled)
-  const isFull = spotsLeft <= 0
-
   // Prazo: até o fim do dia em Brasília, ou até a hora quando o painel informou;
   // o curso aceita inscrição até o último dia (mesma regra do backend).
   const registrationClosed = isRegistrationDeadlinePassed(course.registrationDeadline, course.registrationDeadlineTime)
@@ -749,18 +744,6 @@ function RouteComponent() {
                     </div>
                   </div>
                 )}
-
-                <div className="flex items-start gap-2.5">
-                  <Users className="mt-0.5 size-4 shrink-0 text-primary" />
-                  <div>
-                    <p className="font-medium">{t('courseDetail.spots')}</p>
-                    <p className={`text-sm ${isFull ? 'text-destructive font-medium' : 'text-muted-foreground'}`}>
-                      {isFull
-                        ? t('courseDetail.spotsFull')
-                        : t('courseDetail.spotsLeft', { count: spotsLeft })}
-                    </p>
-                  </div>
-                </div>
 
                 {course.registrationDeadline && (
                   <div className={`rounded-lg px-3 py-2 text-xs ${registrationClosed ? 'border border-destructive/20 bg-destructive/5 text-destructive' : 'bg-muted/60 text-muted-foreground'}`}>
