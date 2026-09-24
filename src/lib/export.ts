@@ -52,8 +52,35 @@ export function exportBody(params: ExportParams): Record<string, string | string
   return body
 }
 
-/** Baixa a planilha e devolve quantos registros vieram (-1 se não souber). */
-export async function downloadExport(dataset: ExportDataset, params: ExportParams = {}): Promise<number> {
+/** Nome amigável do relatório, para o título dentro do PDF. */
+const TITULO: Record<ExportDataset, string> = {
+  people: 'Pessoas',
+  companies: 'Empresas',
+  properties: 'Propriedades',
+  admins: 'Administradores',
+  courses: 'Cursos',
+  registrations: 'Inscrições',
+  'contact-messages': 'Mensagens de contato',
+  unimed: 'Beneficiários Unimed',
+  'audit-logs': 'Auditoria',
+  'room-bookings': 'Reservas de sala',
+  cadastros: 'Relatório de cadastros',
+}
+
+export type ExportFormat = 'csv' | 'pdf'
+
+/**
+ * Baixa o relatório e devolve quantos registros vieram (-1 se não souber).
+ *
+ * O servidor sempre manda CSV; o PDF é montado aqui a partir dele, como os
+ * outros PDFs do painel. Assim as colunas continuam definidas num lugar só (o
+ * backend) e o PDF nunca discorda da planilha.
+ */
+export async function downloadExport(
+  dataset: ExportDataset,
+  params: ExportParams = {},
+  format: ExportFormat = 'csv',
+): Promise<number> {
   const res = await apiFetch(`/admin/export/${dataset}`, {
     method: 'POST',
     body: JSON.stringify(exportBody(params)),
@@ -63,7 +90,14 @@ export async function downloadExport(dataset: ExportDataset, params: ExportParam
   const disposition = res.headers.get('Content-Disposition') ?? ''
   const today = new Date().toISOString().slice(0, 10)
   const filename = disposition.match(/filename="([^"]+)"/)?.[1] ?? `${FALLBACK_NAME[dataset]}-${today}.csv`
-  saveBlob(blob, filename)
+
+  if (format === 'pdf') {
+    // O react-pdf é pesado: só entra no pacote de quem pede um PDF.
+    const { saveRelatorioPdf } = await import('@/lib/relatorio-pdf')
+    await saveRelatorioPdf(await blob.text(), TITULO[dataset], filename.replace(/\.csv$/i, '.pdf'))
+  } else {
+    saveBlob(blob, filename)
+  }
 
   // Header ausente (ex.: CORS sem expor) não pode virar "0 registros"
   const header = res.headers.get('X-Export-Count')

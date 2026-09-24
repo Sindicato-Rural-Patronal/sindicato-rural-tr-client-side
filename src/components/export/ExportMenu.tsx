@@ -1,12 +1,12 @@
 import { useState } from 'react'
 import { toast } from 'sonner'
-import { Download, Loader2, X } from 'lucide-react'
+import { Download, FileSpreadsheet, FileText, Loader2, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { apiErrorMessage } from '@/lib/api-error-message'
-import { downloadExport, type ExportDataset, type ExportParams } from '@/lib/export'
+import { downloadExport, type ExportDataset, type ExportFormat, type ExportParams } from '@/lib/export'
 import { cn } from '@/lib/utils'
 
 export type ExportExtraItem = {
@@ -16,10 +16,15 @@ export type ExportExtraItem = {
   disabled?: boolean
 }
 
-async function runExport(dataset: ExportDataset, params: ExportParams) {
+async function runExport(dataset: ExportDataset, params: ExportParams, format: ExportFormat = 'csv') {
+  const nome = format === 'pdf' ? 'Relatório' : 'Planilha'
   try {
-    const count = await downloadExport(dataset, params)
-    toast.success(count === 1 ? 'Planilha com 1 registro baixada.' : count >= 0 ? `Planilha com ${count} registros baixada.` : 'Planilha baixada.')
+    const count = await downloadExport(dataset, params, format)
+    toast.success(
+      count === 1 ? `${nome} com 1 registro baixado.`
+        : count >= 0 ? `${nome} com ${count} registros baixado.`
+          : `${nome} baixado.`,
+    )
   } catch (err) {
     toast.error(apiErrorMessage(err, 'Erro ao exportar.'))
   }
@@ -44,9 +49,9 @@ export function ExportMenu({ dataset, filters = {}, selectedIds = [], total, fil
 }) {
   const [busy, setBusy] = useState(false)
 
-  async function run(ds: ExportDataset, params: ExportParams) {
+  async function run(ds: ExportDataset, params: ExportParams, format: ExportFormat = 'csv') {
     setBusy(true)
-    await runExport(ds, params)
+    await runExport(ds, params, format)
     setBusy(false)
   }
 
@@ -64,9 +69,24 @@ export function ExportMenu({ dataset, filters = {}, selectedIds = [], total, fil
       <DropdownMenuContent align="end" className="w-64">
         <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">Planilha CSV (abre no Excel)</DropdownMenuLabel>
         <DropdownMenuItem disabled={n === 0} onSelect={() => run(dataset, { ids: selectedIds })}>
+          <FileSpreadsheet className="size-4" />
           {n > 0 ? `Selecionados (${n})` : 'Selecionados (marque na lista)'}
         </DropdownMenuItem>
         <DropdownMenuItem disabled={total === 0} onSelect={() => run(dataset, filters)}>
+          <FileSpreadsheet className="size-4" />
+          {allLabel}
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        {/* O PDF sai do mesmo dado, com as colunas que cabem no papel. */}
+        <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">
+          Relatório em PDF (para imprimir)
+        </DropdownMenuLabel>
+        <DropdownMenuItem disabled={n === 0} onSelect={() => run(dataset, { ids: selectedIds }, 'pdf')}>
+          <FileText className="size-4" />
+          {n > 0 ? `Selecionados (${n})` : 'Selecionados (marque na lista)'}
+        </DropdownMenuItem>
+        <DropdownMenuItem disabled={total === 0} onSelect={() => run(dataset, filters, 'pdf')}>
+          <FileText className="size-4" />
           {allLabel}
         </DropdownMenuItem>
         {extra.length > 0 && <DropdownMenuSeparator />}

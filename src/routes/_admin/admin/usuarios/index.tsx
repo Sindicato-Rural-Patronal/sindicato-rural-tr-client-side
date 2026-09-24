@@ -18,6 +18,9 @@ import {
   DialogDescription, DialogFooter,
 } from '@/components/ui/dialog'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -27,7 +30,7 @@ import {
   Table, TableHeader, TableBody,
   TableRow, TableHead, TableCell,
 } from '@/components/ui/table'
-import { AlertCircle, BadgeCheck, Plus, Shield, Users, Pencil, Trash2, ExternalLink, Globe, ChevronDown, X, SlidersHorizontal, Building2, Download, Loader2, Copy } from 'lucide-react'
+import { AlertCircle, BadgeCheck, FileSpreadsheet, FileText, Plus, Shield, Users, Pencil, Trash2, ExternalLink, Globe, ChevronDown, X, SlidersHorizontal, Building2, Download, Loader2, Copy } from 'lucide-react'
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
@@ -43,7 +46,7 @@ import { CompaniesList } from '@/components/cadastro/CompaniesList'
 import { DuplicatePeopleList } from '@/components/cadastro/DuplicatePeopleList'
 import { useAdminCompanies } from '@/hooks/useCompanies'
 import { MEMBER_TYPES } from '@/lib/member-types'
-import { downloadExport, type ExportDataset, type ExportParams } from '@/lib/export'
+import { downloadExport, type ExportDataset, type ExportFormat, type ExportParams } from '@/lib/export'
 import { useRowSelection } from '@/hooks/useRowSelection'
 import { ExportMenu, SelectCheckbox, SelectionInfo } from '@/components/export/ExportMenu'
 import { PersonPicker, type PickedPerson } from '@/components/PersonPicker'
@@ -864,10 +867,10 @@ function RouteComponent() {
 
   const [baixandoRelatorio, setBaixandoRelatorio] = useState(false)
 
-  async function baixarRelatorio() {
+  async function baixarRelatorio(formato: ExportFormat) {
     setBaixandoRelatorio(true)
     try {
-      const n = await downloadExport('cadastros')
+      const n = await downloadExport('cadastros', {}, formato)
       toast.success(`Relatório de cadastros baixado (${n} registros).`)
     } catch (e) {
       toast.error(apiErrorMessage(e, 'Não foi possível gerar o relatório.'))
@@ -961,12 +964,24 @@ function RouteComponent() {
             {/* Os quatro tipos num arquivo só. Pede READ_USER_ADMIN porque
                 traz os administradores junto. */}
             {can('READ_USER_ADMIN') && (
-              <Button variant="outline" disabled={baixandoRelatorio} onClick={() => void baixarRelatorio()}>
-                {baixandoRelatorio
-                  ? <Loader2 className="size-4 animate-spin" />
-                  : <Download className="size-4" />}
-                Relatório de cadastros
-              </Button>
+              <DropdownMenu modal={false}>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" className="gap-2" disabled={baixandoRelatorio}>
+                    {baixandoRelatorio
+                      ? <Loader2 className="size-4 animate-spin" />
+                      : <Download className="size-4" />}
+                    Relatório de cadastros
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-60">
+                  <DropdownMenuItem onSelect={() => void baixarRelatorio('csv')}>
+                    <FileSpreadsheet className="size-4" /> Planilha CSV (abre no Excel)
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onSelect={() => void baixarRelatorio('pdf')}>
+                    <FileText className="size-4" /> Relatório em PDF (para imprimir)
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             )}
           </div>
         </div>
