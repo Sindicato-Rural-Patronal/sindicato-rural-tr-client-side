@@ -26,6 +26,8 @@ import {
 import { apiFetch } from '@/lib/api'
 import { useAdminUsers, type UserDataDetail } from '@/hooks/useAdmin'
 import { useAdminCompanies, companyDisplayName, type CompanyDetail } from '@/hooks/useCompanies'
+import { useOrgInfo } from '@/hooks/useSiteSettings'
+import { ORG_CONTACT } from '@/lib/org-contact'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -209,6 +211,31 @@ function DashboardTab({ enabled, onDrill }: {
   )
   const { data, isLoading, isError } = useFinanceSummary(range, { enabled })
   const [pdfBusy, setPdfBusy] = useState(false)
+  const [empenhoBusy, setEmpenhoBusy] = useState(false)
+  const org = useOrgInfo()
+
+  /** "DESPESAS / RELATÓRIO", no formato que o sindicato já usa em papel. */
+  async function handleEmpenhoPdf() {
+    setEmpenhoBusy(true)
+    try {
+      const [{ downloadRelatorioEmpenhoPdf }, txns] = await Promise.all([
+        import('@/lib/relatorio-empenho-pdf'),
+        fetchFinanceTransactionsForRange(range),
+      ])
+      await downloadRelatorioEmpenhoPdf(txns, {
+        nome: 'SINDICATO RURAL DE TERRA ROXA / PR',
+        cnpj: ORG_CONTACT.cnpj,
+        endereco: org.street,
+        cepCidade: `CEP: ${org.zip} / ${org.city.toUpperCase()} / ${org.state}`,
+        telefone: org.phone,
+        site: 'www.ruraltr.com.br',
+      }, range)
+    } catch (e) {
+      toast.error(apiErrorMessage(e, 'Erro ao gerar o relatório de despesas.'))
+    } finally {
+      setEmpenhoBusy(false)
+    }
+  }
 
   async function handlePdf() {
     if (!data) return
@@ -250,9 +277,14 @@ function DashboardTab({ enabled, onDrill }: {
             <Input type="date" className="h-8 w-[150px]" value={custom.to} min={custom.from} onChange={e => setCustom(c => ({ ...c, to: e.target.value }))} aria-label="Data final" />
           </span>
         )}
-        <Button size="sm" variant="outline" className="h-8 ml-auto" disabled={pdfBusy || isLoading || !data} onClick={handlePdf}>
-          <FileDown className="size-4" /> {pdfBusy ? 'Gerando...' : 'Baixar PDF'}
-        </Button>
+        <div className="ml-auto flex items-center gap-2">
+          <Button size="sm" variant="outline" className="h-8" disabled={empenhoBusy} onClick={() => void handleEmpenhoPdf()}>
+            <Receipt className="size-4" /> {empenhoBusy ? 'Gerando...' : 'Relatório de despesas'}
+          </Button>
+          <Button size="sm" variant="outline" className="h-8" disabled={pdfBusy || isLoading || !data} onClick={handlePdf}>
+            <FileDown className="size-4" /> {pdfBusy ? 'Gerando...' : 'Baixar PDF'}
+          </Button>
+        </div>
       </div>
 
       {isError && <LoadErrorBanner message="Erro ao carregar o resumo financeiro." />}
