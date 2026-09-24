@@ -97,7 +97,7 @@ export type CompanyFilters = {
 
 // ── Consultas ─────────────────────────────────────────────────────────────────
 
-export function useAdminCompanies(filters: CompanyFilters = {}) {
+export function useAdminCompanies(filters: CompanyFilters = {}, options: { enabled?: boolean } = {}) {
   const { page = 1, limit = 20, search, type, isPartner } = filters
   const qs = new URLSearchParams({ page: String(page), limit: String(limit) })
   if (search?.trim()) qs.set('search', search.trim())
@@ -107,6 +107,7 @@ export function useAdminCompanies(filters: CompanyFilters = {}) {
     queryKey: ['admin', 'companies', 'list', page, limit, search?.trim() ?? '', type ?? '', isPartner ?? ''],
     queryFn: () => apiFetch(`/admin/companies?${qs}`).then(r => r.json()),
     placeholderData: keepPreviousData,
+    enabled: options.enabled ?? true,
   })
 }
 

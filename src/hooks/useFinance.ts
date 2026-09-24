@@ -32,9 +32,11 @@ export type Empenho = {
   conta?: string
   agencia?: string
   cheque?: string
-  // Vínculo opcional com um Usuário cadastrado (fonte dos dados do fornecedor).
-  // Os demais campos ficam como snapshot da emissão da nota.
+  // Vínculo opcional com o cadastro de onde vieram os dados do fornecedor: uma
+  // pessoa (`usuarioId`) OU uma empresa (`empresaId`). Os demais campos ficam
+  // como snapshot da emissão da nota.
   usuarioId?: string
+  empresaId?: string
 }
 
 export type FinanceCategory = {
