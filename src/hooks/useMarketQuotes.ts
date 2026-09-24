@@ -13,6 +13,9 @@ export type MarketQuote = {
   /** Unidade fixa do produto ("sc 60kg", "t"); null no dólar. */
   unit: string | null
   period: QuotePeriod | null
+  /** Preços do dia de referência; null = aquele período não foi lançado. */
+  morningCents: number | null
+  afternoonCents: number | null
   variation: string | null
   referenceDate: string | null
   isActive: boolean

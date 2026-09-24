@@ -4,7 +4,8 @@ import { LineChart, Minus, Table2, TrendingDown, TrendingUp } from 'lucide-react
 import { QuoteHistoryChart } from '@/components/cotacoes/QuoteHistoryChart'
 import { Skeleton } from '@/components/ui/skeleton'
 import { LoadErrorRetry } from '@/components/LoadErrorRetry'
-import { useQuoteHistory, type QuoteHistorySeries } from '@/hooks/useMarketQuotes'
+import { useMarketQuotes, useQuoteHistory, type QuoteHistorySeries } from '@/hooks/useMarketQuotes'
+import { QuoteDayCard } from '@/components/cotacoes/QuoteDayCard'
 import { usePublicSiteSettings } from '@/hooks/useSiteSettings'
 import { useSeo } from '@/hooks/useSeo'
 import { QUOTE_PERIOD_LABEL, pointX, quoteProductLabel, quoteUnitLong } from '@/lib/quote-utils'
@@ -54,6 +55,14 @@ function CotacoesPage() {
   const { data: series, isLoading, isError, isFetching, refetch, isPlaceholderData } = useQuoteHistory(days)
   const { data: settings } = usePublicSiteSettings()
   const source = settings?.quotesSource?.trim()
+  // Os preços de hoje abrem a página, no formato da página antiga; o histórico
+  // vem embaixo. Quem entra aqui quase sempre quer só "quanto está hoje".
+  const { data: hoje } = useMarketQuotes()
+  const doDia = hoje ?? []
+  const diaDeReferencia = (() => {
+    const dia = doDia.map(q => q.referenceDate).filter(Boolean).sort().at(-1)
+    return dia ? formatDateFromString(dia.slice(0, 10)) : null
+  })()
 
   // Mesmo eixo X para todos os produtos: os gráficos ficam alinhados.
   const domain = useMemo<[number, number]>(() => {
@@ -72,8 +81,23 @@ function CotacoesPage() {
         </div>
       </section>
 
+      {doDia.length > 0 && (
+        <section className="border-b border-border bg-muted/30 py-8">
+          <div className="container mx-auto max-w-6xl px-4">
+            <div className="mb-4 flex flex-wrap items-baseline gap-2">
+              <h2 className="text-lg font-bold text-foreground">Cotações do dia</h2>
+              {diaDeReferencia && <span className="text-sm text-muted-foreground">{diaDeReferencia}</span>}
+            </div>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              {doDia.map(q => <QuoteDayCard key={q.id} quote={q} />)}
+            </div>
+          </div>
+        </section>
+      )}
+
       <section className="py-10 md:py-14">
         <div className="container mx-auto flex max-w-6xl flex-col gap-6 px-4">
+          <h2 className="text-lg font-bold text-foreground">Histórico</h2>
           <div className="flex flex-wrap items-center gap-3">
             <Segmented
               label="Período"
