@@ -23,14 +23,16 @@ export function AjudaLink({ topico, titulo, className }: {
       aria-label={`Ajuda sobre ${titulo}`}
       title="Como usar esta tela"
       className={cn(
-        'inline-flex size-11 shrink-0 items-center justify-center rounded-lg text-muted-foreground',
+        // 44px no toque (a regra de alvo do projeto) e 36px no computador, onde
+        // o ponteiro é preciso e um botão grande brigaria com o título.
+        'inline-flex size-11 shrink-0 items-center justify-center rounded-lg text-muted-foreground md:size-9',
         'transition-colors hover:bg-accent hover:text-foreground',
         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
         'print:hidden',
         className,
       )}
     >
-      <HelpCircle className="size-5" aria-hidden />
+      <HelpCircle className="size-5 md:size-4" aria-hidden />
     </Link>
   )
 }

@@ -136,8 +136,8 @@ export function CotacoesSection() {
         {marquee ? (
           <div ref={wrapperRef} className="relative w-full overflow-hidden">
             <div ref={trackRef} className="flex w-max gap-3 cotacoes-track-scroll">
-              {quotes.map(q => <QuoteDayCard key={q.id} quote={q} className="w-56 shrink-0 snap-start" />)}
-              {quotes.map(q => <QuoteDayCard key={`dup-${q.id}`} quote={q} className="w-56 shrink-0 snap-start" />)}
+              {quotes.map(q => <QuoteDayCard key={q.id} quote={q} className="w-60 shrink-0 snap-start" />)}
+              {quotes.map(q => <QuoteDayCard key={`dup-${q.id}`} quote={q} className="w-60 shrink-0 snap-start" />)}
             </div>
           </div>
         ) : (
@@ -145,7 +145,7 @@ export function CotacoesSection() {
           // começando da esquerda quando não cabe (senão a ponta esquerda some).
           <div ref={wrapperRef} className="relative w-full snap-x overflow-x-auto pb-1">
             <div ref={trackRef} className="mx-auto flex w-max gap-3">
-              {quotes.map(q => <QuoteDayCard key={q.id} quote={q} className="w-56 shrink-0 snap-start" />)}
+              {quotes.map(q => <QuoteDayCard key={q.id} quote={q} className="w-60 shrink-0 snap-start" />)}
             </div>
           </div>
         )}

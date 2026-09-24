@@ -115,6 +115,21 @@ const COLUNAS_PREFERIDAS = [
 /** No máximo isto de colunas por tabela: mais que isso não se lê no papel. */
 const MAX_COLUNAS = 7
 
+/**
+ * Quanto cada coluna pesa na largura da tabela do PDF. Nome ocupa espaço;
+ * CPF e telefone têm tamanho fixo e curto. Dar a todos a mesma fatia gasta
+ * papel com documento e espreme justamente o nome, que é o que se procura.
+ */
+const PESO_POR_COLUNA: { termos: string[]; peso: number }[] = [
+  { termos: ['Nome', 'Razão social', 'Nome fantasia', 'Título', 'Descrição'], peso: 3 },
+  { termos: ['E-mail', 'Cidade', 'Observações'], peso: 2 },
+  { termos: ['CPF', 'CNPJ', 'Telefone', 'Data', 'Início', 'Valor', 'Nº do evento'], peso: 1 },
+]
+
+export function pesoDaColuna(cabecalho: string): number {
+  return PESO_POR_COLUNA.find(g => g.termos.includes(cabecalho))?.peso ?? 1.5
+}
+
 export function pdfColumns(header: string[]): number[] {
   const escolhidas = COLUNAS_PREFERIDAS
     .map(nome => header.indexOf(nome))

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { parseCsv, parseCsvSections, pdfColumns } from '@/lib/csv-parse'
+import { parseCsv, parseCsvSections, pdfColumns, pesoDaColuna } from '@/lib/csv-parse'
 
 // O backend gera: BOM, separador ";", CRLF e toda célula entre aspas.
 const csv = (linhas: string[]) => `\ufeff${linhas.join('\r\n')}\r\n`
@@ -95,5 +95,30 @@ describe('pdfColumns', () => {
     const header = ['Razão social', 'Nome fantasia', 'CNPJ', 'Sócios', 'Telefone']
     expect(pdfColumns(header).map(i => header[i]))
       .toEqual(['Razão social', 'Nome fantasia', 'CNPJ', 'Telefone'])
+  })
+})
+
+describe('pesoDaColuna', () => {
+  it('nome pesa mais que documento', () => {
+    // Documento tem tamanho fixo e curto; nome é o que se procura na folha.
+    expect(pesoDaColuna('Nome')).toBeGreaterThan(pesoDaColuna('CPF'))
+    expect(pesoDaColuna('Razão social')).toBeGreaterThan(pesoDaColuna('CNPJ'))
+    expect(pesoDaColuna('E-mail')).toBeGreaterThan(pesoDaColuna('Telefone'))
+  })
+
+  it('coluna desconhecida fica no meio termo', () => {
+    const meio = pesoDaColuna('Coluna Nova')
+    expect(meio).toBeGreaterThan(pesoDaColuna('CPF'))
+    expect(meio).toBeLessThan(pesoDaColuna('Nome'))
+  })
+
+  it('as larguras de uma tabela de pessoas somam 100%', () => {
+    const header = ['Nome', 'CPF', 'Telefone', 'E-mail']
+    const pesos = header.map(pesoDaColuna)
+    const soma = pesos.reduce((a, b) => a + b, 0)
+    const larguras = pesos.map(p => (p / soma) * 100)
+    expect(larguras.reduce((a, b) => a + b, 0)).toBeCloseTo(100)
+    // O nome fica com a maior fatia.
+    expect(Math.max(...larguras)).toBe(larguras[0])
   })
 })

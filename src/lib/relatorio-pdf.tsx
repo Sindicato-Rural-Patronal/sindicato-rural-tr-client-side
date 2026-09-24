@@ -1,6 +1,6 @@
 import { Document, Page, View, Text, StyleSheet, pdf } from '@react-pdf/renderer'
 import { saveBlob } from '@/utils/download'
-import { parseCsvSections, pdfColumns, type CsvSection } from '@/lib/csv-parse'
+import { parseCsvSections, pdfColumns, pesoDaColuna, type CsvSection } from '@/lib/csv-parse'
 
 // Relatório em PDF: a MESMA planilha que o CSV traz, montada para o papel.
 // Deitado (A4 landscape) porque tabela em pé não cabe, e com só as colunas que
@@ -32,15 +32,16 @@ const styles = StyleSheet.create({
   },
 })
 
-/** Larguras proporcionais: a primeira coluna (o nome) ganha o dobro. */
-function largura(indice: number, total: number): string {
-  const pesos = Array.from({ length: total }, (_, i) => (i === 0 ? 2 : 1))
+/** Larguras proporcionais ao tipo do campo (ver `pesoDaColuna`). */
+function larguras(cabecalhos: string[]): string[] {
+  const pesos = cabecalhos.map(pesoDaColuna)
   const soma = pesos.reduce((a, b) => a + b, 0)
-  return `${(pesos[indice] / soma) * 100}%`
+  return pesos.map(p => `${(p / soma) * 100}%`)
 }
 
 function Tabela({ secao }: { secao: CsvSection }) {
   const colunas = pdfColumns(secao.header)
+  const larguraDe = larguras(colunas.map(c => secao.header[c]))
 
   return (
     <View>
@@ -52,7 +53,7 @@ function Tabela({ secao }: { secao: CsvSection }) {
           {/* `fixed` repete o cabeçalho quando a tabela vira a página. */}
           <View style={styles.linhaCabecalho} fixed>
             {colunas.map((c, i) => (
-              <Text key={c} style={[styles.celulaCabecalho, { width: largura(i, colunas.length) }]}>
+              <Text key={c} style={[styles.celulaCabecalho, { width: larguraDe[i] }]}>
                 {secao.header[c]}
               </Text>
             ))}
@@ -60,7 +61,7 @@ function Tabela({ secao }: { secao: CsvSection }) {
           {secao.rows.map((linha, n) => (
             <View key={n} style={styles.linha} wrap={false}>
               {colunas.map((c, i) => (
-                <Text key={c} style={[styles.celula, { width: largura(i, colunas.length) }]}>
+                <Text key={c} style={[styles.celula, { width: larguraDe[i] }]}>
                   {linha[c] ?? ''}
                 </Text>
               ))}
