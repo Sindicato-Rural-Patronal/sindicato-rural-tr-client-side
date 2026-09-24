@@ -16,6 +16,8 @@ export type ExportDataset =
   | 'unimed'
   | 'audit-logs'
   | 'room-bookings'
+  /** Relatório de cadastros: os 4 tipos num arquivo só (READ_USER_ADMIN). */
+  | 'cadastros'
 
 export type ExportParams = Record<string, string | number | boolean | string[] | null | undefined>
 
@@ -30,6 +32,7 @@ const FALLBACK_NAME: Record<ExportDataset, string> = {
   unimed: 'unimed',
   'audit-logs': 'auditoria',
   'room-bookings': 'agenda-salas',
+  cadastros: 'relatorio-de-cadastros',
 }
 
 /**
