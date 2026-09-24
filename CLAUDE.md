@@ -44,7 +44,7 @@ Site institucional do **Sindicato Rural de Terra Roxa** (Paraná, Brasil). Plata
                               link com os preços, ver server/cotacao-resumo.mjs)
 /login                      → login.tsx
 /admin                      → _admin/admin/index.tsx (redirect → /admin/cursos)
-/admin/cursos               → _admin/admin/cursos/index.tsx (CRUD completo em diálogos: criar, editar, duplicar, inscrições; ?curso=<id>&aba=inscricoes abre a janela do curso)
+/admin/cursos               → _admin/admin/cursos/index.tsx (CRUD completo em diálogos: criar, editar, duplicar, inscrições; ?curso=<id>&aba=inscricoes abre a janela do curso; ?ano=<ano> é o filtro de ano, SEPARADO da busca por texto — dois cursos de mesmo nome em anos diferentes não se distinguem por texto; os anos vêm de GET /admin/courses/years)
 /admin/noticias             → _admin/admin/noticias/index.tsx
 /admin/usuarios             → _admin/admin/usuarios/index.tsx (abas ?tab=associados|empresas|admins; "Possíveis duplicados")
 /admin/usuarios/$id         → _admin/admin/usuarios/$id.tsx (detalhe completo; aba "Empresas" = vínculos; ?completar=1 abre "Completar cadastro")

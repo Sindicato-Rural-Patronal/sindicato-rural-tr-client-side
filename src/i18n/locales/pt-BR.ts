@@ -187,7 +187,7 @@ const ptBR = {
     courses: {
       title: 'Gerenciamento de Cursos',
       newCourse: 'Novo curso',
-      searchPlaceholder: 'Buscar por título, nº do evento ou ano (ex.: 2023)',
+      searchPlaceholder: 'Buscar por título ou nº do evento',
       empty: 'Nenhum curso cadastrado',
       emptyHint: 'Clique em "Novo curso" para começar.',
       enrolled: '{{count}} inscritos',

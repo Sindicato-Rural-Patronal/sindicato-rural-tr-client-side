@@ -11,7 +11,7 @@ import { FaWhatsapp } from 'react-icons/fa'
 import { usePermissions } from '@/hooks/usePermissions'
 import { PermissionButton } from '@/components/PermissionButton'
 import { useTranslation } from 'react-i18next'
-import { useAdminCourses, useAdminCourse, useDeleteCourse, useUploadGalleryPhoto, useAssignInstructor, useRemoveInstructorAssignment, adminCourseQuery, fetchAllCourseRegistrations, useAllCourseRegistrations, useAdminRegisterPerson, useConfirmAllRegistrations, useSetRegistrationAttendance, useMarkUnmarkedAttendance, useCompleteCourse } from '@/hooks/useCourse'
+import { useAdminCourses, useCourseYears, useAdminCourse, useDeleteCourse, useUploadGalleryPhoto, useAssignInstructor, useRemoveInstructorAssignment, adminCourseQuery, fetchAllCourseRegistrations, useAllCourseRegistrations, useAdminRegisterPerson, useConfirmAllRegistrations, useSetRegistrationAttendance, useMarkUnmarkedAttendance, useCompleteCourse } from '@/hooks/useCourse'
 import type { CourseCardItem } from '@/hooks/useCourse'
 import { useCourseRegistrations, useCancelRegistration, useInstructors, useConfirmRegistration, useStartCourse, useUploadRegistrationFicha, useDeleteRegistrationFicha, openRegistrationFicha } from '@/hooks/useAdmin'
 import type { UserDataDetail, Registration } from '@/hooks/useAdmin'
@@ -1591,13 +1591,17 @@ const ABAS: Record<string, ViewTab> = {
   instrutores: 'instructors',
 }
 
-type CoursesSearch = { curso?: string; aba?: string }
+type CoursesSearch = { curso?: string; aba?: string; ano?: number }
 
 export const Route = createFileRoute('/_admin/admin/cursos/')({
   validateSearch: (s: Record<string, unknown>): CoursesSearch => ({
     // O parser da URL transforma "123" em número; o id volta a ser texto.
     curso: typeof s.curso === 'string' && s.curso ? s.curso : typeof s.curso === 'number' ? String(s.curso) : undefined,
     aba: typeof s.aba === 'string' && Object.hasOwn(ABAS, s.aba) ? s.aba : undefined,
+    // O ano fica na URL: a lista filtrada pode ir para os favoritos.
+    ano: Number.isInteger(Number(s.ano)) && Number(s.ano) >= 1990 && Number(s.ano) <= 2100
+      ? Number(s.ano)
+      : undefined,
   }),
   component: RouteComponent,
 })
@@ -1619,7 +1623,9 @@ function RouteComponent() {
     setPageSearch(debouncedSearch)
     setPage(1)
   }
-  const { data, isLoading, isError } = useAdminCourses({ page, limit, search: debouncedSearch })
+  const { ano } = Route.useSearch()
+  const { data: anos } = useCourseYears()
+  const { data, isLoading, isError } = useAdminCourses({ page, limit, search: debouncedSearch, year: ano })
   const deleteCourse = useDeleteCourse()
   const queryClient = useQueryClient()
   const [viewDialog, setViewDialog] = useState<CourseCardItem | null>(null)
@@ -1748,6 +1754,23 @@ function RouteComponent() {
             className="pl-9"
           />
         </div>
+        {/* Ano e busca são controles SEPARADOS: dois cursos com o mesmo nome
+            em anos diferentes não se distinguem por texto. */}
+        <Select
+          value={ano ? String(ano) : 'all'}
+          onValueChange={v => {
+            navigate({ search: prev => ({ ...prev, ano: v === 'all' ? undefined : Number(v) }) })
+            setPage(1)
+          }}
+        >
+          <SelectTrigger className="h-9 w-36 shrink-0" aria-label="Filtrar por ano">
+            <SelectValue placeholder="Ano" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todos os anos</SelectItem>
+            {(anos ?? []).map(a => <SelectItem key={a} value={String(a)}>{a}</SelectItem>)}
+          </SelectContent>
+        </Select>
         <div className="flex items-center gap-2 text-sm text-muted-foreground shrink-0">
           <span className="hidden sm:inline">Itens por página:</span>
           <Select

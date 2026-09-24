@@ -98,12 +98,15 @@ export function CotacaoSimples() {
             <BookOpen className="size-4" /> Cursos
           </Link>
         </div>
-        <Link to="/" className="inline-flex min-h-11 items-center">
-          <img
-            src="/logo-icon.png"
-            alt="Ir para o site do Sindicato Rural de Terra Roxa"
-            className="h-9 object-contain opacity-70"
-          />
+        {/* Aqui era a marca horizontal (logo-icon.png): ela tem texto
+            verde-escuro em fundo transparente e sumia no tema escuro. O emblema
+            redondo do topo já identifica o sindicato, então o pé leva um link
+            escrito, que funciona nos dois temas. */}
+        <Link
+          to="/"
+          className="inline-flex min-h-11 items-center text-xs text-muted-foreground hover:text-foreground hover:underline"
+        >
+          Site do Sindicato Rural de Terra Roxa
         </Link>
       </footer>
     </main>
