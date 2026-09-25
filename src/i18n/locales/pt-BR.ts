@@ -216,7 +216,8 @@ const ptBR = {
         images: 'Imagens',
       },
       form: {
-        title: 'Título *',
+        title: 'Título',
+        titleHint: 'Em branco vira "CURSO SEM NOME" — dá para nomear depois.',
         shortDescription: 'Descrição breve',
         status: 'Status',
         statusPublic: 'Público',
