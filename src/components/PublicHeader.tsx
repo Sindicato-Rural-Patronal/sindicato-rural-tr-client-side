@@ -39,39 +39,26 @@ export function PublicHeader() {
   const isActive = (href: string) => href === '/' ? pathname === href : pathname.startsWith(href)
 
   return (
-    <header className="w-full">
-      {/* Faixa da marca: a assinatura do sindicato e o lema. Ela ROLA com a
-          página — só a barra de navegação abaixo fica presa no topo, senão o
-          cabeçalho comeria meia tela de celular. */}
-      <div className="w-full border-b bg-background">
-        <div className="container mx-auto flex items-center gap-3 px-4 py-3">
-          <Link to="/" className="shrink-0">
-            <img
-              src="/logo-icon.png"
-              alt="Sindicato Rural de Terra Roxa – Paraná"
-              className="h-10 w-auto object-contain md:h-12 dark:brightness-0 dark:invert"
-            />
-          </Link>
-          {/* A marca já tem o nome escrito; o lema fica ao lado, separado por
-              uma linha, e some no celular para não empurrar o conteúdo. */}
-          <div className="hidden min-w-0 border-l border-border pl-3 sm:block">
-            <p className="truncate text-sm font-semibold text-foreground">{t('header.slogan')}</p>
-            <p className="truncate text-xs text-muted-foreground">{t('header.sloganSub')}</p>
-          </div>
-        </div>
-      </div>
-
-      <div className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/60">
+    <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/60">
       <div className="container mx-auto px-4 flex h-16 items-center justify-between">
-        {/* Com a página rolada, o emblema redondo mantém a identidade na barra. */}
-        <Link to="/" className="flex items-center gap-2 shrink-0">
+        {/* Marca + lema. A assinatura horizontal tem texto verde-escuro em fundo
+            transparente: no tema escuro ela vira silhueta branca, senão some.
+            O lema só aparece de xl para cima — abaixo disso ele disputaria a
+            barra com os itens do menu. */}
+        <Link to="/" className="flex min-w-0 items-center gap-3 shrink-0">
           <img
-            src="/logo-full.png"
-            alt="Sindicato Rural de Terra Roxa"
-            width={40}
-            height={40}
-            className="object-contain h-10 w-auto"
+            src="/logo-icon.png"
+            alt="Sindicato Rural de Terra Roxa – Paraná"
+            className="h-9 w-auto object-contain sm:h-10 dark:brightness-0 dark:invert"
           />
+          <span className="hidden min-w-0 border-l border-border pl-3 xl:block">
+            <span className="block truncate text-xs font-semibold leading-tight text-foreground">
+              {t('header.slogan')}
+            </span>
+            <span className="block truncate text-[11px] leading-tight text-muted-foreground">
+              {t('header.sloganSub')}
+            </span>
+          </span>
         </Link>
 
         {/* Desktop Nav */}
@@ -116,7 +103,6 @@ export function PublicHeader() {
           ))}
         </nav>
       )}
-      </div>
     </header>
   )
 }
