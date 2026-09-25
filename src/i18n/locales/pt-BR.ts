@@ -1,4 +1,8 @@
 const ptBR = {
+  header: {
+    slogan: 'Somos o Sindicato Rural de Terra Roxa',
+    sloganSub: 'Produtor rural, acredite na entidade que te representa',
+  },
   nav: {
     home: 'Home',
     courses: 'Cursos',
