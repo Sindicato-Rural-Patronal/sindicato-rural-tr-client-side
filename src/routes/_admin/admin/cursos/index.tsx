@@ -1626,6 +1626,8 @@ function RouteComponent() {
   const { ano } = Route.useSearch()
   const { data: anos } = useCourseYears()
   const { data, isLoading, isError } = useAdminCourses({ page, limit, search: debouncedSearch, year: ano })
+  // Qualquer filtro ativo: muda o que uma lista vazia significa.
+  const filtrando = !!debouncedSearch.trim() || ano != null
   const deleteCourse = useDeleteCourse()
   const queryClient = useQueryClient()
   const [viewDialog, setViewDialog] = useState<CourseCardItem | null>(null)
@@ -1826,12 +1828,14 @@ function RouteComponent() {
       )}
 
       {!isLoading && visible.length === 0 && total === 0 && (
+        // Filtrando (busca OU ano), lista vazia quer dizer "nada encontrado" —
+        // dizer "nenhum curso cadastrado" e oferecer "Novo curso" seria mentira.
         <EmptyState
           icon={GraduationCap}
-          title={search ? t('courses.notFound') : t('admin.courses.empty')}
-          description={search ? t('courses.notFoundHint') : t('admin.courses.emptyHint')}
-          topico={search ? undefined : 'cursos'}
-          action={!search ? (
+          title={filtrando ? t('courses.notFound') : t('admin.courses.empty')}
+          description={filtrando ? t('courses.notFoundHint') : t('admin.courses.emptyHint')}
+          topico={filtrando ? undefined : 'cursos'}
+          action={!filtrando ? (
             <Button onClick={() => setFormDialog({ open: true, editing: null, duplicateOf: null })}>
               <Plus className="size-4" /> {t('admin.courses.newCourse')}
             </Button>

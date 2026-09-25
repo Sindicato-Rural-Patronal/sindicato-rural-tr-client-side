@@ -66,6 +66,12 @@ export function CameraDialog({ open, onClose, onCapture }: {
   function capture() {
     const video = videoRef.current
     if (!video) return
+    // A câmera demora a entregar o primeiro quadro. Clicar antes disso dava um
+    // canvas 0x0, que vira "data:," e sobe como foto de 0 byte.
+    if (!video.videoWidth || !video.videoHeight) {
+      setError('A câmera ainda está abrindo. Tente de novo em um instante.')
+      return
+    }
     const canvas = document.createElement('canvas')
     canvas.width = video.videoWidth
     canvas.height = video.videoHeight
@@ -81,6 +87,7 @@ export function CameraDialog({ open, onClose, onCapture }: {
         onCapture(new File([blob], 'camera.jpg', { type: 'image/jpeg' }))
         handleClose()
       })
+      .catch(() => setError('Não foi possível usar esta foto. Tire outra.'))
   }
 
   return (

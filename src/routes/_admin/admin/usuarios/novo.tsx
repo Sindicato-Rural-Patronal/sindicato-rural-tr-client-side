@@ -216,7 +216,12 @@ function RouteComponent() {
       // sair esticada.
       const quadrada = await resizeToSquare(arquivo)
       setFoto(quadrada)
-      setFotoPreview(URL.createObjectURL(quadrada))
+      // Libera a prévia anterior: tirar várias fotos seguidas deixaria uma
+      // fila de blobs presos na memória da aba.
+      setFotoPreview(anterior => {
+        if (anterior) URL.revokeObjectURL(anterior)
+        return URL.createObjectURL(quadrada)
+      })
     } catch {
       toast.error('Não foi possível usar esta imagem.')
     }
@@ -225,12 +230,16 @@ function RouteComponent() {
 
   function limparFoto() {
     setFoto(null)
-    setFotoPreview(null)
+    setFotoPreview(anterior => {
+      if (anterior) URL.revokeObjectURL(anterior)
+      return null
+    })
   }
 
 
-  // Guard de não-salvo: dirty se o form mudou e não está salvando.
-  const dirty = !saving && JSON.stringify(form) !== JSON.stringify(emptyForm)
+  // Guard de não-salvo: dirty se o form mudou e não está salvando. A foto
+  // entra na conta — ela é estado à parte, e sair sem salvar a perde.
+  const dirty = !saving && (foto !== null || JSON.stringify(form) !== JSON.stringify(emptyForm))
   const allowLeave = useUnsavedGuard(dirty)
 
   // CPF repetido: consulta ao completar um CPF válido (ou ao sair do campo).

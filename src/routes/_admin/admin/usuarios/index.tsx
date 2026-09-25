@@ -844,6 +844,9 @@ function RouteComponent() {
   // Mesmos filtros da listagem, sem página/limite.
   const usersExportFilters: ExportParams = {
     search: usersQuery || undefined,
+    // Sem isto, exportar na aba "Associados" baixava TODAS as pessoas com o
+    // rótulo do total de associados — planilha errada sem nenhum aviso.
+    activeMember: activeTab === 'associados' ? true : undefined,
     incompleteRegistration: incompleteOnly ? true : undefined,
     gender: genderFilter || undefined,
     ethnicity: ethnicityFilter || undefined,
@@ -852,6 +855,7 @@ function RouteComponent() {
     memberClassification: memberClassFilter || undefined,
   }
   const usersFiltered = !!usersQuery || incompleteOnly || activeFiltersCount > 0
+    || activeTab === 'associados'
 
   async function handleExportRow(dataset: ExportDataset, id: string) {
     setExportingRow(id)
@@ -990,7 +994,9 @@ function RouteComponent() {
           <TabsTrigger value="pessoas" className="flex items-center gap-1.5">
             <Users className="size-3.5" />
             Pessoa física
-            {userTotal > 0 && (
+            {/* `userTotal` é o total da consulta ATUAL. Na aba de associados
+                ele conta só os em dia, então mostrá-lo aqui mentiria. */}
+            {activeTab === 'pessoas' && userTotal > 0 && (
               <span className="ml-1 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
                 {userTotal}
               </span>
@@ -999,6 +1005,11 @@ function RouteComponent() {
           <TabsTrigger value="associados" className="flex items-center gap-1.5">
             <BadgeCheck className="size-3.5" />
             Associados
+            {activeTab === 'associados' && userTotal > 0 && (
+              <span className="ml-1 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
+                {userTotal}
+              </span>
+            )}
           </TabsTrigger>
           <TabsTrigger value="empresas" className="flex items-center gap-1.5">
             <Building2 className="size-3.5" />

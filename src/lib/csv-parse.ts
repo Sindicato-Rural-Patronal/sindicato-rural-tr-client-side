@@ -106,6 +106,10 @@ export function parseCsvSections(text: string): CsvSection[] {
  */
 const COLUNAS_PREFERIDAS = [
   'Nome', 'Razão social', 'Nome fantasia', 'Título', 'Descrição',
+  // O ASSUNTO de cada relatório. Sem eles, o PDF de mensagens dizia quem
+  // escreveu e não o que foi escrito, e o da Unimed saía sem o plano: bastava
+  // "Nome" bater para a lista se dar por satisfeita.
+  'Assunto', 'Mensagem', 'Plano', 'Matrícula',
   'CPF', 'CNPJ', 'Usuário', 'Nº do evento',
   'Telefone', 'E-mail',
   'Situação de associado', 'Associado em dia', 'Associado até',

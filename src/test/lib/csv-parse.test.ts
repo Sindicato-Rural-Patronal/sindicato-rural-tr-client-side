@@ -86,6 +86,22 @@ describe('pdfColumns', () => {
     expect(pdfColumns(header).length).toBeLessThanOrEqual(7)
   })
 
+  it('leva o ASSUNTO do relatório, não só quem é o registro', () => {
+    // O PDF de mensagens precisa do texto; o da Unimed, do plano. Sem eles a
+    // folha dizia quem escreveu e não o que foi escrito.
+    const mensagens = ['Recebida em', 'Nome', 'E-mail', 'Telefone', 'Assunto', 'Mensagem', 'Lida']
+    expect(pdfColumns(mensagens).map(i => mensagens[i])).toEqual(
+      expect.arrayContaining(['Assunto', 'Mensagem']),
+    )
+    const unimed = ['Nome', 'CPF', 'Nascimento', 'Telefone', 'E-mail', 'Plano', 'Matrícula']
+    expect(pdfColumns(unimed).map(i => unimed[i])).toContain('Plano')
+  })
+
+  it('mantém a ordem da planilha', () => {
+    const header = ['Telefone', 'Nome', 'CPF']
+    expect(pdfColumns(header)).toEqual([0, 1, 2])
+  })
+
   it('cabeçalho desconhecido leva as primeiras colunas', () => {
     const header = ['Alfa', 'Beta', 'Gama']
     expect(pdfColumns(header)).toEqual([0, 1, 2])

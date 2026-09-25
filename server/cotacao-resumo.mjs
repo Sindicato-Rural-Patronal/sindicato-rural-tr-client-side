@@ -12,7 +12,10 @@ const NOME = {
 
 function reais(cents) {
   if (cents == null) return null
-  return `R$ ${(cents / 100).toFixed(2).replace('.', ',')}`
+  // Mesmo formato da tela (pt-BR, com separador de milhar): sem isto a prévia
+  // do link mostraria "R$ 1400,00" onde a página mostra "R$ 1.400,00" — e esta
+  // cópia do resumo existe justamente para os dois baterem.
+  return `R$ ${(cents / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 }
 
 /** "24/09/2026" a partir de "2026-09-24T00:00:00.000Z". */
