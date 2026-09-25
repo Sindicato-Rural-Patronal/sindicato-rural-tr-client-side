@@ -4,7 +4,7 @@ resumo: Lançamentos de caixa, recorrentes, categorias, caixas e fechamento do m
 grupo: gestao
 ordem: 1
 permissao: READ_FINANCE
-veja: exportar-planilhas, busca-e-filtros, auditoria
+veja: como-registrar-lancamento, exportar-planilhas, busca-e-filtros, auditoria
 busca: financeiro caixa lancamento entrada saida saldo categoria comprovante recorrente fechamento transferencia relatorio pdf
 ---
 

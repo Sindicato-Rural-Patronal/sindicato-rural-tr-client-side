@@ -4,7 +4,7 @@ resumo: Convidar administradores, criar regras e decidir quem vê o quê.
 grupo: gestao
 ordem: 3
 permissao: READ_USER
-veja: seguranca, auditoria, minha-conta
+veja: como-convidar-administrador, seguranca, auditoria, minha-conta
 busca: administrador admin permissao regra convite acesso total senha revogar username
 ---
 

@@ -4,7 +4,7 @@ resumo: Criar um curso, acompanhar inscrições, marcar presença e encerrar.
 grupo: dia-a-dia
 ordem: 1
 permissao: READ_COURSE
-veja: salas-e-agenda, usuarios, exportar-planilhas, fotos-e-imagens
+veja: como-criar-curso, como-inscrever-alguem, salas-e-agenda, usuarios, exportar-planilhas, fotos-e-imagens
 busca: curso aula turma inscricao inscritos aluno presenca lista certificado faep vagas
 ---
 

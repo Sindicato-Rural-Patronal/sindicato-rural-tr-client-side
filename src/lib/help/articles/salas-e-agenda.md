@@ -4,7 +4,7 @@ resumo: Marcar curso, evento ou reunião nas salas sem bater horário.
 grupo: dia-a-dia
 ordem: 2
 permissao: READ_COURSE
-veja: cursos, eventos-no-site, painel-geral
+veja: como-criar-reserva, como-criar-evento, cursos, eventos-no-site, painel-geral
 busca: sala reserva agenda calendario reuniao evento auditorio cozinha ocupacao horario imprimir
 ---
 

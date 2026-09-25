@@ -12,7 +12,13 @@
 //   veja:    ids de outros artigos, separados por vírgula    (opcional)
 import { upperNoAccents } from '@/utils/text-format'
 
-export type HelpGroupId = 'primeiros-passos' | 'dia-a-dia' | 'site' | 'gestao' | 'conta'
+export type HelpGroupId =
+  | 'primeiros-passos'
+  | 'como-fazer'
+  | 'dia-a-dia'
+  | 'site'
+  | 'gestao'
+  | 'conta'
 
 export type HelpArticle = {
   id: string
@@ -28,6 +34,9 @@ export type HelpArticle = {
 
 export const HELP_GROUPS: { id: HelpGroupId; label: string }[] = [
   { id: 'primeiros-passos', label: 'Primeiros passos' },
+  // Passo a passo por TAREFA ("como criar um curso"), enquanto os grupos
+  // abaixo são por TELA. Quem está começando pergunta pela tarefa.
+  { id: 'como-fazer', label: 'Como fazer' },
   { id: 'dia-a-dia', label: 'Dia a dia' },
   { id: 'site', label: 'O que aparece no site' },
   { id: 'gestao', label: 'Gestão e controle' },

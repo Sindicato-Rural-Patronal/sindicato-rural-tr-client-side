@@ -4,7 +4,7 @@ resumo: Cadastrar pessoas, completar fichas e juntar cadastros repetidos.
 grupo: dia-a-dia
 ordem: 3
 permissao: READ_USER
-veja: empresas, unimed, cursos, exportar-planilhas
+veja: como-cadastrar-associado, como-juntar-cadastros, empresas, unimed, cursos, exportar-planilhas
 busca: associado pessoa cadastro cpf ficha propriedade dependente duplicado juntar instrutor incompleto
 ---
 

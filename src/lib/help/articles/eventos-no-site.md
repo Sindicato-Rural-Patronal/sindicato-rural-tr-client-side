@@ -4,7 +4,7 @@ resumo: Como uma reserva de sala vira um evento na página pública.
 grupo: site
 ordem: 7
 permissao: READ_COURSE
-veja: salas-e-agenda, noticias, banners
+veja: como-criar-evento, salas-e-agenda, noticias, banners
 busca: evento site publicar agenda publica proximos eventos mostrar no site reuniao
 ---
 

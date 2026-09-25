@@ -4,7 +4,7 @@ resumo: Cadastro de empresas, vínculos com pessoas e parceria.
 grupo: dia-a-dia
 ordem: 4
 permissao: READ_USER
-veja: usuarios, configuracoes
+veja: como-cadastrar-empresa, usuarios, configuracoes
 busca: empresa cnpj razao social nome fantasia socio contador parceira parceiro vinculo propriedade
 ---
 

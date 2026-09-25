@@ -4,7 +4,7 @@ resumo: O lançamento diário dos preços que aparecem na página inicial.
 grupo: site
 ordem: 3
 permissao: READ_MARKET_QUOTE
-veja: painel-geral, notificacoes
+veja: como-lancar-cotacoes, painel-geral, notificacoes
 busca: cotacao preco soja milho trigo mandioca saca tonelada arroba manha tarde fonte
 ---
 

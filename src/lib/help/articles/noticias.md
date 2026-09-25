@@ -4,7 +4,7 @@ resumo: Escrever, agendar e publicar notícias no site.
 grupo: site
 ordem: 1
 permissao: READ_NEWS
-veja: banners, eventos-no-site, fotos-e-imagens
+veja: como-publicar-noticia, banners, eventos-no-site, fotos-e-imagens
 busca: noticia publicar agendar rascunho link copiar ver no site texto imagem
 ---
 
