@@ -47,8 +47,14 @@ O lançamento criado assim mostra o selo **Recorrente**. Apagar a recorrência
 
 - **Categorias** — para classificar os lançamentos.
 - **Caixas** — você pode ter mais de um, e há **transferência entre caixas**.
-- **Formas de pagamento** são cadastráveis: no próprio lançamento há
-  **+ Nova forma de pagamento**.
+- **Formas de pagamento** têm aba própria (**Formas de pagamento**), e também
+  podem nascer na hora do lançamento, pelo **+ Nova forma de pagamento**.
+
+Na aba de formas de pagamento dá para **renomear**, **desativar** (some da lista
+dos próximos lançamentos, mas continua no histórico) e **excluir**. Vale para
+arrumar um nome digitado errado, que antes ficava aparecendo para sempre.
+O lançamento guarda o **nome** da forma, não um vínculo: mexer aqui **nunca**
+altera lançamento que já foi feito.
 
 ## Fechamento
 
