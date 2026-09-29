@@ -1,15 +1,16 @@
 import { describe, it, expect } from 'vitest'
-import { MEMBER_STATUS, MEMBER_TYPES } from '@/lib/member-types'
+import { PERSON_FIELD_NAMES } from '@/lib/person-fields'
 
-// O cadastro de pessoa vive em DOIS formulários quase iguais — "Novo associado"
-// (usuarios/novo.tsx) e a ficha (usuarios/$id.tsx) —, cada um com seus campos
-// escritos à mão. Foi assim que a **Situação do associado** ficou só no
-// cadastro novo: dava para marcar alguém como ATIVO ao criar e nunca mais
-// mudar, e quem se inscrevia pelo site nascia sem situação nenhuma e não
-// aparecia na aba Associados, sem saída pelo painel.
+// O cadastro de pessoa vive em DUAS telas — "Novo associado"
+// (usuarios/novo.tsx) e a ficha (usuarios/$id.tsx). Elas eram dois blocos de
+// JSX escritos à mão com os mesmos trinta campos repetidos, e foi assim que a
+// **Situação do associado** ficou só no cadastro novo: dava para marcar alguém
+// como ATIVO ao criar e nunca mais mudar.
 //
-// Enquanto os dois formulários forem separados, este teste é o que segura a
-// divergência: todo campo do associado precisa estar nos dois.
+// Hoje o campo é definido uma vez (`components/cadastro/person-form-fields.tsx`)
+// e cada tela só diz quais entram e em que cartão. Este teste guarda essa
+// última parte: campo que existe numa tela e não na outra continua sendo um
+// jeito de o problema voltar.
 
 const fontes = import.meta.glob<string>(
   '/src/routes/_admin/admin/usuarios/*.tsx',
@@ -22,7 +23,13 @@ const arquivo = (fim: string) =>
 const novo = arquivo('usuarios/novo.tsx')
 const ficha = arquivo('usuarios/$id.tsx')
 
-/** Campos que descrevem o vínculo da pessoa com o sindicato. */
+const telas = [['cadastro novo', novo], ['ficha', ficha]] as const
+
+/**
+ * Campos que descrevem o vínculo da pessoa com o sindicato. É o grupo que
+ * divergiu de verdade, e o que mais dói quando falta: a aba "Associados"
+ * filtra por situação ativa.
+ */
 const CAMPOS_DO_ASSOCIADO = [
   'memberType',
   'memberStatus',
@@ -31,35 +38,37 @@ const CAMPOS_DO_ASSOCIADO = [
   'membershipValidUntil',
   'boardMember',
   'boardPosition',
+  'memberNotes',
+  'memberNotesNumber',
 ]
 
-describe('os dois formulários de pessoa', () => {
+describe('as duas telas do cadastro de pessoa', () => {
   it('encontra os dois arquivos', () => {
     expect(novo.length).toBeGreaterThan(1000)
     expect(ficha.length).toBeGreaterThan(1000)
   })
 
-  it.each(CAMPOS_DO_ASSOCIADO)('"%s" pode ser informado no cadastro E alterado na ficha', campo => {
-    // `set('campo'` é como os dois formulários escrevem no estado.
-    expect(novo, `${campo} não está no cadastro novo`).toContain(`set('${campo}'`)
-    expect(ficha, `${campo} não está na ficha da pessoa`).toContain(`set('${campo}'`)
-  })
-
-  it('os dois usam a MESMA lista de situação, não uma escrita à mão', () => {
-    // Uma lista solta no meio do JSX é como a divergência começa.
-    for (const [nome, code] of [['novo', novo], ['ficha', ficha]] as const) {
-      expect(code, `${nome} escreveu as opções à mão`).toContain('MEMBER_STATUS')
-      expect(code, `${nome} escreveu 'ACTIVE' à mão`).not.toMatch(/value: 'ACTIVE'/)
+  it.each(CAMPOS_DO_ASSOCIADO)('"%s" está nas duas telas', campo => {
+    for (const [nome, code] of telas) {
+      expect(code, `${campo} não está no ${nome}`).toContain(`campo="${campo}"`)
     }
   })
-})
 
-describe('listas fixas do associado', () => {
-  it('a situação é a que o backend aceita (enum MemberStatus)', () => {
-    expect(MEMBER_STATUS.map(s => s.value)).toEqual(['ACTIVE', 'INACTIVE'])
+  it('nenhuma das duas escreve rótulo ou opção de campo de pessoa à mão', () => {
+    for (const [nome, code] of telas) {
+      // A lista de situação vivia solta no meio do JSX de uma das telas.
+      expect(code, `${nome} escreveu 'ACTIVE' à mão`).not.toMatch(/value: 'ACTIVE'/)
+      expect(code, `${nome} escreveu o rótulo da situação à mão`).not.toContain('label="Situação"')
+    }
   })
 
-  it('todo tipo de membro tem rótulo em português', () => {
-    for (const t of MEMBER_TYPES) expect(t.label, t.value).not.toBe('')
+  it('juntas, as telas usam todos os campos definidos', () => {
+    // Campo definido no módulo e esquecido nas duas telas é trabalho perdido;
+    // e a lista do módulo é o que o PersonField.test.tsx cobre um por um.
+    const usados = new Set(
+      [...(novo + ficha).matchAll(/campo="(\w+)"/g)].map(m => m[1]),
+    )
+    const esquecidos = PERSON_FIELD_NAMES.filter(c => !usados.has(c))
+    expect(esquecidos, 'campos definidos e nunca mostrados').toEqual([])
   })
 })

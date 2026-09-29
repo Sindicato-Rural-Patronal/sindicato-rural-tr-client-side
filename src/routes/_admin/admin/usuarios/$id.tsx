@@ -12,7 +12,6 @@ import {
 } from '@/hooks/useAdmin'
 import { useUnsavedGuard } from '@/hooks/use-unsaved-guard'
 import { useDebouncedValue } from '@/hooks/useDebouncedValue'
-import { CadproFields } from '@/components/CadproFields'
 import { PropertiesManager } from '@/components/cadastro/PropertiesManager'
 import { PersonCompanies } from '@/components/cadastro/PersonCompanies'
 import { CameraDialog } from '@/components/cadastro/CameraDialog'
@@ -20,13 +19,10 @@ import { PersonUnimedTab } from '@/components/unimed/PersonUnimedTab'
 import { MergePeopleDialog } from '@/components/cadastro/MergePeopleDialog'
 import { usePermissions } from '@/hooks/usePermissions'
 import { DeleteConfirmDialog } from '@/components/DeleteConfirmDialog'
-import { NativeSelect } from '@/components/ui/native-select'
 import { Pagination } from '@/components/ui/pagination'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { DatePicker } from '@/components/ui/date-picker'
-import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -38,25 +34,21 @@ import {
   User, FileText, Globe, Briefcase, Heart, HeartPulse, TreePine,
   Pencil, X, GraduationCap, ImageUp, Download, Loader2, Users,
 } from 'lucide-react'
-import { maskCPF, maskPhone, maskRG, maskCNH, maskMoney } from '@/utils/masks'
-import { AgeHint } from '@/components/AgeHint'
+import { maskCPF, maskPhone, maskMoney } from '@/utils/masks'
 import { ApiError } from '@/lib/api'
 import { apiErrorMessage } from '@/lib/api-error-message'
 import { downloadExport, type ExportDataset, type ExportParams } from '@/lib/export'
 import {
   validatePersonFields, firstInvalidField, focusFieldById,
-  type PersonField, type PersonFieldErrors,
+  type PersonField as CampoValidado, type PersonFieldErrors,
 } from '@/lib/person-validation'
 import { cn } from '@/lib/utils'
 import { cpfDigits } from '@/utils/cpf'
 import { toIso } from '@/utils/dates'
 import { upperNoAccents } from '@/utils/text-format'
-import { MEMBER_STATUS, MEMBER_TYPES } from '@/lib/member-types'
-import { CIN_HINT, CPF_LABEL } from '@/lib/cin'
-import {
-  GENDER_OPTIONS, ETHNICITY_OPTIONS, EDUCATION_OPTIONS,
-  MARITAL_STATUS_OPTIONS, CNH_CATEGORY_OPTIONS,
-} from '@/lib/user-form-options'
+import { CPF_LABEL } from '@/lib/cin'
+import { FieldRow, PersonField } from '@/components/cadastro/person-form-fields'
+import { READ_MODE_FIELD, type PersonFieldsCtx } from '@/lib/person-fields'
 
 export const Route = createFileRoute('/_admin/admin/usuarios/$id')({
   // ?completar=1 abre direto o modo "Completar cadastro" (link dos cadastros incompletos).
@@ -74,32 +66,11 @@ function toDateInput(iso: string | null | undefined): string {
   return iso.slice(0, 10)
 }
 
-function FieldRow({ label, children, highlight, htmlFor, error }: {
-  label: string
-  children: React.ReactNode
-  highlight?: boolean
-  /** id do campo — liga o rótulo e a mensagem de erro a ele. */
-  htmlFor?: string
-  error?: string
-}) {
-  return (
-    <div className={`flex flex-col gap-1.5 ${highlight ? 'rounded-lg p-2.5 -mx-2.5 bg-amber-50 dark:bg-amber-950/20 ring-1 ring-amber-300 dark:ring-amber-700' : ''}`}>
-      <Label htmlFor={htmlFor} className={`text-xs font-medium ${highlight ? 'text-amber-700 dark:text-amber-400' : 'text-muted-foreground'}`}>
-        {label}{highlight && <span className="ml-1 text-amber-500">*</span>}
-      </Label>
-      {children}
-      {error && <p id={htmlFor ? `${htmlFor}-erro` : undefined} className="text-xs text-destructive" role="alert">{error}</p>}
-    </div>
-  )
-}
 
-// Modo leitura: os campos ficam desabilitados, mas com o texto nítido (o padrão
-// do Input é 50% de opacidade, difícil de ler) e um fundo leve.
-const READ_MODE_FIELD = 'disabled:opacity-100 disabled:cursor-default disabled:bg-muted/40 dark:disabled:bg-muted/40'
 
 // Campos validados antes de salvar, na ordem em que aparecem na tela.
-const VALIDATED_FIELDS: readonly PersonField[] = ['name', 'email', 'phone', 'phone2', 'phone3', 'cpf', 'rg', 'driverLicense']
-const fieldId = (f: PersonField) => `pessoa-${f}`
+const VALIDATED_FIELDS: readonly CampoValidado[] = ['name', 'email', 'phone', 'phone2', 'phone3', 'cpf', 'rg', 'driverLicense']
+const fieldId = (f: CampoValidado) => `pessoa-${f}`
 
 type MissingField = { key: string; label: string }
 
@@ -116,27 +87,6 @@ function getMissingFields(user: UserDataDetail, hasNoProperties: boolean): Missi
   return missing
 }
 
-function SelectField({
-  value, onChange, options, placeholder, disabled,
-}: {
-  value: string
-  onChange: (v: string) => void
-  options: readonly { value: string; label: string }[]
-  placeholder?: string
-  disabled?: boolean
-}) {
-  return (
-    <NativeSelect
-      value={value}
-      onChange={e => onChange(e.target.value)}
-      disabled={disabled}
-      className={cn('h-9', disabled && 'disabled:cursor-default disabled:bg-muted/40')}
-    >
-      {placeholder && <option value="">{placeholder}</option>}
-      {options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-    </NativeSelect>
-  )
-}
 
 // ─── Seção Dados Pessoais ─────────────────────────────────────────────────────
 
@@ -273,7 +223,7 @@ function DadosTab({ userId, user, completeMode, onCompleteModeEnd, hasNoProperti
   function set(k: keyof DadosForm, v: string | boolean) {
     setForm(prev => ({ ...prev, [k]: v }))
     // Mexeu no campo: some o erro dele até a próxima tentativa de salvar.
-    if (fieldErrors[k as PersonField]) setFieldErrors(prev => ({ ...prev, [k]: undefined }))
+    if (fieldErrors[k as CampoValidado]) setFieldErrors(prev => ({ ...prev, [k]: undefined }))
   }
 
   function resizeToSquare(file: File, size = 400): Promise<File> {
@@ -343,7 +293,7 @@ function DadosTab({ userId, user, completeMode, onCompleteModeEnd, hasNoProperti
     // Valida só o que mudou (o que vai no corpo): um dado antigo fora do padrão
     // que ninguém mexeu não trava a edição. Apagar nome, telefone ou CPF conta
     // como mudança — e esses são obrigatórios (o e-mail pode ficar em branco).
-    const changed: Partial<Record<PersonField, string>> = {}
+    const changed: Partial<Record<CampoValidado, string>> = {}
     for (const f of VALIDATED_FIELDS) {
       if (form[f] !== saved[f]) changed[f] = form[f]
     }
@@ -468,7 +418,7 @@ function DadosTab({ userId, user, completeMode, onCompleteModeEnd, hasNoProperti
     } catch (e) {
       const msg = apiErrorMessage(e, 'Erro ao salvar.')
       // CPF/RG de outro cadastro: aponta o campo, além do aviso.
-      const conflictField: PersonField | null = e instanceof ApiError && e.status === 409
+      const conflictField: CampoValidado | null = e instanceof ApiError && e.status === 409
         ? (e.message.includes('CPF') ? 'cpf' : e.message === 'RG already in use' ? 'rg' : null)
         : null
       if (conflictField) {
@@ -485,13 +435,6 @@ function DadosTab({ userId, user, completeMode, onCompleteModeEnd, hasNoProperti
     'rounded-md border border-input px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring bg-background w-full resize-none',
     d && READ_MODE_FIELD,
   )
-  // Liga rótulo, campo e mensagem de erro dos campos validados.
-  const invalidProps = (f: PersonField) => ({
-    id: fieldId(f),
-    'aria-invalid': fieldErrors[f] ? true : undefined,
-    'aria-describedby': fieldErrors[f] ? `${fieldId(f)}-erro` : undefined,
-  })
-
   // campos faltando (calculados em tempo real a partir do form atual)
   const missing = {
     avatar: !form.avatar,
@@ -509,6 +452,20 @@ function DadosTab({ userId, user, completeMode, onCompleteModeEnd, hasNoProperti
   }
   const missingCount = Object.values(missing).filter(Boolean).length
   const hi = (key: keyof typeof missing) => completeMode && missing[key]
+
+  // Os campos de pessoa sao os mesmos do cadastro novo (usuarios/novo): rotulo,
+  // mascara e lista de opcoes vem de person-form-fields.tsx. Aqui so o que e
+  // desta tela: o modo leitura, o destaque do "Completar cadastro" e os erros.
+  const campos: PersonFieldsCtx = {
+    values: form,
+    // `set` desta tela aceita as chaves do DadosForm (que tem mais campos que
+    // os de pessoa) e nao e generico; a ponte fica aqui, num lugar so.
+    set: (campo, valor) => set(campo, valor as string | boolean),
+    disabled: d,
+    errors: fieldErrors,
+    highlight: campo => campo in missing && hi(campo as keyof typeof missing),
+    idPrefix: 'pessoa-',
+  }
 
   return (
     // Em edição, espaço no fim para a barra fixa de salvar não cobrir os últimos campos.
@@ -575,15 +532,9 @@ function DadosTab({ userId, user, completeMode, onCompleteModeEnd, hasNoProperti
           <CardTitle className="text-sm flex items-center gap-2"><User className="size-4" /> Identificação</CardTitle>
         </CardHeader>
         <CardContent className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          <FieldRow label="Nome *" htmlFor={fieldId('name')} error={fieldErrors.name}>
-            <Input className={inp} disabled={d} {...invalidProps('name')} value={form.name} onChange={e => set('name', upperNoAccents(e.target.value))} />
-          </FieldRow>
-          <FieldRow label="E-mail" htmlFor={fieldId('email')} error={fieldErrors.email}>
-            <Input className={inp} disabled={d} {...invalidProps('email')} type="email" value={form.email} onChange={e => set('email', e.target.value)} />
-          </FieldRow>
-          <FieldRow label="Apelido" htmlFor="pessoa-nickname">
-            <Input id="pessoa-nickname" className={inp} disabled={d} value={form.nickname} onChange={e => set('nickname', upperNoAccents(e.target.value))} />
-          </FieldRow>
+          <PersonField campo="name" ctx={campos} required />
+          <PersonField campo="email" ctx={campos} />
+          <PersonField campo="nickname" ctx={campos} />
           <FieldRow label="Foto de perfil" highlight={hi('avatar')}>
             <div className="flex items-center gap-3">
               {form.avatar
@@ -604,22 +555,10 @@ function DadosTab({ userId, user, completeMode, onCompleteModeEnd, hasNoProperti
             </div>
             <CameraDialog open={showCamera} onClose={() => setShowCamera(false)} onCapture={handleCameraCapture} />
           </FieldRow>
-          <FieldRow label="Telefone *" htmlFor={fieldId('phone')} error={fieldErrors.phone}>
-            <Input className={inp} disabled={d} {...invalidProps('phone')} inputMode="tel" value={form.phone} onChange={e => set('phone', maskPhone(e.target.value))} placeholder="(00) 00000-0000" />
-          </FieldRow>
-          {(form.phone || form.phone2) && (
-            <FieldRow label="Telefone 2" htmlFor={fieldId('phone2')} error={fieldErrors.phone2}>
-              <Input className={inp} disabled={d} {...invalidProps('phone2')} inputMode="tel" value={form.phone2} onChange={e => set('phone2', maskPhone(e.target.value))} placeholder="(00) 00000-0000" />
-            </FieldRow>
-          )}
-          {(form.phone2 || form.phone3) && (
-            <FieldRow label="Telefone 3" htmlFor={fieldId('phone3')} error={fieldErrors.phone3}>
-              <Input className={inp} disabled={d} {...invalidProps('phone3')} inputMode="tel" value={form.phone3} onChange={e => set('phone3', maskPhone(e.target.value))} placeholder="(00) 00000-0000" />
-            </FieldRow>
-          )}
-          <FieldRow label="Estado civil">
-            <SelectField disabled={d} value={form.maritalStatus} onChange={v => set('maritalStatus', v)} placeholder="Selecione" options={MARITAL_STATUS_OPTIONS} />
-          </FieldRow>
+          <PersonField campo="phone" ctx={campos} required />
+          {(form.phone || form.phone2) && <PersonField campo="phone2" ctx={campos} />}
+          {(form.phone2 || form.phone3) && <PersonField campo="phone3" ctx={campos} />}
+          <PersonField campo="maritalStatus" ctx={campos} />
         </CardContent>
       </Card>
 
@@ -629,35 +568,13 @@ function DadosTab({ userId, user, completeMode, onCompleteModeEnd, hasNoProperti
           <CardTitle className="text-sm flex items-center gap-2"><FileText className="size-4" /> Documentos</CardTitle>
         </CardHeader>
         <CardContent className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          <FieldRow label={CPF_LABEL} highlight={hi('cpf')} htmlFor={fieldId('cpf')} error={fieldErrors.cpf}>
-            <Input className={inp} disabled={d} {...invalidProps('cpf')} inputMode="numeric" value={form.cpf} onChange={e => set('cpf', maskCPF(e.target.value))} placeholder="000.000.000-00" />
-            {!d && <p className="text-xs text-muted-foreground">{CIN_HINT}</p>}
-          </FieldRow>
-          <FieldRow label="RG" htmlFor={fieldId('rg')} error={fieldErrors.rg}>
-            <Input className={inp} disabled={d} {...invalidProps('rg')} value={form.rg} onChange={e => set('rg', maskRG(e.target.value))} placeholder="00.000.000-0" maxLength={12} />
-          </FieldRow>
-          <FieldRow label="Órgão emissor RG">
-            <Input className={inp} disabled={d} value={form.rgIssuer} onChange={e => set('rgIssuer', upperNoAccents(e.target.value))} />
-          </FieldRow>
-          <FieldRow label="Data emissão RG">
-            <DatePicker disabled={d} className={cn(d && READ_MODE_FIELD)} value={form.rgIssuedAt} onChange={v => set('rgIssuedAt', v)} />
-          </FieldRow>
-          <FieldRow label="Data nascimento" highlight={hi('birthDate')}>
-            <DatePicker disabled={d} className={cn(d && READ_MODE_FIELD)} value={form.birthDate} onChange={v => set('birthDate', v)} />
-            <AgeHint birthDate={form.birthDate} />
-          </FieldRow>
-          <FieldRow label="CNH" htmlFor={fieldId('driverLicense')} error={fieldErrors.driverLicense}>
-            <Input className={inp} disabled={d} {...invalidProps('driverLicense')} value={form.driverLicense} onChange={e => {
-              const v = maskCNH(e.target.value)
-              set('driverLicense', v)
-              if (!v) set('driverLicenseCategory', '')
-            }} placeholder="00000000000" inputMode="numeric" maxLength={11} />
-          </FieldRow>
-          {form.driverLicense && (
-            <FieldRow label="Categoria CNH">
-              <SelectField disabled={d} value={form.driverLicenseCategory} onChange={v => set('driverLicenseCategory', v)} placeholder="Selecione" options={CNH_CATEGORY_OPTIONS} />
-            </FieldRow>
-          )}
+          <PersonField campo="cpf" ctx={campos} />
+          <PersonField campo="rg" ctx={campos} />
+          <PersonField campo="rgIssuer" ctx={campos} />
+          <PersonField campo="rgIssuedAt" ctx={campos} />
+          <PersonField campo="birthDate" ctx={campos} />
+          <PersonField campo="driverLicense" ctx={campos} />
+          {form.driverLicense && <PersonField campo="driverLicenseCategory" ctx={campos} />}
         </CardContent>
       </Card>
 
@@ -667,37 +584,15 @@ function DadosTab({ userId, user, completeMode, onCompleteModeEnd, hasNoProperti
           <CardTitle className="text-sm flex items-center gap-2"><Globe className="size-4" /> Origem e Perfil</CardTitle>
         </CardHeader>
         <CardContent className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          <FieldRow label="Naturalidade">
-            <Input className={inp} disabled={d} value={form.birthPlace} onChange={e => set('birthPlace', upperNoAccents(e.target.value))} />
-          </FieldRow>
-          <FieldRow label="Nacionalidade">
-            <Input className={inp} disabled={d} value={form.nationality} onChange={e => set('nationality', upperNoAccents(e.target.value))} />
-          </FieldRow>
-          <FieldRow label="Gênero" highlight={hi('gender')}>
-            <SelectField disabled={d} value={form.gender} onChange={v => set('gender', v)} placeholder="Selecione" options={GENDER_OPTIONS} />
-          </FieldRow>
-          <FieldRow label="Etnia">
-            <SelectField disabled={d} value={form.ethnicity} onChange={v => set('ethnicity', v)} placeholder="Selecione" options={ETHNICITY_OPTIONS} />
-          </FieldRow>
-          <FieldRow label="Escolaridade">
-            <SelectField disabled={d} value={form.educationLevel} onChange={v => set('educationLevel', v)} placeholder="Selecione" options={EDUCATION_OPTIONS} />
-          </FieldRow>
-          <FieldRow label="Categoria funcional">
-            <Input className={inp} disabled={d} value={form.functionalCategory} onChange={e => set('functionalCategory', upperNoAccents(e.target.value))} />
-          </FieldRow>
-          <FieldRow label="CAD/PRO (até 5)">
-            {/* CadproFields não recebe classe: o modo leitura legível vem do seletor no wrapper */}
-            <div className={cn(d && '[&_input:disabled]:opacity-100 [&_input:disabled]:bg-muted/40')}>
-              <CadproFields value={form.cadPro} onChange={v => setForm(p => ({ ...p, cadPro: v }))} disabled={d} />
-            </div>
-          </FieldRow>
-          <FieldRow label="Renda familiar">
-            <Input className={inp} disabled={d} value={form.familyIncome} onChange={e => set('familyIncome', maskMoney(e.target.value))} placeholder="R$ 0,00" inputMode="numeric" />
-          </FieldRow>
-          <div className="flex items-center gap-2 pt-5">
-            <input type="checkbox" id="specialNeeds" disabled={d} checked={form.specialNeeds} onChange={e => set('specialNeeds', e.target.checked)} className="accent-primary disabled:cursor-default" />
-            <Label htmlFor="specialNeeds" className={`text-sm ${d ? '' : 'cursor-pointer'}`}>Necessidades especiais</Label>
-          </div>
+          <PersonField campo="birthPlace" ctx={campos} />
+          <PersonField campo="nationality" ctx={campos} />
+          <PersonField campo="gender" ctx={campos} />
+          <PersonField campo="ethnicity" ctx={campos} />
+          <PersonField campo="educationLevel" ctx={campos} />
+          <PersonField campo="functionalCategory" ctx={campos} />
+          <PersonField campo="cadPro" ctx={campos} />
+          <PersonField campo="familyIncome" ctx={campos} />
+          <PersonField campo="specialNeeds" ctx={campos} />
         </CardContent>
       </Card>
 
@@ -707,43 +602,16 @@ function DadosTab({ userId, user, completeMode, onCompleteModeEnd, hasNoProperti
           <CardTitle className="text-sm flex items-center gap-2"><Briefcase className="size-4" /> Associação</CardTitle>
         </CardHeader>
         <CardContent className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          <FieldRow label="Classificação">
-            <Input className={inp} disabled={d} value={form.memberClassification} onChange={e => set('memberClassification', upperNoAccents(e.target.value))} />
-          </FieldRow>
-          <FieldRow label="Tipo de membro">
-            <SelectField disabled={d} value={form.memberType} onChange={v => set('memberType', v)} placeholder="Selecione" options={MEMBER_TYPES} />
-          </FieldRow>
-          <FieldRow label="Situação">
-            <SelectField disabled={d} value={form.memberStatus} onChange={v => set('memberStatus', v)} placeholder="Selecione" options={MEMBER_STATUS} />
-          </FieldRow>
-          <FieldRow label="Associado desde">
-            <DatePicker disabled={d} className={cn(d && READ_MODE_FIELD)} value={form.memberSince} onChange={v => set('memberSince', v)} />
-          </FieldRow>
-          <FieldRow label="Validade da associação">
-            <DatePicker disabled={d} className={cn(d && READ_MODE_FIELD)} value={form.membershipValidUntil} onChange={v => set('membershipValidUntil', v)} />
-          </FieldRow>
-          <FieldRow label="Nº observação">
-            <Input className={inp} disabled={d} value={form.memberNotesNumber} onChange={e => set('memberNotesNumber', e.target.value)} />
-          </FieldRow>
-          <div className="flex items-center gap-2 pt-5">
-            <input type="checkbox" id="boardMember" disabled={d} checked={form.boardMember} onChange={e => set('boardMember', e.target.checked)} className="accent-primary disabled:cursor-default" />
-            <Label htmlFor="boardMember" className={`text-sm ${d ? '' : 'cursor-pointer'}`}>Membro da diretoria</Label>
-          </div>
-          {form.boardMember && (
-            <FieldRow label="Cargo na diretoria">
-              <Input className={inp} disabled={d} value={form.boardPosition} onChange={e => set('boardPosition', upperNoAccents(e.target.value))} />
-            </FieldRow>
-          )}
+          <PersonField campo="memberClassification" ctx={campos} />
+          <PersonField campo="memberType" ctx={campos} />
+          <PersonField campo="memberStatus" ctx={campos} />
+          <PersonField campo="memberSince" ctx={campos} />
+          <PersonField campo="membershipValidUntil" ctx={campos} />
+          <PersonField campo="memberNotesNumber" ctx={campos} />
+          <PersonField campo="boardMember" ctx={campos} />
+          {form.boardMember && <PersonField campo="boardPosition" ctx={campos} />}
           <div className="sm:col-span-2 lg:col-span-3">
-            <FieldRow label="Observações">
-              <textarea
-                disabled={d}
-                value={form.memberNotes}
-                onChange={e => set('memberNotes', upperNoAccents(e.target.value))}
-                rows={3}
-                className={textareaCls}
-              />
-            </FieldRow>
+            <PersonField campo="memberNotes" ctx={campos} />
           </div>
         </CardContent>
       </Card>

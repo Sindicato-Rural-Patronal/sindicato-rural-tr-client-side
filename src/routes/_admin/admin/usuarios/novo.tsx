@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate, Link } from '@tanstack/react-router'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { cloneElement, isValidElement, useId, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { ApiError, apiFetch, apiUpload } from '@/lib/api'
 import { resizeToSquare } from '@/utils/resize-image'
@@ -8,31 +8,23 @@ import { apiErrorMessage } from '@/lib/api-error-message'
 import { useCEPLookup, invalidateUserViews, type PaginatedResponse, type UserData } from '@/hooks/useAdmin'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { NativeSelect } from '@/components/ui/native-select'
-import { Label } from '@/components/ui/label'
-import { DatePicker } from '@/components/ui/date-picker'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { AlertCircle, ArrowLeft, Camera, User, FileText, Globe, MapPin, Briefcase, Save, Upload, X } from 'lucide-react'
-import { maskCPF, maskPhone, maskCEP, maskRG, maskCNH, maskMoney } from '@/utils/masks'
-import { AgeHint } from '@/components/AgeHint'
+import { maskCPF, maskCEP } from '@/utils/masks'
 import { useUnsavedGuard } from '@/hooks/use-unsaved-guard'
-import { CadproFields } from '@/components/CadproFields'
 import { AjudaLink } from '@/components/ajuda/AjudaLink'
 import { CameraDialog } from '@/components/cadastro/CameraDialog'
 import { InitialsAvatar } from '@/components/InitialsAvatar'
 import {
   validatePersonFields, firstInvalidField, focusFieldById,
-  type PersonField, type PersonFieldErrors,
+  type PersonField as CampoValidado, type PersonFieldErrors,
 } from '@/lib/person-validation'
 import { cpfDigits, isValidCpf, sameCpf } from '@/utils/cpf'
 import { toIso } from '@/utils/dates'
 import { upperNoAccents } from '@/utils/text-format'
-import { MEMBER_STATUS, MEMBER_TYPES } from '@/lib/member-types'
+import { FieldRow, PersonField, SelectField } from '@/components/cadastro/person-form-fields'
+import type { PersonFieldsCtx } from '@/lib/person-fields'
 import { CIN_HINT, CPF_LABEL } from '@/lib/cin'
-import {
-  GENDER_OPTIONS, ETHNICITY_OPTIONS, EDUCATION_OPTIONS,
-  MARITAL_STATUS_OPTIONS, CNH_CATEGORY_OPTIONS,
-} from '@/lib/user-form-options'
 
 export const Route = createFileRoute('/_admin/admin/usuarios/novo')({
   component: RouteComponent,
@@ -42,54 +34,12 @@ export const Route = createFileRoute('/_admin/admin/usuarios/novo')({
 
 // Liga o rótulo ao campo (clique no rótulo, leitor de tela): injeta um id no
 // filho, ou usa `htmlFor` quando o campo está dentro de um wrapper.
-function FieldRow({ label, required, htmlFor, error, children }: {
-  label: string
-  required?: boolean
-  htmlFor?: string
-  error?: string
-  children: React.ReactNode
-}) {
-  const autoId = useId()
-  const id = htmlFor ?? autoId
-  const control = !htmlFor && isValidElement<{ id?: string }>(children) && !children.props.id
-    ? cloneElement(children, { id })
-    : children
-  return (
-    <div className="flex flex-col gap-1.5">
-      <Label htmlFor={id} className="text-xs font-medium text-muted-foreground">
-        {label}{required && <span className="ml-1 text-destructive">*</span>}
-      </Label>
-      {control}
-      {error && <p id={`${id}-erro`} className="text-xs text-destructive" role="alert">{error}</p>}
-    </div>
-  )
-}
-
-function SelectField({ id, value, onChange, options, placeholder }: {
-  id?: string
-  value: string
-  onChange: (v: string) => void
-  options: readonly { value: string; label: string }[]
-  placeholder?: string
-}) {
-  return (
-    <NativeSelect
-      id={id}
-      value={value}
-      onChange={e => onChange(e.target.value)}
-      className="h-9"
-    >
-      {placeholder && <option value="">{placeholder}</option>}
-      {options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-    </NativeSelect>
-  )
-}
 
 const inp = 'h-9'
 
 // Campos validados antes de enviar, na ordem em que aparecem na tela.
-const VALIDATED_FIELDS: readonly PersonField[] = ['cpf', 'name', 'email', 'phone', 'phone2', 'phone3', 'rg', 'driverLicense']
-const fieldId = (f: PersonField) => `novo-${f}`
+const VALIDATED_FIELDS: readonly CampoValidado[] = ['cpf', 'name', 'email', 'phone', 'phone2', 'phone3', 'rg', 'driverLicense']
+const fieldId = (f: CampoValidado) => `novo-${f}`
 
 type Form = {
   name: string; nickname: string; email: string
@@ -257,7 +207,7 @@ function RouteComponent() {
   function set<K extends keyof Form>(key: K, value: Form[K]) {
     setForm(prev => ({ ...prev, [key]: value }))
     // Mexeu no campo: some o erro dele até a próxima tentativa de salvar.
-    if (errors[key as PersonField]) setErrors(prev => ({ ...prev, [key]: undefined }))
+    if (errors[key as CampoValidado]) setErrors(prev => ({ ...prev, [key]: undefined }))
   }
   function setAddr(k: keyof Form['address'], v: string) {
     setForm(prev => ({ ...prev, address: { ...prev.address, [k]: v } }))
@@ -416,11 +366,22 @@ function RouteComponent() {
   const isUrban = form.address.type === 'URBAN'
   // "Abrir cadastro" do CPF repetido: se só o CPF foi digitado, sai sem perguntar.
   const onlyCpfTyped = JSON.stringify({ ...form, cpf: '' }) === JSON.stringify(emptyForm)
-  const invalid = (f: PersonField) => ({
+  const invalid = (f: CampoValidado) => ({
     id: fieldId(f),
     'aria-invalid': errors[f] ? true : undefined,
     'aria-describedby': errors[f] ? `${fieldId(f)}-erro` : undefined,
   })
+
+  // Os campos de pessoa sao os mesmos da ficha (usuarios/$id): rotulo, mascara
+  // e lista de opcoes vem de person-form-fields.tsx. Aqui so o que e desta tela.
+  const campos: PersonFieldsCtx = {
+    values: form,
+    // `set` desta tela e generico sobre o Form inteiro (que tem os campos do
+    // endereco tambem); a ponte para os campos de pessoa fica aqui.
+    set: (campo, valor) => set(campo, valor as never),
+    errors,
+    idPrefix: 'novo-',
+  }
 
   return (
     <div className="p-6 max-w-4xl mx-auto">
@@ -518,43 +479,18 @@ function RouteComponent() {
                 </div>
               )}
             </div>
-            <FieldRow label="Nome" required htmlFor={fieldId('name')} error={errors.name}>
-              <Input className={inp} {...invalid('name')} value={form.name} onChange={e => set('name', upperNoAccents(e.target.value))} />
-            </FieldRow>
-            <FieldRow label="Apelido">
-              <Input className={inp} value={form.nickname} onChange={e => set('nickname', upperNoAccents(e.target.value))} />
-            </FieldRow>
-            <FieldRow label="E-mail" htmlFor={fieldId('email')} error={errors.email}>
-              <Input className={inp} {...invalid('email')} type="email" value={form.email} onChange={e => set('email', e.target.value)} />
-            </FieldRow>
-            <FieldRow label="Telefone" required htmlFor={fieldId('phone')} error={errors.phone}>
-              <Input className={inp} {...invalid('phone')} inputMode="tel" value={form.phone} onChange={e => set('phone', maskPhone(e.target.value))} placeholder="(00) 00000-0000" />
-            </FieldRow>
-            <FieldRow label="Telefone 2" htmlFor={fieldId('phone2')} error={errors.phone2}>
-              <Input className={inp} {...invalid('phone2')} inputMode="tel" value={form.phone2} onChange={e => set('phone2', maskPhone(e.target.value))} placeholder="(00) 00000-0000" />
-            </FieldRow>
-            <FieldRow label="Telefone 3" htmlFor={fieldId('phone3')} error={errors.phone3}>
-              <Input className={inp} {...invalid('phone3')} inputMode="tel" value={form.phone3} onChange={e => set('phone3', maskPhone(e.target.value))} placeholder="(00) 00000-0000" />
-            </FieldRow>
-            <FieldRow label="Data nascimento" htmlFor="novo-birthDate">
-              <DatePicker id="novo-birthDate" value={form.birthDate} onChange={v => set('birthDate', v)} />
-              <AgeHint birthDate={form.birthDate} />
-            </FieldRow>
-            <FieldRow label="Naturalidade">
-              <Input className={inp} value={form.birthPlace} onChange={e => set('birthPlace', upperNoAccents(e.target.value))} />
-            </FieldRow>
-            <FieldRow label="Nacionalidade">
-              <Input className={inp} value={form.nationality} onChange={e => set('nationality', upperNoAccents(e.target.value))} />
-            </FieldRow>
-            <FieldRow label="Gênero">
-              <SelectField value={form.gender} onChange={v => set('gender', v)} placeholder="Selecione" options={GENDER_OPTIONS} />
-            </FieldRow>
-            <FieldRow label="Etnia">
-              <SelectField value={form.ethnicity} onChange={v => set('ethnicity', v)} placeholder="Selecione" options={ETHNICITY_OPTIONS} />
-            </FieldRow>
-            <FieldRow label="Estado civil">
-              <SelectField value={form.maritalStatus} onChange={v => set('maritalStatus', v)} placeholder="Selecione" options={MARITAL_STATUS_OPTIONS} />
-            </FieldRow>
+            <PersonField campo="name" ctx={campos} required />
+            <PersonField campo="nickname" ctx={campos} />
+            <PersonField campo="email" ctx={campos} />
+            <PersonField campo="phone" ctx={campos} required />
+            <PersonField campo="phone2" ctx={campos} />
+            <PersonField campo="phone3" ctx={campos} />
+            <PersonField campo="birthDate" ctx={campos} />
+            <PersonField campo="birthPlace" ctx={campos} />
+            <PersonField campo="nationality" ctx={campos} />
+            <PersonField campo="gender" ctx={campos} />
+            <PersonField campo="ethnicity" ctx={campos} />
+            <PersonField campo="maritalStatus" ctx={campos} />
           </CardContent>
         </Card>
 
@@ -564,27 +500,11 @@ function RouteComponent() {
             <CardTitle className="text-sm flex items-center gap-2"><FileText className="size-4" /> Documentos</CardTitle>
           </CardHeader>
           <CardContent className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            <FieldRow label="RG" htmlFor={fieldId('rg')} error={errors.rg}>
-              <Input className={inp} {...invalid('rg')} value={form.rg} onChange={e => set('rg', maskRG(e.target.value))} placeholder="00.000.000-0" maxLength={12} />
-            </FieldRow>
-            <FieldRow label="Órgão emissor RG">
-              <Input className={inp} value={form.rgIssuer} onChange={e => set('rgIssuer', upperNoAccents(e.target.value))} />
-            </FieldRow>
-            <FieldRow label="Data emissão RG">
-              <DatePicker value={form.rgIssuedAt} onChange={v => set('rgIssuedAt', v)} />
-            </FieldRow>
-            <FieldRow label="CNH" htmlFor={fieldId('driverLicense')} error={errors.driverLicense}>
-              <Input className={inp} {...invalid('driverLicense')} value={form.driverLicense} onChange={e => {
-                const v = maskCNH(e.target.value)
-                set('driverLicense', v)
-                if (!v) set('driverLicenseCategory', '')
-              }} placeholder="00000000000" inputMode="numeric" maxLength={11} />
-            </FieldRow>
-            {form.driverLicense && (
-              <FieldRow label="Categoria CNH">
-                <SelectField value={form.driverLicenseCategory} onChange={v => set('driverLicenseCategory', v)} placeholder="Selecione" options={CNH_CATEGORY_OPTIONS} />
-              </FieldRow>
-            )}
+            <PersonField campo="rg" ctx={campos} />
+            <PersonField campo="rgIssuer" ctx={campos} />
+            <PersonField campo="rgIssuedAt" ctx={campos} />
+            <PersonField campo="driverLicense" ctx={campos} />
+            {form.driverLicense && <PersonField campo="driverLicenseCategory" ctx={campos} />}
           </CardContent>
         </Card>
 
@@ -594,22 +514,11 @@ function RouteComponent() {
             <CardTitle className="text-sm flex items-center gap-2"><Globe className="size-4" /> Perfil social</CardTitle>
           </CardHeader>
           <CardContent className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            <FieldRow label="Escolaridade">
-              <SelectField value={form.educationLevel} onChange={v => set('educationLevel', v)} placeholder="Selecione" options={EDUCATION_OPTIONS} />
-            </FieldRow>
-            <FieldRow label="Categoria funcional">
-              <Input className={inp} value={form.functionalCategory} onChange={e => set('functionalCategory', upperNoAccents(e.target.value))} />
-            </FieldRow>
-            <FieldRow label="CAD/PRO (até 5)">
-              <CadproFields value={form.cadPro} onChange={v => set('cadPro', v)} />
-            </FieldRow>
-            <FieldRow label="Renda familiar">
-              <Input className={inp} value={form.familyIncome} onChange={e => set('familyIncome', maskMoney(e.target.value))} placeholder="R$ 0,00" inputMode="numeric" />
-            </FieldRow>
-            <div className="flex items-center gap-2 pt-5">
-              <input type="checkbox" id="specialNeeds" checked={form.specialNeeds} onChange={e => set('specialNeeds', e.target.checked)} className="accent-primary" />
-              <Label htmlFor="specialNeeds" className="text-sm cursor-pointer">Necessidades especiais</Label>
-            </div>
+            <PersonField campo="educationLevel" ctx={campos} />
+            <PersonField campo="functionalCategory" ctx={campos} />
+            <PersonField campo="cadPro" ctx={campos} />
+            <PersonField campo="familyIncome" ctx={campos} />
+            <PersonField campo="specialNeeds" ctx={campos} />
           </CardContent>
         </Card>
 
@@ -668,24 +577,17 @@ function RouteComponent() {
             <CardTitle className="text-sm flex items-center gap-2"><Briefcase className="size-4" /> Associação</CardTitle>
           </CardHeader>
           <CardContent className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            <FieldRow label="Tipo de membro">
-              <SelectField value={form.memberType} onChange={v => set('memberType', v)} placeholder="Selecione" options={MEMBER_TYPES} />
-            </FieldRow>
-            <FieldRow label="Classificação"><Input className={inp} value={form.memberClassification} onChange={e => set('memberClassification', upperNoAccents(e.target.value))} /></FieldRow>
-            <FieldRow label="Situação">
-              <SelectField value={form.memberStatus} onChange={v => set('memberStatus', v)} placeholder="Selecione" options={MEMBER_STATUS} />
-            </FieldRow>
-            <FieldRow label="Associado desde"><DatePicker value={form.memberSince} onChange={v => set('memberSince', v)} /></FieldRow>
-            <FieldRow label="Validade da associação"><DatePicker value={form.membershipValidUntil} onChange={v => set('membershipValidUntil', v)} /></FieldRow>
-            <FieldRow label="Nº cooperado"><Input className={inp} value={form.memberNotesNumber} onChange={e => set('memberNotesNumber', e.target.value)} /></FieldRow>
-            <FieldRow label="Observações"><Input className={inp} value={form.memberNotes} onChange={e => set('memberNotes', upperNoAccents(e.target.value))} /></FieldRow>
-            <div className="flex items-center gap-2 pt-5">
-              <input type="checkbox" id="boardMember" checked={form.boardMember} onChange={e => set('boardMember', e.target.checked)} className="accent-primary" />
-              <Label htmlFor="boardMember" className="text-sm cursor-pointer">Membro da diretoria</Label>
+            <PersonField campo="memberType" ctx={campos} />
+            <PersonField campo="memberClassification" ctx={campos} />
+            <PersonField campo="memberStatus" ctx={campos} />
+            <PersonField campo="memberSince" ctx={campos} />
+            <PersonField campo="membershipValidUntil" ctx={campos} />
+            <PersonField campo="memberNotesNumber" ctx={campos} />
+            <div className="sm:col-span-2 lg:col-span-3">
+              <PersonField campo="memberNotes" ctx={campos} />
             </div>
-            {form.boardMember && (
-              <FieldRow label="Cargo na diretoria"><Input className={inp} value={form.boardPosition} onChange={e => set('boardPosition', upperNoAccents(e.target.value))} /></FieldRow>
-            )}
+            <PersonField campo="boardMember" ctx={campos} />
+            {form.boardMember && <PersonField campo="boardPosition" ctx={campos} />}
           </CardContent>
         </Card>
 

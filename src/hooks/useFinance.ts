@@ -497,6 +497,15 @@ export function useCreateFinancePaymentMethod() {
   })
 }
 
+export function useUpdateFinancePaymentMethod() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, body }: { id: string; body: { name?: string; active?: boolean } }) =>
+      apiFetch(`/admin/finance/payment-methods/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
+    onSuccess: () => invalidateFinance(qc),
+  })
+}
+
 export function useDeleteFinancePaymentMethod() {
   const qc = useQueryClient()
   return useMutation({

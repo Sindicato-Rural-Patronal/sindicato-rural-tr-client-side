@@ -49,9 +49,10 @@ import { useCrudDialog } from '@/hooks/useCrudDialog'
 import { RecurringTab } from '@/components/financeiro/RecurringTab'
 import { ClosingTab } from '@/components/financeiro/ClosingTab'
 import { PaymentMethodSelect } from '@/components/financeiro/PaymentMethodSelect'
+import { PaymentMethodsTab } from '@/components/financeiro/PaymentMethodsTab'
 import { AjudaLink } from '@/components/ajuda/AjudaLink'
 
-type FinanceTab = 'dashboard' | 'lancamentos' | 'recorrentes' | 'categorias' | 'caixas' | 'fechamento'
+type FinanceTab = 'dashboard' | 'lancamentos' | 'recorrentes' | 'categorias' | 'caixas' | 'formas' | 'fechamento'
 type FinanceSearch = {
   tab: FinanceTab
   from?: string
@@ -64,7 +65,7 @@ type FinanceSearch = {
   q?: string
   page?: number
 }
-const TABS: FinanceTab[] = ['dashboard', 'lancamentos', 'recorrentes', 'categorias', 'caixas', 'fechamento']
+const TABS: FinanceTab[] = ['dashboard', 'lancamentos', 'recorrentes', 'categorias', 'caixas', 'formas', 'fechamento']
 function str(v: unknown): string | undefined {
   return typeof v === 'string' && v.trim() ? v : undefined
 }
@@ -172,6 +173,7 @@ function RouteComponent() {
           <TabsTrigger value="recorrentes">Recorrentes</TabsTrigger>
           <TabsTrigger value="categorias">Categorias</TabsTrigger>
           <TabsTrigger value="caixas">Caixas</TabsTrigger>
+          <TabsTrigger value="formas">Formas de pagamento</TabsTrigger>
           <TabsTrigger value="fechamento">Fechamento</TabsTrigger>
         </TabsList>
 
@@ -189,6 +191,9 @@ function RouteComponent() {
         </TabsContent>
         <TabsContent value="caixas" className="mt-6">
           <AccountsTab enabled={enabled} canCreate={can('CREATE_FINANCE')} canUpdate={can('UPDATE_FINANCE')} canDelete={can('DELETE_FINANCE')} />
+        </TabsContent>
+        <TabsContent value="formas" className="mt-6">
+          <PaymentMethodsTab enabled={enabled} canCreate={can('CREATE_FINANCE')} canUpdate={can('UPDATE_FINANCE')} canDelete={can('DELETE_FINANCE')} />
         </TabsContent>
         <TabsContent value="fechamento" className="mt-6">
           <ClosingTab enabled={enabled} canCreate={can('CREATE_FINANCE')} canDelete={can('DELETE_FINANCE')} />
