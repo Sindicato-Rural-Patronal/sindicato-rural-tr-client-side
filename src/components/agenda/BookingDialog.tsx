@@ -213,7 +213,7 @@ function BookingDialogSession({ open, booking, defaults, canUpdate = true, canDe
                     id="booking-title"
                     className="h-10"
                     value={values.title}
-                    onChange={e => set('title', upperNoAccents(e.target.value))}
+                    onChange={e => set('title', e.target.value)}
                     placeholder="Ex: Reunião da diretoria"
                     aria-invalid={!!errors.title || undefined}
                     autoFocus={creating}

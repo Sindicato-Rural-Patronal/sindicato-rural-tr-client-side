@@ -11,7 +11,6 @@ import { useTranslation } from 'react-i18next'
 import { useAdminCourse, useCreateCourse, useUpdateCourse, useUploadBanner, useUploadGalleryPhoto } from '@/hooks/useCourse'
 import type { CreateCourseResponse } from '@/hooks/useCourse'
 import { useRooms } from '@/hooks/useRooms'
-import { upperNoAccents } from '@/utils/text-format'
 import { courseBaseSchema } from '@/lib/schemas'
 import type { CourseFormData } from '@/lib/schemas'
 import { courseToDuplicateForm, roomIdByName } from '@/lib/course-duplicate'
@@ -369,12 +368,21 @@ function CourseFormDialogSession({ open, editing, duplicateOf = null, onClose }:
     defaultValues: editing ? courseToForm(editing) : source ? courseToDuplicateForm(source, rooms) : emptyFormDefaults,
   })
 
-  // A lista de salas pode chegar depois de abrir a cópia: escolhe a sala do curso original.
+  // A sala do curso: a API devolve o NOME dela (`location`), não o id, e a lista
+  // de salas costuma chegar depois de o diálogo abrir. Sem isto o select da
+  // edição aparecia vazio ("Selecione a sala") mesmo num curso que tem sala —
+  // parecia que a sala tinha sumido. Vale para editar e para duplicar.
+  // `reset` e não `setValue`: a sala já gravada é o ponto de partida do
+  // formulário, não uma alteração de quem abriu — com `setValue` ela entraria
+  // na comparação com os valores iniciais e fechar o diálogo passaria a
+  // perguntar "sair sem salvar?" sem ninguém ter mexido em nada.
+  const origem = editing ?? source
   useEffect(() => {
-    if (!source || !rooms || form.getValues('roomId')) return
-    const roomId = roomIdByName(rooms, source.location)
-    if (roomId) form.setValue('roomId', roomId, { shouldValidate: true })
-  }, [source, rooms, form])
+    if (!origem || !rooms || form.getValues('roomId')) return
+    const roomId = roomIdByName(rooms, origem.location)
+    if (roomId) form.reset({ ...form.getValues(),
+roomId })
+  }, [origem, rooms, form])
 
   const isPending = createCourse.isPending || updateCourse.isPending || uploadingStaged
 
@@ -542,7 +550,7 @@ function CourseFormDialogSession({ open, editing, duplicateOf = null, onClose }:
                 <FormField control={form.control} name="name" render={({ field }) => (
                   <FormItem>
                     <FormLabel>{t('admin.courses.form.title')}</FormLabel>
-                    <FormControl><Input {...field} onChange={e => field.onChange(upperNoAccents(e.target.value))} placeholder="Ex: Manejo Integrado de Pragas no Milho" /></FormControl>
+                    <FormControl><Input {...field} placeholder="Ex: Manejo Integrado de Pragas no Milho" /></FormControl>
                     <p className="text-xs text-muted-foreground">{t('admin.courses.form.titleHint')}</p>
                     <FormMessage />
                   </FormItem>
@@ -634,7 +642,7 @@ function CourseFormDialogSession({ open, editing, duplicateOf = null, onClose }:
                 <FormField control={form.control} name="observations" render={({ field }) => (
                   <FormItem>
                     <FormLabel>{t('admin.courses.form.observations')}</FormLabel>
-                    <FormControl><Input {...field} onChange={e => field.onChange(upperNoAccents(e.target.value))} placeholder="Ex: Maiores de 18 anos" /></FormControl>
+                    <FormControl><Input {...field} placeholder="Ex: Maiores de 18 anos" /></FormControl>
                     <FormMessage />
                   </FormItem>
                 )} />
