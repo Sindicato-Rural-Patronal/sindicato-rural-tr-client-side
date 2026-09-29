@@ -51,7 +51,7 @@ import { cn } from '@/lib/utils'
 import { cpfDigits } from '@/utils/cpf'
 import { toIso } from '@/utils/dates'
 import { upperNoAccents } from '@/utils/text-format'
-import { MEMBER_TYPES } from '@/lib/member-types'
+import { MEMBER_STATUS, MEMBER_TYPES } from '@/lib/member-types'
 import { CIN_HINT, CPF_LABEL } from '@/lib/cin'
 import {
   GENDER_OPTIONS, ETHNICITY_OPTIONS, EDUCATION_OPTIONS,
@@ -148,7 +148,7 @@ type DadosForm = {
   birthPlace: string; nationality: string; gender: string; ethnicity: string
   educationLevel: string; functionalCategory: string; specialNeeds: boolean
   memberClassification: string; cadPro: string[]; familyIncome: string
-  memberType: string; boardPosition: string; boardMember: boolean
+  memberType: string; memberStatus: string; boardPosition: string; boardMember: boolean
   memberSince: string; membershipValidUntil: string; memberNotes: string; memberNotesNumber: string
   avatar: string
 }
@@ -181,6 +181,7 @@ function dadosFromDetail(u: UserDataDetail): DadosForm {
     cadPro: u.cadPro ?? [],
     familyIncome: maskMoney(u.familyIncome ?? ''),
     memberType: u.memberType ?? '',
+    memberStatus: u.memberStatus ?? '',
     boardPosition: u.boardPosition ?? '',
     boardMember: u.boardMember ?? false,
     memberSince: toDateInput(u.memberSince),
@@ -382,6 +383,7 @@ function DadosTab({ userId, user, completeMode, onCompleteModeEnd, hasNoProperti
       cadPro: f.cadPro.map(s => s.trim()).filter(Boolean),
       familyIncome: f.familyIncome.replace(/\D/g, '') || null,
       memberType: f.memberType || null,
+      memberStatus: (f.memberStatus as UserDataDetail['memberStatus']) || null,
       boardPosition: f.boardPosition || null,
       boardMember: f.boardMember,
       memberSince: f.memberSince ? toIso(f.memberSince) : null,
@@ -432,6 +434,7 @@ function DadosTab({ userId, user, completeMode, onCompleteModeEnd, hasNoProperti
           cadPro: form.cadPro.map(s => s.trim()).filter(Boolean),
           familyIncome: form.familyIncome.replace(/\D/g, '') || null,
           memberType: form.memberType || null,
+          memberStatus: (form.memberStatus as UserDataDetail['memberStatus']) || null,
           boardPosition: form.boardPosition || null,
           boardMember: form.boardMember,
           memberSince: form.memberSince ? toIso(form.memberSince) : null,
@@ -709,6 +712,9 @@ function DadosTab({ userId, user, completeMode, onCompleteModeEnd, hasNoProperti
           </FieldRow>
           <FieldRow label="Tipo de membro">
             <SelectField disabled={d} value={form.memberType} onChange={v => set('memberType', v)} placeholder="Selecione" options={MEMBER_TYPES} />
+          </FieldRow>
+          <FieldRow label="Situação">
+            <SelectField disabled={d} value={form.memberStatus} onChange={v => set('memberStatus', v)} placeholder="Selecione" options={MEMBER_STATUS} />
           </FieldRow>
           <FieldRow label="Associado desde">
             <DatePicker disabled={d} className={cn(d && READ_MODE_FIELD)} value={form.memberSince} onChange={v => set('memberSince', v)} />

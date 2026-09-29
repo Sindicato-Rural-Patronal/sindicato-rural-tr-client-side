@@ -12,3 +12,11 @@ export function memberTypeLabel(value: string | null | undefined): string {
   if (!value) return ''
   return MEMBER_TYPES.find(t => t.value === value)?.label ?? value
 }
+
+// Situação do associado. Manda no selo "Associado" das inscrições, na aba
+// Associados da lista (que filtra por ATIVO) e no aviso de associação vencendo.
+// Ficava escrita à mão só no cadastro novo, e por isso faltava na ficha.
+export const MEMBER_STATUS = [
+  { value: 'ACTIVE', label: 'Ativo' },
+  { value: 'INACTIVE', label: 'Inativo' },
+] as const

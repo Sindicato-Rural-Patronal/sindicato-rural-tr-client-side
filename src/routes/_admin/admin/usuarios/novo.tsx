@@ -27,7 +27,7 @@ import {
 import { cpfDigits, isValidCpf, sameCpf } from '@/utils/cpf'
 import { toIso } from '@/utils/dates'
 import { upperNoAccents } from '@/utils/text-format'
-import { MEMBER_TYPES } from '@/lib/member-types'
+import { MEMBER_STATUS, MEMBER_TYPES } from '@/lib/member-types'
 import { CIN_HINT, CPF_LABEL } from '@/lib/cin'
 import {
   GENDER_OPTIONS, ETHNICITY_OPTIONS, EDUCATION_OPTIONS,
@@ -673,10 +673,7 @@ function RouteComponent() {
             </FieldRow>
             <FieldRow label="Classificação"><Input className={inp} value={form.memberClassification} onChange={e => set('memberClassification', upperNoAccents(e.target.value))} /></FieldRow>
             <FieldRow label="Situação">
-              <SelectField value={form.memberStatus} onChange={v => set('memberStatus', v)} placeholder="Selecione" options={[
-                { value: 'ACTIVE', label: 'Ativo' },
-                { value: 'INACTIVE', label: 'Inativo' },
-              ]} />
+              <SelectField value={form.memberStatus} onChange={v => set('memberStatus', v)} placeholder="Selecione" options={MEMBER_STATUS} />
             </FieldRow>
             <FieldRow label="Associado desde"><DatePicker value={form.memberSince} onChange={v => set('memberSince', v)} /></FieldRow>
             <FieldRow label="Validade da associação"><DatePicker value={form.membershipValidUntil} onChange={v => set('membershipValidUntil', v)} /></FieldRow>
