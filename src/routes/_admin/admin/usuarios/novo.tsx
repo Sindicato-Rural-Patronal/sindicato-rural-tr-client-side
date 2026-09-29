@@ -1,8 +1,9 @@
 import { createFileRoute, useNavigate, Link } from '@tanstack/react-router'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { cloneElement, isValidElement, useId, useState } from 'react'
+import { cloneElement, isValidElement, useId, useRef, useState } from 'react'
 import { toast } from 'sonner'
-import { ApiError, apiFetch } from '@/lib/api'
+import { ApiError, apiFetch, apiUpload } from '@/lib/api'
+import { resizeToSquare } from '@/utils/resize-image'
 import { apiErrorMessage } from '@/lib/api-error-message'
 import { useCEPLookup, invalidateUserViews, type PaginatedResponse, type UserData } from '@/hooks/useAdmin'
 import { Button } from '@/components/ui/button'
@@ -11,11 +12,14 @@ import { NativeSelect } from '@/components/ui/native-select'
 import { Label } from '@/components/ui/label'
 import { DatePicker } from '@/components/ui/date-picker'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { AlertCircle, ArrowLeft, User, FileText, Globe, MapPin, Briefcase, Save } from 'lucide-react'
+import { AlertCircle, ArrowLeft, Camera, User, FileText, Globe, MapPin, Briefcase, Save, Upload, X } from 'lucide-react'
 import { maskCPF, maskPhone, maskCEP, maskRG, maskCNH, maskMoney } from '@/utils/masks'
 import { AgeHint } from '@/components/AgeHint'
 import { useUnsavedGuard } from '@/hooks/use-unsaved-guard'
 import { CadproFields } from '@/components/CadproFields'
+import { AjudaLink } from '@/components/ajuda/AjudaLink'
+import { CameraDialog } from '@/components/cadastro/CameraDialog'
+import { InitialsAvatar } from '@/components/InitialsAvatar'
 import {
   validatePersonFields, firstInvalidField, focusFieldById,
   type PersonField, type PersonFieldErrors,
@@ -200,9 +204,42 @@ function RouteComponent() {
   const [errors, setErrors] = useState<PersonFieldErrors>({})
   const [formMessage, setFormMessage] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
+  // A foto fica guardada aqui até a pessoa existir: o upload precisa do id.
+  const [foto, setFoto] = useState<File | null>(null)
+  const [fotoPreview, setFotoPreview] = useState<string | null>(null)
+  const [cameraOpen, setCameraOpen] = useState(false)
+  const arquivoRef = useRef<HTMLInputElement>(null)
 
-  // Guard de não-salvo: dirty se o form mudou e não está salvando.
-  const dirty = !saving && JSON.stringify(form) !== JSON.stringify(emptyForm)
+  async function usarFoto(arquivo: File) {
+    try {
+      // Mesmo recorte quadrado do avatar da ficha, para a foto do balcão não
+      // sair esticada.
+      const quadrada = await resizeToSquare(arquivo)
+      setFoto(quadrada)
+      // Libera a prévia anterior: tirar várias fotos seguidas deixaria uma
+      // fila de blobs presos na memória da aba.
+      setFotoPreview(anterior => {
+        if (anterior) URL.revokeObjectURL(anterior)
+        return URL.createObjectURL(quadrada)
+      })
+    } catch {
+      toast.error('Não foi possível usar esta imagem.')
+    }
+    setCameraOpen(false)
+  }
+
+  function limparFoto() {
+    setFoto(null)
+    setFotoPreview(anterior => {
+      if (anterior) URL.revokeObjectURL(anterior)
+      return null
+    })
+  }
+
+
+  // Guard de não-salvo: dirty se o form mudou e não está salvando. A foto
+  // entra na conta — ela é estado à parte, e sair sem salvar a perde.
+  const dirty = !saving && (foto !== null || JSON.stringify(form) !== JSON.stringify(emptyForm))
   const allowLeave = useUnsavedGuard(dirty)
 
   // CPF repetido: consulta ao completar um CPF válido (ou ao sair do campo).
@@ -336,6 +373,15 @@ function RouteComponent() {
       }
     }
 
+    // A foto só pode subir depois: o upload precisa do id da pessoa.
+    if (foto) {
+      try {
+        await apiUpload(`/admin/users/${newId}/avatar`, foto)
+      } catch (err) {
+        failed.push(`a foto (${apiErrorMessage(err, 'erro ao enviar')})`)
+      }
+    }
+
     // endereço → vira a propriedade principal do associado
     const addressBody = buildAddressBody(form.address)
     if (addressBody) {
@@ -382,12 +428,51 @@ function RouteComponent() {
           <Link to="/admin/usuarios" aria-label="Voltar"><ArrowLeft className="size-4" /></Link>
         </Button>
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">Novo associado</h1>
+          <div className="flex items-center gap-1">
+            <h1 className="text-2xl font-bold tracking-tight text-foreground">Novo associado</h1>
+            <AjudaLink topico="usuarios" titulo="Novo associado" />
+          </div>
           <p className="text-sm text-muted-foreground">Cadastre a ficha completa de uma vez</p>
         </div>
       </div>
 
       <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-5">
+        {/* Foto: no balcão a pessoa está ali na frente, então a hora de tirar
+            é agora. Deixar para depois é, na prática, ficar sem foto. */}
+        <Card>
+          <CardContent className="flex flex-wrap items-center gap-4 pt-6">
+            {fotoPreview ? (
+              <img src={fotoPreview} alt="Foto do associado" className="size-20 rounded-full object-cover" />
+            ) : (
+              <InitialsAvatar name={form.name} size="lg" />
+            )}
+            <div className="flex flex-wrap gap-2">
+              <Button type="button" variant="outline" className="h-11 gap-2" onClick={() => setCameraOpen(true)}>
+                <Camera className="size-4" /> {foto ? 'Tirar outra' : 'Tirar foto'}
+              </Button>
+              <Button type="button" variant="outline" className="h-11 gap-2" onClick={() => arquivoRef.current?.click()}>
+                <Upload className="size-4" /> Escolher arquivo
+              </Button>
+              {foto && (
+                <Button type="button" variant="ghost" className="h-11 gap-2 text-muted-foreground" onClick={limparFoto}>
+                  <X className="size-4" /> Tirar foto do cadastro
+                </Button>
+              )}
+              <input
+                ref={arquivoRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={e => {
+                  const arquivo = e.target.files?.[0]
+                  e.target.value = ''
+                  if (arquivo) void usarFoto(arquivo)
+                }}
+              />
+            </div>
+          </CardContent>
+        </Card>
+
         {/* Dados pessoais */}
         <Card>
           <CardHeader className="pb-3">
@@ -621,6 +706,8 @@ function RouteComponent() {
           </Button>
         </div>
       </form>
+
+      <CameraDialog open={cameraOpen} onClose={() => setCameraOpen(false)} onCapture={f => void usarFoto(f)} />
     </div>
   )
 }

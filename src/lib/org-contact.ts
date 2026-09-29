@@ -5,6 +5,12 @@
  * salvo vazio não aparece no site.
  */
 export const ORG_CONTACT = {
+  /**
+   * CNPJ do sindicato. Não há campo para ele em Configurações (nada no site
+   * público mostra CNPJ), mas o relatório de despesas precisa dele no
+   * cabeçalho, como no modelo do sistema antigo.
+   */
+  cnpj: '77.419.505/0001-10',
   phone: '(44) 3645-2199',
   email: 'contato@sindicatoruraltr.com.br',
   street: 'Rua José Tondato, 80',

@@ -38,7 +38,7 @@ import {
 } from '@/components/ui/dialog'
 import {
   ArrowLeft, Calendar, CalendarPlus, CheckCircle2, Clock, FileDown, GraduationCap, MapPin, RefreshCw,
-  User, Users, Search, UserCheck, WifiOff,
+  User, Search, UserCheck, WifiOff,
 } from 'lucide-react'
 import { FaLinkedin, FaInstagram, FaFacebook, FaWhatsapp } from 'react-icons/fa'
 
@@ -580,12 +580,6 @@ function RouteComponent() {
     )
   }
 
-  const spotsLeft = Math.max(0, course.maxStudents - course.enrolled)
-  const occupancyPercent = course.maxStudents > 0
-    ? Math.min(100, Math.round((course.enrolled / course.maxStudents) * 100))
-    : 100
-  const isFull = spotsLeft <= 0
-
   // Prazo: até o fim do dia em Brasília, ou até a hora quando o painel informou;
   // o curso aceita inscrição até o último dia (mesma regra do backend).
   const registrationClosed = isRegistrationDeadlinePassed(course.registrationDeadline, course.registrationDeadlineTime)
@@ -750,27 +744,6 @@ function RouteComponent() {
                     </div>
                   </div>
                 )}
-
-                <div className="flex items-start gap-2.5">
-                  <Users className="mt-0.5 size-4 shrink-0 text-primary" />
-                  <div>
-                    <p className="font-medium">{t('courseDetail.spots')}</p>
-                    <p className="text-muted-foreground">
-                      {t('courseDetail.spotsCount', { enrolled: course.enrolled, max: course.maxStudents })}
-                    </p>
-                    <div className="mt-1.5 h-1.5 w-full rounded-full bg-muted overflow-hidden">
-                      <div
-                        className={`h-full rounded-full transition-all ${isFull ? 'bg-destructive' : 'bg-primary'}`}
-                        style={{ width: `${occupancyPercent}%` }}
-                      />
-                    </div>
-                    <p className={`mt-1 text-xs ${isFull ? 'text-destructive font-medium' : 'text-muted-foreground'}`}>
-                      {isFull
-                        ? t('courseDetail.spotsFull')
-                        : t('courseDetail.spotsLeft', { count: spotsLeft })}
-                    </p>
-                  </div>
-                </div>
 
                 {course.registrationDeadline && (
                   <div className={`rounded-lg px-3 py-2 text-xs ${registrationClosed ? 'border border-destructive/20 bg-destructive/5 text-destructive' : 'bg-muted/60 text-muted-foreground'}`}>

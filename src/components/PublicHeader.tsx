@@ -41,15 +41,24 @@ export function PublicHeader() {
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/60">
       <div className="container mx-auto px-4 flex h-16 items-center justify-between">
-        {/* Logo */}
-        <Link to="/" className="flex items-center gap-2 shrink-0">
+        {/* Marca + lema. A assinatura horizontal tem texto verde-escuro em fundo
+            transparente: no tema escuro ela vira silhueta branca, senão some.
+            O lema só aparece de xl para cima — abaixo disso ele disputaria a
+            barra com os itens do menu. */}
+        <Link to="/" className="flex min-w-0 items-center gap-3 shrink-0">
           <img
-            src="/logo-full.png"
-            alt="Sindicato Rural de Terra Roxa"
-            width={40}
-            height={40}
-            className="object-contain h-10 w-auto"
+            src="/logo-icon.png"
+            alt="Sindicato Rural de Terra Roxa – Paraná"
+            className="h-9 w-auto object-contain sm:h-10 dark:brightness-0 dark:invert"
           />
+          <span className="hidden min-w-0 border-l border-border pl-3 xl:block">
+            <span className="block truncate text-xs font-semibold leading-tight text-foreground">
+              {t('header.slogan')}
+            </span>
+            <span className="block truncate text-[11px] leading-tight text-muted-foreground">
+              {t('header.sloganSub')}
+            </span>
+          </span>
         </Link>
 
         {/* Desktop Nav */}

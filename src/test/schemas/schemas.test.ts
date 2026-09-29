@@ -70,9 +70,13 @@ describe('courseBaseSchema', () => {
     expect(courseBaseSchema.safeParse(valid).success).toBe(true)
   })
 
-  it('rejeita título vazio', () => {
-    const result = courseBaseSchema.safeParse({ ...valid, name: '' })
-    expect(result.success).toBe(false)
+  it('aceita título vazio (o backend grava "CURSO SEM NOME")', () => {
+    // O cadastro do curso costuma começar pela sala e pelas datas, para já
+    // reservar a agenda; o título vem depois.
+    expect(courseBaseSchema.safeParse({ ...valid, name: '' }).success).toBe(true)
+    const semCampo = { ...valid } as Record<string, unknown>
+    delete semCampo.name
+    expect(courseBaseSchema.safeParse(semCampo).success).toBe(true)
   })
 
   it('rejeita startDate vazio', () => {

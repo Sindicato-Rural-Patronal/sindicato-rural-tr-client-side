@@ -4,6 +4,7 @@ resumo: O histórico de tudo que foi criado, alterado e excluído no painel.
 grupo: gestao
 ordem: 2
 permissao: READ_AUDIT
+veja: administradores, seguranca, exportar-planilhas
 busca: auditoria historico trilha log quem alterou ip navegador retencao guarda exportar
 ---
 

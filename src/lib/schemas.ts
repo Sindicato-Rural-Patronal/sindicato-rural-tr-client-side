@@ -21,7 +21,9 @@ export const roomSchema = z.object({
 })
 
 export const courseBaseSchema = z.object({
-  name:            z.string().min(1, 'Título obrigatório'),
+  // Título em branco é permitido: o backend grava "CURSO SEM NOME". O cadastro
+  // costuma começar pela sala e pelas datas, para já reservar a agenda.
+  name:            z.string().optional().default(''),
   description:     z.string().optional().default(''),
   roomId:          z.string().optional(),
   status:          z.enum(['PUBLIC', 'PRIVATE', 'UNPUBLISHED', 'IN_PROGRESS', 'COMPLETED']),

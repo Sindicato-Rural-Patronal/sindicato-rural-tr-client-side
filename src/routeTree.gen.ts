@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as AdminRouteImport } from './routes/_admin'
 import { Route as PublicRouteImport } from './routes/_public'
+import { Route as CotacaoRouteImport } from './routes/cotacao'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as PublicIndexRouteImport } from './routes/_public/index'
 import { Route as PublicContatoRouteImport } from './routes/_public/contato'
@@ -59,6 +60,11 @@ const AdminRoute = AdminRouteImport.update({
 } as any)
 const PublicRoute = PublicRouteImport.update({
   id: '/_public',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CotacaoRoute = CotacaoRouteImport.update({
+  id: '/cotacao',
+  path: '/cotacao',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LoginRoute = LoginRouteImport.update({
@@ -274,6 +280,7 @@ const AdminAdminUsuariosNovoRoute = AdminAdminUsuariosNovoRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof PublicIndexRoute
+  '/cotacao': typeof CotacaoRoute
   '/login': typeof LoginRoute
   '/contato': typeof PublicContatoRoute
   '/cotacoes': typeof PublicCotacoesRoute
@@ -317,6 +324,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof PublicIndexRoute
+  '/cotacao': typeof CotacaoRoute
   '/login': typeof LoginRoute
   '/contato': typeof PublicContatoRoute
   '/cotacoes': typeof PublicCotacoesRoute
@@ -358,6 +366,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_admin': typeof AdminRouteWithChildren
   '/_public': typeof PublicRouteWithChildren
+  '/cotacao': typeof CotacaoRoute
   '/login': typeof LoginRoute
   '/_public/contato': typeof PublicContatoRoute
   '/_public/cotacoes': typeof PublicCotacoesRoute
@@ -404,6 +413,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/cotacao'
     | '/login'
     | '/contato'
     | '/cotacoes'
@@ -447,6 +457,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/cotacao'
     | '/login'
     | '/contato'
     | '/cotacoes'
@@ -487,6 +498,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/_admin'
     | '/_public'
+    | '/cotacao'
     | '/login'
     | '/_public/contato'
     | '/_public/cotacoes'
@@ -533,6 +545,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   AdminRoute: typeof AdminRouteWithChildren
   PublicRoute: typeof PublicRouteWithChildren
+  CotacaoRoute: typeof CotacaoRoute
   LoginRoute: typeof LoginRoute
   ConviteTokenRoute: typeof ConviteTokenRoute
 }
@@ -551,6 +564,13 @@ declare module '@tanstack/react-router' {
       path: ''
       fullPath: '/'
       preLoaderRoute: typeof PublicRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/cotacao': {
+      id: '/cotacao'
+      path: '/cotacao'
+      fullPath: '/cotacao'
+      preLoaderRoute: typeof CotacaoRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/login': {
@@ -980,6 +1000,7 @@ const PublicRouteWithChildren =
 const rootRouteChildren: RootRouteChildren = {
   AdminRoute: AdminRouteWithChildren,
   PublicRoute: PublicRouteWithChildren,
+  CotacaoRoute: CotacaoRoute,
   LoginRoute: LoginRoute,
   ConviteTokenRoute: ConviteTokenRoute,
 }

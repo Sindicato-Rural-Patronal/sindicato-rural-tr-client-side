@@ -71,15 +71,27 @@ export function useAdminCourses(params: {
   limit: number
   status?: 'PUBLIC' | 'PRIVATE' | 'UNPUBLISHED' | 'IN_PROGRESS' | 'COMPLETED'
   search?: string
+  /** Ano de início. Filtro próprio — a busca por texto não deduz ano. */
+  year?: number
 }) {
-  const { page, limit, status, search } = params
+  const { page, limit, status, search, year } = params
   const qs = new URLSearchParams({ page: String(page), limit: String(limit) })
   if (status) qs.set('status', status)
   if (search?.trim()) qs.set('search', search.trim())
+  if (year) qs.set('year', String(year))
 
   return useQuery<PaginatedCourses>({
-    queryKey: ['admin', 'courses', page, limit, status ?? '', search ?? ''],
+    queryKey: ['admin', 'courses', page, limit, status ?? '', search ?? '', year ?? ''],
     queryFn: () => apiFetch(`/admin/courses?${qs}`).then(r => r.json()),
+  })
+}
+
+/** Anos que têm curso, para o filtro da tela não oferecer ano vazio. */
+export function useCourseYears() {
+  return useQuery<number[]>({
+    queryKey: ['admin', 'courses', 'years'],
+    queryFn: () => apiFetch('/admin/courses/years').then(r => r.json()),
+    staleTime: 5 * 60_000,
   })
 }
 

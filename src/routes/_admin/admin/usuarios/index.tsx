@@ -18,6 +18,9 @@ import {
   DialogDescription, DialogFooter,
 } from '@/components/ui/dialog'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -27,7 +30,7 @@ import {
   Table, TableHeader, TableBody,
   TableRow, TableHead, TableCell,
 } from '@/components/ui/table'
-import { AlertCircle, Plus, Shield, Users, Pencil, Trash2, ExternalLink, Globe, ChevronDown, X, SlidersHorizontal, Building2, Download, Loader2, Copy } from 'lucide-react'
+import { AlertCircle, BadgeCheck, FileSpreadsheet, FileText, Plus, Shield, Users, Pencil, Trash2, ExternalLink, Globe, ChevronDown, X, SlidersHorizontal, Building2, Download, Loader2, Copy } from 'lucide-react'
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
@@ -43,14 +46,15 @@ import { CompaniesList } from '@/components/cadastro/CompaniesList'
 import { DuplicatePeopleList } from '@/components/cadastro/DuplicatePeopleList'
 import { useAdminCompanies } from '@/hooks/useCompanies'
 import { MEMBER_TYPES } from '@/lib/member-types'
-import { downloadExport, type ExportDataset, type ExportParams } from '@/lib/export'
+import { downloadExport, type ExportDataset, type ExportFormat, type ExportParams } from '@/lib/export'
 import { useRowSelection } from '@/hooks/useRowSelection'
 import { ExportMenu, SelectCheckbox, SelectionInfo } from '@/components/export/ExportMenu'
 import { PersonPicker, type PickedPerson } from '@/components/PersonPicker'
+import { AjudaLink } from '@/components/ajuda/AjudaLink'
 import { useDebouncedValue } from '@/hooks/useDebouncedValue'
 import { maskCPF } from '@/utils/masks'
 
-const USERS_TABS = ['associados', 'empresas', 'admins'] as const
+const USERS_TABS = ['pessoas', 'associados', 'empresas', 'admins'] as const
 type UsersTab = (typeof USERS_TABS)[number]
 type UsersSearch = { incomplete?: true; tab?: UsersTab; page?: number; q?: string }
 
@@ -736,7 +740,7 @@ function RouteComponent() {
   const urlSearch = Route.useSearch()
   const navigate = Route.useNavigate()
   const { can } = usePermissions()
-  const [activeTab, setActiveTab] = useState<string>(urlSearch.tab ?? 'associados')
+  const [activeTab, setActiveTab] = useState<string>(urlSearch.tab ?? 'pessoas')
   const [usersPage, setUsersPage] = useState(urlSearch.page ?? 1)
   const [adminsPage, setAdminsPage] = useState(1)
   const [limit, setLimit] = useState<typeof USERS_LIMIT_OPTIONS[number]>(10)
@@ -767,7 +771,7 @@ function RouteComponent() {
   const [lastUrl, setLastUrl] = useState({ tab: urlSearch.tab, incomplete: urlSearch.incomplete })
   if (lastUrl.tab !== urlSearch.tab || lastUrl.incomplete !== urlSearch.incomplete) {
     setLastUrl({ tab: urlSearch.tab, incomplete: urlSearch.incomplete })
-    if (lastUrl.tab !== urlSearch.tab) setActiveTab(urlSearch.tab ?? 'associados')
+    if (lastUrl.tab !== urlSearch.tab) setActiveTab(urlSearch.tab ?? 'pessoas')
     if (lastUrl.incomplete !== urlSearch.incomplete) {
       setIncompleteOnly(urlSearch.incomplete ?? false)
       setUsersPage(1)
@@ -778,7 +782,7 @@ function RouteComponent() {
   useEffect(() => {
     navigate({
       search: {
-        tab: activeTab === 'admins' || activeTab === 'empresas' ? activeTab : undefined,
+        tab: activeTab === 'pessoas' ? undefined : (activeTab as UsersTab),
         page: usersPage > 1 ? usersPage : undefined,
         incomplete: incompleteOnly || undefined,
         q: usersQuery || undefined,
@@ -809,6 +813,8 @@ function RouteComponent() {
     educationLevel: (educationFilter || undefined) as 'NO_FORMAL_EDUCATION' | 'INCOMPLETE_PRIMARY' | 'COMPLETE_PRIMARY' | 'INCOMPLETE_SECONDARY' | 'COMPLETE_SECONDARY' | 'INCOMPLETE_HIGHER' | 'COMPLETE_HIGHER' | 'POSTGRADUATE' | undefined,
     memberType: memberTypeFilter || undefined,
     memberClassification: memberClassFilter || undefined,
+    // A aba "Associados" é a mesma lista de pessoas, só com quem está em dia.
+    activeMember: activeTab === 'associados' ? true : undefined,
   })
   const { data: regrasData } = useAdminRules()
   const { data: adminsData, isLoading: loadingAdmins, isError: errorAdmins } = useAdminAdmins({
@@ -838,6 +844,9 @@ function RouteComponent() {
   // Mesmos filtros da listagem, sem página/limite.
   const usersExportFilters: ExportParams = {
     search: usersQuery || undefined,
+    // Sem isto, exportar na aba "Associados" baixava TODAS as pessoas com o
+    // rótulo do total de associados — planilha errada sem nenhum aviso.
+    activeMember: activeTab === 'associados' ? true : undefined,
     incompleteRegistration: incompleteOnly ? true : undefined,
     gender: genderFilter || undefined,
     ethnicity: ethnicityFilter || undefined,
@@ -846,6 +855,7 @@ function RouteComponent() {
     memberClassification: memberClassFilter || undefined,
   }
   const usersFiltered = !!usersQuery || incompleteOnly || activeFiltersCount > 0
+    || activeTab === 'associados'
 
   async function handleExportRow(dataset: ExportDataset, id: string) {
     setExportingRow(id)
@@ -858,6 +868,23 @@ function RouteComponent() {
       setExportingRow(null)
     }
   }
+
+  const [baixandoRelatorio, setBaixandoRelatorio] = useState(false)
+
+  async function baixarRelatorio(formato: ExportFormat) {
+    setBaixandoRelatorio(true)
+    try {
+      const n = await downloadExport('cadastros', {}, formato)
+      toast.success(`Relatório de cadastros baixado (${n} registros).`)
+    } catch (e) {
+      toast.error(apiErrorMessage(e, 'Não foi possível gerar o relatório.'))
+    } finally {
+      setBaixandoRelatorio(false)
+    }
+  }
+
+  // "Pessoa física" e "Associados" mostram a MESMA lista; muda só o filtro.
+  const ehAbaDePessoa = activeTab === 'pessoas' || activeTab === 'associados'
 
   function handleTabChange(tab: string) {
     setActiveTab(tab)
@@ -899,11 +926,14 @@ function RouteComponent() {
       <Tabs value={activeTab} onValueChange={handleTabChange}>
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-6">
           <div>
-            <h1 className="text-2xl font-bold tracking-tight text-foreground">Usuários</h1>
-            <p className="text-sm text-muted-foreground">Associados, empresas e administradores do sistema</p>
+            <div className="flex items-center gap-1">
+              <h1 className="text-2xl font-bold tracking-tight text-foreground">Usuários</h1>
+              <AjudaLink topico="usuarios" titulo="Usuários" />
+            </div>
+            <p className="text-sm text-muted-foreground">Pessoas, empresas e administradores do sistema</p>
           </div>
           <div className="flex items-center gap-2">
-            {activeTab === 'associados' && (
+            {ehAbaDePessoa && (
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <span className="hidden sm:inline">Itens por página:</span>
                 <Select
@@ -919,7 +949,7 @@ function RouteComponent() {
                 </Select>
               </div>
             )}
-            {activeTab === 'associados' && can('CREATE_USER') && (
+            {ehAbaDePessoa && can('CREATE_USER') && (
               <Button asChild>
                 <Link to="/admin/usuarios/novo"><Plus className="size-4" /> Novo associado</Link>
               </Button>
@@ -935,14 +965,47 @@ function RouteComponent() {
                 {can('CREATE_USER_ADMIN') && <NovoAdminSheet />}
               </>
             )}
+            {/* Os quatro tipos num arquivo só. Pede READ_USER_ADMIN porque
+                traz os administradores junto. */}
+            {can('READ_USER_ADMIN') && (
+              <DropdownMenu modal={false}>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" className="gap-2" disabled={baixandoRelatorio}>
+                    {baixandoRelatorio
+                      ? <Loader2 className="size-4 animate-spin" />
+                      : <Download className="size-4" />}
+                    Relatório de cadastros
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-60">
+                  <DropdownMenuItem onSelect={() => void baixarRelatorio('csv')}>
+                    <FileSpreadsheet className="size-4" /> Planilha CSV (abre no Excel)
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onSelect={() => void baixarRelatorio('pdf')}>
+                    <FileText className="size-4" /> Relatório em PDF (para imprimir)
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
           </div>
         </div>
 
         <TabsList className="mb-6">
-          <TabsTrigger value="associados" className="flex items-center gap-1.5">
+          <TabsTrigger value="pessoas" className="flex items-center gap-1.5">
             <Users className="size-3.5" />
+            Pessoa física
+            {/* `userTotal` é o total da consulta ATUAL. Na aba de associados
+                ele conta só os em dia, então mostrá-lo aqui mentiria. */}
+            {activeTab === 'pessoas' && userTotal > 0 && (
+              <span className="ml-1 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
+                {userTotal}
+              </span>
+            )}
+          </TabsTrigger>
+          <TabsTrigger value="associados" className="flex items-center gap-1.5">
+            <BadgeCheck className="size-3.5" />
             Associados
-            {userTotal > 0 && (
+            {activeTab === 'associados' && userTotal > 0 && (
               <span className="ml-1 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
                 {userTotal}
               </span>
@@ -950,7 +1013,7 @@ function RouteComponent() {
           </TabsTrigger>
           <TabsTrigger value="empresas" className="flex items-center gap-1.5">
             <Building2 className="size-3.5" />
-            Empresas
+            Pessoa jurídica
             {companyTotal > 0 && (
               <span className="ml-1 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
                 {companyTotal}
@@ -968,7 +1031,10 @@ function RouteComponent() {
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="associados">
+        {/* Uma lista só para as duas abas de pessoa: o `value` acompanha a aba
+            aberta, então o mesmo bloco serve a "Pessoa física" e a "Associados"
+            sem duplicar 300 linhas de tela. */}
+        <TabsContent value={activeTab === 'associados' ? 'associados' : 'pessoas'}>
           {/* Cadastros repetidos da mesma pessoa: a inscrição pública só acha por CPF,
               então quem estava cadastrado sem CPF ganha um segundo cadastro. */}
           <div className="mb-3 flex flex-wrap items-center gap-2">

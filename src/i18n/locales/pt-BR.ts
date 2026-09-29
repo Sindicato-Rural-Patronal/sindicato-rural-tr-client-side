@@ -1,4 +1,8 @@
 const ptBR = {
+  header: {
+    slogan: 'Somos o Sindicato Rural de Terra Roxa',
+    sloganSub: 'Produtor rural, acredite na entidade que te representa',
+  },
   nav: {
     home: 'Home',
     courses: 'Cursos',
@@ -88,10 +92,6 @@ const ptBR = {
     location: 'Local',
     instructor: 'Instrutor',
     instructors: 'Instrutores',
-    spots: 'Vagas',
-    spotsCount: '{{enrolled}} / {{max}} inscritos',
-    spotsLeft_one: '{{count}} vaga restante',
-    spotsLeft_other: '{{count}} vagas restantes',
     spotsFull: 'Vagas esgotadas',
     registrationUntil: 'Inscrições até ',
     registrationClosed: 'Inscrições encerradas em ',
@@ -191,7 +191,7 @@ const ptBR = {
     courses: {
       title: 'Gerenciamento de Cursos',
       newCourse: 'Novo curso',
-      searchPlaceholder: 'Buscar por título, instrutor, nº evento...',
+      searchPlaceholder: 'Buscar por título ou nº do evento',
       empty: 'Nenhum curso cadastrado',
       emptyHint: 'Clique em "Novo curso" para começar.',
       enrolled: '{{count}} inscritos',
@@ -220,7 +220,8 @@ const ptBR = {
         images: 'Imagens',
       },
       form: {
-        title: 'Título *',
+        title: 'Título',
+        titleHint: 'Em branco vira "CURSO SEM NOME" — dá para nomear depois.',
         shortDescription: 'Descrição breve',
         status: 'Status',
         statusPublic: 'Público',

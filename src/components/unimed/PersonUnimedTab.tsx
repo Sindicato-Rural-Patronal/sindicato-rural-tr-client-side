@@ -116,6 +116,7 @@ export function PersonUnimedTab({ userDataId }: { userDataId: string }) {
         icon={HeartPulse}
         title="Esta pessoa não tem cadastro na Unimed."
         description="Cadastre o beneficiário na tela da Unimed para emitir a Ficha, o Termo e o Contrato."
+        topico="unimed"
         action={(
           <Button asChild>
             <Link to="/admin/unimed">

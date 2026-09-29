@@ -3,7 +3,10 @@ import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { X } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { blockSpan, type DashboardBlockId, type DashboardBlockSize } from '@/components/dashboard/dashboard-prefs'
+import {
+  CLASSE_SPAN, COLUNAS, NOME_SPAN, SPANS,
+  type DashboardBlockId, type DashboardSpan,
+} from '@/components/dashboard/dashboard-prefs'
 
 // Um bloco do painel no modo de organizar. O bloco continua sendo o bloco de
 // verdade, inteiro (nada de amostra cortada): a pessoa quer ver a tela dela.
@@ -13,29 +16,52 @@ import { blockSpan, type DashboardBlockId, type DashboardBlockSize } from '@/com
 //     AWS: puxa-se o canto do cartão em vez de apertar um botão).
 // Mover é arrastar o cartão todo.
 
-/** Como a pessoa (e o leitor de tela) ouve cada largura. */
-const NOME_TAMANHO: Record<DashboardBlockSize, string> = {
-  full: 'Linha inteira',
-  half: 'Metade da linha',
+/** Largura em pixels de um bloco que ocupa `span` das `COLUNAS` colunas. */
+function larguraDoSpan(span: DashboardSpan, coluna: number, vao: number): number {
+  return span * coluna + (span - 1) * vao
+}
+
+/** A largura mais perto do que a mão pediu (as três grudam, não há meio-termo). */
+function spanMaisPerto(larguraPedida: number, coluna: number, vao: number): DashboardSpan {
+  return SPANS.reduce((melhor, span) => (
+    Math.abs(larguraPedida - larguraDoSpan(span, coluna, vao))
+      < Math.abs(larguraPedida - larguraDoSpan(melhor, coluna, vao))
+      ? span
+      : melhor
+  ), SPANS[0])
+}
+
+/** Uma largura para o lado, sem passar de 2 nem de 4. */
+function vizinho(span: DashboardSpan, passo: -1 | 1): DashboardSpan {
+  const i = SPANS.indexOf(span)
+  return SPANS[Math.min(SPANS.length - 1, Math.max(0, i + passo))]
 }
 
 export function EditableBlock({
-  id, label, size, onTamanho, onRemover, children,
+  id, label, size, onTamanho, onRemover, alvo = false, children,
 }: {
   id: DashboardBlockId
   label: string
-  size: DashboardBlockSize
-  /** Nova largura escolhida na alça (já grudada em "metade" ou "inteira"). */
-  onTamanho: (size: DashboardBlockSize) => void
+  size: DashboardSpan
+  /** Nova largura escolhida na alça (já grudada em 2, 3 ou 4 colunas). */
+  onTamanho: (size: DashboardSpan) => void
   onRemover: () => void
+  /** É este o bloco que está embaixo do cursor agora (vai receber o arrastado). */
+  alvo?: boolean
   children: React.ReactNode
 }) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id })
+  // `animateLayoutChanges: false` porque a ordem muda DURANTE o arrasto (ver
+  // DashboardPage): a animação de "voltar do lugar antigo" do @dnd-kit brigava
+  // com o bloco que está seguindo o cursor e ele saía tremendo.
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id,
+    animateLayoutChanges: () => false,
+  })
   // Enquanto a pessoa puxa a alça: muda o contorno e mostra o nome do tamanho.
   const [puxando, setPuxando] = useState(false)
   // Medidas tiradas no começo do arrasto — a largura do bloco muda no meio do
   // gesto (é o objetivo), então o cálculo não pode depender do estado de agora.
-  const arraste = useRef<{ x: number; meia: number; cheia: number; inicial: DashboardBlockSize } | null>(null)
+  const arraste = useRef<{ x: number; coluna: number; vao: number; inicial: DashboardSpan } | null>(null)
 
   function aoPegarAlca(e: React.PointerEvent<HTMLDivElement>) {
     // O cartão inteiro é a alça de MOVER: sem barrar aqui, pegar o canto
@@ -47,7 +73,9 @@ export function EditableBlock({
     if (!grade) return
     const cheia = grade.getBoundingClientRect().width
     const vao = Number.parseFloat(getComputedStyle(grade).columnGap) || 0
-    arraste.current = { x: e.clientX, cheia, meia: (cheia - vao) / 2, inicial: size }
+    // Uma coluna: a linha toda menos os vãos, dividida pelas colunas da grade.
+    const coluna = (cheia - vao * (COLUNAS - 1)) / COLUNAS
+    arraste.current = { x: e.clientX, coluna, vao, inicial: size }
     // Segura o ponteiro: o dedo/mouse pode sair de cima da alça (ela é
     // pequena) que os eventos continuam chegando aqui até soltar.
     e.currentTarget.setPointerCapture?.(e.pointerId)
@@ -59,12 +87,10 @@ export function EditableBlock({
   function aoMoverAlca(e: React.PointerEvent<HTMLDivElement>) {
     const a = arraste.current
     if (!a) return
-    // A alça puxa a borda direita do bloco. Só existem duas larguras, então ela
-    // GRUDA na mais perto: o ponto de virada é o meio entre meia linha e linha
-    // inteira. (Virar já no meio da LINHA faria qualquer tremidinha de mão
-    // trocar a largura, porque o bloco de meia linha acaba bem ali.)
-    const largura = (a.inicial === 'full' ? a.cheia : a.meia) + (e.clientX - a.x)
-    const novo: DashboardBlockSize = largura > (a.meia + a.cheia) / 2 ? 'full' : 'half'
+    // A alça puxa a borda direita do bloco. Só existem três larguras (2, 3 ou
+    // 4 colunas), então ela GRUDA na mais perto do que a mão pediu.
+    const largura = larguraDoSpan(a.inicial, a.coluna, a.vao) + (e.clientX - a.x)
+    const novo = spanMaisPerto(largura, a.coluna, a.vao)
     // Muda JÁ, no meio do arrasto: a pessoa precisa ver onde o bloco vai parar.
     if (novo !== size) onTamanho(novo)
   }
@@ -84,14 +110,16 @@ export function EditableBlock({
     const aumentar = e.key === 'ArrowRight' || e.key === 'ArrowUp'
     if (!diminuir && !aumentar) return
     e.preventDefault()
-    onTamanho(diminuir ? 'half' : 'full')
+    onTamanho(vizinho(size, diminuir ? -1 : 1))
   }
 
   return (
     <section
       ref={setNodeRef}
       data-bloco={id}
-      style={{ transform: CSS.Transform.toString(transform), transition }}
+      // Translate, não Transform: `Transform` também escreve scaleX/scaleY, e
+      // com blocos de tamanhos diferentes isso esticava o cartão no arrasto.
+      style={{ transform: CSS.Translate.toString(transform), transition }}
       {...attributes}
       {...listeners}
       // O cartão inteiro é a alça, então ele não pode virar um `role="button"`
@@ -104,13 +132,28 @@ export function EditableBlock({
         'relative cursor-grab rounded-xl border-2 border-dashed border-border bg-card/40 p-2',
         'active:cursor-grabbing focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
         // Uma coluna no celular; no computador, metade ou as duas colunas.
-        blockSpan(size) === 2 && 'lg:col-span-2',
+        CLASSE_SPAN[size],
         // touch-none só enquanto arrasta: se valesse sempre, o dedo não rolaria
         // mais a página (o cartão ocupa a tela toda no celular).
         isDragging && 'z-10 touch-none border-primary opacity-80 shadow-lg',
+        // Nada se mexe durante o arrasto: quem diz onde o bloco vai cair é este
+        // destaque no cartão de baixo do cursor.
+        alvo && 'border-primary bg-primary/10 ring-2 ring-primary/40',
         puxando && 'border-primary bg-primary/5',
       )}
     >
+      {/* Sem prévia que reorganiza a tela, o aviso precisa estar escrito. */}
+      {alvo && (
+        <span
+          aria-hidden
+          className={cn(
+            'pointer-events-none absolute -top-3 left-3 z-10 rounded-md bg-primary px-2 py-0.5',
+            'text-xs font-medium text-primary-foreground shadow-md',
+          )}
+        >
+          Solte aqui
+        </span>
+      )}
       {/* Em cima da borda, não do conteúdo: assim o botão não tapa o número
           nem o título do bloco (cabe no respiro de 24px entre um e outro). */}
       <div className="absolute -top-5 right-2 z-10 flex gap-2">
@@ -146,10 +189,10 @@ export function EditableBlock({
         tabIndex={0}
         aria-label={`Largura de ${label}`}
         aria-orientation="horizontal"
-        aria-valuemin={1}
-        aria-valuemax={2}
-        aria-valuenow={blockSpan(size)}
-        aria-valuetext={NOME_TAMANHO[size]}
+        aria-valuemin={SPANS[0]}
+        aria-valuemax={SPANS[SPANS.length - 1]}
+        aria-valuenow={size}
+        aria-valuetext={NOME_SPAN[size]}
         title="Puxe para mudar a largura"
         onPointerDown={aoPegarAlca}
         onPointerMove={aoMoverAlca}
@@ -176,7 +219,7 @@ export function EditableBlock({
             puxando && 'block',
           )}
         >
-          {NOME_TAMANHO[size]}
+          {NOME_SPAN[size]}
         </span>
         <span
           aria-hidden

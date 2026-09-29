@@ -98,8 +98,12 @@ export type PaginatedResponse<T> = {
 export type DashboardPrefs = {
   hidden?: string[]
   order?: string[]
-  /** Largura de cada bloco: 'full' (linha inteira) ou 'half' (meia linha). */
-  sizes?: Record<string, string>
+  /**
+   * Largura de cada bloco, em colunas da grade de 4 (2, 3 ou 4). O tipo é
+   * frouxo porque o que vem do servidor pode ser qualquer coisa — inclusive o
+   * 'full'/'half' gravado antes das 4 colunas, que `normalizePrefs` converte.
+   */
+  sizes?: Record<string, unknown>
 }
 
 export type AdminMe = {
@@ -316,6 +320,8 @@ export type AdminUsersFilters = {
     'INCOMPLETE_SECONDARY' | 'COMPLETE_SECONDARY' | 'INCOMPLETE_HIGHER' |
     'COMPLETE_HIGHER' | 'POSTGRADUATE'
   incompleteRegistration?: boolean
+  /** Só associados em dia (situação ATIVO e validade não vencida). */
+  activeMember?: boolean
 }
 
 // A busca no backend ignora acento e maiúscula ("joao" acha "João") e aceita CPF
@@ -323,7 +329,7 @@ export type AdminUsersFilters = {
 // a nova página/busca carrega (sem piscar skeleton a cada tecla). `enabled: false`
 // não busca (ex.: sem permissão READ_USER).
 export function useAdminUsers(filters: AdminUsersFilters = {}, options: { enabled?: boolean } = {}) {
-  const { page = 1, limit = 20, search, memberType, memberClassification, gender, ethnicity, educationLevel, incompleteRegistration } = filters
+  const { page = 1, limit = 20, search, memberType, memberClassification, gender, ethnicity, educationLevel, incompleteRegistration, activeMember } = filters
   const term = search?.trim() ?? ''
   const params = new URLSearchParams({ page: String(page), limit: String(limit) })
   if (term) params.set('search', term)
@@ -333,9 +339,10 @@ export function useAdminUsers(filters: AdminUsersFilters = {}, options: { enable
   if (ethnicity) params.set('ethnicity', ethnicity)
   if (educationLevel) params.set('educationLevel', educationLevel)
   if (incompleteRegistration !== undefined) params.set('incompleteRegistration', String(incompleteRegistration))
+  if (activeMember) params.set('activeMember', 'true')
 
   return useQuery<PaginatedResponse<UserData>>({
-    queryKey: ['admin', 'users', page, limit, term, memberType ?? '', memberClassification ?? '', gender ?? '', ethnicity ?? '', educationLevel ?? '', incompleteRegistration ?? ''],
+    queryKey: ['admin', 'users', page, limit, term, memberType ?? '', memberClassification ?? '', gender ?? '', ethnicity ?? '', educationLevel ?? '', incompleteRegistration ?? '', activeMember ?? ''],
     queryFn: () => apiFetch(`/admin/users?${params}`).then(r => r.json()),
     placeholderData: keepPreviousData,
     enabled: options.enabled ?? true,

@@ -11,7 +11,7 @@ import { FaWhatsapp } from 'react-icons/fa'
 import { usePermissions } from '@/hooks/usePermissions'
 import { PermissionButton } from '@/components/PermissionButton'
 import { useTranslation } from 'react-i18next'
-import { useAdminCourses, useAdminCourse, useDeleteCourse, useUploadGalleryPhoto, useAssignInstructor, useRemoveInstructorAssignment, adminCourseQuery, fetchAllCourseRegistrations, useAllCourseRegistrations, useAdminRegisterPerson, useConfirmAllRegistrations, useSetRegistrationAttendance, useMarkUnmarkedAttendance, useCompleteCourse } from '@/hooks/useCourse'
+import { useAdminCourses, useCourseYears, useAdminCourse, useDeleteCourse, useUploadGalleryPhoto, useAssignInstructor, useRemoveInstructorAssignment, adminCourseQuery, fetchAllCourseRegistrations, useAllCourseRegistrations, useAdminRegisterPerson, useConfirmAllRegistrations, useSetRegistrationAttendance, useMarkUnmarkedAttendance, useCompleteCourse } from '@/hooks/useCourse'
 import type { CourseCardItem } from '@/hooks/useCourse'
 import { useCourseRegistrations, useCancelRegistration, useInstructors, useConfirmRegistration, useStartCourse, useUploadRegistrationFicha, useDeleteRegistrationFicha, openRegistrationFicha } from '@/hooks/useAdmin'
 import type { UserDataDetail, Registration } from '@/hooks/useAdmin'
@@ -54,6 +54,7 @@ import { downloadExport } from '@/lib/export'
 import { ExportMenu, ExportOneButton, SelectCheckbox, SelectionInfo } from '@/components/export/ExportMenu'
 import { CourseFormDialog } from '@/components/courses/CourseFormDialog'
 import { PhotoGrid } from '@/components/courses/PhotoGrid'
+import { AjudaLink } from '@/components/ajuda/AjudaLink'
 import { useConfirmDeletePhoto, photoCountLabel } from '@/hooks/useConfirmDeletePhoto'
 
 function calcDaysUntil(startDate: string) {
@@ -788,12 +789,29 @@ function RegistrationsTab({
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-1.5 flex-wrap">
                   <p className="text-sm font-medium text-foreground wrap-break-word">{reg.userData.name}</p>
-                  {minor && (
+                  {/* A idade aparece para TODO mundo: quem organiza o curso precisa
+                      saber a faixa da turma, não só quem é menor. Vermelho só para
+                      o menor, que exige assinatura do responsável. */}
+                  {age === null ? (
+                    <span
+                      className="inline-flex items-center rounded-full border border-border bg-muted px-1.5 text-[10px] font-medium text-muted-foreground"
+                      title="Sem data de nascimento no cadastro"
+                    >
+                      Idade não informada
+                    </span>
+                  ) : minor ? (
                     <span
                       className="inline-flex items-center rounded-full border border-red-300 bg-red-100 px-1.5 text-[10px] font-semibold text-red-700 dark:border-red-900 dark:bg-red-950/40 dark:text-red-400"
                       title="Menor de idade — precisa da assinatura do responsável na ficha"
                     >
                       Menor · {age} anos
+                    </span>
+                  ) : (
+                    <span
+                      className="inline-flex items-center rounded-full border border-sky-200 bg-sky-100 px-1.5 text-[10px] font-medium text-sky-700 dark:border-sky-900 dark:bg-sky-950/40 dark:text-sky-400"
+                      title="Maior de idade"
+                    >
+                      {age} anos
                     </span>
                   )}
                   {isActiveMember(reg.userData.memberStatus, reg.userData.membershipValidUntil) && (
@@ -1573,13 +1591,17 @@ const ABAS: Record<string, ViewTab> = {
   instrutores: 'instructors',
 }
 
-type CoursesSearch = { curso?: string; aba?: string }
+type CoursesSearch = { curso?: string; aba?: string; ano?: number }
 
 export const Route = createFileRoute('/_admin/admin/cursos/')({
   validateSearch: (s: Record<string, unknown>): CoursesSearch => ({
     // O parser da URL transforma "123" em número; o id volta a ser texto.
     curso: typeof s.curso === 'string' && s.curso ? s.curso : typeof s.curso === 'number' ? String(s.curso) : undefined,
     aba: typeof s.aba === 'string' && Object.hasOwn(ABAS, s.aba) ? s.aba : undefined,
+    // O ano fica na URL: a lista filtrada pode ir para os favoritos.
+    ano: Number.isInteger(Number(s.ano)) && Number(s.ano) >= 1990 && Number(s.ano) <= 2100
+      ? Number(s.ano)
+      : undefined,
   }),
   component: RouteComponent,
 })
@@ -1601,7 +1623,11 @@ function RouteComponent() {
     setPageSearch(debouncedSearch)
     setPage(1)
   }
-  const { data, isLoading, isError } = useAdminCourses({ page, limit, search: debouncedSearch })
+  const { ano } = Route.useSearch()
+  const { data: anos } = useCourseYears()
+  const { data, isLoading, isError } = useAdminCourses({ page, limit, search: debouncedSearch, year: ano })
+  // Qualquer filtro ativo: muda o que uma lista vazia significa.
+  const filtrando = !!debouncedSearch.trim() || ano != null
   const deleteCourse = useDeleteCourse()
   const queryClient = useQueryClient()
   const [viewDialog, setViewDialog] = useState<CourseCardItem | null>(null)
@@ -1694,7 +1720,10 @@ function RouteComponent() {
     <div className="p-6 flex flex-col gap-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">{t('admin.courses.title')}</h1>
+          <div className="flex items-center gap-1">
+            <h1 className="text-2xl font-bold tracking-tight text-foreground">{t('admin.courses.title')}</h1>
+            <AjudaLink topico="cursos" titulo="Cursos" />
+          </div>
           <p className="text-sm text-muted-foreground">
             {data ? `${total} curso${total !== 1 ? 's' : ''}` : t('common.loading')}
           </p>
@@ -1727,6 +1756,23 @@ function RouteComponent() {
             className="pl-9"
           />
         </div>
+        {/* Ano e busca são controles SEPARADOS: dois cursos com o mesmo nome
+            em anos diferentes não se distinguem por texto. */}
+        <Select
+          value={ano ? String(ano) : 'all'}
+          onValueChange={v => {
+            navigate({ search: prev => ({ ...prev, ano: v === 'all' ? undefined : Number(v) }) })
+            setPage(1)
+          }}
+        >
+          <SelectTrigger className="h-9 w-36 shrink-0" aria-label="Filtrar por ano">
+            <SelectValue placeholder="Ano" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todos os anos</SelectItem>
+            {(anos ?? []).map(a => <SelectItem key={a} value={String(a)}>{a}</SelectItem>)}
+          </SelectContent>
+        </Select>
         <div className="flex items-center gap-2 text-sm text-muted-foreground shrink-0">
           <span className="hidden sm:inline">Itens por página:</span>
           <Select
@@ -1782,11 +1828,14 @@ function RouteComponent() {
       )}
 
       {!isLoading && visible.length === 0 && total === 0 && (
+        // Filtrando (busca OU ano), lista vazia quer dizer "nada encontrado" —
+        // dizer "nenhum curso cadastrado" e oferecer "Novo curso" seria mentira.
         <EmptyState
           icon={GraduationCap}
-          title={search ? t('courses.notFound') : t('admin.courses.empty')}
-          description={search ? t('courses.notFoundHint') : t('admin.courses.emptyHint')}
-          action={!search ? (
+          title={filtrando ? t('courses.notFound') : t('admin.courses.empty')}
+          description={filtrando ? t('courses.notFoundHint') : t('admin.courses.emptyHint')}
+          topico={filtrando ? undefined : 'cursos'}
+          action={!filtrando ? (
             <Button onClick={() => setFormDialog({ open: true, editing: null, duplicateOf: null })}>
               <Plus className="size-4" /> {t('admin.courses.newCourse')}
             </Button>

@@ -2,10 +2,14 @@ import { useState, useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import {
-  DndContext, closestCenter, KeyboardSensor, MouseSensor, TouchSensor,
-  useSensor, useSensors, type Announcements, type DragEndEvent, type ScreenReaderInstructions,
+  DndContext, closestCorners, KeyboardSensor, MouseSensor, TouchSensor,
+  useSensor, useSensors, type Announcements, type DragEndEvent, type DragOverEvent,
+  type ScreenReaderInstructions,
 } from '@dnd-kit/core'
-import { SortableContext, rectSortingStrategy, sortableKeyboardCoordinates } from '@dnd-kit/sortable'
+import {
+  SortableContext, sortableKeyboardCoordinates, type SortingStrategy,
+} from '@dnd-kit/sortable'
+import { previaDoArrasto } from '@/components/dashboard/dashboard-drag'
 import { apiFetch } from '@/lib/api'
 import { apiErrorMessage } from '@/lib/api-error-message'
 import { toYmd } from '@/utils/dates'
@@ -28,13 +32,14 @@ import { RecentAuditCard } from '@/components/dashboard/RecentAuditCard'
 import { EditModeBar } from '@/components/dashboard/EditModeBar'
 import { EditableBlock } from '@/components/dashboard/EditableBlock'
 import {
-  DASHBOARD_BLOCKS, applyOrder, blockSizes, dashboardLayout, defaultDraft, dropBlock, editableBlocks,
+  CLASSE_SPAN, DASHBOARD_BLOCKS, applyOrder, blockSizes, dashboardLayout, defaultDraft, dropBlock, editableBlocks,
   prefsDraft, prefsToSave, sameDraft, setBlockSize, toggleHidden, visibleBlocks,
-  type DashboardBlockId, type DashboardBlockSize, type DashboardCell, type DashboardDraft,
+  type DashboardBlockId, type DashboardCell, type DashboardDraft, type DashboardSpan,
 } from '@/components/dashboard/dashboard-prefs'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { NativeSelect } from '@/components/ui/native-select'
+import { AjudaLink } from '@/components/ajuda/AjudaLink'
 import { cn } from '@/lib/utils'
 import { ChevronLeft, ChevronRight, Plus, SlidersHorizontal } from 'lucide-react'
 
@@ -91,6 +96,17 @@ function diaPorExtenso(ymd: string): string {
 const META = new Map(DASHBOARD_BLOCKS.map(b => [b.id, b.label] as const))
 
 const nomeDoBloco = (id: string | number) => META.get(id as DashboardBlockId) ?? String(id)
+
+// A prévia do arrasto: os blocos andam para onde vão ficar, refazendo a conta
+// da grade (ver dashboard-drag.ts). É só `transform`, então nada reflui e o
+// alvo debaixo do cursor não muda — foi mexer na ordem DE VERDADE durante o
+// gesto que fazia os blocos ficarem se alternando sem parar.
+const ESTRATEGIA_DO_PAINEL: SortingStrategy = ({ rects, activeIndex, overIndex, index }) => {
+  const andar = previaDoArrasto(rects, activeIndex, overIndex, index)
+  // scale 1: quem desenha é o CSS.Translate do bloco, que ignora escala de
+  // propósito (ver EditableBlock) — aqui é só para fechar o tipo do @dnd-kit.
+  return andar ? { ...andar, scaleX: 1, scaleY: 1 } : null
+}
 
 // O @dnd-kit narra o arrasto para quem usa leitor de tela — em inglês, se a
 // gente não escrever. O sistema é só em português, então aqui está o texto.
@@ -256,7 +272,18 @@ export function DashboardPage({ search, onSearch, onOpenCourse }: {
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   )
 
+  // Bloco sob o cursor: é só a MARCA de onde vai cair. A ordem não muda
+  // enquanto se arrasta — mudar ali fazia a grade refluir, o que trocava o
+  // bloco que está embaixo do cursor, que reordenava de novo: os dois ficavam
+  // se alternando sem parar enquanto a mão estivesse parada.
+  const [alvo, setAlvo] = useState<DashboardBlockId | null>(null)
+
+  function aoPassarPorCima({ active, over }: DragOverEvent) {
+    setAlvo(over && over.id !== active.id ? (over.id as DashboardBlockId) : null)
+  }
+
   function aoSoltar({ active, over }: DragEndEvent) {
+    setAlvo(null)
     if (!over || active.id === over.id) return
     setRascunho(prev => {
       if (!prev) return prev
@@ -264,12 +291,17 @@ export function DashboardPage({ search, onSearch, onOpenCourse }: {
       // ou removido) fica no mesmo índice da ordem salva.
       const mexiveis = editableBlocks(prev.order, disponiveis).filter(id => !prev.hidden.includes(id))
       const nova = dropBlock(mexiveis, active.id as DashboardBlockId, over.id as DashboardBlockId)
+      if (nova === mexiveis) return prev
       return { ...prev, order: applyOrder(prev.order, mexiveis, nova) }
     })
   }
 
+  function aoDesistir() {
+    setAlvo(null)
+  }
+
   /** Nova largura escolhida na alça do canto do bloco. */
-  function mudarLargura(id: DashboardBlockId, size: DashboardBlockSize) {
+  function mudarLargura(id: DashboardBlockId, size: DashboardSpan) {
     setRascunho(prev => {
       // A alça avisa a cada movimento do dedo/mouse: se a largura é a mesma,
       // devolver o rascunho anterior evita repintar a tela e marcar
@@ -447,19 +479,20 @@ export function DashboardPage({ search, onSearch, onOpenCourse }: {
   }
 
   /** Um bloco na tela: no modo de organizar vai dentro da moldura arrastável. */
-  function celula({ id, size, span }: DashboardCell) {
+  function celula({ id, span }: DashboardCell) {
     if (!rascunho) {
-      // Meia largura ocupa UMA coluna mesmo sem vizinho (deixa o lado vazio).
-      return <div key={id} data-bloco={id} className={cn(span === 2 && 'lg:col-span-2')}>{bloco(id)}</div>
+      // O bloco ocupa as colunas dele mesmo sem vizinho (deixa o resto vazio).
+      return <div key={id} data-bloco={id} className={CLASSE_SPAN[span]}>{bloco(id)}</div>
     }
     return (
       <EditableBlock
         key={id}
         id={id}
         label={nomeDoBloco(id)}
-        size={size}
+        size={span}
         onTamanho={novo => mudarLargura(id, novo)}
         onRemover={() => removerOuAdicionar(id)}
+        alvo={alvo === id}
       >
         {bloco(id)}
       </EditableBlock>
@@ -472,7 +505,7 @@ export function DashboardPage({ search, onSearch, onOpenCourse }: {
   // e, como nenhum bloco troca de pai ao mudar de largura, puxar a alça não
   // desmonta o cartão no meio do gesto.
   const corpo = (
-    <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+    <div className="grid grid-cols-1 gap-6 lg:grid-cols-4">
       {celulas.map(celula)}
     </div>
   )
@@ -498,7 +531,10 @@ export function DashboardPage({ search, onSearch, onOpenCourse }: {
 
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">Painel Geral</h1>
+          <div className="flex items-center gap-1">
+            <h1 className="text-2xl font-bold tracking-tight text-foreground">Painel Geral</h1>
+            <AjudaLink topico="painel-geral" titulo="Painel Geral" />
+          </div>
           <p className="text-sm text-muted-foreground">
             O que precisa de atenção hoje, a agenda das salas e os números do sistema.
           </p>
@@ -517,15 +553,20 @@ export function DashboardPage({ search, onSearch, onOpenCourse }: {
       {rascunho ? (
         <DndContext
           sensors={sensores}
-          collisionDetection={closestCenter}
+          // Blocos de tamanhos bem diferentes: pelos cantos o alvo é o bloco que
+          // a pessoa está realmente cobrindo. Pelo centro, um bloco alto ganhava
+          // de um baixinho que estava embaixo do cursor.
+          collisionDetection={closestCorners}
+          onDragOver={aoPassarPorCima}
           onDragEnd={aoSoltar}
+          onDragCancel={aoDesistir}
           accessibility={{ announcements: AVISOS_LEITOR, screenReaderInstructions: INSTRUCOES_LEITOR }}
           // Os blocos são inteiros e a página é longa: sem rolar sozinha perto
           // da borda não dá para levar um bloco do fim para o começo.
           autoScroll={{ threshold: { x: 0, y: 0.2 }, acceleration: 14 }}
         >
           {/* A lista do arrastar é plana (a ordem dos blocos); a grade é só o desenho. */}
-          <SortableContext items={noPainel} strategy={rectSortingStrategy}>
+          <SortableContext items={noPainel} strategy={ESTRATEGIA_DO_PAINEL}>
             {corpo}
           </SortableContext>
         </DndContext>

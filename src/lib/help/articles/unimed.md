@@ -4,6 +4,7 @@ resumo: Beneficiários do plano de saúde, movimentos e documentos.
 grupo: dia-a-dia
 ordem: 5
 permissao: READ_USER
+veja: usuarios, exportar-planilhas
 busca: unimed plano saude beneficiario cns titular dependente ficha termo contrato movimento
 ---
 

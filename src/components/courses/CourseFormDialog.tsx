@@ -400,7 +400,9 @@ function CourseFormDialogSession({ open, editing, duplicateOf = null, onClose }:
       return
     }
     const body = {
-      name: data.name,
+      // Em branco vai como string vazia e o backend grava "CURSO SEM NOME" —
+      // a regra do nome genérico mora num lugar só, lá.
+      name: data.name ?? '',
       description: data.description ?? '',
       status: data.status,
       startTime: toISO(data.startDate, data.startHour)!,
@@ -541,6 +543,7 @@ function CourseFormDialogSession({ open, editing, duplicateOf = null, onClose }:
                   <FormItem>
                     <FormLabel>{t('admin.courses.form.title')}</FormLabel>
                     <FormControl><Input {...field} onChange={e => field.onChange(upperNoAccents(e.target.value))} placeholder="Ex: Manejo Integrado de Pragas no Milho" /></FormControl>
+                    <p className="text-xs text-muted-foreground">{t('admin.courses.form.titleHint')}</p>
                     <FormMessage />
                   </FormItem>
                 )} />
