@@ -65,9 +65,11 @@ describe('BookingDialog', () => {
     fillValid()
     fireEvent.click(screen.getByRole('button', { name: 'Criar reserva' }))
     await waitFor(() => expect(onClose).toHaveBeenCalled())
+    // O título vai como foi digitado: reserva marcada como "Mostrar no site"
+    // aparece em /eventos, e acento e caixa fazem parte do texto.
     expect(createMock).toHaveBeenCalledWith({
       type: 'MEETING',
-      title: 'REUNIAO DA DIRETORIA',
+      title: 'Reunião da diretoria',
       roomId: 'r2',
       startTime: '2026-10-05T08:00:00.000Z',
       endTime: '2026-10-05T12:00:00.000Z',

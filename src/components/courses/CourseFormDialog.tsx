@@ -11,7 +11,6 @@ import { useTranslation } from 'react-i18next'
 import { useAdminCourse, useCreateCourse, useUpdateCourse, useUploadBanner, useUploadGalleryPhoto } from '@/hooks/useCourse'
 import type { CreateCourseResponse } from '@/hooks/useCourse'
 import { useRooms } from '@/hooks/useRooms'
-import { upperNoAccents } from '@/utils/text-format'
 import { courseBaseSchema } from '@/lib/schemas'
 import type { CourseFormData } from '@/lib/schemas'
 import { courseToDuplicateForm, roomIdByName } from '@/lib/course-duplicate'
@@ -551,7 +550,7 @@ roomId })
                 <FormField control={form.control} name="name" render={({ field }) => (
                   <FormItem>
                     <FormLabel>{t('admin.courses.form.title')}</FormLabel>
-                    <FormControl><Input {...field} onChange={e => field.onChange(upperNoAccents(e.target.value))} placeholder="Ex: Manejo Integrado de Pragas no Milho" /></FormControl>
+                    <FormControl><Input {...field} placeholder="Ex: Manejo Integrado de Pragas no Milho" /></FormControl>
                     <p className="text-xs text-muted-foreground">{t('admin.courses.form.titleHint')}</p>
                     <FormMessage />
                   </FormItem>
@@ -643,7 +642,7 @@ roomId })
                 <FormField control={form.control} name="observations" render={({ field }) => (
                   <FormItem>
                     <FormLabel>{t('admin.courses.form.observations')}</FormLabel>
-                    <FormControl><Input {...field} onChange={e => field.onChange(upperNoAccents(e.target.value))} placeholder="Ex: Maiores de 18 anos" /></FormControl>
+                    <FormControl><Input {...field} placeholder="Ex: Maiores de 18 anos" /></FormControl>
                     <FormMessage />
                   </FormItem>
                 )} />
