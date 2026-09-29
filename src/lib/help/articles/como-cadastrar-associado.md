@@ -28,6 +28,10 @@ busca: cadastrar associado pessoa nova ficha balcao criar novo
 - **E-mail** pode ficar em branco, e pode repetir entre pessoas (casal,
   família).
 - **Telefone** também pode repetir.
+- **RG** pode ficar em branco. A nova carteira de identidade usa o número do
+  CPF, então quem tirou documento agora não tem RG para informar — a ficha não
+  fica marcada como incompleta por causa disso. O campo continua na tela porque
+  os cadastros antigos têm RG.
 - Só o **CPF** identifica a pessoa, e só ele dá "já cadastrado".
 
 ## Se algo falhar ao salvar

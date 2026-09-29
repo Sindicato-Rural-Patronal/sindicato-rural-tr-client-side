@@ -102,11 +102,13 @@ const fieldId = (f: PersonField) => `pessoa-${f}`
 
 type MissingField = { key: string; label: string }
 
+// O RG não entra: a nova carteira de identidade usa o número do CPF, então
+// quem tirar documento agora não tem RG para informar. O campo continua no
+// cadastro (os antigos têm), só deixou de ser cobrado.
 function getMissingFields(user: UserDataDetail, hasNoProperties: boolean): MissingField[] {
   const missing: MissingField[] = []
   if (!user.avatar) missing.push({ key: 'avatar', label: 'Foto de perfil' })
   if (!user.cpf) missing.push({ key: 'cpf', label: 'CPF' })
-  if (!user.rg) missing.push({ key: 'rg', label: 'RG' })
   if (!user.birthDate) missing.push({ key: 'birthDate', label: 'Data de nascimento' })
   if (!user.gender) missing.push({ key: 'gender', label: 'Gênero' })
   if (hasNoProperties) missing.push({ key: 'properties', label: 'Propriedade' })
@@ -490,7 +492,6 @@ function DadosTab({ userId, user, completeMode, onCompleteModeEnd, hasNoProperti
   const missing = {
     avatar: !form.avatar,
     cpf: !form.cpf,
-    rg: !form.rg,
     birthDate: !form.birthDate,
     gender: !form.gender,
     properties: hasNoProperties,
@@ -498,7 +499,6 @@ function DadosTab({ userId, user, completeMode, onCompleteModeEnd, hasNoProperti
   const missingLabels: Record<string, string> = {
     avatar: 'Foto de perfil',
     cpf: 'CPF',
-    rg: 'RG',
     birthDate: 'Data de nascimento',
     gender: 'Gênero',
     properties: 'Propriedade',
@@ -628,7 +628,7 @@ function DadosTab({ userId, user, completeMode, onCompleteModeEnd, hasNoProperti
           <FieldRow label="CPF" highlight={hi('cpf')} htmlFor={fieldId('cpf')} error={fieldErrors.cpf}>
             <Input className={inp} disabled={d} {...invalidProps('cpf')} inputMode="numeric" value={form.cpf} onChange={e => set('cpf', maskCPF(e.target.value))} placeholder="000.000.000-00" />
           </FieldRow>
-          <FieldRow label="RG" highlight={hi('rg')} htmlFor={fieldId('rg')} error={fieldErrors.rg}>
+          <FieldRow label="RG" htmlFor={fieldId('rg')} error={fieldErrors.rg}>
             <Input className={inp} disabled={d} {...invalidProps('rg')} value={form.rg} onChange={e => set('rg', maskRG(e.target.value))} placeholder="00.000.000-0" maxLength={12} />
           </FieldRow>
           <FieldRow label="Órgão emissor RG">
