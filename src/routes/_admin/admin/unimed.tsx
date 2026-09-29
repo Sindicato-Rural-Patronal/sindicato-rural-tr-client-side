@@ -19,6 +19,7 @@ import { useDebouncedValue } from '@/hooks/useDebouncedValue'
 import { PersonPicker, type PickedPerson } from '@/components/PersonPicker'
 import { useRowSelection } from '@/hooks/useRowSelection'
 import { useAdminUser } from '@/hooks/useAdmin'
+import { usePermissions } from '@/hooks/usePermissions'
 import {
   useUnimedList, useUnimed, useCreateUnimed, useUpdateUnimed, useDeleteUnimed,
   type UnimedRow, type UnimedDetail, type UnimedFields,
@@ -45,6 +46,7 @@ import { EmptyState } from '@/components/EmptyState'
 import { ExportMenu, SelectCheckbox, SelectionInfo } from '@/components/export/ExportMenu'
 import { Pagination } from '@/components/ui/pagination'
 import { AjudaLink } from '@/components/ajuda/AjudaLink'
+import { BulkDeleteButton } from '@/components/export/BulkDeleteButton'
 
 export const Route = createFileRoute('/_admin/admin/unimed')({
   beforeLoad: () => requirePermission('READ_USER'),
@@ -434,6 +436,7 @@ function RouteComponent() {
 
   const { data, isLoading, isError } = useUnimedList({ page, limit: 20, search })
   const deleteM = useDeleteUnimed()
+  const { can } = usePermissions()
 
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editId, setEditId] = useState<string | null>(null)
@@ -517,6 +520,15 @@ function RouteComponent() {
         </div>
         <div className="flex items-center justify-end gap-2">
           <SelectionInfo count={selection.count} onClear={selection.clear} />
+          <BulkDeleteButton
+            ids={selection.ids}
+            singular="beneficiário"
+            plural="beneficiários"
+            allowed={can('DELETE_USER')}
+            onDelete={id => deleteM.mutateAsync(id)}
+            onDone={() => selection.clear()}
+            className="h-9"
+          />
           <ExportMenu
             dataset="unimed"
             filters={{ search }}

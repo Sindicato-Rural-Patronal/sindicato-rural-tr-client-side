@@ -52,6 +52,7 @@ import { ExportMenu, SelectCheckbox, SelectionInfo } from '@/components/export/E
 import { PersonPicker, type PickedPerson } from '@/components/PersonPicker'
 import { AjudaLink } from '@/components/ajuda/AjudaLink'
 import { useDebouncedValue } from '@/hooks/useDebouncedValue'
+import { BulkDeleteButton } from '@/components/export/BulkDeleteButton'
 import { maskCPF } from '@/utils/masks'
 
 const USERS_TABS = ['pessoas', 'associados', 'empresas', 'admins'] as const
@@ -1202,6 +1203,15 @@ function RouteComponent() {
             )}
             <div className="ml-auto flex items-center gap-2">
               <SelectionInfo count={userSelection.count} onClear={userSelection.clear} />
+              <BulkDeleteButton
+                ids={userSelection.ids}
+                singular="pessoa"
+                plural="pessoas"
+                allowed={can('DELETE_USER')}
+                onDelete={id => deleteWorker.mutateAsync(id)}
+                onDone={() => userSelection.clear()}
+                className="h-9"
+              />
               <ExportMenu
                 dataset="people"
                 filters={usersExportFilters}
@@ -1363,6 +1373,15 @@ function RouteComponent() {
             {canExportAdmins && (
               <div className="flex items-center gap-2 sm:ml-auto">
                 <SelectionInfo count={adminSelection.count} onClear={adminSelection.clear} />
+                <BulkDeleteButton
+                  ids={adminSelection.ids}
+                  singular="administrador"
+                  plural="administradores"
+                  allowed={can('DELETE_USER_ADMIN')}
+                  onDelete={id => deleteAdmin.mutateAsync(id)}
+                  onDone={() => adminSelection.clear()}
+                  className="h-9"
+                />
                 <ExportMenu
                   dataset="admins"
                   filters={{ rulesId: rulesFilter || undefined }}

@@ -24,6 +24,8 @@ import { FaWhatsapp } from 'react-icons/fa'
 import { toast } from 'sonner'
 import { Input } from '@/components/ui/input'
 import { AjudaLink } from '@/components/ajuda/AjudaLink'
+import { BulkDeleteButton } from '@/components/export/BulkDeleteButton'
+import { usePermissions } from '@/hooks/usePermissions'
 
 export const Route = createFileRoute('/_admin/admin/mensagens')({
   beforeLoad: () => requirePermission('READ_CONTACT'),
@@ -178,6 +180,7 @@ function RouteComponent() {
   const { data: unreadData } = useContactMessages({ page: 1, limit: 1, read: false })
   const markRead = useMarkContactMessageRead()
   const deleteMsg = useDeleteContactMessage()
+  const { can } = usePermissions()
 
   async function handleDelete() {
     if (!deleteTarget) return
@@ -307,6 +310,15 @@ function RouteComponent() {
             </Button>
           ))}
         </div>
+        <BulkDeleteButton
+          ids={selection.ids}
+          singular="mensagem"
+          plural="mensagens"
+          allowed={can('UPDATE_CONTACT')}
+          onDelete={id => deleteMsg.mutateAsync(id)}
+          onDone={() => selection.clear()}
+          className="h-9 shrink-0"
+        />
         <ExportMenu
           dataset="contact-messages"
           className="shrink-0"
