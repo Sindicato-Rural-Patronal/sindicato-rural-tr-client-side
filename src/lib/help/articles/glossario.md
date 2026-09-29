@@ -4,7 +4,7 @@ resumo: O que cada palavra do sistema quer dizer, em português claro.
 grupo: primeiros-passos
 ordem: 7
 veja: primeiros-passos, problemas-comuns
-busca: glossario dicionario termo palavra significado o que e duvida vocabulario
+busca: glossario dicionario termo palavra significado o que e duvida vocabulario cin rg identidade documento
 ---
 
 Palavras que aparecem no painel e nem sempre querem dizer o que parecem.
@@ -17,8 +17,16 @@ faz aparecer o selo *Associado* nas inscrições de curso.
 **Tipo de membro** — Aluno, Produtor rural ou Trabalhador rural
 assalariado/autônomo. Lista fechada; o sistema recusa qualquer outro valor.
 
+**CIN** — Carteira de Identidade Nacional, a identidade nova. Não tem número
+próprio: o número dela é o **CPF**. Por isso o campo do cadastro se chama
+**CPF / CIN**. Ver [Como cadastrar um associado](?topico=como-cadastrar-associado).
+
+**RG** — o número da identidade antiga, diferente em cada estado. Está sendo
+substituído pela CIN e vale até 2032. No cadastro é **opcional**: quem só tem a
+carteira nova não tem RG para informar.
+
 **Cadastro incompleto** — ficha criada pela inscrição no site, que veio só com o
-mínimo. Não é erro: é trabalho a fazer.
+mínimo. Não é erro: é trabalho a fazer. O RG não entra nessa conta.
 
 **Cadastro duplicado** — a mesma pessoa em duas fichas, quase sempre porque uma
 delas está sem CPF. Resolve-se com **Juntar cadastros**.

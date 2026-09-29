@@ -52,6 +52,7 @@ import { cpfDigits } from '@/utils/cpf'
 import { toIso } from '@/utils/dates'
 import { upperNoAccents } from '@/utils/text-format'
 import { MEMBER_TYPES } from '@/lib/member-types'
+import { CIN_HINT, CPF_LABEL } from '@/lib/cin'
 import {
   GENDER_OPTIONS, ETHNICITY_OPTIONS, EDUCATION_OPTIONS,
   MARITAL_STATUS_OPTIONS, CNH_CATEGORY_OPTIONS,
@@ -108,7 +109,7 @@ type MissingField = { key: string; label: string }
 function getMissingFields(user: UserDataDetail, hasNoProperties: boolean): MissingField[] {
   const missing: MissingField[] = []
   if (!user.avatar) missing.push({ key: 'avatar', label: 'Foto de perfil' })
-  if (!user.cpf) missing.push({ key: 'cpf', label: 'CPF' })
+  if (!user.cpf) missing.push({ key: 'cpf', label: CPF_LABEL })
   if (!user.birthDate) missing.push({ key: 'birthDate', label: 'Data de nascimento' })
   if (!user.gender) missing.push({ key: 'gender', label: 'Gênero' })
   if (hasNoProperties) missing.push({ key: 'properties', label: 'Propriedade' })
@@ -498,7 +499,7 @@ function DadosTab({ userId, user, completeMode, onCompleteModeEnd, hasNoProperti
   }
   const missingLabels: Record<string, string> = {
     avatar: 'Foto de perfil',
-    cpf: 'CPF',
+    cpf: CPF_LABEL,
     birthDate: 'Data de nascimento',
     gender: 'Gênero',
     properties: 'Propriedade',
@@ -625,8 +626,9 @@ function DadosTab({ userId, user, completeMode, onCompleteModeEnd, hasNoProperti
           <CardTitle className="text-sm flex items-center gap-2"><FileText className="size-4" /> Documentos</CardTitle>
         </CardHeader>
         <CardContent className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          <FieldRow label="CPF" highlight={hi('cpf')} htmlFor={fieldId('cpf')} error={fieldErrors.cpf}>
+          <FieldRow label={CPF_LABEL} highlight={hi('cpf')} htmlFor={fieldId('cpf')} error={fieldErrors.cpf}>
             <Input className={inp} disabled={d} {...invalidProps('cpf')} inputMode="numeric" value={form.cpf} onChange={e => set('cpf', maskCPF(e.target.value))} placeholder="000.000.000-00" />
+            {!d && <p className="text-xs text-muted-foreground">{CIN_HINT}</p>}
           </FieldRow>
           <FieldRow label="RG" htmlFor={fieldId('rg')} error={fieldErrors.rg}>
             <Input className={inp} disabled={d} {...invalidProps('rg')} value={form.rg} onChange={e => set('rg', maskRG(e.target.value))} placeholder="00.000.000-0" maxLength={12} />

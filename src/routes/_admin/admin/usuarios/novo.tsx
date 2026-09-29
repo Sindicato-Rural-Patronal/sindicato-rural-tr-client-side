@@ -28,6 +28,7 @@ import { cpfDigits, isValidCpf, sameCpf } from '@/utils/cpf'
 import { toIso } from '@/utils/dates'
 import { upperNoAccents } from '@/utils/text-format'
 import { MEMBER_TYPES } from '@/lib/member-types'
+import { CIN_HINT, CPF_LABEL } from '@/lib/cin'
 import {
   GENDER_OPTIONS, ETHNICITY_OPTIONS, EDUCATION_OPTIONS,
   MARITAL_STATUS_OPTIONS, CNH_CATEGORY_OPTIONS,
@@ -482,7 +483,7 @@ function RouteComponent() {
             {/* CPF primeiro: já avisa se a pessoa tem cadastro antes de preencher o resto */}
             <div className="sm:col-span-2 lg:col-span-3 flex flex-col gap-2">
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                <FieldRow label="CPF" required htmlFor={fieldId('cpf')} error={errors.cpf}>
+                <FieldRow label={CPF_LABEL} required htmlFor={fieldId('cpf')} error={errors.cpf}>
                   <Input
                     className={inp}
                     {...invalid('cpf')}
@@ -494,6 +495,7 @@ function RouteComponent() {
                     onBlur={handleCpfBlur}
                     placeholder="000.000.000-00"
                   />
+                  <p className="text-xs text-muted-foreground">{CIN_HINT}</p>
                 </FieldRow>
               </div>
               {checkingThisCpf && cpfCheck.isFetching && !duplicate && (

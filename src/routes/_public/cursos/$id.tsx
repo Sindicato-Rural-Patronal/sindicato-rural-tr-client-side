@@ -14,6 +14,7 @@ import {
 } from '@/lib/calendar-links'
 import { phoneDigits } from '@/lib/org-contact'
 import { cn } from '@/lib/utils'
+import { CPF_LABEL } from '@/lib/cin'
 import { formatDateFromString } from '@/utils/format-data-from-string'
 import { formatBRL } from '@/utils/format-currency'
 import { maskCPF, maskPhone, maskCEP } from '@/utils/masks'
@@ -313,7 +314,7 @@ function RegistrationDialog({
                 <DialogDescription dangerouslySetInnerHTML={{ __html: t('registration.description', { courseName: escapeHtml(course.title) }) }} />
               </DialogHeader>
               <div className="flex flex-col gap-4">
-                <Field label="CPF">
+                <Field label={CPF_LABEL}>
                   <Input
                     value={cpf}
                     onChange={e => { setCpf(maskCPF(e.target.value)); setError(null) }}
