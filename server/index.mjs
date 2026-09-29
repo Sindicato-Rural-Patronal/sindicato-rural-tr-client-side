@@ -1,4 +1,5 @@
-// Servidor mínimo que serve o SPA (dist/) e injeta meta OpenGraph dinâmicas
+// Servidor mínimo que serve o SPA (dist/), ENCAMINHA /api/* para o backend e
+// injeta meta OpenGraph dinâmicas
 // em /cursos/:id, /noticias/:id e /cotacao — para preview de link em WhatsApp/redes,
 // cujos crawlers não executam JS. Demais rotas caem no index.html (SPA).
 import Fastify from 'fastify'
@@ -21,6 +22,55 @@ const indexHtml = await readFile(join(DIST, 'index.html'), 'utf8')
 const app = Fastify({ logger: false })
 // serve:false → sem rotas automáticas; controlamos tudo e usamos reply.sendFile.
 await app.register(fastifyStatic, { root: DIST, serve: false })
+
+// O corpo das requisições passa CRU para o backend. `removeAllContentTypeParsers`
+// é obrigatório: o Fastify traz parser próprio para application/json, e com ele
+// o corpo chegava aqui como objeto já interpretado — no repasse virava a string
+// "[object Object]" e o backend respondia 500. Nenhuma rota deste servidor lê o
+// corpo, então ninguém mais depende dos parsers.
+app.removeAllContentTypeParsers()
+app.addContentTypeParser('*', { parseAs: 'buffer' }, (_req, body, done) => done(null, body))
+
+// Cabeçalhos que pertencem à conexão com ESTE servidor: repassá-los adiante
+// (ou de volta) faz o cliente ler um corpo que não corresponde ao que chegou.
+const HOP_BY_HOP = new Set([
+  'host', 'connection', 'keep-alive', 'transfer-encoding', 'upgrade',
+  'proxy-authenticate', 'proxy-authorization', 'te', 'trailer',
+  'content-length', 'content-encoding',
+])
+
+/**
+ * Encaminha /api/* para o backend, tirando o prefixo. É o que faz o navegador
+ * conversar com a PRÓPRIA origem: sem domínio cruzado, não há CORS — e o
+ * endereço do backend deixa de ser assado no bundle, virando uma variável de
+ * runtime. A mesma imagem serve staging e produção.
+ */
+app.all('/api/*', async (req, reply) => {
+  const caminho = req.url.slice('/api'.length) || '/'
+  const cabecalhos = Object.fromEntries(
+    Object.entries(req.headers).filter(([k]) => !HOP_BY_HOP.has(k.toLowerCase())),
+  )
+
+  try {
+    const r = await fetch(`${BACKEND}${caminho}`, {
+      method: req.method,
+      headers: cabecalhos,
+      body: req.method === 'GET' || req.method === 'HEAD' ? undefined : req.body,
+      redirect: 'manual',
+    })
+
+    for (const [k, v] of r.headers) {
+      if (!HOP_BY_HOP.has(k.toLowerCase())) reply.header(k, v)
+    }
+    // Buffer inteiro: os maiores corpos aqui são upload de comprovante (15 MB)
+    // e PDF gerado, ambos pequenos o bastante para não valer streaming.
+    return reply.status(r.status).send(Buffer.from(await r.arrayBuffer()))
+  } catch {
+    // Backend fora do ar não pode virar a tela de 404 do SPA: o app trata 502
+    // como falha de rede e mostra "Tentar de novo".
+    return reply.status(502).send({ error: 'Backend indisponível' })
+  }
+})
 
 function esc(s) {
   return String(s ?? '')
