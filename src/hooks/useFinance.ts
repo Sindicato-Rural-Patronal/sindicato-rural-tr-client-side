@@ -497,13 +497,11 @@ export function useCreateFinancePaymentMethod() {
   })
 }
 
-export function useDeleteFinancePaymentMethod() {
-  const qc = useQueryClient()
-  return useMutation({
-    mutationFn: (id: string) => apiFetch(`/admin/finance/payment-methods/${id}`, { method: 'DELETE' }),
-    onSuccess: () => invalidateFinance(qc),
-  })
-}
+// Não há hook de excluir forma de pagamento: a rota existe no backend
+// (DELETE /admin/finance/payment-methods/:id), mas não há tela para gerenciá-las
+// — elas só são criadas pelo "+ Nova forma de pagamento" do próprio select. O
+// hook existia sem nenhum uso; quando a tela aparecer, é um useMutation igual
+// aos vizinhos.
 
 // ── Fechamento mensal ────────────────────────────────────────────────────────
 export function useFinanceClosings(
