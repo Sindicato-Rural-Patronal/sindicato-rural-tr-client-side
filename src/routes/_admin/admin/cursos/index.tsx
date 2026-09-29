@@ -55,6 +55,7 @@ import { ExportMenu, ExportOneButton, SelectCheckbox, SelectionInfo } from '@/co
 import { CourseFormDialog } from '@/components/courses/CourseFormDialog'
 import { PhotoGrid } from '@/components/courses/PhotoGrid'
 import { AjudaLink } from '@/components/ajuda/AjudaLink'
+import { BulkDeleteButton } from '@/components/export/BulkDeleteButton'
 import { useConfirmDeletePhoto, photoCountLabel } from '@/hooks/useConfirmDeletePhoto'
 
 function calcDaysUntil(startDate: string) {
@@ -84,11 +85,13 @@ function RowAction({ label, className, ...props }: { label: string } & Component
 
 // ─── course card ─────────────────────────────────────────────────────────────
 
-function AdminCourseCard({ course, onClick, onEdit, onDuplicate, selected = false, onToggleSelect }: {
+function AdminCourseCard({ course, onClick, onEdit, onDuplicate, onDelete, selected = false, onToggleSelect }: {
   course: CourseCardItem
   onClick: () => void
   onEdit?: () => void
   onDuplicate?: () => void
+  /** Sem permissão de excluir, o item nem aparece no menu. */
+  onDelete?: () => void
   selected?: boolean
   onToggleSelect?: () => void
 }) {
@@ -158,6 +161,11 @@ function AdminCourseCard({ course, onClick, onEdit, onDuplicate, selected = fals
                 {onDuplicate && (
                   <DropdownMenuItem onSelect={onDuplicate}>
                     <CopyPlus className="size-4" /> Duplicar curso
+                  </DropdownMenuItem>
+                )}
+                {onDelete && (
+                  <DropdownMenuItem onSelect={onDelete} className="text-destructive focus:text-destructive">
+                    <Trash2 className="size-4" /> {t('common.delete')}
                   </DropdownMenuItem>
                 )}
               </DropdownMenuContent>
@@ -1800,6 +1808,15 @@ function RouteComponent() {
             </label>
           )}
           <SelectionInfo count={selection.count} onClear={selection.clear} />
+          <BulkDeleteButton
+            ids={selection.ids}
+            singular="curso"
+            plural="cursos"
+            allowed={can('DELETE_COURSE')}
+            onDelete={id => deleteCourse.mutateAsync(id)}
+            onDone={() => selection.clear()}
+            className="h-9"
+          />
           <ExportMenu
             dataset="courses"
             className="h-9"
@@ -1852,6 +1869,7 @@ function RouteComponent() {
               onClick={() => { clearLink(); setViewDialog(course) }}
               onEdit={can('UPDATE_COURSE') ? () => openFormFromCard(course.id, 'edit') : undefined}
               onDuplicate={can('CREATE_COURSE') ? () => openFormFromCard(course.id, 'duplicate') : undefined}
+              onDelete={can('DELETE_COURSE') ? () => setDeleteConfirm({ id: course.id, title: course.title }) : undefined}
               selected={selection.isSelected(course.id)}
               onToggleSelect={() => selection.toggle(course.id)}
             />

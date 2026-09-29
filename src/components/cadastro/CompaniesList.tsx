@@ -13,6 +13,7 @@ import { EmptyState } from '@/components/EmptyState'
 import { LoadErrorBanner } from '@/components/LoadErrorBanner'
 import { DeleteConfirmDialog } from '@/components/DeleteConfirmDialog'
 import { ExportMenu, SelectCheckbox, SelectionInfo } from '@/components/export/ExportMenu'
+import { BulkDeleteButton } from '@/components/export/BulkDeleteButton'
 import { usePermissions } from '@/hooks/usePermissions'
 import { useDebouncedValue } from '@/hooks/useDebouncedValue'
 import { useRowSelection } from '@/hooks/useRowSelection'
@@ -103,6 +104,15 @@ export function CompaniesList() {
         </NativeSelect>
         <div className="flex items-center justify-end gap-2">
           <SelectionInfo count={selection.count} onClear={selection.clear} />
+          <BulkDeleteButton
+            ids={selection.ids}
+            singular="empresa"
+            plural="empresas"
+            allowed={can('DELETE_USER')}
+            onDelete={id => deleteM.mutateAsync(id)}
+            onDone={() => selection.clear()}
+            className="h-9"
+          />
           <ExportMenu
             dataset="companies"
             className="h-9"
