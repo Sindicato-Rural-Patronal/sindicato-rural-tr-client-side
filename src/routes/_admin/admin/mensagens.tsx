@@ -211,7 +211,15 @@ function RouteComponent() {
     // Abrir marca como lida: o diálogo já mostra assim (e oferece "Marcar como não lida").
     setSelected(msg.read ? msg : { ...msg, read: true })
     if (!msg.read) {
-      markRead.mutate({ messageId: msg.id, read: true })
+      markRead.mutate({ messageId: msg.id, read: true }, {
+        // A marca na tela veio antes da resposta: se a gravação falhou, volta
+        // a mostrar como não lida e avisa (senão ela some da caixa sem ter
+        // sido marcada de verdade).
+        onError: e => {
+          setSelected(cur => (cur?.id === msg.id ? { ...cur, read: false } : cur))
+          toast.error(apiErrorMessage(e, 'Não foi possível marcar a mensagem como lida.'))
+        },
+      })
     }
   }
 
