@@ -29,14 +29,12 @@ RUN npm ci --omit=dev
 COPY --from=builder /app/dist ./dist
 COPY server ./server
 
-# BACKEND_URL é usado em RUNTIME pelo servidor pra buscar curso/notícia e
-# injetar as meta OpenGraph. Pode ser sobrescrito no Coolify.
-# Para onde o servidor encaminha /api/* e busca curso/notícia das meta
-# OpenGraph. É variável de RUNTIME: o Coolify aplica sem precisar de build.
-# CADA ambiente tem de definir a sua — este padrão existe só para o container
-# subir sozinho, e aponta para staging. O servidor escreve no log, ao subir,
-# para qual backend está encaminhando.
-ENV BACKEND_URL=https://sindicatoruraltrbackend.nakaidev.tech
+# BACKEND_URL é OBRIGATÓRIA e não tem padrão aqui: é para onde o servidor
+# encaminha /api/* e de onde busca curso/notícia/cotações das meta OpenGraph.
+# É variável de RUNTIME: o Coolify aplica sem precisar de build, e CADA
+# ambiente define a sua. Sem ela o container não sobe e o log diz por quê —
+# antes o padrão era a API de staging, e a produção sem a variável gravava
+# dado real no banco de staging (ver server/backend-url.mjs).
 ENV PORT=80
 
 EXPOSE 80

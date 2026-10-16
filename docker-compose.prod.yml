@@ -8,8 +8,9 @@
 #   docker compose -f docker-compose.prod.yml --env-file .env.production up -d --build
 #
 # Required env vars (.env.production):
-#   BACKEND_URL — URL do backend sem trailing slash. Padrão: http://sindicato_api:3000
-#                 (nome do container da API na rede traefik-crga — tráfego interno).
+#   BACKEND_URL — URL do backend (obrigatória: sem ela o compose para e o servidor
+#                 não sobe). Ex.: http://sindicato_api:3000 (nome do container da API
+#                 na rede traefik-crga — tráfego interno).
 #   DOMAIN      — domínio do frontend (ex: sindicatorural.com.br) — usado quando Traefik ativo
 
 services:
@@ -20,7 +21,7 @@ services:
     ports:
       - "8080:80"                     # acesso direto: http://IP:8080 — remover quando usar Traefik
     environment:
-      BACKEND_URL: ${BACKEND_URL}
+      BACKEND_URL: ${BACKEND_URL:?defina BACKEND_URL no .env.production}
     # --- Traefik: descomentar quando tiver domínio ---
     # labels:
     #   - "traefik.enable=true"

@@ -11,10 +11,26 @@ import { dirname, join, normalize } from 'node:path'
 import { markdownToText } from './markdown-text.mjs'
 import { diaDaCotacao, resumoDaCotacao } from './cotacao-resumo.mjs'
 import { acceptRawBody, BODY_LIMIT } from './raw-body.mjs'
+import { backendUrlFrom } from './backend-url.mjs'
+
+// Sem padrão: em produção, sem BACKEND_URL o servidor não sobe (ver
+// server/backend-url.mjs). Fora de produção sobe, mas /api responde 502.
+let BACKEND
+try {
+  BACKEND = backendUrlFrom(process.env)
+} catch (err) {
+  console.error(err.message)
+  process.exit(1)
+}
+if (!BACKEND) {
+  console.warn(
+    'BACKEND_URL não definida: /api responde 502 e as prévias de link saem sem dados. ' +
+      'Para testar localmente: BACKEND_URL=http://localhost:3000 node server/index.mjs',
+  )
+}
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const DIST = join(__dirname, '..', 'dist')
-const BACKEND = (process.env.BACKEND_URL || 'https://sindicatoruraltrbackend.nakaidev.tech').replace(/\/+$/, '')
 const PORT = Number(process.env.PORT || 80)
 const SITE = 'Sindicato Rural de Terra Roxa'
 
@@ -42,6 +58,7 @@ const HOP_BY_HOP = new Set([
  * runtime. A mesma imagem serve staging e produção.
  */
 app.all('/api/*', async (req, reply) => {
+  if (!BACKEND) return reply.status(502).send({ error: 'Backend indisponível' })
   const caminho = req.url.slice('/api'.length) || '/'
   const cabecalhos = Object.fromEntries(
     Object.entries(req.headers).filter(([k]) => !HOP_BY_HOP.has(k.toLowerCase())),
@@ -59,8 +76,8 @@ app.all('/api/*', async (req, reply) => {
       if (!HOP_BY_HOP.has(k.toLowerCase())) reply.header(k, v)
     }
     // Buffer inteiro: os maiores corpos aqui são upload de comprovante (até
-    // 15 MB, dentro do BODY_LIMIT de 16 MB)
-    // e PDF gerado, ambos pequenos o bastante para não valer streaming.
+    // 15 MB, dentro do BODY_LIMIT de 16 MB) e PDF gerado, pequenos o bastante
+    // para não valer streaming.
     return reply.status(r.status).send(Buffer.from(await r.arrayBuffer()))
   } catch {
     // Backend fora do ar não pode virar a tela de 404 do SPA: o app trata 502
@@ -101,6 +118,7 @@ function inject(html, { title, description, image, url }) {
 }
 
 async function fetchJson(path) {
+  if (!BACKEND) return null
   const ctrl = new AbortController()
   const timer = setTimeout(() => ctrl.abort(), 2500)
   try {
@@ -183,5 +201,5 @@ app.listen({ port: PORT, host: '0.0.0.0' }, (err, address) => {
     console.error(err)
     process.exit(1)
   }
-  console.log(`SPA server listening at ${address} (backend: ${BACKEND})`)
+  console.log(`SPA server listening at ${address} (backend: ${BACKEND ?? 'não definido'})`)
 })

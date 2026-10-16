@@ -346,7 +346,7 @@ photoGallery: { id, url, caption }[], instructors: CourseInstructor[]
 
 - **Base da API**: `API_BASE` em `src/lib/api.ts` = `VITE_API_URL` (embutido no build) ou, sem ele, `/api`. `baseUrl` do contexto é esse mesmo valor.
 - **Dev**: sem `VITE_API_URL`, as chamadas vão para `/api/*` e o proxy do Vite encaminha para `VITE_BACKEND_URL` (padrão `http://localhost:3000`), tirando o `/api`.
-- **Prod**: não há proxy. O `Dockerfile` builda com `VITE_API_URL` (padrão `https://sindicatoruraltrbackend.nakaidev.tech`), então o navegador chama o backend direto. O container roda `node server/index.mjs` (Fastify na porta 80): serve o `dist/` como SPA (rota desconhecida → `index.html`; asset em `assets/` que não existe → 404) e, em `/cursos/:id` e `/noticias/:id`, busca o curso/notícia em `BACKEND_URL` (runtime) para injetar as meta OpenGraph no HTML (preview de link em WhatsApp/redes; descrição sem markdown via `server/markdown-text.mjs`, mesmas regras de `src/lib/markdown-text.ts`). O `index.html` traz uma tela de carregamento (logo + spinner, CSS inline) dentro de `#root`, trocada pelo React no primeiro render.
+- **Prod**: o `Dockerfile` builda **sem** `VITE_API_URL` (ARG vazio de propósito), então a SPA chama `/api` na própria origem. O container roda `node server/index.mjs` (Fastify na porta 80), que: encaminha `/api/*` para `BACKEND_URL` tirando o prefixo (corpo cru, até 16 MB — `server/raw-body.mjs`; backend fora do ar → 502); serve o `dist/` como SPA (rota desconhecida → `index.html`; asset em `assets/` que não existe → 404); e, em `/cursos/:id`, `/noticias/:id` e `/cotacao`, busca os dados em `BACKEND_URL` para injetar as meta OpenGraph no HTML (preview de link em WhatsApp/redes; descrição sem markdown via `server/markdown-text.mjs`, mesmas regras de `src/lib/markdown-text.ts`). **`BACKEND_URL` é obrigatória e não tem padrão** (`server/backend-url.mjs`): com `NODE_ENV=production` (o Dockerfile define), sem ela o servidor não sobe e o log diz por quê; fora de produção sobe, mas `/api` responde 502. Antes o padrão era a API de staging, e a produção sem a variável gravaria dado real no banco de staging. Passar `VITE_API_URL` como build arg volta ao comportamento antigo (navegador falando direto com o backend; o proxy fica sem uso). O `index.html` traz uma tela de carregamento (logo + spinner, CSS inline) dentro de `#root`, trocada pelo React no primeiro render.
 
 ## API — Endpoints
 
@@ -576,8 +576,8 @@ npm run lint     # ESLint
 
 # Produção (manual VPS)
 cp .env.production.example .env.production
-# editar .env.production com BACKEND_URL real (usado em runtime pelo server/index.mjs
-# para as meta OpenGraph; as chamadas da SPA usam o VITE_API_URL do build)
+# editar .env.production com a BACKEND_URL real (obrigatória: o server/index.mjs
+# encaminha /api/* para ela e busca ali os dados das meta OpenGraph)
 docker compose -f docker-compose.prod.yml --env-file .env.production up -d --build
 ```
 

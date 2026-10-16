@@ -1,7 +1,9 @@
 import { loginHref } from '@/lib/auth-token'
 
-// Base da API. Em produção aponta pro backend direto (VITE_API_URL, embutido
-// no build). Em dev fica '/api' e o proxy do Vite encaminha pro backend local.
+// Base da API: '/api' na própria origem. Em dev o proxy do Vite encaminha pro
+// backend local; em produção, o servidor do container (server/index.mjs) encaminha
+// para a BACKEND_URL. VITE_API_URL (embutido no build) só para o navegador falar
+// direto com o backend.
 export const API_BASE = (import.meta.env.VITE_API_URL || '/api').replace(/\/+$/, '')
 
 export class ApiError extends Error {
