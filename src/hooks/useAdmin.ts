@@ -120,12 +120,16 @@ export type AdminMe = {
   dashboardPrefs?: DashboardPrefs | null
 }
 
+// Mesma consulta para o useMe e para a guarda de rota (lib/auth-guard.ts): as
+// duas leem o mesmo cache, então trocar de tela não pede o /admin/me de novo.
+export const meQuery = {
+  queryKey: ['admin', 'me'],
+  queryFn: (): Promise<AdminMe> => apiFetch('/admin/me').then(r => r.json()),
+  staleTime: 5 * 60 * 1000,
+}
+
 export function useMe() {
-  return useQuery<AdminMe>({
-    queryKey: ['admin', 'me'],
-    queryFn: () => apiFetch('/admin/me').then(r => r.json()),
-    staleTime: 5 * 60 * 1000,
-  })
+  return useQuery<AdminMe>(meQuery)
 }
 
 // Self-service: admin logado edita os próprios dados (nome/usuário/senha).

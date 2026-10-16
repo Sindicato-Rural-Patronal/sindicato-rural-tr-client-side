@@ -22,6 +22,7 @@ import { useUnsavedGuard } from '@/hooks/use-unsaved-guard'
 import { KIND_DOT_CLASS, KIND_LABEL, KIND_LABEL_PLURAL, type ScheduleKind } from '@/lib/agenda'
 import { kindDays, type DashboardSearch, type DashboardTypeFilter } from '@/lib/dashboard-agenda'
 import { AgendaSection } from '@/components/agenda/AgendaSection'
+import { LoadErrorRetry } from '@/components/LoadErrorRetry'
 import { StatsRow } from '@/components/dashboard/StatsRow'
 import { QuickActions } from '@/components/dashboard/QuickActions'
 import { QuotesNoticeLine } from '@/components/dashboard/QuotesNoticeLine'
@@ -163,7 +164,7 @@ export function DashboardPage({ search, onSearch, onOpenCourse }: {
   onSearch: (patch: Partial<DashboardSearch>, replace?: boolean) => void
   onOpenCourse: (courseId: string) => void
 }) {
-  const { can } = usePermissions()
+  const { can, isError: permissoesFalharam, retry: tentarPermissoes, retrying: tentandoPermissoes } = usePermissions()
   const podeVerPessoas = can('READ_USER')
   const podeVerCursos = can('READ_COURSE')
   const podeVerFinanceiro = can('READ_FINANCE')
@@ -526,6 +527,18 @@ export function DashboardPage({ search, onSearch, onOpenCourse }: {
           onCancelar={() => setRascunho(null)}
           onRestaurar={restaurarPadrao}
           onAltura={setAlturaBarra}
+        />
+      )}
+
+      {/* Sem as permissões, só sobram os blocos que todo mundo vê: avisa, senão
+          o painel parece ter perdido a agenda, o financeiro e os outros blocos. */}
+      {permissoesFalharam && (
+        <LoadErrorRetry
+          variant="inline"
+          className="rounded-lg border border-border bg-card px-4 py-3"
+          message="Não foi possível conferir suas permissões; alguns blocos do painel podem não aparecer."
+          onRetry={tentarPermissoes}
+          retrying={tentandoPermissoes}
         />
       )}
 
