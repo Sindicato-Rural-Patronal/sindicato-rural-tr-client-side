@@ -1,4 +1,5 @@
 import { Link } from '@tanstack/react-router'
+import { LoadErrorRetry } from '@/components/LoadErrorRetry'
 import {
   BookOpen, CalendarClock, GraduationCap, Mail, Users, CalendarX2, ChevronRight,
 } from 'lucide-react'
@@ -137,18 +138,24 @@ function statCards(stats: DashboardStats): CardDef[] {
 }
 
 export function StatsRow({
-  stats, isLoading, isError,
+  stats, isLoading, isError, onRetry, retrying,
 }: {
   stats?: DashboardStats
   isLoading?: boolean
   /** Deu erro: mostra o aviso e nunca deixa esqueleto girando para sempre. */
   isError?: boolean
+  onRetry?: () => void
+  retrying?: boolean
 }) {
-  if (isError) {
+  if (isError && !stats) {
     return (
-      <div className="rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
-        Erro ao carregar os números do painel.
-      </div>
+      <LoadErrorRetry
+        variant="inline"
+        className="rounded-lg border bg-card px-4 py-3"
+        message="Não foi possível carregar os números do painel."
+        onRetry={() => onRetry?.()}
+        retrying={retrying}
+      />
     )
   }
 

@@ -160,7 +160,8 @@ describe('Painel Geral', () => {
     stats = undefined
     statsState = { isLoading: false, isError: true }
     render(<Painel />)
-    expect(screen.getByText('Erro ao carregar os números do painel.')).toBeInTheDocument()
+    expect(screen.getByText('Não foi possível carregar os números do painel.')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Tentar de novo/ })).toBeInTheDocument()
   })
 
   it('Financeiro e Últimas ações dependem da permissão', () => {

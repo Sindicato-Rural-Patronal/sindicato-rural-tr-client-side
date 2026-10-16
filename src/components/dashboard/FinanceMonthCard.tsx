@@ -1,4 +1,5 @@
 import { Link } from '@tanstack/react-router'
+import { LoadErrorRetry } from '@/components/LoadErrorRetry'
 import { ArrowRight, Wallet } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -21,7 +22,7 @@ function Valor({ label, cents, className }: { label: string; cents: number; clas
 
 export function FinanceMonthCard({ now }: { now?: Date }) {
   const range = currentMonthRange(now)
-  const { data, isLoading, isError } = useFinanceSummary(range)
+  const { data, isLoading, isError, isFetching, refetch } = useFinanceSummary(range)
 
   const saldo = data?.periodResultCents ?? 0
 
@@ -43,7 +44,9 @@ export function FinanceMonthCard({ now }: { now?: Date }) {
         </div>
       </CardHeader>
       <CardContent>
-        {isError && <p className="text-sm text-destructive">Erro ao carregar o resumo do mês.</p>}
+        {isError && (
+          <LoadErrorRetry variant="inline" message="Não foi possível carregar o resumo do mês." onRetry={() => void refetch()} retrying={isFetching} />
+        )}
         {!isError && (isLoading || !data) && (
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
             {Array.from({ length: 3 }).map((_, i) => (

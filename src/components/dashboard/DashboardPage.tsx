@@ -171,7 +171,7 @@ export function DashboardPage({ search, onSearch, onOpenCourse }: {
   const podeVerAuditoria = can('READ_AUDIT')
 
   const { data: me } = useMe()
-  const { data: stats, isLoading: statsLoading, isError: statsError } = useAdminStats()
+  const { data: stats, isLoading: statsLoading, isError: statsError, isFetching: statsFetching, refetch: refetchStats } = useAdminStats()
   const { data: salas } = useRooms()
 
   // Rascunho do modo de organizar. null = painel normal (é assim que a tela
@@ -386,9 +386,13 @@ export function DashboardPage({ search, onSearch, onOpenCourse }: {
           </CardHeader>
           <CardContent>
             {agenda.isError && (
-              <p className="mb-3 rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-xs text-destructive">
-                Erro ao carregar a agenda do mês.
-              </p>
+              <LoadErrorRetry
+                variant="inline"
+                className="mb-3"
+                message="Não foi possível carregar a agenda do mês."
+                onRetry={() => void agenda.refetch()}
+                retrying={agenda.isFetching}
+              />
             )}
             <div className="mb-2 grid grid-cols-7 gap-1">
               {['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'].map(d => (
@@ -469,7 +473,7 @@ export function DashboardPage({ search, onSearch, onOpenCourse }: {
   function bloco(id: DashboardBlockId) {
     switch (id) {
       case 'acoes': return <QuickActions onNovaReserva={novaReserva} />
-      case 'numeros': return <StatsRow stats={stats} isLoading={statsLoading} isError={statsError} />
+      case 'numeros': return <StatsRow stats={stats} isLoading={statsLoading} isError={statsError} onRetry={() => void refetchStats()} retrying={statsFetching} />
       case 'cotacoes': return <QuotesNoticeLine quotes={stats?.quotesToday} />
       case 'financeiro': return <FinanceMonthCard />
       case 'agenda': return calendario

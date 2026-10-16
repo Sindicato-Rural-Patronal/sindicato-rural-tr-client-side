@@ -306,17 +306,13 @@ export function AgendaSection({
 
       <CardContent className="flex flex-col gap-4">
         {erro && (
-          <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
-            <span>Erro ao carregar a agenda das salas.</span>
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-8"
-              onClick={() => { void schedule.refetch(); void bookings.refetch() }}
-            >
-              Tentar de novo
-            </Button>
-          </div>
+          <LoadErrorRetry
+            variant="inline"
+            className="rounded-lg border bg-card px-4 py-3"
+            message="Não foi possível carregar a agenda das salas."
+            onRetry={() => { void schedule.refetch(); void bookings.refetch() }}
+            retrying={schedule.isFetching || bookings.isFetching}
+          />
         )}
 
         {carregando && !erro ? (

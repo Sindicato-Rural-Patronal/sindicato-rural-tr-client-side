@@ -1,4 +1,5 @@
 import { Link } from '@tanstack/react-router'
+import { LoadErrorRetry } from '@/components/LoadErrorRetry'
 import { UserX, ChevronRight, ArrowRight } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -11,7 +12,7 @@ import { memberTypeLabel } from '@/lib/member-types'
 // já no modo "completar". Só para quem tem READ_USER — a tela cuida disso.
 
 export function IncompleteUsersCard() {
-  const { data, isError } = useAdminUsers({ page: 1, limit: 5, incompleteRegistration: true })
+  const { data, isError, isFetching, refetch } = useAdminUsers({ page: 1, limit: 5, incompleteRegistration: true })
 
   return (
     <Card>
@@ -30,7 +31,7 @@ export function IncompleteUsersCard() {
             <Skeleton key={i} className="h-14 w-full rounded-lg" />
           ))}
           {isError && (
-            <p className="py-4 text-center text-sm text-destructive">Erro ao carregar os cadastros incompletos.</p>
+            <LoadErrorRetry variant="inline" className="justify-center py-4" message="Não foi possível carregar os cadastros incompletos." onRetry={() => void refetch()} retrying={isFetching} />
           )}
           {data?.data.map(user => (
             <Link
