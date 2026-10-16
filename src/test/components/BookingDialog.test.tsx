@@ -7,8 +7,11 @@ import { ApiError } from '@/lib/api'
 const createMock = vi.fn()
 const updateMock = vi.fn()
 
+const SALAS = [{ id: 'r1', name: 'AUDITORIO' }, { id: 'r2', name: 'SALA 1' }]
+let roomsState: { data?: typeof SALAS; isLoading: boolean; isError: boolean; isFetching: boolean }
+const refetchRooms = vi.fn()
 vi.mock('@/hooks/useRooms', () => ({
-  useRooms: () => ({ data: [{ id: 'r1', name: 'AUDITORIO' }, { id: 'r2', name: 'SALA 1' }], isLoading: false }),
+  useRooms: () => ({ ...roomsState, refetch: refetchRooms }),
 }))
 vi.mock('@/hooks/useRoomBookings', () => ({
   useCreateRoomBooking: () => ({ mutateAsync: createMock, isPending: false }),
@@ -35,9 +38,19 @@ function fillValid() {
 beforeEach(() => {
   createMock.mockReset()
   updateMock.mockReset()
+  refetchRooms.mockReset()
+  roomsState = { data: SALAS, isLoading: false, isError: false, isFetching: false }
 })
 
 describe('BookingDialog', () => {
+  it('salas que não carregaram: avisa embaixo do campo, com "Tentar de novo"', () => {
+    roomsState = { data: undefined, isLoading: false, isError: true, isFetching: false }
+    render(<BookingDialog open booking={null} onClose={() => {}} />)
+    expect(screen.getByRole('alert')).toHaveTextContent('Não foi possível carregar as salas.')
+    fireEvent.click(screen.getByRole('button', { name: /Tentar de novo/ }))
+    expect(refetchRooms).toHaveBeenCalledTimes(1)
+  })
+
   it('nova reserva: mostra os erros dos obrigatórios e não envia', () => {
     render(<BookingDialog open booking={null} onClose={() => {}} />)
     expect(screen.getByRole('heading', { name: 'Nova reserva' })).toBeInTheDocument()

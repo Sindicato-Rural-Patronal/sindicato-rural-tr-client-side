@@ -22,6 +22,7 @@ import { useDebouncedValue } from '@/hooks/useDebouncedValue'
 import { usePermissions } from '@/hooks/usePermissions'
 import { useIsMobile } from '@/hooks/use-mobile'
 import { useRooms } from '@/hooks/useRooms'
+import { LoadErrorRetry } from '@/components/LoadErrorRetry'
 import { useRoomBookings, useRoomSchedule, type RoomBooking } from '@/hooks/useRoomBookings'
 import { apiErrorMessage } from '@/lib/api-error-message'
 import { downloadExport } from '@/lib/export'
@@ -90,7 +91,7 @@ export function AgendaSection({
   const showBookings = tipo !== 'COURSE'
   const bookingType = bookingTypeOf(tipo)
 
-  const { data: salas } = useRooms()
+  const { data: salas, isLoading: salasCarregando, isError: salasErro, isFetching: salasBuscando, refetch: buscarSalas } = useRooms()
 
   // Uma busca por período: cursos (agenda das salas) e reservas (com o
   // responsável, que a agenda não traz). Nada é buscado dia a dia.
@@ -374,7 +375,12 @@ export function AgendaSection({
               Ocupação das salas neste dia
               <ChevronRight className={cn('size-4 transition-transform', showOccupancy && 'rotate-90')} aria-hidden />
             </Button>
-            {showOccupancy && (
+            {showOccupancy && salasErro && !salas && (
+              // Sem a lista, a ocupação dizia "Nenhuma sala cadastrada".
+              <LoadErrorRetry variant="inline" className="pt-3" message="Não foi possível carregar as salas." onRetry={() => void buscarSalas()} retrying={salasBuscando} />
+            )}
+            {showOccupancy && salasCarregando && <p className="pt-3 text-sm text-muted-foreground">Carregando salas…</p>}
+            {showOccupancy && salas && (
               <div className="pt-3">
                 <RoomOccupancy
                   date={dia}

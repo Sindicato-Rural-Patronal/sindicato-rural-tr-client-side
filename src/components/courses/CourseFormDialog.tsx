@@ -346,7 +346,7 @@ export function CourseFormDialog(props: CourseFormDialogProps) {
 }
 
 function CourseFormDialogSession({ open, editing, duplicateOf = null, onClose }: CourseFormDialogProps) {
-  const { data: rooms, isLoading: roomsLoading } = useRooms()
+  const { data: rooms, isLoading: roomsLoading, isError: roomsError, isFetching: roomsFetching, refetch: refetchRooms } = useRooms()
   const createCourse = useCreateCourse()
   const updateCourse = useUpdateCourse(editing?.id ?? '')
   const { t } = useTranslation()
@@ -584,6 +584,9 @@ roomId })
                         ))}
                       </SelectContent>
                     </Select>
+                    {roomsError && !rooms && (
+                      <LoadErrorRetry variant="inline" message="Não foi possível carregar as salas." onRetry={() => void refetchRooms()} retrying={roomsFetching} />
+                    )}
                     <FormMessage />
                   </FormItem>
                 )} />
