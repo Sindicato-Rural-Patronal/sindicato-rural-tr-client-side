@@ -128,10 +128,11 @@ export function useMe() {
 }
 
 // Self-service: admin logado edita os próprios dados (nome/usuário/senha).
+// Trocar a senha exige `currentPassword` junto (400 sem ela ou com ela errada).
 export function useUpdateMe() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (body: { name?: string; username?: string; password?: string }) =>
+    mutationFn: (body: { name?: string; username?: string; password?: string; currentPassword?: string }) =>
       apiFetch('/admin/me', { method: 'PATCH', body: JSON.stringify(body) }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin', 'me'] })
