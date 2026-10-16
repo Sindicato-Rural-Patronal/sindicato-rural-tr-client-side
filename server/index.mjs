@@ -10,6 +10,7 @@ import { fileURLToPath } from 'node:url'
 import { dirname, join, normalize } from 'node:path'
 import { markdownToText } from './markdown-text.mjs'
 import { diaDaCotacao, resumoDaCotacao } from './cotacao-resumo.mjs'
+import { acceptRawBody, BODY_LIMIT } from './raw-body.mjs'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const DIST = join(__dirname, '..', 'dist')
@@ -19,17 +20,12 @@ const SITE = 'Sindicato Rural de Terra Roxa'
 
 const indexHtml = await readFile(join(DIST, 'index.html'), 'utf8')
 
-const app = Fastify({ logger: false })
+const app = Fastify({ logger: false, bodyLimit: BODY_LIMIT })
 // serve:false → sem rotas automáticas; controlamos tudo e usamos reply.sendFile.
 await app.register(fastifyStatic, { root: DIST, serve: false })
 
-// O corpo das requisições passa CRU para o backend. `removeAllContentTypeParsers`
-// é obrigatório: o Fastify traz parser próprio para application/json, e com ele
-// o corpo chegava aqui como objeto já interpretado — no repasse virava a string
-// "[object Object]" e o backend respondia 500. Nenhuma rota deste servidor lê o
-// corpo, então ninguém mais depende dos parsers.
-app.removeAllContentTypeParsers()
-app.addContentTypeParser('*', { parseAs: 'buffer' }, (_req, body, done) => done(null, body))
+// O corpo das requisições passa CRU para o backend (ver server/raw-body.mjs).
+acceptRawBody(app)
 
 // Cabeçalhos que pertencem à conexão com ESTE servidor: repassá-los adiante
 // (ou de volta) faz o cliente ler um corpo que não corresponde ao que chegou.
@@ -62,7 +58,8 @@ app.all('/api/*', async (req, reply) => {
     for (const [k, v] of r.headers) {
       if (!HOP_BY_HOP.has(k.toLowerCase())) reply.header(k, v)
     }
-    // Buffer inteiro: os maiores corpos aqui são upload de comprovante (15 MB)
+    // Buffer inteiro: os maiores corpos aqui são upload de comprovante (até
+    // 15 MB, dentro do BODY_LIMIT de 16 MB)
     // e PDF gerado, ambos pequenos o bastante para não valer streaming.
     return reply.status(r.status).send(Buffer.from(await r.arrayBuffer()))
   } catch {
