@@ -1,4 +1,5 @@
 import i18n from '@/i18n'
+import { ApiError } from '@/lib/api'
 
 /**
  * Mensagens de erro do backend (inglês) → chave i18n em `apiErrors.*`.
@@ -48,6 +49,16 @@ const API_ERROR_KEYS: Record<string, string> = {
   'Failed to update course': 'apiErrors.failedUpdateCourse',
   'Failed to update news': 'apiErrors.failedUpdateNews',
   'Failed to update user': 'apiErrors.failedUpdateUser',
+  'Payload Too Large': 'apiErrors.fileTooLarge',
+  'Too Many Requests': 'apiErrors.tooManyRequests',
+}
+
+// Pelo status: o 413 (arquivo grande demais, do proxy do container ou do
+// backend) e o 429 (limite de tentativas) chegam com texto genérico em inglês,
+// ou só como "HTTP 413" nos hooks públicos com fetch cru.
+const STATUS_KEYS: Record<number, string> = {
+  413: 'apiErrors.fileTooLarge',
+  429: 'apiErrors.tooManyRequests',
 }
 
 /**
@@ -62,6 +73,10 @@ export function apiErrorMessage(err: unknown, fallback?: string): string {
     typeof err === 'string' ? err
     : err instanceof Error ? err.message
     : ''
+
+  const status = err instanceof ApiError ? err.status : Number(/^HTTP (\d{3})$/.exec(raw)?.[1])
+  const statusKey = STATUS_KEYS[status]
+  if (statusKey) return i18n.t(statusKey)
 
   const key = raw ? API_ERROR_KEYS[raw] : undefined
   if (key) return i18n.t(key)

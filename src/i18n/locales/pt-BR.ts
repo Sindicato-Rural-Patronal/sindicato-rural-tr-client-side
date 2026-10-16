@@ -294,6 +294,8 @@ const ptBR = {
   },
   apiErrors: {
     generic: 'Ocorreu um erro inesperado. Tente novamente.',
+    fileTooLarge: 'O arquivo é grande demais para enviar. Reduza o tamanho e tente de novo.',
+    tooManyRequests: 'Muitas tentativas seguidas. Espere alguns minutos e tente de novo.',
     unauthorized: 'Sessão expirada ou sem autorização. Faça login novamente.',
     forbidden: 'Você não tem permissão para esta ação.',
     invalidCredentials: 'Usuário ou senha inválidos.',
