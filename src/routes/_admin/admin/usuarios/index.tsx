@@ -37,6 +37,7 @@ import {
 import { DeleteConfirmDialog } from '@/components/DeleteConfirmDialog'
 import { NativeSelect } from '@/components/ui/native-select'
 import { EmptyState } from '@/components/EmptyState'
+import { LoadErrorRetry } from '@/components/LoadErrorRetry'
 import { Pagination } from '@/components/ui/pagination'
 import { InitialsAvatar } from '@/components/InitialsAvatar'
 import { PasswordInput } from '@/components/PasswordInput'
@@ -314,8 +315,9 @@ function RegraDialog({
 }
 
 function RegrasSheet() {
-  const { data: regrasResult, isLoading } = useAdminRules()
+  const { data: regrasResult, isLoading, isError, isFetching, refetch } = useAdminRules()
   const regras = regrasResult?.data ?? []
+  const regrasFalharam = isError && !regrasResult
   const [dialog, setDialog] = useState<RegraDialogState | null>(null)
   // Muda a cada abertura para o diálogo remontar com o formulário certo.
   const [dialogKey, setDialogKey] = useState(0)
@@ -369,7 +371,16 @@ function RegrasSheet() {
               </>
             )}
 
-            {!isLoading && regras.length === 0 && (
+            {regrasFalharam && (
+              <LoadErrorRetry
+                className="rounded-lg border bg-card"
+                message="Não foi possível carregar as regras de permissão."
+                onRetry={() => void refetch()}
+                retrying={isFetching}
+              />
+            )}
+
+            {!isLoading && !regrasFalharam && regras.length === 0 && (
               <div className="flex flex-col items-center justify-center py-16 text-center">
                 <Shield className="size-8 text-muted-foreground/30 mb-3" />
                 <p className="text-sm font-medium text-foreground">Nenhuma regra cadastrada</p>
@@ -447,7 +458,8 @@ function RegrasSheet() {
 }
 
 function NovoAdminSheet() {
-  const { data: regrasData } = useAdminRules()
+  const { data: regrasData, isError: regrasQueryError, isFetching: buscandoRegras, refetch: recarregarRegras } = useAdminRules()
+  const regrasErro = regrasQueryError && !regrasData
   // Quem já é administrador aparece desabilitado na busca (a lista cabe numa página).
   const { data: adminsData } = useAdminAdmins({ limit: 100 })
   const adminIds = new Set((adminsData?.data ?? []).map(a => a.userDataId))
@@ -545,6 +557,9 @@ function NovoAdminSheet() {
                   <option key={r.id} value={r.id}>{r.name}</option>
                 ))}
               </NativeSelect>
+              {regrasErro && (
+                <LoadErrorRetry variant="inline" message="Não foi possível carregar as regras de permissão." onRetry={() => void recarregarRegras()} retrying={buscandoRegras} />
+              )}
             </div>
             {error && <p className="text-sm text-destructive">{error}</p>}
             <Button type="submit" disabled={!person || !userRole || createInvite.isPending}>
@@ -572,9 +587,17 @@ function NovoAdminSheet() {
 
 
 function ConvitesPendentes({ canRevoke }: { canRevoke: boolean }) {
-  const { data: invites, isLoading } = useAdminInvites()
+  const { data: invites, isLoading, isError, isFetching, refetch } = useAdminInvites()
   const revoke = useRevokeAdminInvite()
   const [target, setTarget] = useState<PendingInvite | null>(null)
+
+  // O bloco só existe quando há convite pendente; a falha vira uma linha com
+  // "Tentar de novo" (sumir calado escondia convites que estavam lá).
+  if (isError && !invites) {
+    return (
+      <LoadErrorRetry variant="inline" message="Não foi possível carregar os convites pendentes." onRetry={() => void refetch()} retrying={isFetching} />
+    )
+  }
 
   if (isLoading || !invites || invites.length === 0) return null
 
@@ -634,7 +657,8 @@ function ConvitesPendentes({ canRevoke }: { canRevoke: boolean }) {
 }
 
 function EditarAdminDialog({ admin, onClose }: { admin: UserAdmin | null; onClose: () => void }) {
-  const { data: regrasData } = useAdminRules()
+  const { data: regrasData, isError: regrasQueryError, isFetching: buscandoRegras, refetch: recarregarRegras } = useAdminRules()
+  const regrasErro = regrasQueryError && !regrasData
   const regras = regrasData?.data ?? []
   const updateAdmin = useUpdateAdmin(admin?.id ?? '')
   // O pai remonta o diálogo a cada abertura (key): começa com os dados do admin.
@@ -712,6 +736,9 @@ function EditarAdminDialog({ admin, onClose }: { admin: UserAdmin | null; onClos
                 <option key={r.id} value={r.id}>{r.name}</option>
               ))}
             </NativeSelect>
+            {regrasErro && (
+              <LoadErrorRetry variant="inline" message="Não foi possível carregar as regras de permissão." onRetry={() => void recarregarRegras()} retrying={buscandoRegras} />
+            )}
           </div>
           <p className="flex items-start gap-1.5 text-xs text-muted-foreground">
             <Globe className="mt-0.5 size-3.5 shrink-0" />
@@ -804,7 +831,7 @@ function RouteComponent() {
     setUsersPage(1)
   }
 
-  const { data: usuariosData, isLoading: loadingUsers, isError: errorUsers, isPlaceholderData: refreshingUsers } = useAdminUsers({
+  const { data: usuariosData, isLoading: loadingUsers, isError: errorUsers, isPlaceholderData: refreshingUsers, isFetching: fetchingUsers, refetch: refetchUsers } = useAdminUsers({
     page: usersPage,
     limit,
     search: usersQuery || undefined,
@@ -818,7 +845,7 @@ function RouteComponent() {
     activeMember: activeTab === 'associados' ? true : undefined,
   })
   const { data: regrasData } = useAdminRules()
-  const { data: adminsData, isLoading: loadingAdmins, isError: errorAdmins } = useAdminAdmins({
+  const { data: adminsData, isLoading: loadingAdmins, isError: errorAdmins, isFetching: fetchingAdmins, refetch: refetchAdmins } = useAdminAdmins({
     page: adminsPage,
     limit,
     rulesId: rulesFilter || undefined,
@@ -1198,7 +1225,7 @@ function RouteComponent() {
                 {userTotal} {userTotal === 1 ? 'cadastro incompleto' : 'cadastros incompletos'}
               </span>
             )}
-            {incompleteOnly && userTotal === 0 && !loadingUsers && (
+            {incompleteOnly && userTotal === 0 && !loadingUsers && !errorUsers && (
               <span className="text-xs text-emerald-600 font-medium">Todos os cadastros estão completos</span>
             )}
             <div className="ml-auto flex items-center gap-2">
@@ -1243,9 +1270,12 @@ function RouteComponent() {
             </div>
           )}
           {!loadingUsers && errorUsers && (
-            <div className="rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
-              Erro ao carregar associados.
-            </div>
+            <LoadErrorRetry
+              className="rounded-lg border bg-card"
+              message="Não foi possível carregar a lista de pessoas."
+              onRetry={() => void refetchUsers()}
+              retrying={fetchingUsers}
+            />
           )}
           {!loadingUsers && !errorUsers && usuarios.length === 0 && (
             <EmptyState
@@ -1408,9 +1438,12 @@ function RouteComponent() {
             </div>
           )}
           {!loadingAdmins && errorAdmins && (
-            <div className="rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
-              Erro ao carregar administradores.
-            </div>
+            <LoadErrorRetry
+              className="rounded-lg border bg-card"
+              message="Não foi possível carregar os administradores."
+              onRetry={() => void refetchAdmins()}
+              retrying={fetchingAdmins}
+            />
           )}
           {!loadingAdmins && !errorAdmins && admins.length === 0 && (
             <EmptyState icon={Shield} title="Nenhum administrador cadastrado" description={'Use o botão "Novo admin" para adicionar.'} />

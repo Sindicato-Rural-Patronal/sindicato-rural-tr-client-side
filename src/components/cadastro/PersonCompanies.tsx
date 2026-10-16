@@ -21,6 +21,7 @@ import {
 import { apiErrorMessage } from '@/lib/api-error-message'
 import { maskCNPJ } from '@/utils/masks'
 import { upperNoAccents } from '@/utils/text-format'
+import { LoadErrorRetry } from '@/components/LoadErrorRetry'
 
 // Empresas às quais a pessoa está vinculada. Dá para vincular e desvincular
 // daqui mesmo (mesma permissão de vincular pessoas na empresa: UPDATE_USER);
@@ -45,7 +46,7 @@ function LinkCompanyForm({ userId, personName, linkedCompanyIds, onDone }: {
   const suggestions = memberTitleSuggestions(usedTitles)
   const [q, setQ] = useState('')
   const dq = useDebouncedValue(q, 300).trim()
-  const { data, isFetching } = useAdminCompanies({ search: dq, limit: 8 })
+  const { data, isFetching, isError, refetch } = useAdminCompanies({ search: dq, limit: 8 })
   const results = data?.data ?? []
   const [company, setCompany] = useState<PickedCompany | null>(null)
   const [title, setTitle] = useState('')
@@ -107,7 +108,10 @@ function LinkCompanyForm({ userId, personName, linkedCompanyIds, onDone }: {
               {isFetching && results.length === 0 && (
                 <p className="px-3 py-2 text-xs text-muted-foreground">Buscando…</p>
               )}
-              {!isFetching && results.length === 0 && (
+              {!isFetching && isError && (
+                <LoadErrorRetry variant="inline" className="px-3 py-2" message="Não foi possível buscar." onRetry={() => void refetch()} />
+              )}
+              {!isFetching && !isError && results.length === 0 && (
                 <div className="space-y-1 px-3 py-2 text-xs text-muted-foreground">
                   <p>Nenhuma empresa encontrada.</p>
                   {can('CREATE_USER') && (
