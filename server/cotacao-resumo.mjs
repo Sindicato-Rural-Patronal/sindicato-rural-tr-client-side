@@ -1,5 +1,5 @@
 // Resumo das cotações para a prévia do link no WhatsApp. Mesma ideia do
-// `resumoDaCotacao` do app (src/lib/cotacao-compartilhar.ts), reescrita aqui
+// `resumoDaCotacao` do app (src/lib/cotacao-resumo.ts), reescrita aqui
 // porque o servidor não carrega o bundle do React.
 
 const NOME = {
