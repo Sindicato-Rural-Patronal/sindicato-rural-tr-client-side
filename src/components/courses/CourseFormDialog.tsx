@@ -25,6 +25,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from '@/components/ui/form'
 import type { Course } from '@/@types/course'
 import { ErrorAlert } from '@/components/ErrorAlert'
+import { LoadErrorRetry } from '@/components/LoadErrorRetry'
 import { ConfirmCloseDialog } from '@/components/confirm-close-dialog'
 import { PhotoGrid } from '@/components/courses/PhotoGrid'
 import { useConfirmDeletePhoto, photoCountLabel } from '@/hooks/useConfirmDeletePhoto'
@@ -99,7 +100,7 @@ function BannerPickButton({ label, disabled }: { label: string; disabled?: boole
 }
 
 function BannerTab({ courseId }: { courseId: string | null }) {
-  const { data: editing } = useAdminCourse(courseId ?? '')
+  const { data: editing, isError, isFetching, refetch } = useAdminCourse(courseId ?? '')
   const uploadBanner = useUploadBanner(courseId ?? '')
   const uploadPhoto = useUploadGalleryPhoto(courseId ?? '')
   const removePhoto = useConfirmDeletePhoto(courseId ?? '')
@@ -109,6 +110,18 @@ function BannerTab({ courseId }: { courseId: string | null }) {
   const [photoError, setPhotoError] = useState<string | null>(null)
   const [bannerCacheBust, setBannerCacheBust] = useState(0)
   const { t } = useTranslation()
+
+  // Sem isto a aba ficava em "Carregando…" para sempre quando o curso não vinha.
+  if (courseId && !editing && isError) {
+    return (
+      <LoadErrorRetry
+        className="py-12"
+        message="Não foi possível carregar a capa e as fotos deste curso."
+        onRetry={() => void refetch()}
+        retrying={isFetching}
+      />
+    )
+  }
 
   if (!courseId || !editing) {
     return (

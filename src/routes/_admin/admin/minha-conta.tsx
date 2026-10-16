@@ -7,6 +7,7 @@ import { apiErrorMessage } from '@/lib/api-error-message'
 import { resizeToSquare } from '@/utils/resize-image'
 import { upperNoAccents } from '@/utils/text-format'
 import { InitialsAvatar } from '@/components/InitialsAvatar'
+import { LoadErrorRetry } from '@/components/LoadErrorRetry'
 import { PasswordInput } from '@/components/PasswordInput'
 import { PasswordStrengthHint } from '@/components/PasswordStrengthHint'
 import { ThemeSetting } from '@/components/ThemeSetting'
@@ -23,7 +24,17 @@ export const Route = createFileRoute('/_admin/admin/minha-conta')({
 })
 
 function PerfilTab() {
-  const { data: me, isLoading } = useMe()
+  const { data: me, isLoading, isError, isFetching, refetch } = useMe()
+
+  if (!me && isError) {
+    return (
+      <LoadErrorRetry
+        message="Não foi possível carregar os seus dados."
+        onRetry={() => void refetch()}
+        retrying={isFetching}
+      />
+    )
+  }
 
   if (isLoading || !me) {
     return (
