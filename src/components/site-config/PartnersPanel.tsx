@@ -11,7 +11,8 @@ import {
 } from '@/components/ui/dialog'
 import { DeleteConfirmDialog } from '@/components/DeleteConfirmDialog'
 import { EmptyState } from '@/components/EmptyState'
-import { LoadErrorBanner } from '@/components/LoadErrorBanner'
+import { LoadErrorRetry } from '@/components/LoadErrorRetry'
+import { usePermissions } from '@/hooks/usePermissions'
 import { PartnerEditDialog } from '@/components/site-config/PartnerEditDialog'
 import { useDebouncedValue } from '@/hooks/useDebouncedValue'
 import {
@@ -36,7 +37,8 @@ function AddPartnerDialog({ open, onClose, onPick, pending }: {
 }) {
   const [search, setSearch] = useState('')
   const q = useDebouncedValue(search, 300).trim()
-  const { data, isFetching } = useAdminCompanies({ search: q, isPartner: false, limit: 8 })
+  const { data, isFetching, isError: searchError, refetch: searchAgain } = useAdminCompanies({ search: q, isPartner: false, limit: 8 })
+  const { can } = usePermissions()
   const results = data?.data ?? []
 
   return (
@@ -65,10 +67,13 @@ function AddPartnerDialog({ open, onClose, onPick, pending }: {
               <Plus className="size-4 shrink-0 text-muted-foreground" />
             </button>
           ))}
-          {!isFetching && results.length === 0 && (
+          {!isFetching && searchError && (
+            <LoadErrorRetry variant="inline" className="justify-center px-3 py-6" message="Não foi possível buscar as empresas." onRetry={() => void searchAgain()} />
+          )}
+          {!isFetching && !searchError && results.length === 0 && (
             <p className="px-3 py-6 text-center text-sm text-muted-foreground">
               Nenhuma empresa encontrada.{' '}
-              <Link to="/admin/empresas/novo" className="text-primary hover:underline">Cadastrar empresa</Link>
+              {can('CREATE_USER') && <Link to="/admin/empresas/novo" className="text-primary hover:underline">Cadastrar empresa</Link>}
             </p>
           )}
           {isFetching && results.length === 0 && <Loader2 className="mx-auto my-6 size-5 animate-spin text-muted-foreground" />}
@@ -80,7 +85,7 @@ function AddPartnerDialog({ open, onClose, onPick, pending }: {
 
 // Empresas parceiras da faixa "Parcerias com" da página inicial.
 export function PartnersPanel({ canEdit }: { canEdit: boolean }) {
-  const { data, isLoading, isError } = useAdminCompanies({ isPartner: true, limit: 100 })
+  const { data, isLoading, isError, isFetching, refetch } = useAdminCompanies({ isPartner: true, limit: 100 })
   const setPartner = useSetCompanyPartner()
   const reorder = useReorderPartners()
   const [adding, setAdding] = useState(false)
@@ -138,7 +143,14 @@ export function PartnersPanel({ canEdit }: { canEdit: boolean }) {
         )}
       </div>
 
-      {isError && <LoadErrorBanner message="Erro ao carregar os parceiros." />}
+      {isError && !data && (
+        <LoadErrorRetry
+          className="rounded-lg border bg-card"
+          message="Não foi possível carregar os parceiros."
+          onRetry={() => void refetch()}
+          retrying={isFetching}
+        />
+      )}
 
       <div className="overflow-hidden rounded-lg border border-border bg-card">
         {isLoading && Array.from({ length: 3 }).map((_, i) => (
@@ -147,7 +159,7 @@ export function PartnersPanel({ canEdit }: { canEdit: boolean }) {
           </div>
         ))}
 
-        {!isLoading && partners.length === 0 && (
+        {!isLoading && !isError && partners.length === 0 && (
           <EmptyState icon={Handshake} title="Nenhum parceiro na home" description='Clique em "Adicionar parceiro" e escolha uma empresa cadastrada.' />
         )}
 
