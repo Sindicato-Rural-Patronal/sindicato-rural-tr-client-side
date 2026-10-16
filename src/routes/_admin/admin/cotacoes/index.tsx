@@ -24,8 +24,8 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription,
   AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
-import { LoadErrorBanner } from '@/components/LoadErrorBanner'
 import { NoPermission } from '@/components/NoPermission'
+import { LoadErrorRetry } from '@/components/LoadErrorRetry'
 import { AjudaLink } from '@/components/ajuda/AjudaLink'
 
 export const Route = createFileRoute('/_admin/admin/cotacoes/')({
@@ -74,8 +74,10 @@ function LastEntry({ q }: { q: MarketQuote }) {
 
 // Fonte mostrada na faixa da home e na página pública de histórico.
 function QuotesSourceCard({ canEdit }: { canEdit: boolean }) {
-  const { data: settings, isLoading } = usePublicSiteSettings()
+  const { data: settings, isLoading, isError, isFetching, refetch } = usePublicSiteSettings()
   const update = useUpdateQuotesSource()
+  // Sem as configurações, o campo aparecia vazio — e salvar vazio tira a fonte do site.
+  const settingsFailed = isError && !settings
   const [draft, setDraft] = useState<string | null>(null)
   const saved = settings?.quotesSource ?? ''
   const value = draft ?? saved
@@ -101,6 +103,14 @@ function QuotesSourceCard({ canEdit }: { canEdit: boolean }) {
         </p>
       </CardHeader>
       <CardContent>
+        {settingsFailed ? (
+          <LoadErrorRetry
+            variant="inline"
+            message="Não foi possível carregar a fonte atual."
+            onRetry={() => void refetch()}
+            retrying={isFetching}
+          />
+        ) : (
         <form onSubmit={handleSave} className="flex flex-col gap-3 sm:flex-row sm:items-end">
           <div className="flex flex-1 flex-col gap-1.5">
             <label htmlFor="quotes-source" className="text-xs font-medium text-muted-foreground">Fonte exibida no site</label>
@@ -126,6 +136,7 @@ function QuotesSourceCard({ canEdit }: { canEdit: boolean }) {
             </Link>
           </Button>
         </form>
+        )}
       </CardContent>
     </Card>
   )
@@ -133,7 +144,7 @@ function QuotesSourceCard({ canEdit }: { canEdit: boolean }) {
 
 function RouteComponent() {
   const { can, isLoading: permLoading } = usePermissions()
-  const { data: quotes, isLoading, isError } = useAdminMarketQuotes({
+  const { data: quotes, isLoading, isError, isFetching, refetch } = useAdminMarketQuotes({
     enabled: !permLoading && can('READ_MARKET_QUOTE'),
   })
   const save = useSaveDailyQuotes()
@@ -311,8 +322,14 @@ function RouteComponent() {
         </p>
       </div>
 
-      {isError && <LoadErrorBanner message="Erro ao carregar cotações." />}
-
+      {isError && !quotes ? (
+        <LoadErrorRetry
+          className="rounded-lg border border-border bg-card"
+          message="Não foi possível carregar as cotações."
+          onRetry={() => void refetch()}
+          retrying={isFetching}
+        />
+      ) : (
       <form onSubmit={handleSave}>
         <Card>
           <CardHeader className="flex flex-col gap-3 pb-4 sm:flex-row sm:items-center sm:justify-between">
@@ -436,6 +453,7 @@ function RouteComponent() {
         )}
         {priceError && <p role="alert" className="mt-2 text-sm text-destructive sm:text-right">{priceError}</p>}
       </form>
+      )}
 
       <QuotesSourceCard canEdit={canEdit} />
 

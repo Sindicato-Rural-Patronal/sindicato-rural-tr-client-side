@@ -13,7 +13,7 @@ import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table'
 import { DeleteConfirmDialog } from '@/components/DeleteConfirmDialog'
-import { LoadErrorBanner } from '@/components/LoadErrorBanner'
+import { LoadErrorRetry } from '@/components/LoadErrorRetry'
 import { EmptyState } from '@/components/EmptyState'
 import { AjudaLink } from '@/components/ajuda/AjudaLink'
 
@@ -24,7 +24,7 @@ export const Route = createFileRoute('/_admin/admin/convenios/')({
 
 function ConveniosAdminPage() {
   const { can } = usePermissions()
-  const { data, isLoading, isError } = useAdminConvenios()
+  const { data, isLoading, isError, isFetching, refetch } = useAdminConvenios()
   const deleteM = useDeleteConvenio()
   const [deleteTarget, setDeleteTarget] = useState<Convenio | null>(null)
   const list = data ?? []
@@ -59,7 +59,14 @@ function ConveniosAdminPage() {
         )}
       </div>
 
-      {isError && <LoadErrorBanner message="Erro ao carregar os convênios." />}
+      {isError && !data && (
+        <LoadErrorRetry
+          className="rounded-lg border border-border bg-card"
+          message="Não foi possível carregar os convênios."
+          onRetry={() => void refetch()}
+          retrying={isFetching}
+        />
+      )}
 
       <div className="rounded-lg border border-border bg-card overflow-hidden">
         <div className="overflow-x-auto">
@@ -88,7 +95,7 @@ function ConveniosAdminPage() {
                 </TableRow>
               ))}
 
-              {!isLoading && list.length === 0 && (
+              {!isLoading && !isError && list.length === 0 && (
                 <TableRow>
                   <TableCell colSpan={7} className="p-0">
                     <EmptyState

@@ -25,7 +25,7 @@ import {
   Table, TableHeader, TableBody, TableRow, TableHead, TableCell,
 } from '@/components/ui/table'
 import { DeleteConfirmDialog } from '@/components/DeleteConfirmDialog'
-import { LoadErrorBanner } from '@/components/LoadErrorBanner'
+import { LoadErrorRetry } from '@/components/LoadErrorRetry'
 import { EmptyState } from '@/components/EmptyState'
 import { ExportMenu, SelectCheckbox, SelectionInfo } from '@/components/export/ExportMenu'
 import { Pagination } from '@/components/ui/pagination'
@@ -64,7 +64,7 @@ function RouteComponent() {
     setPage(1)
   }
 
-  const { data, isLoading, isError } = useUnimedList({ page, limit: 20, search })
+  const { data, isLoading, isError, isFetching, refetch } = useUnimedList({ page, limit: 20, search })
   const deleteM = useDeleteUnimed()
   const { can } = usePermissions()
 
@@ -169,7 +169,14 @@ function RouteComponent() {
         </div>
       </div>
 
-      {isError && <LoadErrorBanner message="Erro ao carregar os beneficiários." />}
+      {isError && !data && (
+        <LoadErrorRetry
+          className="rounded-lg border border-border bg-card"
+          message="Não foi possível carregar os beneficiários."
+          onRetry={() => void refetch()}
+          retrying={isFetching}
+        />
+      )}
 
       <div className="rounded-lg border border-border bg-card overflow-hidden">
         <div className="overflow-x-auto">
@@ -211,7 +218,7 @@ function RouteComponent() {
                   <TableCell className={STICKY_ACTIONS_CELL}><Skeleton className="h-7 w-16 ml-auto" /></TableCell>
                 </TableRow>
               ))}
-              {!isLoading && rows.length === 0 && (
+              {!isLoading && !isError && rows.length === 0 && (
                 <TableRow>
                   <TableCell colSpan={8} className="p-0">
                     <EmptyState

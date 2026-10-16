@@ -10,7 +10,8 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
-import { LoadErrorBanner } from '@/components/LoadErrorBanner'
+import { LoadErrorRetry } from '@/components/LoadErrorRetry'
+import { errorStatus } from '@/lib/query-retry'
 import { ConvenioPageView } from '@/components/convenio/ConvenioPageView'
 import { apiErrorMessage } from '@/lib/api-error-message'
 import { slugify, SLUG_PATTERN } from '@/lib/convenio-utils'
@@ -221,7 +222,7 @@ export function ConvenioEditor({ id }: { id?: string }) {
   const canSave = isNew ? can('CREATE_CONVENIO') : can('UPDATE_CONVENIO')
   const readOnly = !permLoading && !canSave
 
-  const { data: convenio, isLoading, isError } = useAdminConvenio(id)
+  const { data: convenio, isLoading, isError, error, isFetching, refetch } = useAdminConvenio(id)
   const createM = useCreateConvenio()
   const updateM = useUpdateConvenio()
   const uploadLogoM = useUploadConvenioLogo()
@@ -339,7 +340,16 @@ export function ConvenioEditor({ id }: { id?: string }) {
   if (!isNew && (isError || !convenio)) {
     return (
       <div className="p-6 flex flex-col gap-4">
-        <LoadErrorBanner message="Convênio não encontrado ou erro ao carregar." />
+        {isError && errorStatus(error) !== 404 ? (
+          <LoadErrorRetry
+            className="rounded-lg border bg-card"
+            message="Não foi possível carregar o convênio."
+            onRetry={() => void refetch()}
+            retrying={isFetching}
+          />
+        ) : (
+          <p className="rounded-lg border bg-muted/30 px-4 py-3 text-sm text-muted-foreground">Convênio não encontrado.</p>
+        )}
         <Button asChild variant="outline" className="self-start">
           <Link to="/admin/convenios"><ArrowLeft className="size-4" /> Voltar para convênios</Link>
         </Button>

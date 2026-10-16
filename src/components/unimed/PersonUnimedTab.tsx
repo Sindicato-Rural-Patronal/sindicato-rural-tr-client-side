@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { EmptyState } from '@/components/EmptyState'
-import { LoadErrorBanner } from '@/components/LoadErrorBanner'
+import { LoadErrorRetry } from '@/components/LoadErrorRetry'
 import { useUnimedByPerson, type UnimedRow } from '@/hooks/useUnimed'
 import { apiErrorMessage } from '@/lib/api-error-message'
 import { baixarFichaUnimed, baixarTermoUnimed, baixarContratoUnimed } from '@/lib/unimed-docs'
@@ -96,7 +96,7 @@ function UnimedCard({ row, isOwner }: { row: UnimedRow; isOwner: boolean }) {
 }
 
 export function PersonUnimedTab({ userDataId }: { userDataId: string }) {
-  const { data, isLoading, isError } = useUnimedByPerson(userDataId)
+  const { data, isLoading, isError, isFetching, refetch } = useUnimedByPerson(userDataId)
   const rows = data?.data ?? []
 
   if (isLoading) {
@@ -108,7 +108,16 @@ export function PersonUnimedTab({ userDataId }: { userDataId: string }) {
     )
   }
 
-  if (isError) return <LoadErrorBanner message="Erro ao carregar os dados da Unimed." />
+  if (isError && !data) {
+    return (
+      <LoadErrorRetry
+        className="rounded-lg border bg-card"
+        message="Não foi possível carregar os dados da Unimed."
+        onRetry={() => void refetch()}
+        retrying={isFetching}
+      />
+    )
+  }
 
   if (rows.length === 0) {
     return (
