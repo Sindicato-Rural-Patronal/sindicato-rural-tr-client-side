@@ -10,6 +10,7 @@ import { HomeEventsSection } from '@/components/home-events-section'
 import { HomeNewsSection } from '@/components/home-news-section'
 import { usePartners } from '@/hooks/useAdmin'
 import { Skeleton } from '@/components/ui/skeleton'
+import { LoadErrorRetry } from '@/components/LoadErrorRetry'
 
 export const Route = createFileRoute('/_public/')({
   component: HomePage,
@@ -58,7 +59,7 @@ function PartnerItem({ partner }: { partner: { id: string; name: string; partner
 
 function PartnersSection() {
   const { t } = useTranslation()
-  const { data: partners, isLoading } = usePartners()
+  const { data: partners, isLoading, isError, isFetching, refetch } = usePartners()
   const trackRef = useRef<HTMLDivElement>(null)
   const wrapperRef = useRef<HTMLDivElement>(null)
   const [shouldScroll, setShouldScroll] = useState(false)
@@ -82,6 +83,14 @@ function PartnersSection() {
           </div>
         </div>
       </section>
+    )
+  }
+
+  // Faixa opcional: sem parceiros ela não existe; falha vira uma linha com
+  // "Tentar de novo", não um sumiço calado.
+  if (isError && !partners) {
+    return (
+      <LoadErrorRetry variant="inline" className="container mx-auto justify-center px-4 py-8" onRetry={() => void refetch()} retrying={isFetching} />
     )
   }
 

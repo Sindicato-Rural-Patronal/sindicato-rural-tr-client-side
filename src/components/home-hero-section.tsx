@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link } from '@tanstack/react-router'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
+import { LoadErrorRetry } from '@/components/LoadErrorRetry'
 import {
   Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious,
 } from '@/components/ui/carousel'
@@ -40,10 +41,16 @@ function BannerBtn({ btn, index }: { btn: BannerButton; index: number }) {
 export function HeroSection() {
   // Uma instância só do plugin (inicialização preguiçosa), lida no render sem ref.
   const [autoplayPlugin] = useState(() => Autoplay({ delay: 5000, stopOnInteraction: true }))
-  const { data: banners, isLoading } = useBanners()
+  const { data: banners, isLoading, isError, isFetching, refetch } = useBanners()
 
   if (isLoading) {
     return <Skeleton className="w-full h-100 md:h-125 rounded-none" />
+  }
+
+  if (isError && !banners) {
+    return (
+      <LoadErrorRetry variant="inline" className="container mx-auto justify-center px-4 py-8" onRetry={() => void refetch()} retrying={isFetching} />
+    )
   }
 
   if (!banners || banners.length === 0) return null

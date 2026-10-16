@@ -17,8 +17,12 @@ type Props = {
 }
 
 /**
- * Falha ao carregar dados no site público. Nunca diz "não há nada" quando a
- * API falhou: avisa e oferece "Tentar de novo".
+ * Falha ao carregar dados — o padrão do site público E do painel. Nunca diz
+ * "não há nada" quando a API falhou: avisa e oferece "Tentar de novo".
+ *
+ * Regra das telas: o vazio ("Nenhum X") só aparece com `!isError`; com erro e
+ * sem dado nenhum, aparece isto. `variant="inline"` serve para faixas e listas
+ * suspensas (uma linha só).
  */
 export function LoadErrorRetry({ onRetry, retrying = false, message, hint = false, variant = 'block', className }: Props) {
   const { t } = useTranslation()

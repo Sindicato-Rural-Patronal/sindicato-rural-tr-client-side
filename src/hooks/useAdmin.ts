@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query'
 import type { QueryClient } from '@tanstack/react-query'
 import { apiFetch, apiUpload, API_BASE } from '@/lib/api'
+import { publicGet } from '@/lib/public-fetch'
 import { openBlob } from '@/utils/download'
 
 // Invalida TODAS as listas onde um usuário aparece, para não ficarem defasadas
@@ -841,11 +842,12 @@ export type PublicPartner = {
   partnerUrl: string | null
 }
 
-// Público (home): o backend manda a lista pura. Fetch cru (sem token); erro vira lista vazia.
+// Público (home): o backend manda a lista pura. Fetch cru (sem token); erro é erro
+// (antes virava lista vazia e a faixa sumia sem nova tentativa).
 export function usePartners() {
   return useQuery<PublicPartner[]>({
     queryKey: ['partners'],
-    queryFn: () => fetch(`${API_BASE}/partners`).then(r => (r.ok ? r.json() : [])),
+    queryFn: () => publicGet<PublicPartner[]>('/partners'),
   })
 }
 

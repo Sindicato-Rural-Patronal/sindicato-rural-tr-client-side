@@ -2,6 +2,7 @@ import { Link } from '@tanstack/react-router'
 import { ArrowRight, Clock, DoorOpen } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
+import { LoadErrorRetry } from '@/components/LoadErrorRetry'
 import { usePublicEvents } from '@/hooks/usePublicEvents'
 import { eventDateLabel } from '@/lib/public-events'
 import { timeRangeLabel } from '@/lib/agenda'
@@ -12,9 +13,15 @@ import { timeRangeLabel } from '@/lib/agenda'
  */
 export function HomeEventsSection() {
   const { t } = useTranslation()
-  const { data: events = [], isLoading, isError } = usePublicEvents()
+  const { data: events = [], isLoading, isError, isFetching, refetch } = usePublicEvents()
 
-  if (isLoading || isError || events.length === 0) return null
+  if (isError && events.length === 0) {
+    return (
+      <LoadErrorRetry variant="inline" className="container mx-auto justify-center border-t px-4 py-8" onRetry={() => void refetch()} retrying={isFetching} />
+    )
+  }
+
+  if (isLoading || events.length === 0) return null
 
   return (
     <section className="border-t bg-background py-12 md:py-16">
