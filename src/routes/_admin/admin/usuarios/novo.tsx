@@ -1,4 +1,5 @@
 import { createFileRoute, useNavigate, Link } from '@tanstack/react-router'
+import { requirePermission } from '@/lib/auth-guard'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useRef, useState } from 'react'
 import { toast } from 'sonner'
@@ -27,6 +28,9 @@ import type { PersonFieldsCtx } from '@/lib/person-fields'
 import { CIN_HINT, CPF_LABEL } from '@/lib/cin'
 
 export const Route = createFileRoute('/_admin/admin/usuarios/novo')({
+  // O layout pai só confere READ_USER: sem isto, quem só lê preenchia o
+  // formulário inteiro e levava 403 ao salvar (a API exige CREATE_USER).
+  beforeLoad: () => requirePermission('CREATE_USER'),
   component: RouteComponent,
 })
 
