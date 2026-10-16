@@ -1,4 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router'
+import { LoadErrorRetry } from '@/components/LoadErrorRetry'
 import { useQueryClient } from '@tanstack/react-query'
 import { apiFetch, apiUpload } from '@/lib/api'
 import { apiErrorMessage } from '@/lib/api-error-message'
@@ -961,7 +962,7 @@ function RouteComponent() {
   const [search, setSearch] = useState('')
   const debouncedSearch = useDebouncedValue(search, 350).trim()
 
-  const { data: newsData, isLoading, isError } = useAdminNews({
+  const { data: newsData, isLoading, isError, isFetching, refetch } = useAdminNews({
     page,
     limit,
     status: statusFilter === 'ALL' ? undefined : statusFilter,
@@ -1111,9 +1112,12 @@ function RouteComponent() {
       )}
 
       {!isLoading && isError && (
-        <div className="rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
-          Erro ao carregar as notícias.
-        </div>
+        <LoadErrorRetry
+          className="rounded-lg border bg-card"
+          message="Não foi possível carregar as notícias."
+          onRetry={() => void refetch()}
+          retrying={isFetching}
+        />
       )}
 
       {!isLoading && !isError && news.length === 0 && (

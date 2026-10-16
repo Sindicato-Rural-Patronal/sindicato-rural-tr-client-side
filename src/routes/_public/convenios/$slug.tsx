@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
-import { HeartHandshake } from 'lucide-react'
+import { HeartHandshake, RefreshCw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { ConvenioPageView } from '@/components/convenio/ConvenioPageView'
@@ -15,7 +15,7 @@ export const Route = createFileRoute('/_public/convenios/$slug')({
 function ConvenioPage() {
   const org = useOrgInfo()
   const { slug } = Route.useParams()
-  const { data, isLoading, isError, error } = usePublicConvenio(slug)
+  const { data, isLoading, isError, error, isFetching, refetch } = usePublicConvenio(slug)
 
   useSeo({
     title: data ? `${data.name} · Convênios` : 'Convênios',
@@ -56,9 +56,16 @@ function ConvenioPage() {
               ? 'Este convênio não existe ou não está mais disponível.'
               : 'Tente novamente em alguns instantes.'}
           </p>
-          <Button asChild variant="outline">
-            <Link to="/convenios">Ver todos os convênios</Link>
-          </Button>
+          <div className="flex flex-wrap justify-center gap-3">
+            {!notFound && (
+              <Button className="h-11 gap-2" disabled={isFetching} onClick={() => void refetch()}>
+                <RefreshCw className={isFetching ? 'size-4 animate-spin' : 'size-4'} aria-hidden /> Tentar de novo
+              </Button>
+            )}
+            <Button asChild variant="outline" className="h-11">
+              <Link to="/convenios">Ver todos os convênios</Link>
+            </Button>
+          </div>
         </div>
       </div>
     )

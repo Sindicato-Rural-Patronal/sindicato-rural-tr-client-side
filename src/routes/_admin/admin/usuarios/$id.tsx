@@ -1,4 +1,5 @@
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
+import { errorStatus } from '@/lib/query-retry'
 import { useQueryClient } from '@tanstack/react-query'
 import { useState, useEffect, useRef } from 'react'
 import { toast } from 'sonner'
@@ -955,7 +956,7 @@ function RelacoesTab({ userId }: { userId: string }) {
 function RouteComponent() {
   const { id } = Route.useParams()
   const { completar } = Route.useSearch()
-  const { data: user, isLoading, error } = useAdminUser(id)
+  const { data: user, isLoading, error, isFetching, refetch } = useAdminUser(id)
   const { data: propsResp } = useUserProperties(id, { page: 1, limit: 10 })
   const { data: relsResp } = useUserRelations(id, { page: 1, limit: 20 })
   const propertiesTotal = propsResp?.total ?? 0
@@ -1022,7 +1023,16 @@ function RouteComponent() {
   if (error || !user) {
     return (
       <div className="p-6">
-        <p className="text-sm text-destructive">Erro ao carregar usuário.</p>
+        {errorStatus(error) === 404 ? (
+          <p className="rounded-lg border bg-muted/30 px-4 py-3 text-sm text-muted-foreground">Cadastro não encontrado.</p>
+        ) : (
+          <LoadErrorRetry
+            className="rounded-lg border bg-card"
+            message="Não foi possível carregar o cadastro."
+            onRetry={() => void refetch()}
+            retrying={isFetching}
+          />
+        )}
         <Button variant="outline" asChild className="mt-4">
           <Link to="/admin/usuarios"><ArrowLeft className="size-4 mr-2" /> Voltar</Link>
         </Button>

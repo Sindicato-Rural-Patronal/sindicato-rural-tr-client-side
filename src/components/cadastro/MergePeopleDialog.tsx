@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { LoadErrorRetry } from '@/components/LoadErrorRetry'
 import { toast } from 'sonner'
 import { AlertTriangle, ArrowRight, Check, Loader2, ShieldCheck, Users } from 'lucide-react'
 import {
@@ -119,7 +120,8 @@ export function MergePeopleDialog({
   }
 
   const ids: [string, string] | null = other ? [person.id, other.id] : null
-  const { data, isLoading, isError } = useMergePreview(open ? ids : null)
+  const preview = useMergePreview(open ? ids : null)
+  const { data, isLoading, isError } = preview
   const people = data?.people ?? []
   const current = people.find(p => p.id === person.id) ?? null
   const picked = people.find(p => p.id === other?.id) ?? null
@@ -184,9 +186,12 @@ export function MergePeopleDialog({
           )}
 
           {other && !isLoading && (isError || people.length < 2) && (
-            <p className="rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
-              Não foi possível carregar os dois cadastros.
-            </p>
+            <LoadErrorRetry
+              variant="inline"
+              message="Não foi possível carregar os dois cadastros."
+              onRetry={() => void preview.refetch()}
+              retrying={preview.isFetching}
+            />
           )}
 
           {other && !isLoading && people.length === 2 && (
