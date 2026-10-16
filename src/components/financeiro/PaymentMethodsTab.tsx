@@ -18,7 +18,7 @@ import {
 } from '@/components/ui/dialog'
 import { ConfirmCloseDialog } from '@/components/confirm-close-dialog'
 import { DeleteConfirmDialog } from '@/components/DeleteConfirmDialog'
-import { LoadErrorBanner } from '@/components/LoadErrorBanner'
+import { LoadErrorRetry } from '@/components/LoadErrorRetry'
 
 // Formas de pagamento (PIX, DINHEIRO, BOLETO...). Antes elas só nasciam pelo
 // "+ Nova forma de pagamento" de dentro do select do lançamento, e não havia
@@ -37,7 +37,7 @@ export function PaymentMethodsTab({ enabled, canCreate, canUpdate, canDelete }: 
   canUpdate: boolean
   canDelete: boolean
 }) {
-  const { data, isLoading, isError } = useFinancePaymentMethods({ includeInactive: true, enabled })
+  const { data, isLoading, isError, isFetching, refetch } = useFinancePaymentMethods({ includeInactive: true, enabled })
   const criar = useCreateFinancePaymentMethod()
   const atualizar = useUpdateFinancePaymentMethod()
   const excluir = useDeleteFinancePaymentMethod()
@@ -95,7 +95,14 @@ export function PaymentMethodsTab({ enabled, canCreate, canUpdate, canDelete }: 
         )}
       </div>
 
-      {isError && <LoadErrorBanner message="Erro ao carregar as formas de pagamento." />}
+      {isError && !data && (
+        <LoadErrorRetry
+          className="rounded-lg border border-border bg-card"
+          message="Não foi possível carregar as formas de pagamento."
+          onRetry={() => void refetch()}
+          retrying={isFetching}
+        />
+      )}
 
       <div className="rounded-lg border border-border bg-card overflow-hidden">
         <div className="overflow-x-auto">
@@ -115,7 +122,7 @@ export function PaymentMethodsTab({ enabled, canCreate, canUpdate, canDelete }: 
                   <TableCell><Skeleton className="h-7 w-16 ml-auto" /></TableCell>
                 </TableRow>
               ))}
-              {!isLoading && formas.length === 0 && (
+              {!isLoading && !isError && formas.length === 0 && (
                 <TableRow>
                   <TableCell colSpan={3} className="py-16 text-center">
                     <CreditCard className="size-10 text-muted-foreground/30 mx-auto mb-3" />

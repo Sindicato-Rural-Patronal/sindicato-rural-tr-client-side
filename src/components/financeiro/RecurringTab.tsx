@@ -20,7 +20,7 @@ import {
 import { NativeSelect } from '@/components/ui/native-select'
 import { ConfirmCloseDialog } from '@/components/confirm-close-dialog'
 import { DeleteConfirmDialog } from '@/components/DeleteConfirmDialog'
-import { LoadErrorBanner } from '@/components/LoadErrorBanner'
+import { LoadErrorRetry } from '@/components/LoadErrorRetry'
 import { useCrudDialog } from '@/hooks/useCrudDialog'
 import { currentMonth, monthLabel, nextMonthToGenerate } from '@/lib/finance-month'
  import { PaymentMethodSelect } from './PaymentMethodSelect'
@@ -48,9 +48,14 @@ const emptyRecForm = (): RecForm => ({
 export function RecurringTab({ enabled, canCreate, canUpdate, canDelete }: {
   enabled: boolean; canCreate: boolean; canUpdate: boolean; canDelete: boolean
 }) {
-  const { data: recurrences, isLoading, isError } = useFinanceRecurrences({ includeInactive: true, enabled })
-  const { data: categories } = useFinanceCategories({ enabled })
-  const { data: accounts } = useFinanceAccounts({ enabled })
+  const { data: recurrences, isLoading, isError, isFetching, refetch } = useFinanceRecurrences({ includeInactive: true, enabled })
+  const catsQuery = useFinanceCategories({ enabled })
+  const accsQuery = useFinanceAccounts({ enabled })
+  const categories = catsQuery.data
+  const accounts = accsQuery.data
+  // Categorias e caixas alimentam os selects do formulário: sem eles o select
+  // fica vazio sem explicação.
+  const listasFalharam = (catsQuery.isError && !categories) || (accsQuery.isError && !accounts)
   const createRec = useCreateFinanceRecurrence()
   const updateRec = useUpdateFinanceRecurrence()
   const deleteRec = useDeleteFinanceRecurrence()
@@ -153,7 +158,23 @@ export function RecurringTab({ enabled, canCreate, canUpdate, canDelete }: {
         )}
       </div>
 
-      {isError && <LoadErrorBanner message="Erro ao carregar as recorrências." />}
+      {listasFalharam && (
+        <LoadErrorRetry
+          variant="inline"
+          message="Não foi possível carregar as categorias e os caixas; os campos de escolha podem aparecer vazios."
+          onRetry={() => { void catsQuery.refetch(); void accsQuery.refetch() }}
+          retrying={catsQuery.isFetching || accsQuery.isFetching}
+        />
+      )}
+
+      {isError && !recurrences && (
+        <LoadErrorRetry
+          className="rounded-lg border border-border bg-card"
+          message="Não foi possível carregar as recorrências."
+          onRetry={() => void refetch()}
+          retrying={isFetching}
+        />
+      )}
 
       <div className="rounded-lg border border-border bg-card overflow-hidden">
         <div className="overflow-x-auto">
@@ -176,7 +197,7 @@ export function RecurringTab({ enabled, canCreate, canUpdate, canDelete }: {
                   <TableCell colSpan={8}><Skeleton className="h-4 w-full" /></TableCell>
                 </TableRow>
               ))}
-              {!isLoading && rows.length === 0 && (
+              {!isLoading && !isError && rows.length === 0 && (
                 <TableRow>
                   <TableCell colSpan={8} className="py-16 text-center">
                     <Repeat className="size-10 text-muted-foreground/30 mx-auto mb-3" />
