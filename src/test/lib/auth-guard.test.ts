@@ -13,7 +13,7 @@ vi.mock('@/lib/query-retry', async importOriginal => ({
   shouldRetryQuery: () => false,
 }))
 
-const { requirePermission } = await import('@/lib/auth-guard')
+const { requirePermission, NoPermissionError } = await import('@/lib/auth-guard')
 const { queryClient } = await import('@/lib/query-client')
 
 const me = (permissions: string[]) => ({ json: () => Promise.resolve({ permissions }) })
@@ -34,11 +34,12 @@ describe('requirePermission', () => {
     await expect(requirePermission('READ_BANNER')).resolves.toBeUndefined()
   })
 
-  it('sem a permissão, volta para o Painel Geral', async () => {
+  it('sem a permissão, lança NoPermissionError (a tela mostra o aviso, não redireciona)', async () => {
     apiFetch.mockResolvedValue(me(['READ_USER']))
     const err = await falha('READ_BANNER')
-    expect(isRedirect(err)).toBe(true)
-    expect(err.options.to).toBe('/admin/dashboard')
+    expect(isRedirect(err)).toBe(false)
+    expect(err).toBeInstanceOf(NoPermissionError)
+    expect(err.permission).toBe('READ_BANNER')
   })
 
   it('falha ao conferir (sem rede, 5xx) não é "sem permissão": sobe como erro', async () => {

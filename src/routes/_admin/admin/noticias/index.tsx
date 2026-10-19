@@ -34,6 +34,7 @@ import { Separator } from '@/components/ui/separator'
 import { DeleteConfirmDialog } from '@/components/DeleteConfirmDialog'
 import { ConfirmCloseDialog } from '@/components/confirm-close-dialog'
 import { ImageCropDialog } from '@/components/ImageCropDialog'
+import { isImageFile, NOT_AN_IMAGE_MESSAGE } from '@/utils/image-file'
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
@@ -618,6 +619,11 @@ function NewsEditor({
   function handleBannerSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file) return
+    if (!isImageFile(file)) {
+      toast.error(NOT_AN_IMAGE_MESSAGE)
+      if (bannerInputRef.current) bannerInputRef.current.value = ''
+      return
+    }
     setBannerCropSrc(prev => { revokeBlobUrl(prev); return URL.createObjectURL(file) })
     if (bannerInputRef.current) bannerInputRef.current.value = ''
   }
@@ -1000,6 +1006,11 @@ function RouteComponent() {
   function handleBannerSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file || !bannerNewsId) return
+    if (!isImageFile(file)) {
+      toast.error(NOT_AN_IMAGE_MESSAGE)
+      if (bannerInputRef.current) bannerInputRef.current.value = ''
+      return
+    }
     setBannerCropSrc(prev => { revokeBlobUrl(prev); return URL.createObjectURL(file) })
     if (bannerInputRef.current) bannerInputRef.current.value = ''
   }

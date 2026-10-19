@@ -3,6 +3,8 @@ import { useRouter, type ErrorComponentProps } from '@tanstack/react-router'
 import { AlertTriangle, RefreshCw } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
+import { NoPermission } from '@/components/NoPermission'
+import { NoPermissionError } from '@/lib/auth-guard'
 
 /**
  * Tela de erro padrão das rotas (errorComponent do router), no lugar do
@@ -11,6 +13,11 @@ import { Button } from '@/components/ui/button'
  * em estado ruim, sai dele).
  */
 export function RouteErrorPage({ error, reset }: ErrorComponentProps) {
+  if (error instanceof NoPermissionError) return <NoPermission />
+  return <RouteErrorContent error={error} reset={reset} />
+}
+
+function RouteErrorContent({ error, reset }: ErrorComponentProps) {
   const router = useRouter()
   const { t } = useTranslation()
 

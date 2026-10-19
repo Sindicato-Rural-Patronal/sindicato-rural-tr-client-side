@@ -6,6 +6,7 @@ import { apiUpload } from '@/lib/api'
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { toast } from 'sonner'
 import { ImageCropDialog } from '@/components/ImageCropDialog'
+import { isImageFile, NOT_AN_IMAGE_MESSAGE } from '@/utils/image-file'
 import { requirePermission } from '@/lib/auth-guard'
 import { upperNoAccents } from '@/utils/text-format'
 import {
@@ -166,6 +167,11 @@ function BannerSheet({
   const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
+    if (!isImageFile(file)) {
+      toast.error(NOT_AN_IMAGE_MESSAGE)
+      if (imageInputRef.current) imageInputRef.current.value = ''
+      return
+    }
     setCropSrc(prev => { if (prev) URL.revokeObjectURL(prev); return URL.createObjectURL(file) })
     if (imageInputRef.current) imageInputRef.current.value = ''
   }, [])
