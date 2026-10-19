@@ -190,7 +190,9 @@ src/
 │   ├── convenio/                    # ConvenioEditor (admin) e ConvenioPageView (página pública e pré-visualização)
 │   ├── cotacoes/                    # QuoteHistoryChart (gráfico SVG), QuoteDayCard e CotacaoSimples (tela /cotacao)
 │   ├── courses/                     # CourseFormDialog (criar/editar/duplicar — fora do arquivo da rota para o editor de
-│   │                                #   markdown não ir ao bundle inicial), PhotoGrid
+│   │                                #   markdown não ir ao bundle inicial), PhotoGrid; RegistrationDialog (inscrição pelo
+│   │                                #   site em /cursos/$id: CPF + 4 últimos dígitos do telefone → confirmar cadastro ou
+│   │                                #   formulário novo; fora do arquivo da rota para poder ser testado)
 │   ├── dashboard/                   # Painel Geral: DashboardPage (a tela inteira), StatsRow, QuickActions, QuotesNoticeLine,
 │   │                                #   FinanceMonthCard, PublicCoursesCard, IncompleteUsersCard, RecentAuditCard,
 │   │                                #   EditModeBar + EditableBlock (modo de organizar), dashboard-prefs.ts (ordem/largura/
@@ -213,6 +215,8 @@ src/
 │   ├── api.ts                       # API_BASE, ApiError (status), apiFetch / apiUpload (Bearer; 401 → login)
 │   ├── public-fetch.ts              # publicGet<T>(path): GET de rota pública SEM token; erro HTTP = Error("HTTP nnn")
 │   ├── api-error-message.ts         # apiErrorMessage: mensagem do backend → português (inclui 413 e 429 pelo status)
+│   ├── registration-errors.ts       # Erros da inscrição pelo site: registrationErrorMessage (429 do CPF mostra o texto do
+│   │                                #   servidor), isAlreadyRegistered, isCannotConfirmRegistration (409 → link do WhatsApp)
 │   ├── login-error.ts               # loginErrorMessage: senha errada / 429 / sistema fora do ar / sem internet
 │   ├── auth-token.ts                # JWT no navegador: validade, renovação, safeAdminRedirect, loginHref
 │   ├── auth-guard.ts                # requirePermission (guarda de rota; lê o cache de meQuery)
@@ -402,7 +406,7 @@ useSendContactMessage       → POST /contacts/message (público, fetch cru)
 ```
 
 **Os outros arquivos de `hooks/`**:
-- `useCourse.ts` — admin: `useAdminCourses` (`status`, `search`, `year`), `useCourseYears`, `useAdminCourse` (`adminCourseQuery`), criar/editar/excluir, capa, galeria, instrutores (`useAssignInstructor`, `useRemoveInstructorAssignment`), inscrições (`useAllCourseRegistrations`, `useAdminRegisterPerson`, `useConfirmAllRegistrations`), presença (`useSetRegistrationAttendance`, `useMarkUnmarkedAttendance`), `useCompleteCourse`; público: `useCourses`, `useCourse`, `useRegisterByCpf`, `useRegisterFull`.
+- `useCourse.ts` — admin: `useAdminCourses` (`status`, `search`, `year`), `useCourseYears`, `useAdminCourse` (`adminCourseQuery`), criar/editar/excluir, capa, galeria, instrutores (`useAssignInstructor`, `useRemoveInstructorAssignment`), inscrições (`useAllCourseRegistrations`, `useAdminRegisterPerson`, `useConfirmAllRegistrations`), presença (`useSetRegistrationAttendance`, `useMarkUnmarkedAttendance`), `useCompleteCourse`; público: `useCourses`, `useCourse`, `useLookupCpf` (POST, CPF + 4 últimos dígitos), `useRegisterByCpf` (`{ cpf, phoneEnd }`), `useRegisterFull`.
 - `useNews.ts` — `useNews`, `useNewsDetail` (públicos), `useAdminNews` (`status`, `search`), criar/editar/excluir, `useUploadNewsBanner`, `useUploadNewsBlockImage`.
 - `useBanner.ts` — `useBanners` (público, publicGet), `useAdminBanners`, criar/editar/excluir, imagem, `useReorderBanners`.
 - `useCompanies.ts` — empresas: lista, detalhe, CRUD, vínculos (members; pela pessoa: `useLinkPersonToCompany`/`useUnlinkPersonFromCompany`), propriedades, parceria (`useSetCompanyPartner`, `useReorderPartners`, `useUploadCompanyPartnerLogo`), títulos (`useCompanyMemberTitles`, `COMMON_MEMBER_TITLES`), `companyDisplayName`.
@@ -412,7 +416,7 @@ useSendContactMessage       → POST /contacts/message (público, fetch cru)
 - `useGalleries.ts` — `usePublicGalleries` (publicGet), admin CRUD, fotos (upload, legenda, ordem).
 - `useMarketQuotes.ts` — `useMarketQuotes`, `useQuoteHistory` (públicos), `useAdminMarketQuotes`, `useSaveDailyQuotes`, `useUpdateQuoteUnit`.
 - `useSiteSettings.ts` — `usePublicSiteSettings`, `useAdminSiteSettings`, `useUpdateSiteSettings`, `useUpdateQuotesSource`, `useOrgInfo` (com fallback de `lib/org-contact.ts`).
-- `usePublicContactsAdmin.ts`, `usePublicEvents.ts`, `useRooms.ts` (CRUD), `useRoomBookings.ts` (`useRoomBookings`, `useRoomSchedule`, CRUD), `useAuditTrail.ts` (trilha + tempo de guarda), `useNotifications.ts` (a cada 60s e ao voltar à aba), `useInvite.ts` (`useInvite`, `useAcceptInvite`, fetch cru).
+- `usePublicContactsAdmin.ts`, `usePublicEvents.ts`, `useRooms.ts` (CRUD; `GET /rooms` exige READ_COURSE, então o Painel Geral chama `useRooms({ enabled })` só com a permissão), `useRoomBookings.ts` (`useRoomBookings`, `useRoomSchedule`, CRUD), `useAuditTrail.ts` (trilha + tempo de guarda), `useNotifications.ts` (a cada 60s e ao voltar à aba), `useInvite.ts` (`useInvite`, `useAcceptInvite`, fetch cru).
 - Utilitários: `usePermissions`, `use-unsaved-guard`, `useRowSelection` (seleção que continua entre páginas), `useCrudDialog`, `useDebouncedValue`, `useConfirmDeletePhoto`, `useSeo`, `use-mobile`, `use-users` (`authenticateUser`, `refreshAuthToken`).
 
 ## API — Endpoints
@@ -426,9 +430,10 @@ Os caminhos abaixo são os que o front chama, relativos a `API_BASE` (`/api` no 
 **Cursos (público)**
 - `GET /courses?page&limit[&ended=include|exclude]` — cursos `PUBLIC` do site. **Ordem (SR-016, back `edde21b`)**: primeiro os que não terminaram (em andamento e próximos, do início mais cedo para o mais tarde), depois os terminados (do mais recente para o mais antigo). "Terminou" = o dia do fim já passou em Brasília (a mesma regra da inscrição). `ended=include` (padrão) traz os terminados no fim; `ended=exclude` deixa só os que não terminaram — é o que a home usa (`useCourses({ ended: 'exclude' })`); `/cursos` pede o padrão e filtra/ordena no cliente, com o filtro "Encerrados"
 - `GET /courses/:id` — detalhe
-- `GET /users/lookup-cpf/:cpf` — existe cadastro com esse CPF? (devolve o nome mascarado para confirmar)
-- `POST /courses/:id/register-by-cpf` — `{ cpf }`: inscreve quem já tem cadastro
-- `POST /courses/:id/register-full` — inscrição de quem não tem cadastro (dados + endereço; e-mail opcional)
+- `POST /users/lookup-cpf` `{ cpf, phoneEnd }` (`phoneEnd` = 4 últimos dígitos de um telefone do cadastro) → `{ found, name }` (nome mascarado). `found: true` só com CPF **e** telefone batendo; qualquer outro caso é `{ found: false, name: null }`, igual para "sem cadastro" e "telefone errado". POST para o CPF não ir na URL
+- `POST /courses/:id/register-by-cpf` `{ cpf, phoneEnd }`: inscreve quem já tem cadastro; CPF sem cadastro ou telefone errado → o mesmo 404 "Não encontramos cadastro com este CPF e telefone."
+- `POST /courses/:id/register-full` — inscrição de quem não tem cadastro (dados + endereço; e-mail opcional). Se o CPF já tem cadastro, só inscreve quando o `phone` é um dos telefones dele; senão 409 "Não foi possível confirmar seu cadastro pelo site. Procure o Sindicato…" (a tela mostra o link do WhatsApp)
+- Os três: 5 erros por hora no mesmo CPF → 429 "Muitas tentativas com este CPF…". `registrationErrorMessage` (`lib/registration-errors.ts`) mostra a mensagem do servidor, que o `apiErrorMessage` trocaria pelo texto genérico do login
 
 **Cursos (admin)**
 - `GET /admin/courses` (`page`, `limit`, `status`, `search`, `year`) · `GET /admin/courses/years` · `GET /admin/courses/:id`
