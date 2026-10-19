@@ -110,11 +110,12 @@ export function useAdminCourse(id: string) {
   })
 }
 
-export function useCourses(params: { page?: number; limit?: number } = {}) {
-  const { page = 1, limit = 20 } = params
+/** `ended: 'exclude'` deixa só os cursos que não terminaram (a home); o padrão traz os terminados no fim. */
+export function useCourses(params: { page?: number; limit?: number; ended?: 'include' | 'exclude' } = {}) {
+  const { page = 1, limit = 20, ended = 'include' } = params
   return useQuery<{ data: Course[]; total: number; page: number; limit: number; totalPages: number }>({
-    queryKey: ['courses', page, limit],
-    queryFn: () => apiFetch(`/courses?page=${page}&limit=${limit}`).then(r => r.json()),
+    queryKey: ['courses', page, limit, ended],
+    queryFn: () => apiFetch(`/courses?page=${page}&limit=${limit}${ended === 'exclude' ? '&ended=exclude' : ''}`).then(r => r.json()),
   })
 }
 
