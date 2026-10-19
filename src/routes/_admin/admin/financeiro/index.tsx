@@ -162,13 +162,13 @@ function RouteComponent() {
           <AjudaLink topico="financeiro" titulo="Financeiro" />
         </div>
         <p className="text-sm text-muted-foreground">
-          Controle de entradas e saídas de caixa, com dashboard e categorização.
+          Controle de entradas e saídas de caixa, com visão geral e categorização.
         </p>
       </div>
 
       <Tabs value={search.tab} onValueChange={v => setSearch({ tab: v as FinanceTab })}>
         <TabsList className="flex-wrap">
-          <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
+          <TabsTrigger value="dashboard">Visão geral</TabsTrigger>
           <TabsTrigger value="lancamentos">Lançamentos</TabsTrigger>
           <TabsTrigger value="recorrentes">Recorrentes</TabsTrigger>
           <TabsTrigger value="categorias">Categorias</TabsTrigger>
