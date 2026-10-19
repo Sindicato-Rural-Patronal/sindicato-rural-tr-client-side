@@ -10,7 +10,7 @@ import { LoadErrorRetry } from '@/components/LoadErrorRetry'
 import { Skeleton } from '@/components/ui/skeleton'
 
 export function CoursesSection({ autoplayPlugin }: { autoplayPlugin: React.RefObject<AutoplayType> }) {
-  const { data: result, isLoading, isError, isFetching, refetch } = useCourses({ limit: 9 })
+  const { data: result, isLoading, isError, isFetching, refetch } = useCourses({ limit: 9, ended: 'exclude' })
   const courses = result?.data ?? []
   const { t } = useTranslation()
 

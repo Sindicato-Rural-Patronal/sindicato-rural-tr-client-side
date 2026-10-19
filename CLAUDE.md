@@ -424,7 +424,7 @@ Os caminhos abaixo são os que o front chama, relativos a `API_BASE` (`/api` no 
 - `POST /auth/refresh` — `Authorization: Bearer <token ainda válido>`, sem corpo → `{ token }` novo (401 se vencido, admin removido ou login há mais de 24h)
 
 **Cursos (público)**
-- `GET /courses?page&limit[&ended=include|exclude]` — cursos `PUBLIC` do site. **Ordem (SR-016, back `edde21b`)**: primeiro os que não terminaram (em andamento e próximos, do início mais cedo para o mais tarde), depois os terminados (do mais recente para o mais antigo). "Terminou" = o dia do fim já passou em Brasília (a mesma regra da inscrição). `ended=include` (padrão) traz os terminados no fim; `ended=exclude` deixa só os que não terminaram — é o que a home precisa (o ajuste da home para usar `exclude` ainda não foi feito)
+- `GET /courses?page&limit[&ended=include|exclude]` — cursos `PUBLIC` do site. **Ordem (SR-016, back `edde21b`)**: primeiro os que não terminaram (em andamento e próximos, do início mais cedo para o mais tarde), depois os terminados (do mais recente para o mais antigo). "Terminou" = o dia do fim já passou em Brasília (a mesma regra da inscrição). `ended=include` (padrão) traz os terminados no fim; `ended=exclude` deixa só os que não terminaram — é o que a home usa (`useCourses({ ended: 'exclude' })`); `/cursos` pede o padrão e filtra/ordena no cliente, com o filtro "Encerrados"
 - `GET /courses/:id` — detalhe
 - `GET /users/lookup-cpf/:cpf` — existe cadastro com esse CPF? (devolve o nome mascarado para confirmar)
 - `POST /courses/:id/register-by-cpf` — `{ cpf }`: inscreve quem já tem cadastro

@@ -4,8 +4,18 @@ import { queryClient } from '@/lib/query-client'
 import { shouldRetryQuery } from '@/lib/query-retry'
 import { meQuery } from '@/hooks/useAdmin'
 
+/** Sem a permissão da rota: o RouteErrorPage mostra o NoPermission (em vez de um redirecionamento mudo). */
+export class NoPermissionError extends Error {
+  permission: string
+  constructor(permission: string) {
+    super('Você não tem permissão para ver esta página.')
+    this.permission = permission
+    this.name = 'NoPermissionError'
+  }
+}
+
 /**
- * Guarda de rota do painel: sem a permissão, volta para o Painel Geral.
+ * Guarda de rota do painel: sem a permissão, lança NoPermissionError.
  *
  * As permissões vêm do mesmo cache do useMe (`meQuery`). Falha ao conferir
  * (sem rede, servidor fora do ar) NÃO é "sem permissão": antes a lista ficava
@@ -26,6 +36,6 @@ export async function requirePermission(perm: string) {
   }
 
   if (!permissions.includes(perm)) {
-    throw redirect({ to: '/admin/dashboard' })
+    throw new NoPermissionError(perm)
   }
 }
