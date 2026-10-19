@@ -172,7 +172,7 @@ export function DashboardPage({ search, onSearch, onOpenCourse }: {
 
   const { data: me } = useMe()
   const { data: stats, isLoading: statsLoading, isError: statsError, isFetching: statsFetching, refetch: refetchStats } = useAdminStats()
-  const { data: salas } = useRooms()
+  const { data: salas } = useRooms({ enabled: podeVerCursos })
 
   // Rascunho do modo de organizar. null = painel normal (é assim que a tela
   // sabe se está editando); só o clique em Salvar grava no servidor.

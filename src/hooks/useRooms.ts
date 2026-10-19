@@ -16,9 +16,11 @@ export type CreateRoomBody = {
   maxCapacity: number
 }
 
-export function useRooms() {
+/** `GET /rooms` exige READ_COURSE: quem só usa a lista sem a permissão passa `enabled: false`. */
+export function useRooms({ enabled = true }: { enabled?: boolean } = {}) {
   return useQuery<Room[]>({
     queryKey: ['rooms'],
+    enabled,
     queryFn: () => apiFetch('/rooms?limit=1000').then(r => r.json()).then(d => Array.isArray(d) ? d : (d.data ?? [])),
   })
 }
