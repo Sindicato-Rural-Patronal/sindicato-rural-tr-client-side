@@ -1,5 +1,9 @@
-import { API_BASE } from '@/lib/api'
+import { API_BASE, ApiError } from '@/lib/api'
 
+// Falha HTTP vira ApiError com o status: a tela separa senha errada (401),
+// bloqueio por excesso de tentativas (429) e sistema fora do ar (5xx) — ver
+// lib/login-error.ts. Sem resposta nenhuma (sem internet), o fetch rejeita.
+// Não passa pelo apiFetch: um 401 aqui é senha errada, não sessão vencida.
 export async function authenticateUser(username: string, password: string): Promise<string> {
   const response = await fetch(`${API_BASE}/auth/login`, {
     method: 'POST',
@@ -8,11 +12,13 @@ export async function authenticateUser(username: string, password: string): Prom
   });
 
   if (!response.ok) {
-    throw new Error('Usuário ou senha inválidos');
+    const data = await response.json().catch(() => null);
+    throw new ApiError(response.status, data?.error ?? `HTTP ${response.status}`);
   }
 
-  const data = await response.json();
-  return data.token as string;
+  const data = await response.json().catch(() => null);
+  if (typeof data?.token !== 'string') throw new ApiError(502, 'Resposta sem token');
+  return data.token;
 }
 
 // Troca um token ainda válido por um novo (POST /auth/refresh). Sem corpo e sem

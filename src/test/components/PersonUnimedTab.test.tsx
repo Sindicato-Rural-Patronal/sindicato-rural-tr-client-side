@@ -4,6 +4,7 @@ import type { UnimedListResponse, UnimedRow } from '@/hooks/useUnimed'
 
 // Hook e roteador simulados: o teste cobre só a aba (sem rede e sem react-pdf).
 let query: { data?: UnimedListResponse; isLoading: boolean; isError: boolean }
+const refetch = vi.fn()
 const baixarFicha = vi.fn().mockResolvedValue(undefined)
 
 vi.mock('@tanstack/react-router', () => ({
@@ -11,7 +12,7 @@ vi.mock('@tanstack/react-router', () => ({
 }))
 vi.mock('@/hooks/useUnimed', async importOriginal => ({
   ...(await importOriginal<typeof import('@/hooks/useUnimed')>()),
-  useUnimedByPerson: () => query,
+  useUnimedByPerson: () => ({ ...query, isFetching: false, refetch }),
 }))
 vi.mock('@/lib/unimed-docs', () => ({
   baixarFichaUnimed: (id: string) => baixarFicha(id),
@@ -86,9 +87,12 @@ describe('PersonUnimedTab', () => {
     await waitFor(() => expect(baixarFicha).toHaveBeenCalledWith('u1'))
   })
 
-  it('avisa quando a busca falha', () => {
+  it('avisa quando a busca falha, com "Tentar de novo"', () => {
     setQuery(undefined, { isError: true })
     render(<PersonUnimedTab userDataId={PESSOA} />)
-    expect(screen.getByText(/Erro ao carregar os dados da Unimed/)).toBeInTheDocument()
+    expect(screen.getByRole('alert')).toHaveTextContent('Não foi possível carregar os dados da Unimed.')
+    expect(screen.queryByText('Esta pessoa não tem cadastro na Unimed.')).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: /Tentar de novo/ }))
+    expect(refetch).toHaveBeenCalled()
   })
 })

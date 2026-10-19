@@ -5,7 +5,7 @@ import { useAdminSiteSettings, useUpdateSiteSettings, type SiteSettings } from '
 import { useUnsavedGuard } from '@/hooks/use-unsaved-guard'
 import { apiErrorMessage } from '@/lib/api-error-message'
 import { maskCEP, maskPhone } from '@/utils/masks'
-import { LoadErrorBanner } from '@/components/LoadErrorBanner'
+import { LoadErrorRetry } from '@/components/LoadErrorRetry'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -37,10 +37,12 @@ function Field({ id, label, hint, children, className = '' }: {
 // Dados do sindicato mostrados no rodapé, na página Contato e nos convênios,
 // e o texto da página Sobre.
 export function OrgInfoPanel({ canEdit }: { canEdit: boolean }) {
-  const { data, isLoading, isError } = useAdminSiteSettings()
+  const { data, isLoading, isError, isFetching, refetch } = useAdminSiteSettings()
   return (
     <div className="flex flex-col gap-4">
-      {isError && <LoadErrorBanner message="Erro ao carregar os dados do sindicato." />}
+      {isError && !data && (
+        <LoadErrorRetry className="rounded-lg border bg-card" message="Não foi possível carregar os dados do sindicato." onRetry={() => void refetch()} retrying={isFetching} />
+      )}
       {isLoading && <Skeleton className="h-96 w-full rounded-xl" />}
       {data && <OrgInfoForm initial={data} canEdit={canEdit} />}
     </div>

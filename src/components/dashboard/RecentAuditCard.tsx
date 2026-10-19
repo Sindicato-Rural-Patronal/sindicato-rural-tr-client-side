@@ -1,4 +1,5 @@
 import { Link } from '@tanstack/react-router'
+import { LoadErrorRetry } from '@/components/LoadErrorRetry'
 import { ScrollText, ArrowRight } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -14,7 +15,7 @@ function auditLine(item: AuditTrailItem): string {
 }
 
 export function RecentAuditCard() {
-  const { data, isLoading, isError } = useAuditTrail({ page: 1, limit: 5 })
+  const { data, isLoading, isError, isFetching, refetch } = useAuditTrail({ page: 1, limit: 5 })
   const itens = data?.data ?? []
 
   return (
@@ -35,7 +36,11 @@ export function RecentAuditCard() {
       </CardHeader>
       <CardContent>
         <ul className="flex flex-col gap-3">
-          {isError && <li className="py-4 text-center text-sm text-destructive">Erro ao carregar as últimas ações.</li>}
+          {isError && (
+            <li>
+              <LoadErrorRetry variant="inline" className="justify-center py-4" message="Não foi possível carregar as últimas ações." onRetry={() => void refetch()} retrying={isFetching} />
+            </li>
+          )}
           {!isError && isLoading && Array.from({ length: 3 }).map((_, i) => (
             <li key={i}><Skeleton className="h-10 w-full rounded-lg" /></li>
           ))}

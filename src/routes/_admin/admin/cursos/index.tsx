@@ -42,6 +42,7 @@ import type { Course } from '@/@types/course'
 import { StatusBadge } from '@/components/StatusBadge'
 import { ErrorAlert } from '@/components/ErrorAlert'
 import { EmptyState } from '@/components/EmptyState'
+import { LoadErrorRetry } from '@/components/LoadErrorRetry'
 import { Pagination } from '@/components/ui/pagination'
 import { DeleteConfirmDialog } from '@/components/DeleteConfirmDialog'
 import { NativeSelect } from '@/components/ui/native-select'
@@ -410,7 +411,7 @@ function RegistrationsTab({
 }) {
   const [page, setPage] = useState(1)
   const limit = 20
-  const { data: resp, isLoading } = useCourseRegistrations(courseId, { page, limit })
+  const { data: resp, isLoading, isError: regsError, isFetching: regsFetching, refetch: refetchRegs } = useCourseRegistrations(courseId, { page, limit })
   const registrations = resp?.data ?? []
   const total = resp?.total ?? 0
   const totalPages = resp ? Math.ceil(total / limit) : 1
@@ -774,7 +775,16 @@ function RegistrationsTab({
         </div>
       )}
 
-      {!isLoading && registrations.length === 0 && (
+      {regsError && !resp && (
+        <LoadErrorRetry
+          className="rounded-xl border bg-card"
+          message="Não foi possível carregar as inscrições deste curso."
+          onRetry={() => void refetchRegs()}
+          retrying={regsFetching}
+        />
+      )}
+
+      {!isLoading && !regsError && registrations.length === 0 && (
         <div className="flex flex-col items-center justify-center py-10 text-center border-2 border-dashed rounded-xl">
           <UserCheck className="size-10 text-muted-foreground/30 mb-3" />
           <p className="text-sm font-medium text-foreground">{t('admin.courses.noRegistrations')}</p>
@@ -1104,7 +1114,7 @@ function ViewDialog({
   const { t } = useTranslation()
   const { can } = usePermissions()
 
-  const { data: detail, isLoading: detailLoading } = useAdminCourse(course?.id ?? '')
+  const { data: detail, isLoading: detailLoading, isError: detailError, isFetching: detailFetching, refetch: refetchDetail } = useAdminCourse(course?.id ?? '')
   const { data: instructors } = useInstructors()
   const assignInstructor = useAssignInstructor(course?.id ?? '')
   const removeAssignment = useRemoveInstructorAssignment(course?.id ?? '')
@@ -1154,6 +1164,17 @@ function ViewDialog({
   }
 
   const liveCourse = detail ?? null
+  // Sem o detalhe, as abas Detalhes, Galeria e Instrutores ficavam em branco ou
+  // diziam "Nenhum instrutor vinculado" — que podia não ser verdade.
+  const detailFailed = !detail && detailError
+  const detailErrorBox = (
+    <LoadErrorRetry
+      className="rounded-xl border bg-card"
+      message="Não foi possível carregar os dados deste curso."
+      onRetry={() => void refetchDetail()}
+      retrying={detailFetching}
+    />
+  )
 
   if (!course) return null
 
@@ -1395,7 +1416,7 @@ function ViewDialog({
                   )}
                 </div>
               </>
-            ) : null}
+            ) : detailFailed ? detailErrorBox : null}
           </TabsContent>
 
           <TabsContent value="registrations" className="px-6 pb-4 mt-4">
@@ -1409,7 +1430,7 @@ function ViewDialog({
               </div>
             ) : liveCourse ? (
               <GalleryManager course={liveCourse} />
-            ) : null}
+            ) : detailFailed ? detailErrorBox : null}
           </TabsContent>
 
           <TabsContent value="instructors" className="px-6 pb-4 mt-4">
@@ -1417,7 +1438,7 @@ function ViewDialog({
               <div className="flex flex-col gap-2">
                 {Array.from({ length: 2 }).map((_, i) => <Skeleton key={i} className="h-14 rounded-lg" />)}
               </div>
-            ) : (
+            ) : detailFailed ? detailErrorBox : (
               <div className="flex flex-col gap-4">
                 {(liveCourse?.instructors ?? []).length === 0 ? (
                   <div className="flex flex-col items-center justify-center py-10 border-2 border-dashed rounded-xl text-center">
@@ -1633,7 +1654,7 @@ function RouteComponent() {
   }
   const { ano } = Route.useSearch()
   const { data: anos } = useCourseYears()
-  const { data, isLoading, isError } = useAdminCourses({ page, limit, search: debouncedSearch, year: ano })
+  const { data, isLoading, isError, isFetching, refetch } = useAdminCourses({ page, limit, search: debouncedSearch, year: ano })
   // Qualquer filtro ativo: muda o que uma lista vazia significa.
   const filtrando = !!debouncedSearch.trim() || ano != null
   const deleteCourse = useDeleteCourse()
@@ -1832,10 +1853,13 @@ function RouteComponent() {
         </div>
       </div>
 
-      {isError && (
-        <div className="rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
-          {t('courses.error')}
-        </div>
+      {isError && !data && (
+        <LoadErrorRetry
+          className="rounded-xl border bg-card"
+          message={t('courses.error')}
+          onRetry={() => void refetch()}
+          retrying={isFetching}
+        />
       )}
 
       {isLoading && (
@@ -1844,7 +1868,7 @@ function RouteComponent() {
         </div>
       )}
 
-      {!isLoading && visible.length === 0 && total === 0 && (
+      {!isLoading && !isError && visible.length === 0 && total === 0 && (
         // Filtrando (busca OU ano), lista vazia quer dizer "nada encontrado" —
         // dizer "nenhum curso cadastrado" e oferecer "Novo curso" seria mentira.
         <EmptyState

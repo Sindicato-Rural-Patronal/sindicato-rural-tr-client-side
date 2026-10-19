@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { NativeSelect } from '@/components/ui/native-select'
+import { LoadErrorRetry } from '@/components/LoadErrorRetry'
 import { DatePicker } from '@/components/ui/date-picker'
 import { ErrorAlert } from '@/components/ErrorAlert'
 import { ConfirmCloseDialog } from '@/components/confirm-close-dialog'
@@ -118,7 +119,7 @@ const REPEAT_OPTIONS: { value: RepeatOption; label: string }[] = [
 function BookingDialogSession({ open, booking, defaults, canUpdate = true, canDelete = false, onClose }: BookingDialogProps) {
   const creating = !booking
   const readOnly = !creating && !canUpdate
-  const { data: rooms, isLoading: roomsLoading } = useRooms()
+  const { data: rooms, isLoading: roomsLoading, isError: roomsError, isFetching: roomsFetching, refetch: refetchRooms } = useRooms()
   const create = useCreateRoomBooking()
   const update = useUpdateRoomBooking()
 
@@ -231,6 +232,9 @@ function BookingDialogSession({ open, booking, defaults, canUpdate = true, canDe
                     <option value="">{roomsLoading ? 'Carregando salas…' : 'Escolha a sala'}</option>
                     {rooms?.map(room => <option key={room.id} value={room.id}>{room.name}</option>)}
                   </NativeSelect>
+                  {roomsError && !rooms && (
+                    <LoadErrorRetry variant="inline" message="Não foi possível carregar as salas." onRetry={() => void refetchRooms()} retrying={roomsFetching} />
+                  )}
                 </Field>
 
                 <div className="grid gap-4 sm:grid-cols-3">

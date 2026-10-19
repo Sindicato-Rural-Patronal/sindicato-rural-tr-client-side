@@ -1,4 +1,5 @@
 import { Link } from '@tanstack/react-router'
+import { LoadErrorRetry } from '@/components/LoadErrorRetry'
 import { BookOpen, ArrowRight } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -29,7 +30,7 @@ function diaMes(iso: string): string {
 }
 
 export function PublicCoursesCard({ now }: { now?: Date }) {
-  const { data, isLoading, isError } = useAdminCourses({ page: 1, limit: 5, status: 'PUBLIC' })
+  const { data, isLoading, isError, isFetching, refetch } = useAdminCourses({ page: 1, limit: 5, status: 'PUBLIC' })
   const cursos = data?.data ?? []
 
   return (
@@ -50,7 +51,9 @@ export function PublicCoursesCard({ now }: { now?: Date }) {
       </CardHeader>
       <CardContent>
         <div className="flex flex-col gap-3">
-          {isError && <p className="py-4 text-center text-sm text-destructive">Erro ao carregar os cursos.</p>}
+          {isError && (
+            <LoadErrorRetry variant="inline" className="justify-center py-4" message="Não foi possível carregar os cursos." onRetry={() => void refetch()} retrying={isFetching} />
+          )}
           {!isError && isLoading && Array.from({ length: 3 }).map((_, i) => (
             <Skeleton key={i} className="h-16 w-full rounded-lg" />
           ))}

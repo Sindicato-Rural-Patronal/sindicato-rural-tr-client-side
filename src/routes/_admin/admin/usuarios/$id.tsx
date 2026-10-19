@@ -1,4 +1,5 @@
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
+import { errorStatus } from '@/lib/query-retry'
 import { useQueryClient } from '@tanstack/react-query'
 import { useState, useEffect, useRef } from 'react'
 import { toast } from 'sonner'
@@ -22,6 +23,7 @@ import { DeleteConfirmDialog } from '@/components/DeleteConfirmDialog'
 import { Pagination } from '@/components/ui/pagination'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
+import { LoadErrorRetry } from '@/components/LoadErrorRetry'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -744,7 +746,7 @@ function DadosTab({ userId, user, completeMode, onCompleteModeEnd, hasNoProperti
 function PropriedadesTab({ userId }: { userId: string }) {
   const [page, setPage] = useState(1)
   const limit = 10
-  const { data: resp, isLoading } = useUserProperties(userId, { page, limit })
+  const { data: resp, isLoading, isError, isFetching, refetch } = useUserProperties(userId, { page, limit })
   const total = resp?.total ?? 0
   const totalPages = resp ? Math.ceil(total / limit) : 1
   const createProp = useCreateUserProperty(userId)
@@ -770,6 +772,7 @@ function PropriedadesTab({ userId }: { userId: string }) {
       footer={totalPages > 1 && (
         <Pagination page={page} totalPages={totalPages} total={total} limit={limit} onPageChange={setPage} showLimitSelector={false} />
       )}
+      loadError={isError && !resp ? { onRetry: () => void refetch(), retrying: isFetching } : undefined}
     />
   )
 }
@@ -779,7 +782,7 @@ function PropriedadesTab({ userId }: { userId: string }) {
 function RelacoesTab({ userId }: { userId: string }) {
   const [page, setPage] = useState(1)
   const limit = 20
-  const { data: resp, isLoading: loadingRels } = useUserRelations(userId, { page, limit })
+  const { data: resp, isLoading: loadingRels, isError: relsError, isFetching: relsFetching, refetch: refetchRels } = useUserRelations(userId, { page, limit })
   const relations = resp?.data ?? []
   const total = resp?.total ?? 0
   const totalPages = resp ? Math.ceil(total / limit) : 1
@@ -793,7 +796,7 @@ function RelacoesTab({ userId }: { userId: string }) {
   // Busca server-side (o hook aceita `search`) — associados além de 1000 ficam
   // pesquisáveis; debounce evita 1 request por tecla.
   const debouncedSearch = useDebouncedValue(search, 300)
-  const { data: allUsersResp } = useAdminUsers({ limit: 20, search: debouncedSearch })
+  const { data: allUsersResp, isError: searchError, isFetching: searching, refetch: searchAgain } = useAdminUsers({ limit: 20, search: debouncedSearch })
   const allUsers = allUsersResp?.data ?? []
 
   const filtered = allUsers.filter(u =>
@@ -832,6 +835,18 @@ function RelacoesTab({ userId }: { userId: string }) {
     }
   }
 
+  // Sem a lista, "Nenhuma relação cadastrada" podia não ser verdade.
+  if (relsError && !resp) {
+    return (
+      <LoadErrorRetry
+        className="rounded-lg border bg-card"
+        message="Não foi possível carregar as relações."
+        onRetry={() => void refetchRels()}
+        retrying={relsFetching}
+      />
+    )
+  }
+
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
@@ -857,7 +872,10 @@ function RelacoesTab({ userId }: { userId: string }) {
               </FieldRow>
               {search.length > 0 && (
                 <div className="rounded-md border max-h-40 overflow-y-auto">
-                  {filtered.length === 0 && <p className="text-xs text-muted-foreground p-3">Nenhum resultado.</p>}
+                  {searchError && !searching && (
+                    <LoadErrorRetry variant="inline" className="p-3" message="Não foi possível buscar." onRetry={() => void searchAgain()} />
+                  )}
+                  {!searchError && filtered.length === 0 && <p className="text-xs text-muted-foreground p-3">Nenhum resultado.</p>}
                   {filtered.map(u => (
                     <button
                       key={u.id}
@@ -938,11 +956,14 @@ function RelacoesTab({ userId }: { userId: string }) {
 function RouteComponent() {
   const { id } = Route.useParams()
   const { completar } = Route.useSearch()
-  const { data: user, isLoading, error } = useAdminUser(id)
+  const { data: user, isLoading, error, isFetching, refetch } = useAdminUser(id)
   const { data: propsResp } = useUserProperties(id, { page: 1, limit: 10 })
   const { data: relsResp } = useUserRelations(id, { page: 1, limit: 20 })
   const propertiesTotal = propsResp?.total ?? 0
   const relationsTotal = relsResp?.total ?? 0
+  // Só dá para dizer que falta propriedade quando a lista veio: se ela falhou,
+  // "Cadastro incompleto: falta propriedade" seria um palpite errado.
+  const semPropriedade = !!propsResp && propsResp.total === 0
   const [activeTab, setActiveTab] = useState('dados')
   const [completeMode, setCompleteMode] = useState(false)
   // ?completar=1 é conferido uma vez, com cadastro e propriedades carregados.
@@ -1002,7 +1023,16 @@ function RouteComponent() {
   if (error || !user) {
     return (
       <div className="p-6">
-        <p className="text-sm text-destructive">Erro ao carregar usuário.</p>
+        {errorStatus(error) === 404 ? (
+          <p className="rounded-lg border bg-muted/30 px-4 py-3 text-sm text-muted-foreground">Cadastro não encontrado.</p>
+        ) : (
+          <LoadErrorRetry
+            className="rounded-lg border bg-card"
+            message="Não foi possível carregar o cadastro."
+            onRetry={() => void refetch()}
+            retrying={isFetching}
+          />
+        )}
         <Button variant="outline" asChild className="mt-4">
           <Link to="/admin/usuarios"><ArrowLeft className="size-4 mr-2" /> Voltar</Link>
         </Button>
@@ -1010,7 +1040,7 @@ function RouteComponent() {
     )
   }
 
-  const missingFields = getMissingFields(user, propertiesTotal === 0)
+  const missingFields = getMissingFields(user, semPropriedade)
   const isIncomplete = missingFields.length > 0
   // Link com ?completar=1: só abre o modo se ainda falta algo (o cadastro pode
   // ter sido completado depois que a lista foi carregada).
@@ -1127,7 +1157,7 @@ function RouteComponent() {
             user={user}
             completeMode={completeMode}
             onCompleteModeEnd={endCompleteMode}
-            hasNoProperties={propertiesTotal === 0}
+            hasNoProperties={semPropriedade}
             visible={activeTab === 'dados'}
             allowLeaveRef={allowLeaveRef}
           />

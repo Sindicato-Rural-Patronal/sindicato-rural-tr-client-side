@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { apiFetch, apiUpload, API_BASE } from '@/lib/api'
+import { apiFetch, apiUpload } from '@/lib/api'
+import { publicGet } from '@/lib/public-fetch'
 
 // Galerias de imagens da página Sobre (História do Sindicato, FAEP, Patrulha Rural…).
 // Conteúdo do site → mesmas permissões dos banners (*_BANNER).
@@ -38,7 +39,7 @@ const ADMIN_KEY = ['admin', 'galleries'] as const
 export function usePublicGalleries() {
   return useQuery<GalleryAlbum[]>({
     queryKey: ['galleries'],
-    queryFn: () => fetch(`${API_BASE}/galleries`).then(r => (r.ok ? r.json() : [])),
+    queryFn: () => publicGet<GalleryAlbum[]>('/galleries'),
   })
 }
 

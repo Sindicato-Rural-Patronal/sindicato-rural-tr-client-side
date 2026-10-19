@@ -10,7 +10,7 @@ import { NativeSelect } from '@/components/ui/native-select'
 import { Pagination } from '@/components/ui/pagination'
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table'
 import { EmptyState } from '@/components/EmptyState'
-import { LoadErrorBanner } from '@/components/LoadErrorBanner'
+import { LoadErrorRetry } from '@/components/LoadErrorRetry'
 import { DeleteConfirmDialog } from '@/components/DeleteConfirmDialog'
 import { ExportMenu, SelectCheckbox, SelectionInfo } from '@/components/export/ExportMenu'
 import { BulkDeleteButton } from '@/components/export/BulkDeleteButton'
@@ -44,7 +44,7 @@ export function CompaniesList() {
   useEffect(() => { setPage(1) }, [search, type, partner])
 
   const isPartner = partner === '' ? undefined : partner === 'true'
-  const { data, isLoading, isError } = useAdminCompanies({
+  const { data, isLoading, isError, isFetching, refetch } = useAdminCompanies({
     page, limit: LIMIT, search,
     type: type || undefined,
     isPartner,
@@ -125,7 +125,14 @@ export function CompaniesList() {
         </div>
       </div>
 
-      {isError && <LoadErrorBanner message="Erro ao carregar empresas." />}
+      {isError && !data && (
+        <LoadErrorRetry
+          className="rounded-lg border bg-card"
+          message="Não foi possível carregar as empresas."
+          onRetry={() => void refetch()}
+          retrying={isFetching}
+        />
+      )}
 
       <div className="overflow-hidden rounded-lg border border-border bg-card">
         <div className="overflow-x-auto">
@@ -161,7 +168,7 @@ export function CompaniesList() {
                 </TableRow>
               ))}
 
-              {!isLoading && rows.length === 0 && (
+              {!isLoading && !isError && rows.length === 0 && (
                 <TableRow>
                   <TableCell colSpan={7} className="p-0">
                     <EmptyState

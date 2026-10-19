@@ -7,10 +7,11 @@ let lista: { data?: FinancePaymentMethod[]; isLoading: boolean; isError: boolean
 const criar = vi.fn().mockResolvedValue({})
 const atualizar = vi.fn().mockResolvedValue({})
 const excluir = vi.fn().mockResolvedValue({})
+const recarregar = vi.fn()
 
 vi.mock('@/hooks/useFinance', async importOriginal => ({
   ...(await importOriginal<typeof import('@/hooks/useFinance')>()),
-  useFinancePaymentMethods: () => lista,
+  useFinancePaymentMethods: () => ({ ...lista, refetch: recarregar }),
   useCreateFinancePaymentMethod: () => ({ mutateAsync: criar, isPending: false }),
   useUpdateFinancePaymentMethod: () => ({ mutateAsync: atualizar, isPending: false }),
   useDeleteFinancePaymentMethod: () => ({ mutateAsync: excluir, isPending: false }),
@@ -84,6 +85,9 @@ describe('PaymentMethodsTab', () => {
   it('falha de carregamento aparece como erro, não como lista vazia', () => {
     lista = { data: undefined, isLoading: false, isError: true }
     render(<PaymentMethodsTab {...tudoLiberado} />)
-    expect(screen.getByText(/Erro ao carregar as formas/)).toBeInTheDocument()
+    expect(screen.getByRole('alert')).toHaveTextContent('Não foi possível carregar as formas de pagamento.')
+    expect(screen.queryByText('Nenhuma forma de pagamento')).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: /Tentar de novo/ }))
+    expect(recarregar).toHaveBeenCalled()
   })
 })

@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label'
 import { NativeSelect } from '@/components/ui/native-select'
 import { Skeleton } from '@/components/ui/skeleton'
 import { DeleteConfirmDialog } from '@/components/DeleteConfirmDialog'
+import { LoadErrorRetry } from '@/components/LoadErrorRetry'
 
 // "Configurações da trilha": por quanto tempo os registros ficam guardados.
 // Só aparece para quem tem UPDATE_AUDIT (a tela cuida disso).
@@ -22,7 +23,11 @@ function retentionLabel(days: number): string {
 }
 
 export function AuditRetentionPanel() {
-  const { data, isLoading } = useAuditSettings()
+  const { data, isLoading, isError, isFetching, refetch } = useAuditSettings()
+  // Sem o ajuste atual, o painel mostrava "Guardar para sempre" (o padrão 0) com
+  // o select liberado: escolher um prazo menor apagaria registros a partir de
+  // uma comparação errada. Sem dado, nada de select.
+  const failed = isError && !data
   const update = useUpdateAuditRetention()
   const [open, setOpen] = useState(false)
   const [confirming, setConfirming] = useState<number | null>(null)
@@ -68,7 +73,7 @@ export function AuditRetentionPanel() {
         <Settings2 className="size-4 text-muted-foreground" />
         <span className="text-sm font-medium text-foreground">Configurações da trilha</span>
         <span className="text-xs text-muted-foreground">
-          {isLoading ? '' : `Guarda: ${retentionLabel(current)}`}
+          {isLoading || failed ? '' : `Guarda: ${retentionLabel(current)}`}
         </span>
         <ChevronDown className={`ml-auto size-4 text-muted-foreground transition-transform ${open ? 'rotate-180' : ''}`} />
       </button>
@@ -77,6 +82,13 @@ export function AuditRetentionPanel() {
         <div className="flex flex-col gap-3 border-t border-border px-4 py-4">
           {isLoading ? (
             <Skeleton className="h-9 w-64" />
+          ) : failed ? (
+            <LoadErrorRetry
+              variant="inline"
+              message="Não foi possível carregar o tempo de guarda atual."
+              onRetry={() => void refetch()}
+              retrying={isFetching}
+            />
           ) : (
             <>
               <div className="flex flex-wrap items-end gap-3">

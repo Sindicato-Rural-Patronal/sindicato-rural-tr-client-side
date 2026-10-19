@@ -22,6 +22,7 @@ import { useDebouncedValue } from '@/hooks/useDebouncedValue'
 import { usePermissions } from '@/hooks/usePermissions'
 import { useIsMobile } from '@/hooks/use-mobile'
 import { useRooms } from '@/hooks/useRooms'
+import { LoadErrorRetry } from '@/components/LoadErrorRetry'
 import { useRoomBookings, useRoomSchedule, type RoomBooking } from '@/hooks/useRoomBookings'
 import { apiErrorMessage } from '@/lib/api-error-message'
 import { downloadExport } from '@/lib/export'
@@ -90,7 +91,7 @@ export function AgendaSection({
   const showBookings = tipo !== 'COURSE'
   const bookingType = bookingTypeOf(tipo)
 
-  const { data: salas } = useRooms()
+  const { data: salas, isLoading: salasCarregando, isError: salasErro, isFetching: salasBuscando, refetch: buscarSalas } = useRooms()
 
   // Uma busca por período: cursos (agenda das salas) e reservas (com o
   // responsável, que a agenda não traz). Nada é buscado dia a dia.
@@ -305,17 +306,13 @@ export function AgendaSection({
 
       <CardContent className="flex flex-col gap-4">
         {erro && (
-          <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
-            <span>Erro ao carregar a agenda das salas.</span>
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-8"
-              onClick={() => { void schedule.refetch(); void bookings.refetch() }}
-            >
-              Tentar de novo
-            </Button>
-          </div>
+          <LoadErrorRetry
+            variant="inline"
+            className="rounded-lg border bg-card px-4 py-3"
+            message="Não foi possível carregar a agenda das salas."
+            onRetry={() => { void schedule.refetch(); void bookings.refetch() }}
+            retrying={schedule.isFetching || bookings.isFetching}
+          />
         )}
 
         {carregando && !erro ? (
@@ -374,7 +371,12 @@ export function AgendaSection({
               Ocupação das salas neste dia
               <ChevronRight className={cn('size-4 transition-transform', showOccupancy && 'rotate-90')} aria-hidden />
             </Button>
-            {showOccupancy && (
+            {showOccupancy && salasErro && !salas && (
+              // Sem a lista, a ocupação dizia "Nenhuma sala cadastrada".
+              <LoadErrorRetry variant="inline" className="pt-3" message="Não foi possível carregar as salas." onRetry={() => void buscarSalas()} retrying={salasBuscando} />
+            )}
+            {showOccupancy && salasCarregando && <p className="pt-3 text-sm text-muted-foreground">Carregando salas…</p>}
+            {showOccupancy && salas && (
               <div className="pt-3">
                 <RoomOccupancy
                   date={dia}

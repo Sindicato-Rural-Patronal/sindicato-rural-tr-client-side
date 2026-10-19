@@ -14,7 +14,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from '@/components/ui/dialog'
 import { DeleteConfirmDialog } from '@/components/DeleteConfirmDialog'
-import { LoadErrorBanner } from '@/components/LoadErrorBanner'
+import { LoadErrorRetry } from '@/components/LoadErrorRetry'
 import { NativeSelect } from '@/components/ui/native-select'
 import { useCrudDialog } from '@/hooks/useCrudDialog'
 import { upperNoAccents } from '@/utils/text-format'
@@ -31,7 +31,7 @@ export function RoomsPanel({ canCreate, canEdit, canDelete }: {
   canEdit: boolean
   canDelete: boolean
 }) {
-  const { data: salas, isLoading, isError } = useRooms()
+  const { data: salas, isLoading, isError, isFetching, refetch } = useRooms()
   const createRoom = useCreateRoom()
   const updateRoom = useUpdateRoom()
   const deleteRoom = useDeleteRoom()
@@ -111,7 +111,9 @@ export function RoomsPanel({ canCreate, canEdit, canDelete }: {
         />
       </div>
 
-      {isError && <LoadErrorBanner message="Erro ao carregar as salas." />}
+      {isError && !salas && (
+        <LoadErrorRetry className="rounded-lg border bg-card" message="Não foi possível carregar as salas." onRetry={() => void refetch()} retrying={isFetching} />
+      )}
 
       <div className="overflow-hidden rounded-lg border border-border bg-card">
         <div className="overflow-x-auto">

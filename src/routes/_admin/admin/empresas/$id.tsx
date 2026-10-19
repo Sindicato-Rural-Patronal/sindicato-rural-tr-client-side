@@ -14,7 +14,8 @@ import { CompanyForm } from '@/components/cadastro/CompanyForm'
 import { CompanyMembersPanel } from '@/components/cadastro/CompanyMembersPanel'
 import { PropertiesManager } from '@/components/cadastro/PropertiesManager'
 import { DeleteConfirmDialog } from '@/components/DeleteConfirmDialog'
-import { LoadErrorBanner } from '@/components/LoadErrorBanner'
+import { LoadErrorRetry } from '@/components/LoadErrorRetry'
+import { errorStatus } from '@/lib/query-retry'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
 import {
@@ -37,7 +38,7 @@ function EmpresaPage() {
   const { id } = Route.useParams()
   const navigate = useNavigate()
   const { can } = usePermissions()
-  const { data: company, isLoading, isError } = useAdminCompany(id)
+  const { data: company, isLoading, isError, error, isFetching, refetch } = useAdminCompany(id)
   const updateM = useUpdateCompany(id)
   const deleteM = useDeleteCompany()
   const addProp = useAddCompanyProperty(id)
@@ -62,7 +63,16 @@ function EmpresaPage() {
   if (isError || !company) {
     return (
       <div className="flex flex-col gap-4 p-6">
-        <LoadErrorBanner message="Empresa não encontrada ou erro ao carregar." />
+        {isError && errorStatus(error) !== 404 ? (
+          <LoadErrorRetry
+            className="rounded-lg border bg-card"
+            message="Não foi possível carregar a empresa."
+            onRetry={() => void refetch()}
+            retrying={isFetching}
+          />
+        ) : (
+          <p className="rounded-lg border bg-muted/30 px-4 py-3 text-sm text-muted-foreground">Empresa não encontrada.</p>
+        )}
         <Button asChild variant="outline" className="self-start">
           <Link to="/admin/usuarios" search={{ tab: 'empresas' }}><ArrowLeft className="size-4" /> Voltar para empresas</Link>
         </Button>

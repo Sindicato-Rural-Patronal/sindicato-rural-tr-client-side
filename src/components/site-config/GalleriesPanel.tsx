@@ -9,7 +9,7 @@ import {
 import { GalleryAlbumCard } from '@/components/galerias/GalleryAlbumCard'
 import { GalleryAlbumDialog } from '@/components/galerias/GalleryAlbumDialog'
 import { DeleteConfirmDialog } from '@/components/DeleteConfirmDialog'
-import { LoadErrorBanner } from '@/components/LoadErrorBanner'
+import { LoadErrorRetry } from '@/components/LoadErrorRetry'
 import { EmptyState } from '@/components/EmptyState'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -20,7 +20,7 @@ export function GalleriesPanel({ canCreate, canEdit, canDelete }: {
   canEdit: boolean
   canDelete: boolean
 }) {
-  const { data: albums, isLoading, isError } = useAdminGalleries()
+  const { data: albums, isLoading, isError, isFetching, refetch } = useAdminGalleries()
   const create = useCreateGallery()
   const update = useUpdateGallery()
   const remove = useDeleteGallery()
@@ -91,7 +91,9 @@ export function GalleriesPanel({ canCreate, canEdit, canDelete }: {
         )}
       </div>
 
-      {isError && <LoadErrorBanner message="Erro ao carregar as galerias." />}
+      {isError && !albums && (
+        <LoadErrorRetry className="rounded-lg border bg-card" message="Não foi possível carregar as galerias." onRetry={() => void refetch()} retrying={isFetching} />
+      )}
 
       {isLoading && Array.from({ length: 2 }).map((_, i) => <Skeleton key={i} className="h-56 w-full rounded-xl" />)}
 

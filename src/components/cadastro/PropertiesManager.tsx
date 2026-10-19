@@ -9,6 +9,7 @@ import {
 } from '@/hooks/useAdmin'
 import { DeleteConfirmDialog } from '@/components/DeleteConfirmDialog'
 import { Button } from '@/components/ui/button'
+import { LoadErrorRetry } from '@/components/LoadErrorRetry'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
@@ -112,12 +113,17 @@ export type PropertiesManagerProps = {
   readOnly?: boolean
   /** Rótulo do nome no formulário. */
   nameLabel?: string
+  /**
+   * A lista não carregou: aparece o aviso com "Tentar de novo" no lugar de
+   * "Nenhuma propriedade cadastrada" (e não dá para adicionar às cegas).
+   */
+  loadError?: { onRetry: () => void; retrying?: boolean }
 }
 
 export function PropertiesManager({
   properties, total, loading, primaryId,
   onCreate, creating, onUpdate, updating = false, onDelete, deleting, onSetPrimary, settingPrimary,
-  footer, readOnly = false, nameLabel = 'Nome da propriedade *',
+  footer, readOnly = false, nameLabel = 'Nome da propriedade *', loadError,
 }: PropertiesManagerProps) {
   const cepLookup = useCEPLookup()
   const cepId = useId()
@@ -231,6 +237,17 @@ export function PropertiesManager({
 
   const inp = 'h-9'
   const isUrban = form.address.type === 'URBAN'
+
+  if (loadError) {
+    return (
+      <LoadErrorRetry
+        className="rounded-lg border bg-card"
+        message="Não foi possível carregar as propriedades."
+        onRetry={loadError.onRetry}
+        retrying={loadError.retrying}
+      />
+    )
+  }
 
   return (
     <div className="flex flex-col gap-4">

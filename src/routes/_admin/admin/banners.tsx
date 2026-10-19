@@ -1,4 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router'
+import { LoadErrorRetry } from '@/components/LoadErrorRetry'
 import { useQueryClient } from '@tanstack/react-query'
 import { apiErrorMessage } from '@/lib/api-error-message'
 import { apiUpload } from '@/lib/api'
@@ -375,7 +376,7 @@ function BannerStateBadge({ state }: { state: BannerState }) {
 // ─── Route component ──────────────────────────────────────────────────────────
 
 function RouteComponent() {
-  const { data: banners, isLoading, isError } = useAdminBanners()
+  const { data: banners, isLoading, isError, isFetching, refetch } = useAdminBanners()
   const deleteBanner = useDeleteBanner()
   const reorder = useReorderBanners()
 
@@ -440,9 +441,12 @@ function RouteComponent() {
       )}
 
       {!isLoading && isError && (
-        <div className="rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
-          Erro ao carregar os banners.
-        </div>
+        <LoadErrorRetry
+          className="rounded-lg border bg-card"
+          message="Não foi possível carregar os banners."
+          onRetry={() => void refetch()}
+          retrying={isFetching}
+        />
       )}
 
       {!isLoading && !isError && sorted.length === 0 && (

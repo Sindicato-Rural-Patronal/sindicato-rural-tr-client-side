@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query'
 import type { QueryClient } from '@tanstack/react-query'
 import { apiFetch, apiUpload, API_BASE } from '@/lib/api'
+import { publicGet } from '@/lib/public-fetch'
 import { openBlob } from '@/utils/download'
 
 // Invalida TODAS as listas onde um usuário aparece, para não ficarem defasadas
@@ -119,19 +120,24 @@ export type AdminMe = {
   dashboardPrefs?: DashboardPrefs | null
 }
 
+// Mesma consulta para o useMe e para a guarda de rota (lib/auth-guard.ts): as
+// duas leem o mesmo cache, então trocar de tela não pede o /admin/me de novo.
+export const meQuery = {
+  queryKey: ['admin', 'me'],
+  queryFn: (): Promise<AdminMe> => apiFetch('/admin/me').then(r => r.json()),
+  staleTime: 5 * 60 * 1000,
+}
+
 export function useMe() {
-  return useQuery<AdminMe>({
-    queryKey: ['admin', 'me'],
-    queryFn: () => apiFetch('/admin/me').then(r => r.json()),
-    staleTime: 5 * 60 * 1000,
-  })
+  return useQuery<AdminMe>(meQuery)
 }
 
 // Self-service: admin logado edita os próprios dados (nome/usuário/senha).
+// Trocar a senha exige `currentPassword` junto (400 sem ela ou com ela errada).
 export function useUpdateMe() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (body: { name?: string; username?: string; password?: string }) =>
+    mutationFn: (body: { name?: string; username?: string; password?: string; currentPassword?: string }) =>
       apiFetch('/admin/me', { method: 'PATCH', body: JSON.stringify(body) }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin', 'me'] })
@@ -840,11 +846,12 @@ export type PublicPartner = {
   partnerUrl: string | null
 }
 
-// Público (home): o backend manda a lista pura. Fetch cru (sem token); erro vira lista vazia.
+// Público (home): o backend manda a lista pura. Fetch cru (sem token); erro é erro
+// (antes virava lista vazia e a faixa sumia sem nova tentativa).
 export function usePartners() {
   return useQuery<PublicPartner[]>({
     queryKey: ['partners'],
-    queryFn: () => fetch(`${API_BASE}/partners`).then(r => (r.ok ? r.json() : [])),
+    queryFn: () => publicGet<PublicPartner[]>('/partners'),
   })
 }
 

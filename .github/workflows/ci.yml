@@ -2,10 +2,9 @@ name: CI
 
 # Por que existe: este repositório ficou sem nenhuma verificação automática, e
 # um `npm run build` quebrado chegou a ser publicado na staging sem ninguém
-# notar — o `tsc -b` do build compila os TESTES junto, então um teste que usa
-# API do Node (o tsconfig.app.json não tem os tipos dele) derruba o build sem
-# derrubar o `vitest`. É por isso que o passo de build está aqui, e não só o
-# type check: os dois olham configurações diferentes.
+# notar. O tsconfig.app.json compila os TESTES junto e não tem os tipos do
+# Node, então um teste que usa API do Node quebra a compilação sem derrubar o
+# `vitest`, que não confere tipos. Quem pega isso são o Type check e o Build.
 
 on:
   push:
@@ -31,13 +30,18 @@ jobs:
       - name: Lint
         run: npm run lint
 
+      # Confere os dois projetos de verdade. O tsconfig.json da raiz só aponta
+      # para eles (`"files": []`): `tsc --noEmit` lá não lia arquivo nenhum e
+      # passava sempre, e erro de tipo só aparecia no Build, no fim da fila.
       - name: Type check
-        run: npx tsc --noEmit
+        run: |
+          npx tsc -p tsconfig.app.json --noEmit
+          npx tsc -p tsconfig.node.json --noEmit
 
       - name: Unit tests
         run: npm run test:run
 
-      # `tsc -b && vite build`: é este passo que pega o que o type check acima
-      # deixa passar, porque usa o tsconfig.app.json (sem os tipos do Node).
+      # `tsc -b && vite build`: confere os mesmos dois projetos de novo e pega
+      # o que só aparece ao empacotar (import que não resolve, asset que falta).
       - name: Build
         run: npm run build

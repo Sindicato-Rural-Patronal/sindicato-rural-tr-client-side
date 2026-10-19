@@ -12,7 +12,8 @@ import {
 import { DeleteConfirmDialog } from '@/components/DeleteConfirmDialog'
 import { EmptyState } from '@/components/EmptyState'
 import { InitialsAvatar } from '@/components/InitialsAvatar'
-import { LoadErrorBanner } from '@/components/LoadErrorBanner'
+import { LoadErrorRetry } from '@/components/LoadErrorRetry'
+import { usePermissions } from '@/hooks/usePermissions'
 import { useAdminUsers, type UserData } from '@/hooks/useAdmin'
 import { useDebouncedValue } from '@/hooks/useDebouncedValue'
 import {
@@ -31,7 +32,8 @@ function AddContactDialog({ existingIds, pending, onClose, onSubmit }: {
 }) {
   const [search, setSearch] = useState('')
   const q = useDebouncedValue(search, 300).trim()
-  const { data, isFetching } = useAdminUsers({ page: 1, limit: 8, search: q || undefined })
+  const { data, isFetching, isError: searchError, refetch: searchAgain } = useAdminUsers({ page: 1, limit: 8, search: q || undefined })
+  const { can } = usePermissions()
   const [picked, setPicked] = useState<UserData | null>(null)
   const [title, setTitle] = useState('')
   const people = data?.data ?? []
@@ -79,9 +81,13 @@ function AddContactDialog({ existingIds, pending, onClose, onSubmit }: {
                     </button>
                   )
                 })}
-                {!isFetching && people.length === 0 && (
+                {!isFetching && searchError && (
+                  <LoadErrorRetry variant="inline" className="justify-center px-3 py-6" message="Não foi possível buscar as pessoas." onRetry={() => void searchAgain()} />
+                )}
+                {!isFetching && !searchError && people.length === 0 && (
                   <p className="px-3 py-6 text-center text-sm text-muted-foreground">
-                    Ninguém encontrado. <Link to="/admin/usuarios/novo" className="text-primary hover:underline">Cadastrar pessoa</Link>
+                    Ninguém encontrado.{' '}
+                    {can('CREATE_USER') && <Link to="/admin/usuarios/novo" className="text-primary hover:underline">Cadastrar pessoa</Link>}
                   </p>
                 )}
                 {isFetching && people.length === 0 && <Loader2 className="mx-auto my-6 size-5 animate-spin text-muted-foreground" />}
@@ -139,7 +145,7 @@ function EditTitleDialog({ contact, pending, onClose, onSubmit }: {
 
 // Quem aparece em "Nossa Equipe", na página Contato do site, e em que ordem.
 export function PublicContactsPanel({ canEdit }: { canEdit: boolean }) {
-  const { data, isLoading, isError } = useAdminPublicContacts()
+  const { data, isLoading, isError, isFetching, refetch } = useAdminPublicContacts()
   const add = useAddPublicContact()
   const update = useUpdatePublicContact()
   const remove = useRemovePublicContact()
@@ -206,7 +212,14 @@ export function PublicContactsPanel({ canEdit }: { canEdit: boolean }) {
         )}
       </div>
 
-      {isError && <LoadErrorBanner message="Erro ao carregar os contatos." />}
+      {isError && !data && (
+        <LoadErrorRetry
+          className="rounded-lg border bg-card"
+          message="Não foi possível carregar os contatos."
+          onRetry={() => void refetch()}
+          retrying={isFetching}
+        />
+      )}
 
       <div className="overflow-hidden rounded-lg border border-border bg-card">
         {isLoading && Array.from({ length: 2 }).map((_, i) => (
@@ -215,7 +228,7 @@ export function PublicContactsPanel({ canEdit }: { canEdit: boolean }) {
           </div>
         ))}
 
-        {!isLoading && contacts.length === 0 && (
+        {!isLoading && !isError && contacts.length === 0 && (
           <EmptyState icon={Users} title="Nenhum contato público" description='Clique em "Adicionar contato" para escolher quem aparece no site.' />
         )}
 

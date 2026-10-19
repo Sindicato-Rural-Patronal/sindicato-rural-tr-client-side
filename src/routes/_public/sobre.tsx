@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { ArrowRight, Clock, ExternalLink, MapPin, Phone } from 'lucide-react'
 import { GalleryLightbox } from '@/components/GalleryLightbox'
 import { Skeleton } from '@/components/ui/skeleton'
+import { LoadErrorRetry } from '@/components/LoadErrorRetry'
 import { usePublicGalleries, type GalleryAlbum } from '@/hooks/useGalleries'
 import { useOrgInfo, usePublicSiteSettings } from '@/hooks/useSiteSettings'
 import { useSeo } from '@/hooks/useSeo'
@@ -23,7 +24,7 @@ function paragraphs(text: string): string[] {
 function AboutPage() {
   const { t } = useTranslation()
   useSeo({ title: t('aboutPage.title'), description: t('aboutPage.seo') })
-  const { data: settings, isLoading } = usePublicSiteSettings()
+  const { data: settings, isLoading, isError, isFetching, refetch } = usePublicSiteSettings()
   const org = useOrgInfo()
   const address = orgAddressLines(org)
   const text = paragraphs(settings?.aboutText ?? '')
@@ -45,6 +46,9 @@ function AboutPage() {
               <div className="flex flex-col gap-2">
                 {Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-4 w-full" />)}
               </div>
+            ) : isError && !settings ? (
+              // Sem os dados, o texto genérico pareceria o texto de verdade.
+              <LoadErrorRetry className="rounded-xl border bg-card" onRetry={() => void refetch()} retrying={isFetching} />
             ) : (
               (text.length ? text : [t('aboutPage.fallback')]).map((p, i) => (
                 <p key={i} className="whitespace-pre-line leading-relaxed text-muted-foreground">{p}</p>
@@ -93,7 +97,7 @@ function AboutPage() {
 // Todas as fotos de todas as galerias ativas (âncora #galeria).
 function AboutGallery() {
   const { t } = useTranslation()
-  const { data: albums = [], isLoading } = usePublicGalleries()
+  const { data: albums = [], isLoading, isError, isFetching, refetch } = usePublicGalleries()
   const [viewer, setViewer] = useState<{ album: GalleryAlbum; index: number } | null>(null)
 
   // As fotos chegam depois da navegação: rola até a seção quando ela existir.
@@ -102,7 +106,9 @@ function AboutGallery() {
     document.getElementById('galeria')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }, [isLoading])
 
-  if (!isLoading && albums.length === 0) return null
+  // Sem galeria nenhuma a seção não existe; falha ao carregar é aviso (o link
+  // #galeria leva até aqui e não pode cair no nada).
+  if (!isLoading && !isError && albums.length === 0) return null
 
   return (
     <section id="galeria" className="scroll-mt-20 border-t bg-muted/40 py-12 md:py-16">
@@ -111,6 +117,10 @@ function AboutGallery() {
           <h2 className="text-2xl font-bold text-foreground md:text-3xl">{t('gallery.title')}</h2>
           <p className="mt-1 text-sm text-muted-foreground">{t('gallery.subtitle')}</p>
         </div>
+
+        {isError && albums.length === 0 && (
+          <LoadErrorRetry className="rounded-xl border bg-card" onRetry={() => void refetch()} retrying={isFetching} />
+        )}
 
         {isLoading && (
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">

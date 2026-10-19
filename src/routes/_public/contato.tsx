@@ -3,6 +3,7 @@ import { apiErrorMessage } from '@/lib/api-error-message'
 import { useState } from 'react'
 import { usePublicContacts, useSendContactMessage } from '@/hooks/useAdmin'
 import { Skeleton } from '@/components/ui/skeleton'
+import { LoadErrorRetry } from '@/components/LoadErrorRetry'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
@@ -23,7 +24,7 @@ export const Route = createFileRoute('/_public/contato')({
 
 
 function PublicContacts() {
-  const { data: contacts, isLoading, isError } = usePublicContacts()
+  const { data: contacts, isLoading, isError, isFetching, refetch } = usePublicContacts()
 
   if (isLoading) {
     return (
@@ -42,8 +43,14 @@ function PublicContacts() {
     )
   }
 
-  // Erro → não renderiza (sem lançar); idem para lista vazia.
-  if (isError || !contacts || contacts.length === 0) return null
+  if (isError && !contacts) {
+    return (
+      <LoadErrorRetry variant="inline" className="container mx-auto justify-center px-4 py-8" onRetry={() => void refetch()} retrying={isFetching} />
+    )
+  }
+
+  // Lista vazia → a seção não existe.
+  if (!contacts || contacts.length === 0) return null
 
   return (
     <section className="py-12 md:py-16 bg-muted/30">

@@ -17,7 +17,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table'
 import { NativeSelect } from '@/components/ui/native-select'
 import { DeleteConfirmDialog } from '@/components/DeleteConfirmDialog'
-import { LoadErrorBanner } from '@/components/LoadErrorBanner'
+import { LoadErrorRetry } from '@/components/LoadErrorRetry'
 import { currentMonth, monthLabel } from '@/lib/finance-month'
 
 /** Classe de cor da diferença: vermelho quando não bate. */
@@ -33,7 +33,7 @@ function diffLabel(cents: number): string {
 export function ClosingTab({ enabled, canCreate, canDelete }: {
   enabled: boolean; canCreate: boolean; canDelete: boolean
 }) {
-  const { data: accounts } = useFinanceAccounts({ enabled })
+  const { data: accounts, isError: accountsError, isFetching: accountsFetching, refetch: refetchAccounts } = useFinanceAccounts({ enabled })
   const accs = useMemo(() => accounts ?? [], [accounts])
 
   const [accountId, setAccountId] = useState('')
@@ -47,11 +47,11 @@ export function ClosingTab({ enabled, canCreate, canDelete }: {
   const effectiveAccountId = accountId || accs[0]?.id || ''
   const year = month.slice(0, 4)
 
-  const { data: preview, isLoading: previewLoading } = useFinanceClosingPreview(
+  const { data: preview, isLoading: previewLoading, isError: previewError, isFetching: previewFetching, refetch: refetchPreview } = useFinanceClosingPreview(
     { accountId: effectiveAccountId, month },
     { enabled },
   )
-  const { data: closings, isLoading, isError } = useFinanceClosings(
+  const { data: closings, isLoading, isError, isFetching, refetch } = useFinanceClosings(
     { accountId: effectiveAccountId || undefined, year },
     { enabled },
   )
@@ -98,6 +98,22 @@ export function ClosingTab({ enabled, canCreate, canDelete }: {
 
   const accountName = (id: string) => accs.find(a => a.id === id)?.name ?? 'Caixa'
   const rows = closings ?? []
+  // Sem a prévia, os cartões mostravam R$ 0,00 e uma diferença calculada sobre
+  // zero. O servidor recalcula o esperado ao gravar, mas fechar o mês sem ver o
+  // esperado não faz sentido: o botão fica desligado até a prévia carregar.
+  const previewFailed = previewError && !preview
+
+  // Sem a lista de caixas não há o que fechar (antes: "Nenhum caixa cadastrado").
+  if (accountsError && !accounts) {
+    return (
+      <LoadErrorRetry
+        className="rounded-lg border border-border bg-card"
+        message="Não foi possível carregar os caixas."
+        onRetry={() => void refetchAccounts()}
+        retrying={accountsFetching}
+      />
+    )
+  }
 
   return (
     <div className="flex flex-col gap-6">
@@ -135,6 +151,14 @@ export function ClosingTab({ enabled, canCreate, canDelete }: {
         </div>
 
         {/* Comparação do mês: entradas, saídas, saldo esperado e diferença. */}
+        {previewFailed ? (
+          <LoadErrorRetry
+            variant="inline"
+            message="Não foi possível calcular o saldo esperado deste mês."
+            onRetry={() => void refetchPreview()}
+            retrying={previewFetching}
+          />
+        ) : (
         <div className="grid grid-cols-2 gap-2 lg:grid-cols-5">
           {[
             { label: 'Saldo anterior', value: preview?.openingCents ?? 0, cls: 'text-foreground' },
@@ -164,6 +188,7 @@ export function ClosingTab({ enabled, canCreate, canDelete }: {
             )}
           </div>
         </div>
+        )}
 
         {alreadyClosed ? (
           <div className="flex flex-wrap items-center gap-3 rounded-lg border border-border bg-muted/30 px-3 py-2">
@@ -206,7 +231,7 @@ export function ClosingTab({ enabled, canCreate, canDelete }: {
               />
             </div>
             {canCreate && (
-              <Button onClick={handleClose} disabled={!counted || !effectiveAccountId || createClosing.isPending} className="shrink-0">
+              <Button onClick={handleClose} disabled={!counted || !effectiveAccountId || previewFailed || createClosing.isPending} className="shrink-0">
                 <Lock className="size-4" /> {createClosing.isPending ? 'Fechando...' : 'Fechar mês'}
               </Button>
             )}
@@ -221,7 +246,14 @@ export function ClosingTab({ enabled, canCreate, canDelete }: {
         <h2 className="text-sm font-semibold text-foreground">
           Fechamentos de {year} — {accountName(effectiveAccountId)}
         </h2>
-        {isError && <LoadErrorBanner message="Erro ao carregar os fechamentos." />}
+        {isError && !closings && (
+          <LoadErrorRetry
+            className="rounded-lg border border-border bg-card"
+            message="Não foi possível carregar os fechamentos."
+            onRetry={() => void refetch()}
+            retrying={isFetching}
+          />
+        )}
         <div className="rounded-lg border border-border bg-card overflow-hidden">
           <div className="overflow-x-auto">
             <Table>
@@ -241,7 +273,7 @@ export function ClosingTab({ enabled, canCreate, canDelete }: {
                     <TableCell colSpan={6}><Skeleton className="h-4 w-full" /></TableCell>
                   </TableRow>
                 ))}
-                {!isLoading && rows.length === 0 && (
+                {!isLoading && !isError && rows.length === 0 && (
                   <TableRow>
                     <TableCell colSpan={6} className="py-16 text-center">
                       {accs.length === 0 ? (

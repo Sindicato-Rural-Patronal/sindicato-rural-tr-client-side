@@ -7,7 +7,7 @@ import { useAdminSiteSettings, useUpdateSiteSettings, type SiteSettings } from '
 import { useUnsavedGuard } from '@/hooks/use-unsaved-guard'
 import { apiErrorMessage } from '@/lib/api-error-message'
 import { maskWhatsappInput, whatsappFieldFromStored, whatsappStoredFromField } from '@/lib/whatsapp-field'
-import { LoadErrorBanner } from '@/components/LoadErrorBanner'
+import { LoadErrorRetry } from '@/components/LoadErrorRetry'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -19,13 +19,15 @@ const KEYS: (keyof SocialSettings)[] = ['facebook', 'instagram', 'whatsapp']
 // Redes sociais do rodapé do site.
 export function SocialLinksPanel({ canEdit }: { canEdit: boolean }) {
   const { t } = useTranslation()
-  const { data, isLoading, isError } = useAdminSiteSettings()
+  const { data, isLoading, isError, isFetching, refetch } = useAdminSiteSettings()
 
   return (
     <div className="max-w-xl rounded-lg border border-border bg-card p-4 md:p-6">
       <p className="mb-4 text-sm text-muted-foreground">Links que aparecem no rodapé do site.</p>
 
-      {isError && <LoadErrorBanner message={t('admin.settings.loadError')} />}
+      {isError && !data && (
+        <LoadErrorRetry variant="inline" message={t('admin.settings.loadError')} onRetry={() => void refetch()} retrying={isFetching} />
+      )}
 
       {isLoading && (
         <div className="flex flex-col gap-4">

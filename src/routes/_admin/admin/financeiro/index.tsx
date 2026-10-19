@@ -40,7 +40,7 @@ import {
 } from '@/components/ui/dialog'
 import { ConfirmCloseDialog } from '@/components/confirm-close-dialog'
 import { DeleteConfirmDialog } from '@/components/DeleteConfirmDialog'
-import { LoadErrorBanner } from '@/components/LoadErrorBanner'
+import { LoadErrorRetry } from '@/components/LoadErrorRetry'
 import { NoPermission } from '@/components/NoPermission'
 import { NativeSelect } from '@/components/ui/native-select'
 import { Pagination } from '@/components/ui/pagination'
@@ -214,7 +214,9 @@ function DashboardTab({ enabled, onDrill }: {
     () => (preset === 'custom' ? custom : presetRange(preset)),
     [preset, custom],
   )
-  const { data, isLoading, isError } = useFinanceSummary(range, { enabled })
+  const { data, isLoading, isError, isFetching, refetch } = useFinanceSummary(range, { enabled })
+  // Sem o resumo, os cartões mostravam R$ 0,00 — que parece resultado de verdade.
+  const summaryFailed = isError && !data
   const [pdfBusy, setPdfBusy] = useState(false)
   const [empenhoBusy, setEmpenhoBusy] = useState(false)
   const org = useOrgInfo()
@@ -292,8 +294,14 @@ function DashboardTab({ enabled, onDrill }: {
         </div>
       </div>
 
-      {isError && <LoadErrorBanner message="Erro ao carregar o resumo financeiro." />}
-
+      {summaryFailed ? (
+        <LoadErrorRetry
+          className="rounded-xl border border-border bg-card"
+          message="Não foi possível carregar o resumo financeiro."
+          onRetry={() => void refetch()}
+          retrying={isFetching}
+        />
+      ) : (<>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {kpis.map(k => {
           const cls = `rounded-xl border border-border bg-card p-4 flex flex-col gap-2 text-left ${
@@ -366,6 +374,7 @@ function DashboardTab({ enabled, onDrill }: {
           </div>
         )}
       </div>
+      </>)}
     </div>
   )
 }
@@ -549,6 +558,8 @@ function VincularCadastro({ current, onPickUser, onPickCompany, onClear }: {
   const empresas = useAdminCompanies({ search: dq, limit: 6 }, { enabled: buscando && aba === 'empresa' })
 
   const isFetching = aba === 'pessoa' ? pessoas.isFetching : empresas.isFetching
+  const buscaFalhou = aba === 'pessoa' ? pessoas.isError : empresas.isError
+  const buscarDeNovo = () => void (aba === 'pessoa' ? pessoas.refetch() : empresas.refetch())
   const results = !buscando
     ? []
     : aba === 'pessoa'
@@ -624,7 +635,13 @@ function VincularCadastro({ current, onPickUser, onPickCompany, onClear }: {
       {open && buscando && (
         <div className="absolute z-50 mt-1 w-full overflow-hidden rounded-md border border-border bg-popover shadow-md">
           {isFetching && <div className="px-3 py-2 text-xs text-muted-foreground">Buscando…</div>}
-          {!isFetching && results.length === 0 && (
+          {!isFetching && buscaFalhou && (
+            // mousedown não tira o foco do campo: a lista não fecha antes do clique.
+            <div onMouseDown={e => e.preventDefault()}>
+              <LoadErrorRetry variant="inline" className="px-3 py-2" message="Não foi possível buscar." onRetry={buscarDeNovo} />
+            </div>
+          )}
+          {!isFetching && !buscaFalhou && results.length === 0 && (
             <div className="px-3 py-2 text-xs text-muted-foreground">
               {aba === 'pessoa' ? 'Nenhuma pessoa encontrada.' : 'Nenhuma empresa encontrada.'}
             </div>
@@ -712,9 +729,14 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
     type: search.fType ?? '',
     categoryId: search.cat, accountId: search.acc, method: search.pm, search: search.q,
   }), [page, search.from, search.to, search.fType, search.cat, search.acc, search.pm, search.q])
-  const { data, isLoading, isError } = useFinanceTransactions(filters, { enabled })
-  const { data: categories } = useFinanceCategories({ enabled })
-  const { data: accounts } = useFinanceAccounts({ enabled })
+  const { data, isLoading, isError, isFetching, refetch } = useFinanceTransactions(filters, { enabled })
+  const catsQuery = useFinanceCategories({ enabled })
+  const accsQuery = useFinanceAccounts({ enabled })
+  const categories = catsQuery.data
+  const accounts = accsQuery.data
+  // Categorias e caixas alimentam os filtros e o formulário: sem eles os
+  // selects ficam vazios sem explicação.
+  const listasFalharam = (catsQuery.isError && !categories) || (accsQuery.isError && !accounts)
   const createTx = useCreateFinanceTransaction()
   const updateTx = useUpdateFinanceTransaction()
   const deleteTx = useDeleteFinanceTransaction()
@@ -1073,7 +1095,23 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
         <Input placeholder="Buscar na descrição..." className="pl-9" value={searchInput} onChange={e => setSearchInput(e.target.value)} />
       </div>
 
-      {isError && <LoadErrorBanner message="Erro ao carregar os lançamentos." />}
+      {listasFalharam && (
+        <LoadErrorRetry
+          variant="inline"
+          message="Não foi possível carregar as categorias e os caixas; os campos de escolha podem aparecer vazios."
+          onRetry={() => { void catsQuery.refetch(); void accsQuery.refetch() }}
+          retrying={catsQuery.isFetching || accsQuery.isFetching}
+        />
+      )}
+
+      {isError && !data && (
+        <LoadErrorRetry
+          className="rounded-lg border border-border bg-card"
+          message="Não foi possível carregar os lançamentos."
+          onRetry={() => void refetch()}
+          retrying={isFetching}
+        />
+      )}
 
       {(isLoading || data?.totals) && <FilteredTotals totals={data?.totals} loading={isLoading} />}
 
@@ -1082,7 +1120,7 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
         {isLoading && Array.from({ length: 5 }).map((_, i) => (
           <div key={i} className="rounded-lg border border-border bg-card p-3"><Skeleton className="h-4 w-40 mb-2" /><Skeleton className="h-4 w-24" /></div>
         ))}
-        {!isLoading && rows.length === 0 && (
+        {!isLoading && !isError && rows.length === 0 && (
           <div className="rounded-lg border border-border bg-card py-12 text-center">
             <Wallet className="size-8 text-muted-foreground/30 mx-auto mb-2" />
             <p className="text-sm font-medium text-foreground">Nenhum lançamento</p>
@@ -1164,7 +1202,7 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
                   <TableCell><Skeleton className="h-7 w-16 ml-auto" /></TableCell>
                 </TableRow>
               ))}
-              {!isLoading && rows.length === 0 && (
+              {!isLoading && !isError && rows.length === 0 && (
                 <TableRow>
                   <TableCell colSpan={7} className="py-16 text-center">
                     <Wallet className="size-10 text-muted-foreground/30 mx-auto mb-3" />
@@ -1599,7 +1637,7 @@ const COLOR_CHOICES = ['#16a34a', '#0891b2', '#7c3aed', '#dc2626', '#ea580c', '#
 function CategoriesTab({ enabled, canCreate, canUpdate, canDelete }: {
   enabled: boolean; canCreate: boolean; canUpdate: boolean; canDelete: boolean
 }) {
-  const { data: categories, isLoading, isError } = useFinanceCategories({ includeInactive: true, enabled })
+  const { data: categories, isLoading, isError, isFetching, refetch } = useFinanceCategories({ includeInactive: true, enabled })
   const createCat = useCreateFinanceCategory()
   const updateCat = useUpdateFinanceCategory()
   const deleteCat = useDeleteFinanceCategory()
@@ -1655,7 +1693,14 @@ function CategoriesTab({ enabled, canCreate, canUpdate, canDelete }: {
         )}
       </div>
 
-      {isError && <LoadErrorBanner message="Erro ao carregar as categorias." />}
+      {isError && !categories && (
+        <LoadErrorRetry
+          className="rounded-lg border border-border bg-card"
+          message="Não foi possível carregar as categorias."
+          onRetry={() => void refetch()}
+          retrying={isFetching}
+        />
+      )}
 
       <div className="rounded-lg border border-border bg-card overflow-hidden">
         <div className="overflow-x-auto">
@@ -1677,7 +1722,7 @@ function CategoriesTab({ enabled, canCreate, canUpdate, canDelete }: {
                   <TableCell><Skeleton className="h-7 w-16 ml-auto" /></TableCell>
                 </TableRow>
               ))}
-              {!isLoading && cats.length === 0 && (
+              {!isLoading && !isError && cats.length === 0 && (
                 <TableRow>
                   <TableCell colSpan={4} className="py-16 text-center">
                     <Tag className="size-10 text-muted-foreground/30 mx-auto mb-3" />
@@ -1799,7 +1844,7 @@ const emptyAccForm = (): AccForm => ({ name: '', color: '#2563eb', active: true 
 function AccountsTab({ enabled, canCreate, canUpdate, canDelete }: {
   enabled: boolean; canCreate: boolean; canUpdate: boolean; canDelete: boolean
 }) {
-  const { data: accounts, isLoading, isError } = useFinanceAccounts({ includeInactive: true, enabled })
+  const { data: accounts, isLoading, isError, isFetching, refetch } = useFinanceAccounts({ includeInactive: true, enabled })
   const createAcc = useCreateFinanceAccount()
   const updateAcc = useUpdateFinanceAccount()
   const deleteAcc = useDeleteFinanceAccount()
@@ -1855,7 +1900,14 @@ function AccountsTab({ enabled, canCreate, canUpdate, canDelete }: {
         )}
       </div>
 
-      {isError && <LoadErrorBanner message="Erro ao carregar os caixas." />}
+      {isError && !accounts && (
+        <LoadErrorRetry
+          className="rounded-lg border border-border bg-card"
+          message="Não foi possível carregar os caixas."
+          onRetry={() => void refetch()}
+          retrying={isFetching}
+        />
+      )}
 
       <div className="rounded-lg border border-border bg-card overflow-hidden">
         <div className="overflow-x-auto">
@@ -1875,7 +1927,7 @@ function AccountsTab({ enabled, canCreate, canUpdate, canDelete }: {
                   <TableCell><Skeleton className="h-7 w-16 ml-auto" /></TableCell>
                 </TableRow>
               ))}
-              {!isLoading && accs.length === 0 && (
+              {!isLoading && !isError && accs.length === 0 && (
                 <TableRow>
                   <TableCell colSpan={3} className="py-16 text-center">
                     <Landmark className="size-10 text-muted-foreground/30 mx-auto mb-3" />

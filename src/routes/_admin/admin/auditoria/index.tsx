@@ -21,7 +21,7 @@ import {
 } from '@/components/ui/table'
 import { Pagination } from '@/components/ui/pagination'
 import { NativeSelect } from '@/components/ui/native-select'
-import { LoadErrorBanner } from '@/components/LoadErrorBanner'
+import { LoadErrorRetry } from '@/components/LoadErrorRetry'
 import { NoPermission } from '@/components/NoPermission'
 import { AjudaLink } from '@/components/ajuda/AjudaLink'
 import { useDebouncedValue } from '@/hooks/useDebouncedValue'
@@ -143,7 +143,7 @@ function RouteComponent() {
     action: search.action, entity: search.entity, actorId: search.actorId, ip: search.ip,
     from: search.from, to: search.to, q: search.q,
   }
-  const { data, isLoading, isError } = useAuditTrail({ page, limit: 30, ...filters }, { enabled })
+  const { data, isLoading, isError, isFetching, refetch } = useAuditTrail({ page, limit: 30, ...filters }, { enabled })
   const [exporting, setExporting] = useState(false)
   // Linhas abertas (IP, navegador, o que mudou).
   const [expanded, setExpanded] = useState<Set<string>>(() => new Set())
@@ -291,7 +291,14 @@ function RouteComponent() {
         </div>
       </div>
 
-      {isError && <LoadErrorBanner message="Erro ao carregar a auditoria." />}
+      {isError && !data && (
+        <LoadErrorRetry
+          className="rounded-lg border border-border bg-card"
+          message="Não foi possível carregar a auditoria."
+          onRetry={() => void refetch()}
+          retrying={isFetching}
+        />
+      )}
 
       <div className="rounded-lg border border-border bg-card overflow-hidden">
         <div className="overflow-x-auto">
@@ -313,7 +320,7 @@ function RouteComponent() {
                   <TableCell className="hidden lg:table-cell"><Skeleton className="h-4 w-40" /></TableCell>
                 </TableRow>
               ))}
-              {!isLoading && rows.length === 0 && (
+              {!isLoading && !isError && rows.length === 0 && (
                 <TableRow>
                   <TableCell colSpan={4} className="py-16 text-center">
                     <ScrollText className="size-10 text-muted-foreground/30 mx-auto mb-3" />

@@ -1,4 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router'
+import { LoadErrorRetry } from '@/components/LoadErrorRetry'
 import { useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { requirePermission } from '@/lib/auth-guard'
@@ -175,7 +176,7 @@ function RouteComponent() {
 
   const readParam = readFilter === 'unread' ? false : readFilter === 'read' ? true : null
 
-  const { data, isLoading, isError } = useContactMessages({ page, limit: 20, read: readParam, search })
+  const { data, isLoading, isError, isFetching, refetch } = useContactMessages({ page, limit: 20, read: readParam, search })
   // Contagem global de não-lidas (não só a página atual): consulta leve read:false.
   const { data: unreadData } = useContactMessages({ page: 1, limit: 1, read: false })
   const markRead = useMarkContactMessageRead()
@@ -211,7 +212,15 @@ function RouteComponent() {
     // Abrir marca como lida: o diálogo já mostra assim (e oferece "Marcar como não lida").
     setSelected(msg.read ? msg : { ...msg, read: true })
     if (!msg.read) {
-      markRead.mutate({ messageId: msg.id, read: true })
+      markRead.mutate({ messageId: msg.id, read: true }, {
+        // A marca na tela veio antes da resposta: se a gravação falhou, volta
+        // a mostrar como não lida e avisa (senão ela some da caixa sem ter
+        // sido marcada de verdade).
+        onError: e => {
+          setSelected(cur => (cur?.id === msg.id ? { ...cur, read: false } : cur))
+          toast.error(apiErrorMessage(e, 'Não foi possível marcar a mensagem como lida.'))
+        },
+      })
     }
   }
 
@@ -356,9 +365,12 @@ function RouteComponent() {
       )}
 
       {!isLoading && isError && (
-        <div className="rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
-          Erro ao carregar as mensagens.
-        </div>
+        <LoadErrorRetry
+          className="rounded-lg border bg-card"
+          message="Não foi possível carregar as mensagens."
+          onRetry={() => void refetch()}
+          retrying={isFetching}
+        />
       )}
 
       {!isLoading && !isError && messages.length === 0 && (

@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
 import { ArrowRight, HeartHandshake } from 'lucide-react'
 import { Skeleton } from '@/components/ui/skeleton'
+import { LoadErrorRetry } from '@/components/LoadErrorRetry'
 import { useConvenioMenu } from '@/hooks/useConvenios'
 import { useSeo } from '@/hooks/useSeo'
 
@@ -13,7 +14,7 @@ function ConveniosPage() {
     title: 'Convênios',
     description: 'Convênios do Sindicato Rural de Terra Roxa para associados e suas famílias: valores e documentos para adesão.',
   })
-  const { data, isLoading, isError } = useConvenioMenu()
+  const { data, isLoading, isError, isFetching, refetch } = useConvenioMenu()
 
   return (
     <div>
@@ -55,12 +56,18 @@ function ConveniosPage() {
             ))}
           </div>
 
-          {!isLoading && (isError || (data?.length ?? 0) === 0) && (
+          {isError && !data && (
+            <LoadErrorRetry
+              message="Não foi possível carregar os convênios agora."
+              onRetry={() => void refetch()}
+              retrying={isFetching}
+            />
+          )}
+
+          {!isLoading && !isError && (data?.length ?? 0) === 0 && (
             <div className="mx-auto flex max-w-md flex-col items-center gap-3 py-10 text-center">
               <HeartHandshake className="size-12 text-muted-foreground/40" />
-              <p className="text-muted-foreground">
-                {isError ? 'Não foi possível carregar os convênios agora.' : 'Nenhum convênio disponível no momento.'}
-              </p>
+              <p className="text-muted-foreground">Nenhum convênio disponível no momento.</p>
             </div>
           )}
         </div>

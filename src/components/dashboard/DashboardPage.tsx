@@ -22,6 +22,7 @@ import { useUnsavedGuard } from '@/hooks/use-unsaved-guard'
 import { KIND_DOT_CLASS, KIND_LABEL, KIND_LABEL_PLURAL, type ScheduleKind } from '@/lib/agenda'
 import { kindDays, type DashboardSearch, type DashboardTypeFilter } from '@/lib/dashboard-agenda'
 import { AgendaSection } from '@/components/agenda/AgendaSection'
+import { LoadErrorRetry } from '@/components/LoadErrorRetry'
 import { StatsRow } from '@/components/dashboard/StatsRow'
 import { QuickActions } from '@/components/dashboard/QuickActions'
 import { QuotesNoticeLine } from '@/components/dashboard/QuotesNoticeLine'
@@ -163,14 +164,14 @@ export function DashboardPage({ search, onSearch, onOpenCourse }: {
   onSearch: (patch: Partial<DashboardSearch>, replace?: boolean) => void
   onOpenCourse: (courseId: string) => void
 }) {
-  const { can } = usePermissions()
+  const { can, isError: permissoesFalharam, retry: tentarPermissoes, retrying: tentandoPermissoes } = usePermissions()
   const podeVerPessoas = can('READ_USER')
   const podeVerCursos = can('READ_COURSE')
   const podeVerFinanceiro = can('READ_FINANCE')
   const podeVerAuditoria = can('READ_AUDIT')
 
   const { data: me } = useMe()
-  const { data: stats, isLoading: statsLoading, isError: statsError } = useAdminStats()
+  const { data: stats, isLoading: statsLoading, isError: statsError, isFetching: statsFetching, refetch: refetchStats } = useAdminStats()
   const { data: salas } = useRooms()
 
   // Rascunho do modo de organizar. null = painel normal (é assim que a tela
@@ -385,9 +386,13 @@ export function DashboardPage({ search, onSearch, onOpenCourse }: {
           </CardHeader>
           <CardContent>
             {agenda.isError && (
-              <p className="mb-3 rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-xs text-destructive">
-                Erro ao carregar a agenda do mês.
-              </p>
+              <LoadErrorRetry
+                variant="inline"
+                className="mb-3"
+                message="Não foi possível carregar a agenda do mês."
+                onRetry={() => void agenda.refetch()}
+                retrying={agenda.isFetching}
+              />
             )}
             <div className="mb-2 grid grid-cols-7 gap-1">
               {['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'].map(d => (
@@ -468,7 +473,7 @@ export function DashboardPage({ search, onSearch, onOpenCourse }: {
   function bloco(id: DashboardBlockId) {
     switch (id) {
       case 'acoes': return <QuickActions onNovaReserva={novaReserva} />
-      case 'numeros': return <StatsRow stats={stats} isLoading={statsLoading} isError={statsError} />
+      case 'numeros': return <StatsRow stats={stats} isLoading={statsLoading} isError={statsError} onRetry={() => void refetchStats()} retrying={statsFetching} />
       case 'cotacoes': return <QuotesNoticeLine quotes={stats?.quotesToday} />
       case 'financeiro': return <FinanceMonthCard />
       case 'agenda': return calendario
@@ -526,6 +531,18 @@ export function DashboardPage({ search, onSearch, onOpenCourse }: {
           onCancelar={() => setRascunho(null)}
           onRestaurar={restaurarPadrao}
           onAltura={setAlturaBarra}
+        />
+      )}
+
+      {/* Sem as permissões, só sobram os blocos que todo mundo vê: avisa, senão
+          o painel parece ter perdido a agenda, o financeiro e os outros blocos. */}
+      {permissoesFalharam && (
+        <LoadErrorRetry
+          variant="inline"
+          className="rounded-lg border border-border bg-card px-4 py-3"
+          message="Não foi possível conferir suas permissões; alguns blocos do painel podem não aparecer."
+          onRetry={tentarPermissoes}
+          retrying={tentandoPermissoes}
         />
       )}
 

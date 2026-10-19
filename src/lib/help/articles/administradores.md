@@ -4,11 +4,11 @@ resumo: Convidar administradores, criar regras e decidir quem vê o quê.
 grupo: gestao
 ordem: 3
 permissao: READ_USER
-veja: como-convidar-administrador, seguranca, auditoria, minha-conta
+veja: como-criar-administrador, seguranca, auditoria, minha-conta
 busca: administrador admin permissao regra convite acesso total senha revogar username
 ---
 
-Os administradores ficam na aba **Admins** de **Gestão › Usuários**. Quem
+Os administradores ficam na aba **Administradores** de **Gestão › Usuários**. Quem
 controla isso controla o sistema inteiro — vale ler esta página com calma.
 
 ## Como funciona o acesso
@@ -27,15 +27,17 @@ alterar e excluir**.
 
 ## Convidando um administrador
 
-Use **Convidar administrador**. O sistema gera um **link de convite válido por
-7 dias**. Você manda o link para a pessoa e **ela mesma define usuário e senha**.
+Use **Novo admin**. O sistema gera um **link de convite válido por 7 dias**.
+Você manda o link para a pessoa e **ela mesma define usuário e senha**. O passo
+a passo completo está em
+[Como criar um usuário administrador](?topico=como-criar-administrador).
 
 Esse é o caminho certo: você nunca precisa saber nem escolher a senha de outra
 pessoa. Um convite pode ser **revogado** enquanto não for usado.
 
 ## Regras de permissão
 
-Em **Regras de permissão** você cria e edita os perfis. Existe **Conceder acesso
+Em **Gerenciar regras** você cria e edita os perfis. Existe **Conceder acesso
 total**, que marca tudo de uma vez.
 
 Alguns cuidados:

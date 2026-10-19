@@ -1,5 +1,5 @@
 import { createFileRoute, redirect, Link } from '@tanstack/react-router'
-import { apiErrorMessage } from '@/lib/api-error-message'
+import { loginErrorMessage } from '@/lib/login-error'
 import { useState } from 'react'
 import { useAuth } from '@/context/AuthContext'
 import { authenticateUser } from '@/hooks/use-users'
@@ -40,7 +40,7 @@ function LoginPage() {
       login(token)
       window.location.replace(afterLoginPath(redirectTo))
     } catch (err) {
-      setError(apiErrorMessage(err, t('login.errorDefault')))
+      setError(loginErrorMessage(err))
     } finally {
       setLoading(false)
     }

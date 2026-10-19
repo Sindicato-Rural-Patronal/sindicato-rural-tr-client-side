@@ -4,29 +4,55 @@
 
 Site institucional do **Sindicato Rural de Terra Roxa** (Paraná, Brasil). Plataforma pública com cursos agrícolas, notícias e informações institucionais, mais área admin interna completa.
 
+Este arquivo tem as regras e o mapa para quem vai implementar. **O histórico de cada tela** (o que foi feito, quando, por quê e o que já foi tentado e não funcionou) está em `docs/HISTORICO.md`: leia antes de refazer algo que parece estranho.
+
 ## Stack
 
 | Ferramenta | Versão | Uso |
 |---|---|---|
-| React | 19 | UI |
-| TypeScript | 5 | Tipagem |
-| Vite | 6 | Build/dev server |
-| TanStack Router | 1.x | Roteamento file-based |
+| React | 19.2 | UI |
+| TypeScript | 6.0 | Tipagem |
+| Vite | 8 | Build/dev server |
+| Vitest + Testing Library | 4.1 | Testes (jsdom) |
+| TanStack Router | 1.x | Roteamento file-based (`autoCodeSplitting`) |
 | TanStack Query | 5.x | Data fetching e cache |
 | Tailwind CSS | 4.x | Estilos |
-| shadcn/ui (Radix Nova) | — | Componentes base |
-| React Hook Form | 7.x | Formulários |
-| Zod | 4.x | Validação de schemas |
+| shadcn/ui (Radix Nova) | — | Componentes base (`src/components/ui/`) |
+| React Hook Form + Zod | 7.x / 4.x | Só no formulário de curso (ver "Padrões do código") |
 | Lucide React | — | Ícones |
 | Embla Carousel | 8.x | Carrossel |
 | @uiw/react-md-editor | 4.x | Editor markdown (descrições de cursos) |
-| React Markdown | 10.x | Renderização markdown |
-| react-i18next | 17.x | Textos centralizados em pt-BR (`t()`); sem troca de idioma |
+| React Markdown + remark-gfm | 10.x | Renderização markdown (notícias, ajuda) |
+| react-i18next | 17.x | Parte dos textos em pt-BR (`t()`); sem troca de idioma |
+| @react-pdf/renderer | 4.x | Todos os PDFs (carregado só no clique) |
+| @dnd-kit | 6.x / 10.x | Arrastar blocos do Painel Geral |
+| sonner | 2.x | Toasts |
+| react-day-picker | 10.x | Calendário do DatePicker |
+| react-easy-crop | 6.x | Recorte de imagem |
+
+## Comandos
+
+```bash
+npm run dev       # dev server (Vite) → http://localhost:5173
+npm run lint      # ESLint
+npm run test:run  # Vitest, uma rodada
+npm run build     # tsc -b + vite build → dist/ (o tsc -b compila os TESTES junto)
+```
+
+Verificação antes de dar uma tarefa por pronta: `npm run lint`, `npx tsc -p tsconfig.app.json --noEmit`, `npx tsc -p tsconfig.node.json --noEmit` e `npm run test:run`. O `tsc -b` regrava o `tsconfig.tsbuildinfo`, que é versionado: se ele mudar, não o adicione. `npm run coverage` não funciona (falta o `@vitest/coverage-v8`).
+
+Produção é pelo Coolify, que builda o `Dockerfile`. Caminho manual (VPS):
+
+```bash
+cp .env.production.example .env.production
+# editar .env.production com a BACKEND_URL real (obrigatória)
+docker compose -f docker-compose.prod.yml --env-file .env.production up -d --build
+```
 
 ## Estrutura de Rotas
 
 ```
-/                           → _public/index.tsx (HomePage)
+/                           → _public/index.tsx (home: banner, cotações, cursos, eventos, notícias, parceiros)
 /cursos                     → _public/cursos/index.tsx
 /cursos/$id                 → _public/cursos/$id.tsx (detalhe + inscrição)
 /eventos                    → _public/eventos.tsx (eventos publicados, agrupados por mês)
@@ -43,559 +69,462 @@ Site institucional do **Sindicato Rural de Terra Roxa** (Paraná, Brasil). Plata
                               mandar em grupo basta copiar o endereço. O servidor injeta a prévia do
                               link com os preços, ver server/cotacao-resumo.mjs)
 /login                      → login.tsx
-/admin                      → _admin/admin/index.tsx (redirect → /admin/cursos)
-/admin/cursos               → _admin/admin/cursos/index.tsx (CRUD completo em diálogos: criar, editar, duplicar, inscrições; ?curso=<id>&aba=inscricoes abre a janela do curso; ?ano=<ano> é o filtro de ano, SEPARADO da busca por texto — dois cursos de mesmo nome em anos diferentes não se distinguem por texto; os anos vêm de GET /admin/courses/years)
-/admin/noticias             → _admin/admin/noticias/index.tsx
-/admin/usuarios             → _admin/admin/usuarios/index.tsx (abas ?tab=associados|empresas|admins; "Possíveis duplicados")
-/admin/usuarios/$id         → _admin/admin/usuarios/$id.tsx (detalhe completo; aba "Empresas" = vínculos; ?completar=1 abre "Completar cadastro")
-/admin/empresas/novo        → _admin/admin/empresas/novo.tsx (criar empresa)
-/admin/empresas/$id         → _admin/admin/empresas/$id.tsx (abas Dados / Pessoas / Propriedades)
-/admin/banners              → _admin/admin/banners.tsx (período em dias de Brasília; selo Agendado/No ar/Expirado/Inativo)
-/admin/mensagens            → _admin/admin/mensagens.tsx (responder por e-mail/WhatsApp, marcar como não lida)
-/admin/salas                → redireciona p/ /admin/configuracoes?tab=salas
-/admin/unimed               → _admin/admin/unimed.tsx (beneficiários do plano: tipo de movimento e grau de
-                              dependência em select de lista fixa, CNS mascarado, menu "Ações" com rótulos
-                              escritos e Ficha/Termo/Contrato em PDF)
-/admin/administradores      → _admin/admin/administradores/index.tsx
-/admin/cotacoes             → _admin/admin/cotacoes/index.tsx (lançamento do dia: produtos fixos, preço + manhã/tarde; unidade por produto; fonte)
-/admin/galerias             → _admin/admin/galerias/index.tsx (redireciona p/ /admin/configuracoes?tab=galerias)
-/admin/configuracoes        → _admin/admin/configuracoes.tsx (Configurações: ?tab=dados|redes|galerias|parceiros|contatos|salas)
-/admin/convenios            → _admin/admin/convenios/index.tsx (lista de convênios)
-/admin/convenios/novo       → _admin/admin/convenios/novo.tsx (editor, criação)
-/admin/convenios/$id        → _admin/admin/convenios/$id.tsx (editor com pré-visualização)
-/admin/auditoria            → _admin/admin/auditoria/index.tsx (trilha de auditoria; linha abre IP, local, navegador e "O que mudou"; filtros na URL, inclusive ?ip=; "Configurações da trilha" (tempo de guarda) só com UPDATE_AUDIT)
-/admin/financeiro           → _admin/admin/financeiro/index.tsx (Financeiro: ?tab=dashboard|lancamentos|recorrentes|categorias|caixas|formas|fechamento)
+/convite/$token             → convite/$token.tsx (público: ativar acesso de admin por convite; depois vai
+                              para /login?redirect=/admin/ajuda)
+/admin                      → _admin/admin/index.tsx (redireciona p/ /admin/dashboard)
 /admin/dashboard            → _admin/admin/dashboard.tsx (só liga a URL à tela; o painel é DashboardPage):
                               ações rápidas, números que pedem ação, aviso das cotações, Financeiro do mês,
                               calendário + agenda das salas, cursos públicos, cadastros incompletos, últimas ações;
                               ?dia=AAAA-MM-DD&sala=<id>&tipo=COURSE|EVENT|MEETING&nova=reserva; "Personalizar" blocos
-/admin/ajuda                → _admin/admin/ajuda/index.tsx (Central de Ajuda: documentação interna para
-                              administradores leigos; ?topico=<id>&q=<busca>)
-/convite/:token             → convite/$token.tsx (público: ativar acesso de admin por convite)
+/admin/cursos               → _admin/admin/cursos/index.tsx (CRUD em diálogos: criar, editar, duplicar, inscrições;
+                              ?curso=<id>&aba=inscricoes abre a janela do curso; ?ano=<ano> é o filtro de ano,
+                              SEPARADO da busca por texto; os anos vêm de GET /admin/courses/years)
+/admin/noticias             → _admin/admin/noticias/index.tsx
+/admin/usuarios             → _admin/admin/usuarios/index.tsx (abas ?tab=pessoas (padrão)|associados|empresas|admins;
+                              ?page, ?q, ?incomplete=true; "Possíveis duplicados"; regras e convites na aba admins)
+/admin/usuarios/novo        → _admin/admin/usuarios/novo.tsx (cadastro novo de pessoa; exige CREATE_USER)
+/admin/usuarios/$id         → _admin/admin/usuarios/$id.tsx (ficha completa; aba "Empresas" = vínculos;
+                              ?completar=1 abre "Completar cadastro")
+/admin/empresas/novo        → _admin/admin/empresas/novo.tsx (criar empresa; exige CREATE_USER)
+/admin/empresas/$id         → _admin/admin/empresas/$id.tsx (abas Dados / Pessoas / Propriedades)
+/admin/banners              → _admin/admin/banners.tsx (período em dias de Brasília; selo Agendado/No ar/Expirado/Inativo)
+/admin/mensagens            → _admin/admin/mensagens.tsx (responder por e-mail/WhatsApp, marcar como não lida)
+/admin/unimed               → _admin/admin/unimed.tsx (beneficiários do plano; o formulário é
+                              components/unimed/UnimedFormDialog.tsx; Ficha/Termo/Contrato em PDF)
+/admin/cotacoes             → _admin/admin/cotacoes/index.tsx (lançamento do dia: produtos fixos, preço + manhã/tarde;
+                              unidade por produto; fonte)
+/admin/configuracoes        → _admin/admin/configuracoes.tsx (?tab=dados|redes|galerias|parceiros|contatos|salas)
+/admin/convenios            → _admin/admin/convenios/index.tsx (lista de convênios)
+/admin/convenios/novo       → _admin/admin/convenios/novo.tsx (editor, criação)
+/admin/convenios/$id        → _admin/admin/convenios/$id.tsx (editor com pré-visualização)
+/admin/auditoria            → _admin/admin/auditoria/index.tsx (trilha; linha abre IP, local, navegador e "O que mudou";
+                              filtros na URL, inclusive ?ip=; "Configurações da trilha" só com UPDATE_AUDIT)
+/admin/financeiro           → _admin/admin/financeiro/index.tsx (?tab=dashboard|lancamentos|recorrentes|categorias|
+                              caixas|formas|fechamento)
+/admin/minha-conta          → _admin/admin/minha-conta.tsx (abas Perfil — foto, nome, usuário, senha — e Preferências — tema;
+                              link no menu do usuário e na paleta Ctrl+K)
+/admin/ajuda                → _admin/admin/ajuda/index.tsx (Central de Ajuda; ?topico=<id>&q=<busca>) — DO CHAT DE AJUDA
+/admin/administradores      → redireciona p/ /admin/usuarios
+/admin/salas                → redireciona p/ /admin/configuracoes?tab=salas
+/admin/galerias             → redireciona p/ /admin/configuracoes?tab=galerias
 ```
 
 Layouts pai:
-- `_public.tsx` — Header + Footer público
-- `_admin.tsx` — Sidebar admin (AdminSideBar), token-gated (valida JWT + expiração); no celular, topo com SidebarTrigger + sino de notificações
+- `_public.tsx` — Header + Footer público + botão flutuante do WhatsApp
+- `_admin.tsx` — Sidebar admin (AdminSideBar), token-gated (valida JWT + expiração); no celular, topo com SidebarTrigger + sino de notificações; monta `CommandPalette` e `LeaveConfirmHost`
 
 `routeTree.gen.ts` é **gerado automaticamente** pelo TanStack Router — não editar manualmente.
 
 ## Estrutura de Arquivos
 
+`src/lib/help/**` e `src/routes/_admin/admin/ajuda/` são do **chat de Ajuda**: não editar daqui.
+
 ```
+server/                              # Servidor do container (Node + Fastify, porta 80) — ver "Backend / Proxy"
+├── index.mjs                        # SPA + proxy /api/* + meta OpenGraph em /cursos/:id, /noticias/:id, /cotacao
+├── backend-url.mjs                  # backendUrlFrom(env): BACKEND_URL obrigatória em produção, sem padrão
+├── raw-body.mjs                     # Corpo cru do proxy, BODY_LIMIT de 16 MB (acima dos 15 MB do backend)
+├── markdown-text.mjs                # Descrição sem markdown (mesmas regras de src/lib/markdown-text.ts)
+└── cotacao-resumo.mjs               # Prévia do link de /cotacao (mesma regra de src/lib/cotacao-resumo.ts)
+docs/HISTORICO.md                    # Histórico das telas (o "porquê" das decisões)
 src/
 ├── @types/
-│   └── course.ts                    # Tipos Course, ApiCourse, CourseInstructor + mapCourse()
+│   ├── course.ts                    # Course, CourseInstructor (shape da API, campos em inglês)
+│   └── news.ts                      # News, blocos de conteúdo (parágrafo, imagem, imagem+texto), NewsStatus
 ├── components/
-│   ├── ui/                          # shadcn/ui + pagination.tsx (PaginatedResponse)
-│   ├── cadastro/                    # person-form-fields.tsx: CADA CAMPO do cadastro de pessoa,
-│   │                                #   desenhado UMA vez (PersonField + FieldRow + SelectField).
-│   │                                #   As duas telas (usuarios/novo e usuarios/$id) dizem só QUAIS
-│   │                                #   campos e em que cartão; rótulo/máscara/opções vêm de lá.
-│   │                                # Cadastros repetidos: MergePeopleDialog, DuplicatePeopleList,
-│   │                                #   merge-people.ts (hooks/tipos/resumo do toast)
-│   │                                # Empresas: CompaniesList, CompanyForm, CompanyMembersPanel,
-│   │                                #   PersonCompanies (aba Empresas da pessoa: vincular a empresa/desvincular);
-│   │                                #   PropertiesManager (propriedades/endereços, compartilhado por pessoa e empresa;
-│   │                                #     adiciona, edita pelo lápis — só com `onUpdate` — e remove)
-│   ├── PublicHeader.tsx             # Nav pública (sticky; convênios como itens próprios; menu mobile abaixo de lg) — logo-full.png
-│   ├── public-footer.tsx            # Footer: 4 colunas (marca+redes, links, contato via useOrgInfo, chamada); "Acesso ao painel" é link discreto na linha de baixo
-│   ├── WhatsAppFloatingButton.tsx   # Botão flutuante do WhatsApp (layout público; só com WhatsApp nas Configurações; some abaixo de lg em /cursos/$id)
-│   ├── NotFoundPage.tsx             # 404 em português (defaultNotFoundComponent, lazy): com cabeçalho/rodapé quando fora do layout; em /admin leva ao painel
+│   ├── ui/                          # shadcn/ui; date-picker.tsx (digitável dd/mm/aaaa), native-select.tsx,
+│   │                                #   pagination.tsx (componente Pagination), dialog.tsx (data-escape-owner)
+│   ├── LoadErrorRetry.tsx           # PADRÃO de falha ao carregar (site e painel): mensagem + "Tentar de novo";
+│   │                                #   variant "inline" para faixas, selects e listas suspensas
+│   ├── EmptyState.tsx               # Vazio de verdade (prop `topico` liga à ajuda)
+│   ├── ErrorAlert.tsx               # Erro de formulário/ação (não de carregamento)
+│   ├── NoPermission.tsx             # "Sem permissão" + "Por que não vejo esta tela?"; se as permissões não
+│   │                                #   carregaram, mostra LoadErrorRetry em vez disso
 │   ├── RouteErrorPage.tsx           # defaultErrorComponent: "Tentar de novo" (router.invalidate) + "Ir para o início"
+│   ├── NotFoundPage.tsx             # 404 em português (lazy): com cabeçalho/rodapé quando fora do layout; em /admin leva ao painel
 │   ├── PageLoader.tsx               # defaultPendingComponent (rota demorando a carregar)
-│   ├── LoadErrorRetry.tsx           # Falha de carregamento no site público: mensagem + "Tentar de novo" (nunca "não há nada")
-│   ├── adminSideBar.tsx             # Sidebar admin — usa logo-icon.png; link perfil via userDataId; sino ao lado do logo
-│   ├── notifications/NotificationBell.tsx # Sino (número = avisos não lidos + pendências warning): Popover no computador,
-│   │                                #   Sheet no celular; seções Pendências e Avisos; abre o link pelo roteador
-│   ├── nav-user.tsx                 # Dropdown do usuário (logout)
-│   ├── home-hero-section.tsx        # Banner hero
-│   ├── GalleryLightbox.tsx          # Fotos de uma galeria em tela cheia (página Sobre)
-│   ├── home-events-section.tsx      # "Próximos eventos" (só quando há evento publicado)
+│   ├── PublicHeader.tsx             # Nav pública (sticky; logo-icon.png; convênios como itens próprios; menu mobile abaixo de lg;
+│   │                                #   ThemeToggle)
+│   ├── public-footer.tsx            # Footer: 4 colunas (logo-full.png, links, contato via useOrgInfo, chamada);
+│   │                                #   "Acesso ao painel" é link discreto na linha de baixo
+│   ├── WhatsAppFloatingButton.tsx   # Botão flutuante do WhatsApp (só com WhatsApp nas Configurações; some abaixo de lg em /cursos/$id)
+│   ├── home-hero-section.tsx        # Banner hero (some sem banner; falha = linha com "Tentar de novo")
 │   ├── home-cotacoes-section.tsx    # Faixa de cotações (preço, unidade, dia/período, fonte, link histórico)
-│   ├── cotacoes/QuoteHistoryChart.tsx # Gráfico SVG de um produto (linha, crosshair/tooltip, setas do teclado)
-│   ├── courses/                     # Admin de cursos: CourseFormDialog (criar/editar/duplicar — fora do arquivo
-│   │                                #   da rota para o editor de markdown não ir ao bundle inicial), PhotoGrid
-│   ├── PersonPicker.tsx             # Busca de pessoa do cadastro (lista suspensa; "Cadastrar nova pessoa" em outra aba)
-│   ├── export/ExportMenu.tsx        # Exportação CSV: ExportMenu (selecionados / todos com filtros / extras),
-│   │                                #   ExportOneButton (um registro), SelectCheckbox, SelectionInfo
-│   ├── agenda/                      # Agenda das salas (dentro do Painel Geral): AgendaSection (a seção inteira —
-│   │                                #   Dia/Semana, busca, exportar, imprimir, nova reserva, faixa de ocupação),
-│   │                                #   AgendaItem (cartão do dia + linha da semana), WeekAgenda (segunda a domingo),
-│   │                                #   RoomOccupancy (ocupação por sala: lista escrita até 640px, faixa 07:00–22:00
-│   │                                #     acima disso — `@container`, não a largura da tela), BookingDialog (nova/editar reserva),
-│   │                                #   DeleteBookingDialog (só esta / esta e as próximas), KindBadge (Curso/Evento/Reunião),
-│   │                                #   OnSiteBadge (evento publicado no site)
-│   ├── dashboard/                   # Painel Geral: DashboardPage (a tela inteira, fora do arquivo de rota),
-│   │                                #   StatsRow (cartões que pedem ação), QuickActions, QuotesNoticeLine,
-│   │                                #   FinanceMonthCard, PublicCoursesCard, IncompleteUsersCard, RecentAuditCard,
-│   │                                #   EditModeBar (barra de organizar: Restaurar padrão/Cancelar/Salvar) +
-│   │                                #   EditableBlock (o bloco de verdade congelado, arrastável pelo cartão
-│   │                                #   inteiro, com Remover em cima e a alça de redimensionar no canto
-│   │                                #   de baixo à direita) +
-│   │                                #   dashboard-prefs.ts (ordem/largura/escondidos,
-│   │                                #   dashboardLayout/blockSpan), quotes-notice.ts, course-capacity.ts (vagas),
-│   │                                #   month-range.ts (mês atual em Brasília)
-│   ├── galerias/                    # Admin: GalleryAlbumCard (fotos, legenda, ordem), GalleryAlbumDialog
-│   ├── unimed/PersonUnimedTab.tsx   # Aba "Unimed" da ficha da pessoa: cadastros dela e em que ela é titular,
-│   │                                #   com plano/matrícula/grau/adesão, botões Ficha/Termo/Contrato e link p/ /admin/unimed
-│   ├── site-config/                 # Abas de Configurações: OrgInfoPanel (dados do sindicato +
-│   │                                #   texto do Sobre), SocialLinksPanel, GalleriesPanel, PartnersPanel
-│   │                                #   (+ PartnerEditDialog: logo/link), PublicContactsPanel (busca pessoa, cargo, ordem),
-│   │                                #   RoomsPanel (salas: nome de lista fixa, descrição e capacidade)
 │   ├── home-courses-section.tsx     # Carrossel de cursos (CoursesSection)
-│   ├── home-news-section.tsx        # Seção de notícias na home
+│   ├── home-events-section.tsx      # "Próximos eventos" (só quando há evento publicado)
+│   ├── home-news-section.tsx        # Notícias na home
 │   ├── course-card.tsx              # CourseCard + CourseCardSimple (carousel-aware)
-│   ├── StatusBadge.tsx              # Badge do status do curso (PUBLIC | PRIVATE | UNPUBLISHED | IN_PROGRESS | COMPLETED)
-│   ├── ImageCropDialog.tsx          # Dialog de crop de imagem (avatar/upload)
-│   ├── PasswordStrengthHint.tsx     # Força da senha: barra + rótulo + até 2 dicas (aria-live); só orienta, nunca bloqueia
-│   ├── auditoria/AuditRetentionPanel.tsx # "Configurações da trilha": tempo de guarda (select + confirmação ao diminuir)
-│   ├── PermissionButton.tsx         # Botão condicional baseado em permissão
-│   ├── confirm-close-dialog.tsx     # Dialog de confirmação de descarte
-│   ├── ErrorAlert.tsx               # Alerta de erro
-│   └── EmptyState.tsx               # Placeholder estado vazio
-├── context/
-│   └── AuthContext.tsx              # Token em localStorage; expõe token, baseUrl (= API_BASE), login(), logout()
-├── hooks/
-│   ├── useCourse.ts                 # useAdminCourses, useCourses, useCourse, useCreateCourse,
-│   │                                #   useUpdateCourse, useDeleteCourse, useUploadBanner,
-│   │                                #   useUploadGalleryPhoto, useDeleteGalleryPhoto,
-│   │                                #   useAllCourseRegistrations, useAdminRegisterPerson, useConfirmAllRegistrations
-│   ├── useAdmin.ts                  # Ver seção "Hooks — useAdmin.ts" abaixo
-│   ├── useCompanies.ts              # Empresas: useAdminCompanies, useAdminCompany, CRUD, vínculos
-│   │                                #   (members; pela pessoa: useLinkPersonToCompany/useUnlinkPersonFromCompany),
-│   │                                #   propriedades (add/update/remove), logo de parceira, títulos usados + COMMON_MEMBER_TITLES
-│   ├── useGalleries.ts              # Galerias: pública, admin, CRUD, upload/legenda/ordem das fotos
-│   ├── useMarketQuotes.ts           # Cotações: pública, admin, useSaveDailyQuotes (PUT daily), useQuoteHistory
-│   ├── useNotifications.ts          # Sino: useNotifications (a cada 60s e ao voltar à aba), useMarkNotificationsRead
-│   │                                #   (marca na tela antes da resposta), markReadLocally
-│   ├── useSiteSettings.ts           # Configurações do site (pública/admin/salvar), useUpdateQuotesSource,
-│   │                                #   useOrgInfo (dados do sindicato com fallback de lib/org-contact.ts)
-│   ├── usePublicContactsAdmin.ts    # Contatos públicos no admin: listar, adicionar, cargo, tirar, reordenar
-│   ├── useNews.ts                   # Hooks de notícias (admin + público; filtro Todas/Publicadas/
-│   │                                #   Agendadas/Não publicadas + busca por título)
-│   ├── usePublicEvents.ts           # Eventos publicados no site (GET /events)
-│   ├── useBanner.ts                 # Hooks de banners
-│   ├── useRooms.ts                  # useRooms, useCreateRoom
-│   ├── useRoomBookings.ts           # Reservas de sala: useRoomBookings, useRoomSchedule, useCreate/Update/DeleteRoomBooking
-│   ├── useRowSelection.ts           # Seleção de linhas por id (continua entre páginas) para exportar
-│   ├── useAuditTrail.ts             # Auditoria: useAuditTrail (filtros action/entity/actorId/ip/from/to/q) + AuditTrailItem
-│   │                                #   + useAuditSettings / useUpdateAuditRetention (tempo de guarda)
-│   ├── usePermissions.ts            # Hook de permissões do usuário logado
-│   ├── use-users.ts                 # authenticateUser(username, password) → POST /api/auth/login
-│   └── use-mobile.ts               # useIsMobile (breakpoint hook)
+│   ├── StatusBadge.tsx              # Selo do status do curso
+│   ├── GalleryLightbox.tsx          # Fotos de uma galeria em tela cheia (página Sobre)
+│   ├── adminSideBar.tsx             # Sidebar admin (favicon.ico como marca); sino ao lado do logo; itens por permissão
+│   ├── nav-user.tsx                 # Menu do usuário: Minha conta, sair (limpa o cache do React Query)
+│   ├── CommandPalette.tsx           # Ctrl+K: busca de telas (NAV_ITEMS de lib/command-palette.ts, filtrados por permissão)
+│   ├── notifications/NotificationBell.tsx # Sino (avisos não lidos + pendências warning): Popover no computador,
+│   │                                #   Sheet no celular; abre o link pelo roteador
+│   ├── ThemeToggle.tsx              # Claro/escuro no cabeçalho público
+│   ├── ThemeSetting.tsx             # Claro/escuro/sistema em Minha conta (chave `theme` no localStorage; main.tsx aplica)
+│   ├── PersonPicker.tsx             # Busca de pessoa do cadastro (lista suspensa; "Cadastrar nova pessoa" em outra aba, só com CREATE_USER)
+│   ├── PasswordInput.tsx            # Campo de senha com mostrar/ocultar (repassa `ref`)
+│   ├── PasswordStrengthHint.tsx     # Força da senha: barra + rótulo + até 2 dicas; só orienta, nunca bloqueia
+│   ├── InitialsAvatar.tsx           # Foto ou iniciais
+│   ├── ImageCropDialog.tsx          # Recorte de imagem (banners, notícias)
+│   ├── DeleteConfirmDialog.tsx      # Confirmação de exclusão
+│   ├── confirm-close-dialog.tsx     # "Descartar alterações?" + LeaveConfirmHost (useUnsavedGuard)
+│   ├── PermissionButton.tsx         # Botão condicional por permissão
+│   ├── AgeHint.tsx                  # Idade calculada (em vermelho, com aviso, se menor de 18)
+│   ├── CadproFields.tsx             # Lista de CAD/PRO do associado (até 5)
+│   ├── ajuda/                       # AjudaLink ("?" ao lado do título de cada tela) e HelpPage — DO CHAT DE AJUDA
+│   ├── agenda/                      # Agenda das salas (dentro do Painel Geral): AgendaSection (Dia/Semana, busca, exportar,
+│   │                                #   imprimir, nova reserva, ocupação), AgendaItem, WeekAgenda, RoomOccupancy (lista escrita
+│   │                                #   até 640px, faixa 07:00–22:00 acima — `@container`, não a largura da tela), BookingDialog,
+│   │                                #   DeleteBookingDialog (só esta / esta e as próximas), KindBadge, OnSiteBadge
+│   ├── auditoria/                   # AuditRowDetails (IP, local, navegador, "O que mudou"), AuditRetentionPanel (tempo de
+│   │                                #   guarda: o select só aparece com o ajuste carregado)
+│   ├── cadastro/                    # person-form-fields.tsx: CADA CAMPO do cadastro de pessoa, desenhado UMA vez
+│   │                                #   (PersonField + FieldRow + SelectField); CameraDialog (foto pela câmera no cadastro);
+│   │                                #   cadastros repetidos: MergePeopleDialog, DuplicatePeopleList, merge-people.ts;
+│   │                                #   empresas: CompaniesList, CompanyForm, CompanyMembersPanel, PersonCompanies;
+│   │                                #   PropertiesManager (propriedades/endereços de pessoa e empresa; lápis só com `onUpdate`;
+│   │                                #   `loadError` mostra a falha em vez de "Nenhuma propriedade")
+│   ├── conta/PerfilTab.tsx          # Aba Perfil de Minha conta: foto, nome, usuário; trocar a senha pede a senha atual
+│   ├── convenio/                    # ConvenioEditor (admin) e ConvenioPageView (página pública e pré-visualização)
+│   ├── cotacoes/                    # QuoteHistoryChart (gráfico SVG), QuoteDayCard e CotacaoSimples (tela /cotacao)
+│   ├── courses/                     # CourseFormDialog (criar/editar/duplicar — fora do arquivo da rota para o editor de
+│   │                                #   markdown não ir ao bundle inicial), PhotoGrid
+│   ├── dashboard/                   # Painel Geral: DashboardPage (a tela inteira), StatsRow, QuickActions, QuotesNoticeLine,
+│   │                                #   FinanceMonthCard, PublicCoursesCard, IncompleteUsersCard, RecentAuditCard,
+│   │                                #   EditModeBar + EditableBlock (modo de organizar), dashboard-prefs.ts (ordem/largura/
+│   │                                #   escondidos), dashboard-drag.ts (prévia do arrasto, pura e testada), quotes-notice.ts,
+│   │                                #   course-capacity.ts (vagas), month-range.ts (mês atual em Brasília)
+│   ├── export/                      # ExportMenu (selecionados / todos com filtros / extras; CSV ou PDF), ExportOneButton,
+│   │                                #   SelectCheckbox, SelectionInfo; BulkDeleteButton (exclusão em massa)
+│   ├── financeiro/                  # Abas que saíram do arquivo da rota: ClosingTab (fechamento), RecurringTab,
+│   │                                #   PaymentMethodsTab, PaymentMethodSelect (select com "+ Nova forma")
+│   ├── galerias/                    # GalleryAlbumCard (fotos, legenda, ordem), GalleryAlbumDialog
+│   ├── site-config/                 # Abas de Configurações: OrgInfoPanel (dados do sindicato + texto do Sobre),
+│   │                                #   SocialLinksPanel, GalleriesPanel, PartnersPanel (+ PartnerEditDialog),
+│   │                                #   PublicContactsPanel, RoomsPanel
+│   └── unimed/                      # PersonUnimedTab (aba Unimed da ficha da pessoa); UnimedFormDialog (cadastrar/editar
+│                                    #   beneficiário — edição só com o cadastro carregado, formulário zerado ao fechar)
+├── context/AuthContext.tsx          # Token em localStorage; token, baseUrl (= API_BASE), login(), logout(); useSessionRenewal
+├── hooks/                           # Ver "Hooks"
+├── i18n/                            # index.ts (lng fixo pt-BR) e locales/pt-BR.ts
 ├── lib/
-│   ├── api.ts                       # ApiError class (com status: number); apiFetch() e apiUpload()
-│   │                                #   injetam Bearer token; 401 → limpa token + redireciona /login
-│   ├── query-client.ts              # QueryClient: staleTime 60s, gcTime 5min, retry shouldRetryQuery, refetchOnWindowFocus false
-│   ├── query-retry.ts               # shouldRetryQuery (até 2x em falha de rede/5xx, nunca 4xx) + errorStatus (ApiError ou "HTTP nnn")
-│   ├── site-whatsapp.ts             # siteWhatsappHref (link pronto ou número solto → wa.me/55…) + isCourseDetailPath
-│   ├── auth-guard.ts                # Guard de rota admin
-│   ├── schemas.ts                   # Schemas Zod: pessoaSchema, roomSchema, courseBaseSchema
-│   ├── export.ts                    # downloadExport(dataset, params) → POST /admin/export/:dataset (filtros/ids no corpo; CSV)
-│   ├── person-fields.ts             # Os campos de pessoa como DADO: PERSON_LABELS (rótulo de cada um),
-│   │                                #   PERSON_FIELD_NAMES, PersonFieldsCtx e READ_MODE_FIELD
-│   ├── cin.ts                       # CPF_LABEL ("CPF / CIN") e CIN_HINT: a identidade nova (CIN) tem o CPF como número
-│   ├── member-types.ts              # MEMBER_TYPES (lista fixa {value,label}, também opções do select) + memberTypeLabel
-│   ├── membership.ts                # isActiveMember (selo "Associado" nas inscrições)
-│   ├── person-validation.ts         # validatePersonFields (nome, e-mail opcional, telefones, CPF, RG, CNH — mesmas regras do backend),
-│   │                                #   firstInvalidField, focusFieldById (cadastro novo e edição de pessoa)
+│   ├── api.ts                       # API_BASE, ApiError (status), apiFetch / apiUpload (Bearer; 401 → login)
+│   ├── public-fetch.ts              # publicGet<T>(path): GET de rota pública SEM token; erro HTTP = Error("HTTP nnn")
+│   ├── api-error-message.ts         # apiErrorMessage: mensagem do backend → português (inclui 413 e 429 pelo status)
+│   ├── login-error.ts               # loginErrorMessage: senha errada / 429 / sistema fora do ar / sem internet
+│   ├── auth-token.ts                # JWT no navegador: validade, renovação, safeAdminRedirect, loginHref
+│   ├── auth-guard.ts                # requirePermission (guarda de rota; lê o cache de meQuery)
+│   ├── query-client.ts              # QueryClient: staleTime 60s, gcTime 5min, retry shouldRetryQuery, sem refetch no foco
+│   ├── query-retry.ts               # shouldRetryQuery (até 2x em rede/5xx, nunca 4xx) + errorStatus
+│   ├── command-palette.ts           # NAV_ITEMS e openCommandPalette()
+│   ├── schemas.ts                   # courseBaseSchema (usado); pessoaSchema e roomSchema (sem uso)
+│   ├── export.ts                    # downloadExport(dataset, params, 'csv'|'pdf') → POST /admin/export/:dataset
+│   ├── relatorio-pdf.tsx            # PDF da exportação: a MESMA planilha do CSV, montada para o papel
+│   ├── bulk-delete.ts               # "Excluir selecionados": apaga em lotes e conta o que deu certo
+│   ├── csv-parse.ts                 # Lê o CSV do backend de volta (o PDF da exportação sai dele)
+│   ├── person-fields.ts             # Campos de pessoa como DADO: PERSON_LABELS, PERSON_FIELD_NAMES, READ_MODE_FIELD
+│   ├── person-validation.ts         # validatePersonFields (mesmas regras do backend), firstInvalidField, focusFieldById
+│   ├── user-form-options.ts         # Opções dos selects do cadastro de pessoa
+│   ├── cin.ts                       # CPF_LABEL ("CPF / CIN") e CIN_HINT
+│   ├── member-types.ts              # MEMBER_TYPES e MEMBER_STATUS (listas fixas, iguais às do backend) + memberTypeLabel
+│   ├── membership.ts                # isActiveMember (selo "Associado")
+│   ├── room-names.ts                # ROOM_NAMES (lista fixa, igual à do backend)
+│   ├── unimed-options.ts            # UNIMED_MOVEMENT_TYPES, UNIMED_DEPENDENCY_DEGREES (listas fixas) + unimedOptionsWith
+│   ├── unimed-docs.ts               # Baixa Ficha/Termo/Contrato pelo id; unimed-{ficha,termo,contrato}-pdf.tsx,
+│   │                                #   unimed-pdf-assets.ts, unimed-pdf-utils.ts
 │   ├── org-contact.ts               # Dados padrão do sindicato (fallback) + phoneDigits
-│   ├── room-names.ts                # Nomes fixos das salas + opções do select
-│   ├── unimed-options.ts            # Unimed: listas fixas (UNIMED_MOVEMENT_TYPES, UNIMED_DEPENDENCY_DEGREES),
-│   │                                #   unimedOptionsWith (acrescenta o valor antigo do cadastro) + unimedOptionLabel
-│   ├── unimed-docs.ts               # Baixa Ficha/Termo/Contrato da Unimed pelo id (busca beneficiário + pessoa);
-│   │                                #   usado pela tela /admin/unimed e pela aba Unimed da pessoa
-│   ├── agenda.ts                    # Agenda das salas: horário de parede (wallDate/wallTime/toWallIso), itens de vários
-│   │                                #   dias (lastDayOf, timeRangeLabel, occupiedDays — a MESMA regra para curso e reserva),
-│   │                                #   visão dia/semana (startOfWeek, weekDays, visibleRange, rangeLabel, agendaFileName),
-│   │                                #   itens juntos (agendaEntries, itemsOfDay, itemsByDay), ocupação das salas
-│   │                                #   (occupancyRows — blocos, lista escrita e onde cabe o horário —, occupancyTimeLabel,
-│   │                                #    occupancyLabelMinWidth, occupancyTicks, hourAtFraction, suggestedFreeHour),
-│   │                                #   formulário de reserva
-│   ├── agenda-pdf.tsx               # "Imprimir" da agenda: AgendaDocument + printAgendaPdf (uma tabela por dia com
-│   │                                #   horário, título, sala, tipo e responsável; abre em aba nova, baixa se bloquear)
-│   ├── calendar-links.ts            # Curso na agenda/WhatsApp: buildCourseIcs (.ics, hora de Brasília → UTC, repete por dia),
-│   │                                #   googleCalendarUrl, whatsappShareUrl (só nome, data, horário, local e link)
-│   ├── dashboard-agenda.ts          # Calendário do painel: parseDashboardSearch (?dia&sala&tipo&nova) e kindDays
-│   │                                #   (dias com curso/evento/reunião — usa occupiedDays de agenda.ts, regra única)
-│   ├── news-schedule.ts             # Agendamento de notícia (publicar agora x agendar para; relógio de Brasília)
+│   ├── agenda.ts                    # Agenda das salas: horário de parede, itens de vários dias (occupiedDays — a MESMA regra
+│   │                                #   para curso e reserva), dia/semana, ocupação das salas, formulário de reserva
+│   ├── agenda-pdf.tsx               # "Imprimir" da agenda
+│   ├── dashboard-agenda.ts          # parseDashboardSearch (?dia&sala&tipo&nova) e kindDays
+│   ├── calendar-links.ts            # .ics, Google Agenda e WhatsApp do curso
+│   ├── course-duplicate.ts          # roomIdByName (a API devolve o NOME da sala) e courseToDuplicateForm ("Duplicar curso")
+│   ├── lista-presenca-pdf.tsx       # Lista de presença (uma folha por dia)
+│   ├── ficha-inscricao-pdf.tsx      # Ficha de inscrição do curso
+│   ├── nota-empenho-pdf.tsx (+assets), relatorio-empenho.ts, relatorio-empenho-pdf.tsx, extenso-legado.ts
+│   │                                # Nota de empenho e "Relatório de despesas" no formato em papel do sindicato
+│   ├── finance-report-pdf.tsx       # Relatório financeiro do período
+│   ├── finance-month.ts             # Meses do Financeiro (fechamento, recorrências)
+│   ├── news-schedule.ts             # Agendamento de notícia (relógio de Brasília)
 │   ├── public-events.ts             # Eventos públicos: agrupar por mês, rótulo da data
-│   ├── quote-utils.ts               # Cotações: período (manhã/tarde), rótulo dos produtos, unidades (QUOTE_UNIT_OPTIONS), trendOf
-│   ├── relative-time.ts             # relativeTime ("agora", "há 5 min", "há 2 h", "ontem", "12/09") + fullDateTime
-│   ├── audit-fields.ts              # Auditoria "O que mudou": AUDIT_FIELD_LABELS (campo → português), formatAuditValue, auditChanges
-│   ├── password-strength.ts         # passwordStrength(senha, { username, name }) → { score 0-4, label, tips } (tamanho,
-│   │                                #   variedade, sequências, senhas comuns, nome/usuário); nunca impede salvar
-│   ├── quote-price-check.ts         # Cotações: findQuoteDeviations (preço >20% diferente do último → confirmação), formatQuoteChange
-│   ├── banner-dates.ts              # Banners: bannerStartIso/bannerEndIso (dia → 00:00 / 23:59:59.999 -03:00), brasiliaYmd
-│   │                                #   (instante → dia em Brasília), bannerState (mesma regra do GET /banners), bannerPeriodLabel
-│   ├── whatsapp-field.ts            # Campo WhatsApp das Redes sociais: telefone digitado ↔ link https://wa.me/55… salvo
-│   ├── lista-presenca-pdf.tsx       # Lista de presença (PDF): curso, data(s), horário, local, instrutores; tabela Nº/Nome/CPF/Assinatura,
-│   │                                #   uma folha por dia, inscrições confirmadas em ordem alfabética
-│   └── utils.ts                     # cn() helper (clsx + tailwind-merge)
+│   ├── quote-utils.ts, quote-price-check.ts # Cotações: rótulos/unidades/período; aviso de variação >20%
+│   ├── cotacao-resumo.ts            # diaDaCotacao/resumoDaCotacao (a mesma regra do server/cotacao-resumo.mjs)
+│   ├── banner-dates.ts              # Período do banner em dias de Brasília; bannerState (mesma regra do GET /banners)
+│   ├── convenio-utils.ts            # Helpers puros de Convênios (slug, valores), da página pública e do editor
+│   ├── audit-fields.ts              # "O que mudou": rótulos dos campos e formatação dos valores
+│   ├── password-strength.ts         # passwordStrength (nunca impede salvar)
+│   ├── relative-time.ts             # "agora", "há 5 min", "ontem"…
+│   ├── markdown-text.ts             # Markdown → texto corrido (cards e prévias)
+│   ├── site-whatsapp.ts, whatsapp-field.ts, contact-links.ts, copy-text.ts # WhatsApp, ligar, copiar
+│   ├── table-sticky-actions.ts      # Coluna de ações presa à direita nas tabelas
+│   └── utils.ts                     # cn() (clsx + tailwind-merge)
 ├── routes/                          # File-based routing
+├── test/                            # Testes (Vitest): components/, forms/, hooks/, lib/, utils/, *.render.test.tsx (PDFs)
 ├── utils/
-│   ├── format-data-from-string.ts   # formatDateFromString (YYYY-MM-DD → DD/MM/YYYY)
-│   ├── dates.ts                     # toIso, toYmd(date) e todayYmd() (YYYY-MM-DD no fuso local)
-│   ├── date-input.ts                # maskDateBr, parseDateBr (dd/mm/aaaa → YYYY-MM-DD, null se inválida), ymdToBr — do DatePicker
-│   ├── download.ts                  # saveBlob, openBlob, fileSlug (downloads de CSV/PDF)
-│   ├── cnpj.ts                      # isValidCnpj
-│   ├── cpf.ts                       # isValidCpf, cpfDigits, sameCpf (compara só dígitos)
-│   ├── course-status.ts             # getCourseSituation (selo do card), getRegistrationBlock (botão Inscrever-se),
-│   │                                #   isRegistrationDeadlinePassed/hasCourseEnded — dia em Brasília, igual ao backend
-│   │                                #   (COMPLETED = terminado); hasCourseStarted (mostra a presença)
-│   ├── course-attendance.ts         # Presença: attendanceCounts/attendanceSummary (só confirmadas), canReceiveCertificate,
-│   │                                #   courseDays (uma folha por dia na lista de presença), sortByName
-│   └── masks.ts                     # maskCPF, maskCNPJ, maskPhone, maskCNS (15 dígitos, "000 0000 0000 0000") + unmaskDigits
-└── main.tsx                         # Entry: QueryClientProvider → AuthProvider → RouterProvider
+│   ├── format-data-from-string.ts   # formatDateFromString (YYYY-MM-DD ou ISO → DD/MM/YYYY, sem fuso)
+│   ├── dates.ts                     # toIso, toYmd(date), todayYmd() (fuso local)
+│   ├── date-input.ts                # maskDateBr, parseDateBr, ymdToBr — do DatePicker
+│   ├── course-status.ts             # getCourseSituation, getRegistrationBlock, hasCourseEnded… — dia em Brasília, igual ao backend
+│   ├── course-attendance.ts         # Presença: contagens, courseDays, sortByName
+│   ├── masks.ts                     # maskCPF, maskCNPJ, maskPhone, maskCEP, maskRG, maskCNH, maskCNS, maskMoney,
+│   │                                #   moneyToCents, centsToBRL, unmaskDigits
+│   ├── cpf.ts, cnpj.ts              # Validação (CPF comparado só pelos dígitos)
+│   ├── age.ts, extenso.ts, format-currency.ts, text-format.ts (upperNoAccents)
+│   ├── download.ts                  # saveBlob, openBlob, fileSlug
+│   ├── resize-image.ts              # resizeToSquare (avatar)
+│   ├── safe-url.ts, escape-html.ts  # Link digitado pelo admin; texto dinâmico em dangerouslySetInnerHTML
+└── main.tsx                         # Tema salvo, recarga única depois de deploy, router com telas padrão em português
 ```
 
-## Hooks — useAdmin.ts
+## Padrões do código
 
-Exporta todos os tipos de dados admin e hooks de data fetching/mutation:
+- Alias `@/` aponta para `src/`. Rotas públicas sob `_public/`, admin sob `_admin/`.
+- **Arquivo de rota exporta só `Route`**: componente ou helper exportado de lá (e `validateSearch` com zod) não é dividido pelo `autoCodeSplitting` e vai para o bundle inicial do site público. Coloque em `src/components`/`src/lib`. É também o que permite testar: diálogo ou aba que precisa de teste sai do arquivo da rota (ex.: `UnimedFormDialog`, `conta/PerfilTab`).
+- **Erro não é vazio.** Toda consulta tem três estados: carregando, vazio e erro. O vazio ("Nenhum X", R$ 0,00, "todos completos", "sem permissão") só aparece com `!isError`. Com erro e sem dado nenhum aparece `LoadErrorRetry` com `onRetry={() => void refetch()}` e `retrying={isFetching}`; em select, faixa ou lista suspensa, `variant="inline"`. Seção opcional (banner, parceiros, eventos da home) continua sumindo quando não há conteúdo, mas a falha vira uma linha com "Tentar de novo". Na lista suspensa de busca, embrulhe o aviso num `onMouseDown={e => e.preventDefault()}` para o campo não perder o foco.
+- **Formulário que carrega um registro para editar** só deixa salvar com o registro carregado: com o detalhe em erro, aviso + "Salvar" desligado, e o formulário é zerado ao fechar. Senão salvar grava campos vazios por cima (aconteceu na Unimed).
+- **Rota pública** (sem login) usa `publicGet` de `lib/public-fetch.ts`, sem token: um token velho guardado no navegador não pode deslogar nem redirecionar o visitante. Nunca transforme erro em lista vazia (`r.ok ? r.json() : []`).
+- Chamadas do painel passam por `apiFetch`/`apiUpload` (`lib/api.ts`). Erro HTTP é `ApiError` com `status`: use `instanceof ApiError` no catch. Para mostrar, `apiErrorMessage(e, 'fallback')`.
+- Dados paginados: `PaginatedResponse<T>` de `hooks/useAdmin.ts` — `{ data, total, page, totalPages, limit }`.
+- **Formulários**: só o `CourseFormDialog` usa React Hook Form + Zod (`courseBaseSchema` de `lib/schemas.ts`). Os outros usam `useState` com validação à mão (pessoa: `lib/person-validation.ts`). Ao mexer num formulário, siga o padrão que ele já usa.
+- **Textos**: o sistema é **só em português** (sem seletor de idioma). Parte dos textos (login, site público, cursos, erros da API) está em `src/i18n/locales/pt-BR.ts`, lida com `t('chave')`; as telas mais novas do painel (financeiro, unimed, painel, agenda, configurações…) têm o texto direto no JSX. Os dois convivem: siga o que a tela já usa. `src/test/lib/i18n.test.ts` confere que toda chave usada em `t('...')` existe.
+- Máscaras e dinheiro em `src/utils/masks.ts`. Valor em dinheiro é sempre **centavos inteiros** (financeiro, convênios, cotações): `moneyToCents`/`centsToBRL`, nada de float.
+- Datas ISO da API → `formatDateFromString()` para exibir (não usa fuso).
+- Lista suspensa dentro de `Dialog`: marque o contêiner com `data-escape-owner` enquanto aberta (Esc fecha só a lista; ver `ui/dialog.tsx`).
+- `routeTree.gen.ts` regenerado automaticamente — **nunca editar manualmente**.
+- Avisos conhecidos só de desenvolvimento (ignorar nas baterias de navegador): "Cannot update a component while rendering a different component" (React Hook Form + React 19.3) e "This library called use() to suspend in a previous render…" (TanStack Router + React 19.3).
 
-**Tipos principais:**
-```typescript
-PaginatedResponse<T>    // { data: T[], total, page, totalPages, limit }
-AdminMe                 // { adminId, userDataId, username, role }
-UserData                // shape completo do usuário
-UserAddress             // endereço do usuário
-UserProperty            // propriedade rural vinculada
-UserRelation            // relacionamento (dependente/cônjuge)
-UserInstructor          // { id, bio, linkedin, instagram, facebook }
-UserDataDetail          // UserData & { address, userInstructor, companyMemberships }
-InstructorItem          // { id, bio, linkedin, instagram, facebook, userData: { id, name } }
-PublicContactItem       // { publicTitle, userData: { name, email, phone, avatar } }
-ContactMessage          // mensagem de contato recebida
-```
+## Regras de negócio que valem no código
 
-**Hooks disponíveis:**
-```
-useMe                       → GET /api/admin/me (inclui `dashboardPrefs`)
-useUpdateDashboardPrefs     → PATCH /api/admin/me/preferences `{ dashboardPrefs: { hidden, order, sizes } }`
-useAdminStats               → GET /api/admin/dashboard/stats (campos opcionais: só vem o que o admin pode ver)
-useAdminUsers               → GET /api/admin/users (paginado + filtros; mantém a lista anterior enquanto carrega; 2º arg { enabled })
-useAdminAdmins              → GET /api/admin/users/admins
-useAdminRules               → GET /api/admin/rules (paginado)
-useCreateRule / useUpdateRule
-useCreateAdmin / useUpdateAdmin / useDeleteAdmin
-useCreateWorker / useUpdateWorker / useDeleteWorker
-useCourseRegistrations      → GET /api/admin/courses/:id/registrations (paginado)
-useCancelRegistration       → DELETE /api/admin/registrations/:id
-useAdminUser                → GET /api/admin/users/:id  (inclui userInstructor)
-useUpdateUserAddress        → PUT /api/admin/users/:id/address
-useUserProperties           → GET /api/admin/users/:id/properties (paginado)
-useCreateUserProperty / useUpdateUserProperty / useDeleteUserProperty
-useUploadAvatar             → POST /api/admin/users/:id/avatar
-useUserRelations            → GET /api/admin/users/:id/relations (paginado)
-useCreateUserRelation / useDeleteUserRelation
-useInstructors              → GET /api/admin/instructors
-usePromoteInstructor        → POST /api/admin/users/:id/promote-instructor
-useUpdateInstructor         → PATCH /api/admin/users/:id/instructor
-useRemoveInstructor         → DELETE /api/admin/users/:id/instructor
-useCEPLookup                → GET /api/address/cep/:cep (ViaCEP + cache)
-usePublicContacts           → GET /api/contacts (público)
-usePartners                 → GET /api/partners (público; empresas parceiras)
-useContactMessages          → GET /api/admin/contacts/messages (paginado + filtros)
-useMarkContactMessageRead / useDeleteContactMessage / useSendContactMessage
-```
+O porquê de cada uma está em `docs/HISTORICO.md`.
 
-## Textos (i18n)
+- **Relógio de Brasília** em tudo que é "dia": prazo de inscrição (até o fim do dia, ou até `registrationDeadlineTime`), curso terminado, banner no ar (0h do início às 23h59 do fim), notícia agendada, "hoje" do painel. As regras ficam em `utils/course-status.ts`, `lib/banner-dates.ts`, `lib/news-schedule.ts` e espelham as do backend.
+- **Horário de parede**: cursos e reservas guardam o horário como ISO com `Z`, mas ele é a hora de Brasília escrita (`lib/agenda.ts`: `wallDate`/`wallTime`/`toWallIso`). Não converta fuso.
+- **Pessoa**: só o CPF identifica (gravado só com dígitos; exibir com `maskCPF`). E-mail é opcional; e-mail e telefone podem repetir entre pessoas; telefone é obrigatório. RG é opcional (a CIN usa o CPF), mas validado quando preenchido. Onde se DIGITA o número, o rótulo é "CPF / CIN" (`lib/cin.ts`); onde só se exibe, "CPF".
+- **Campos de pessoa num lugar só**: cada campo é desenhado uma vez em `components/cadastro/person-form-fields.tsx`; as duas telas (`usuarios/novo` e `usuarios/$id`) só escolhem quais e em que cartão. `src/test/forms/cadastro-pessoa.test.ts` exige que todo campo do associado esteja nas duas.
+- **Caixa alta**: `upperNoAccents` nos campos de cadastro (nomes, endereços, razão social). Texto que o visitante lê sai **como foi digitado**: título e observações do curso, título da reserva que vai para `/eventos`.
+- **Listas fixas duplicadas com o backend**: `ROOM_NAMES`, `MEMBER_TYPES`, `MEMBER_STATUS`, `UNIMED_MOVEMENT_TYPES`, `UNIMED_DEPENDENCY_DEGREES`. Mudou uma, mude a outra; o teste que compara os dois repositórios mora no backend (`src/lib/__tests__/listas-fixas_test.ts`).
+- **Edição com campo opcional vazio**: na reserva, vai como `null`. No curso, campo esvaziado ainda NÃO é enviado (o backend mantém o valor antigo) — pendente.
+- **Curso**: inicia mesmo com inscrição não confirmada; `COMPLETED` é sempre manual; o sistema NÃO emite certificado (quem emite é a FAEP).
+- **Home**: sem seção de galerias (ficam no Sobre, pedido do usuário); convênios são itens próprios no menu, sem submenu.
+- **Painel Geral — arrastar blocos**: a prévia do arrasto anda só por `transform` (`dashboard-drag.ts`) e a ordem real só muda no `onDragEnd`. Não use as estratégias prontas do `@dnd-kit` nem reordene no `onDragOver`: as duas coisas já foram tentadas e quebram (blocos esticados; blocos se alternando sem parar). Grade de 4 colunas, bloco de 2 a 4 (`DashboardSpan`); preferências antigas `'full'`/`'half'` viram 4 e 2 em `normalizePrefs`.
+- **Ajuda**: cada tela do menu tem um "?" (`AjudaLink topico="<artigo>"`) ao lado do título; um teste exige que o artigo exista. Os artigos são do chat de Ajuda.
+- **Upload**: o proxy do container aceita até 16 MB; o backend, até 15 MB. Foto de galeria e comprovante vão sem redução.
 
-- O sistema é **só em português**: não há seletor nem detecção de idioma (o usuário decidiu remover o inglês).
-- Os textos ficam em `src/i18n/locales/pt-BR.ts` e são lidos com `t('chave')` (`react-i18next`); config em `src/i18n/index.ts` (`lng` fixo `pt-BR`; apaga a chave antiga `sindicato-lang` do localStorage).
-- `src/test/lib/i18n.test.ts` confere que toda chave usada em `t('...')` existe em `pt-BR.ts`.
+## Auth e permissões
 
-## Tipo Principal: `Course`
-
-Definido em `src/@types/course.ts`. O backend já responde com os campos em inglês, então a UI usa o shape da API direto (não há mais tipo em português nem função de mapeamento).
-
-**`Course`**:
-```typescript
-id, status: 'PUBLIC' | 'PRIVATE' | 'UNPUBLISHED' | 'IN_PROGRESS' | 'COMPLETED',
-title, description, maxStudents, minStudents, enrolled, preEnrolled, waitlist,
-coverImage: string | null, coverImageThumb?: string | null (WebP ~640px p/ cards; null → coverImage),
-price, startDate, endDate, startTime, endTime,
-workloadHours, location, instructorName,
-registrationDeadline: string | null, observations: string | null, eventNumber: string | null,
-photoGallery: { id, url, caption }[], instructors: CourseInstructor[]
-```
-
-**`CourseInstructor`** — shape plano retornado pelo backend:
-```typescript
-{ id, userDataId, title, category, name, bio, avatar,
-  linkedin, instagram, facebook }   // title/category/bio/avatar/redes podem ser null
-```
-`id` = assignment ID (usado em DELETE); `userDataId` = ID do userData do instrutor.
-
-## Auth
-
-- **`AuthContext`** — token JWT persiste em `localStorage`. Expõe `token`, `baseUrl`, `login(token)`, `logout()`.
-- **`AuthProvider`** wrapa toda a app em `main.tsx`.
-- **`authenticateUser(username, password)`** em `use-users.ts` — POST `/api/auth/login`, retorna JWT.
-- Layout `_admin.tsx` faz parse do JWT e valida expiração (`lib/auth-token.ts`); se inválido vai para `/login?redirect=<tela atual>`.
-- `apiFetch()` / `apiUpload()` em `lib/api.ts` injetam `Authorization: Bearer {token}` em toda chamada.
-- Resposta 401 em qualquer chamada → limpa token + vai para `/login?redirect=<tela atual>`.
-- Erro HTTP é lançado como `ApiError` (com `status: number`) — permite `catch (e) { if (e instanceof ApiError && e.status === 409) ... }`.
-- Login volta para o `?redirect` só se for caminho do painel (`safeAdminRedirect`: começa com `/admin`), senão `/admin/dashboard`; já logado, `/login` faz o mesmo. Logout vai para `/login`.
-- Token vale 8h; a renovação só funciona até 24h depois do login (`authTime` no token), depois é preciso entrar de novo. Renovação deslizante: `useSessionRenewal()` (AuthContext, usado no `_admin.tsx`) confere o token a cada clique/tecla (no máx. a cada 30s) e, passada a metade da validade, chama `POST /auth/refresh` (uma por vez) e grava o novo token; falha não faz nada.
-- **Alterações não salvas**: `const allowLeave = useUnsavedGuard(active)` (`hooks/use-unsaved-guard.ts`, `useBlocker` do TanStack Router) pergunta "Sair sem salvar?" (diálogo do app, `<LeaveConfirmHost />` montado no `_admin.tsx`) ao ir para outro caminho; só search params (filtros/abas) não pergunta; fechar/atualizar a aba usa o aviso do navegador. Chame `allowLeave()` logo antes do `navigate()` pós-salvar/criar/excluir.
-- **Busca de telas**: `CommandPalette` (Ctrl+K ou botão "Buscar…" no topo da sidebar, `openCommandPalette()` de `lib/command-palette.ts`); lista `NAV_ITEMS` com permissão; busca ignora acentos/maiúsculas e exige todas as palavras.
+- **`AuthContext`** — token JWT em `localStorage`; `token`, `baseUrl`, `login(token)`, `logout()`. `AuthProvider` envolve a app em `main.tsx`. Logout (`nav-user.tsx`) também limpa o cache do React Query.
+- **Login** (`login.tsx`): `authenticateUser` (`hooks/use-users.ts`) faz `POST /auth/login` com fetch cru (um 401 ali é senha errada, não sessão vencida) e lança `ApiError` com o status. `loginErrorMessage` (`lib/login-error.ts`) escolhe a mensagem: 4xx → "Usuário ou senha inválidos."; 429 → "Muitas tentativas seguidas. Espere alguns minutos…" (o backend bloqueia depois de 10 tentativas em 5 min por IP); 5xx (inclusive o 502 do proxy) → "O sistema está fora do ar…"; sem resposta → "Sem conexão…".
+- Layout `_admin.tsx` valida o JWT (`lib/auth-token.ts`); inválido → `/login?redirect=<tela atual>`. Login volta ao `?redirect` só se for caminho do painel (`safeAdminRedirect`), senão `/admin/dashboard`.
+- `apiFetch()` / `apiUpload()` injetam `Authorization: Bearer`; resposta 401 → limpa o token e vai para `/login?redirect=<tela atual>`.
+- Token vale 8h; renovação só até 24h depois do login. `useSessionRenewal()` (usado no `_admin.tsx`) confere a cada clique/tecla (no máx. a cada 30s) e, passada a metade da validade, chama `POST /auth/refresh`; falha não faz nada.
+- **Permissões**: `useMe` e a guarda de rota leem a MESMA consulta (`meQuery` em `hooks/useAdmin.ts`, chave `['admin','me']`, staleTime 5 min).
+  - `requirePermission(perm)` (`lib/auth-guard.ts`), no `beforeLoad` da rota: sem a permissão → `/admin/dashboard`; 401 → login; **falha ao conferir (rede, 5xx) lança erro** e o roteador mostra a tela de erro com "Tentar de novo" — não é "sem permissão". Usado em banners, convênios, cursos, empresas, mensagens, notícias, unimed, usuários e `usuarios/novo` (CREATE_USER).
+  - `usePermissions()` → `can`, `cannot`, `isLoading`, `perms` e `isError`/`retry`/`retrying`. Com `isError`, `can` responde false, mas a tela não deve dizer "sem permissão": o `NoPermission` já mostra a falha com "Tentar de novo", e o Painel Geral avisa que blocos podem faltar.
+  - A sidebar mostra todos os itens enquanto as permissões não carregaram.
+- **Minha conta** (`components/conta/PerfilTab.tsx`): trocar a senha manda `password` + `currentPassword`. A tela confere antes que a senha atual foi preenchida e que a nova tem 8+ caracteres (para não gastar as 10 tentativas por 5 min da rota). 400 "Senha atual incorreta." / "Informe a senha atual…" aparece embaixo do campo. Nome e usuário sozinhos não pedem a senha.
+- **Alterações não salvas**: `const allowLeave = useUnsavedGuard(active)` (`hooks/use-unsaved-guard.ts`) pergunta "Sair sem salvar?" ao ir para outro caminho; só search params não pergunta. Chame `allowLeave()` logo antes do `navigate()` pós-salvar/criar/excluir.
+- **Busca de telas**: `CommandPalette` (Ctrl+K ou "Buscar…" no topo da sidebar); busca ignora acentos/maiúsculas e exige todas as palavras.
 
 ## Backend / Proxy
 
 - **Base da API**: `API_BASE` em `src/lib/api.ts` = `VITE_API_URL` (embutido no build) ou, sem ele, `/api`. `baseUrl` do contexto é esse mesmo valor.
-- **Dev**: sem `VITE_API_URL`, as chamadas vão para `/api/*` e o proxy do Vite encaminha para `VITE_BACKEND_URL` (padrão `http://localhost:3000`), tirando o `/api`.
-- **Prod**: não há proxy. O `Dockerfile` builda com `VITE_API_URL` (padrão `https://sindicatoruraltrbackend.nakaidev.tech`), então o navegador chama o backend direto. O container roda `node server/index.mjs` (Fastify na porta 80): serve o `dist/` como SPA (rota desconhecida → `index.html`; asset em `assets/` que não existe → 404) e, em `/cursos/:id` e `/noticias/:id`, busca o curso/notícia em `BACKEND_URL` (runtime) para injetar as meta OpenGraph no HTML (preview de link em WhatsApp/redes; descrição sem markdown via `server/markdown-text.mjs`, mesmas regras de `src/lib/markdown-text.ts`). O `index.html` traz uma tela de carregamento (logo + spinner, CSS inline) dentro de `#root`, trocada pelo React no primeiro render.
+- **Dev**: sem `VITE_API_URL`, as chamadas vão para `/api/*` e o proxy do Vite encaminha para `VITE_BACKEND_URL` (padrão `http://localhost:3000`, o único padrão de endereço que existe), tirando o `/api`.
+- **Prod**: o `Dockerfile` builda **sem** `VITE_API_URL` (ARG vazio de propósito), então a SPA chama `/api` na própria origem (sem CORS). O container roda `node server/index.mjs` (Fastify na porta 80), que:
+  - encaminha `/api/*` para `BACKEND_URL` tirando o prefixo, com o corpo cru até **16 MB** (`server/raw-body.mjs`; acima disso, 413, que a tela mostra em português). Backend fora do ar → 502;
+  - serve o `dist/` como SPA (rota desconhecida → `index.html`; asset em `assets/` que não existe → 404, para a aba velha recarregar depois de deploy);
+  - em `/cursos/:id`, `/noticias/:id` e `/cotacao`, busca os dados em `BACKEND_URL` e injeta as meta OpenGraph (prévia de link no WhatsApp/redes).
+- **`BACKEND_URL` é obrigatória e não tem padrão** (`server/backend-url.mjs`): com `NODE_ENV=production` (o Dockerfile define), sem ela ou com um endereço que não seja http(s), o servidor não sobe e o log diz por quê; fora de produção sobe, mas `/api` responde 502. O `docker-compose.prod.yml` também para sem ela. Antes o padrão era a API de staging, e a produção sem a variável gravaria dado real no banco de staging. **Cada ambiente do Coolify define a sua.**
+- O proxy repassa o `X-Forwarded-For` que recebeu e não acrescenta o IP de quem conectou. O IP que a API enxerga (limite de login, auditoria) depende da topologia do Coolify — risco 4 de `../orquestracao/decisoes/000-mapa-da-arquitetura.md`.
+- Passar `VITE_API_URL` como build arg volta ao comportamento antigo (navegador falando direto com o backend; o proxy fica sem uso).
+- O `index.html` traz uma tela de carregamento (logo + spinner, CSS inline) dentro de `#root`, trocada pelo React no primeiro render.
+
+## Tipos principais
+
+**`Course`** (`src/@types/course.ts`) — shape da API, campos em inglês, sem mapeamento:
+```typescript
+id, status: 'PUBLIC' | 'PRIVATE' | 'UNPUBLISHED' | 'IN_PROGRESS' | 'COMPLETED',
+title, description, maxStudents, minStudents, enrolled, preEnrolled, waitlist,
+coverImage: string | null, coverImageThumb?: string | null (WebP ~640px p/ cards; null → coverImage),
+price, startDate, endDate, startTime, endTime, workloadHours, location, instructorName,
+registrationDeadline: string | null (dia), registrationDeadlineTime?: string | null ("HH:MM"; null = dia inteiro),
+observations: string | null, eventNumber: string | null,
+photoGallery: { id, url, caption }[], instructors: CourseInstructor[]
+```
+
+**`CourseInstructor`** — `{ id, userDataId, title, category, name, bio, avatar, linkedin, instagram, facebook }` (`id` = id da atribuição, usado no DELETE; `userDataId` = a pessoa).
+
+**`News`** (`src/@types/news.ts`) — notícia com `status: 'PUBLISHED' | 'UNPUBLISHED'`, `publishAt` (agendamento) e conteúdo em blocos (parágrafo, imagem, imagem+texto).
+
+**Tipos de `hooks/useAdmin.ts`**:
+```typescript
+PaginatedResponse<T>    // { data: T[], total, page, totalPages, limit }
+AdminMe                 // { userId, userDataId, username, name, avatar, rulesId, ruleName, permissions, dashboardPrefs? }
+DashboardStats          // números do Painel Geral (cada bloco só vem com a permissão)
+UserData / UserDataDetail // pessoa; o detalhe inclui properties, userInstructor e companyMemberships
+                        //   (`address` está @deprecated: o endereço mora nas propriedades)
+UserProperty, UserRelation, UserInstructor, UserAdmin, Rule, PendingInvite
+InstructorItem, PublicContactItem, PublicPartner, ContactMessage, Registration, CEPResult
+```
+
+## Hooks
+
+**`useAdmin.ts`** (com o endpoint de cada um):
+```
+meQuery / useMe             → GET /admin/me (inclui permissions e dashboardPrefs)
+useUpdateMe                 → PATCH /admin/me { name?, username?, password?, currentPassword? }
+useUploadMyAvatar           → POST /admin/me/avatar
+useUpdateDashboardPrefs     → PATCH /admin/me/preferences { dashboardPrefs: { hidden, order, sizes } }
+useAdminStats               → GET /admin/dashboard/stats
+useAdminUsers               → GET /admin/users (paginado + filtros; mantém a lista anterior; 2º arg { enabled })
+useAdminAdmins              → GET /admin/users/admins
+useAdminRules               → GET /admin/rules · useCreateRule POST /rules · useUpdateRule PATCH /rules/:id · useDeleteRule DELETE /rules/:id
+useCreateAdminInvite        → POST /admin/invites · useAdminInvites GET /admin/invites · useRevokeAdminInvite DELETE /admin/invites/:id
+useUpdateWorker / useDeleteWorker → PATCH / DELETE /users/:id (a PESSOA; sem /admin)
+useUpdateAdmin / useDeleteAdmin   → PATCH / DELETE /admin/users/:id (o acesso de administrador)
+useCourseRegistrations      → GET /admin/courses/:id/registrations (paginado)
+useCancelRegistration       → DELETE /admin/registrations/:id
+useConfirmRegistration      → PATCH /admin/registrations/:id/confirm
+useStartCourse              → POST /admin/courses/:id/start
+useUploadRegistrationFicha / useDeleteRegistrationFicha / openRegistrationFicha → POST / DELETE / GET /admin/registrations/:id/ficha
+useAdminUser                → GET /admin/users/:id
+useUserProperties           → GET /admin/users/:id/properties · useCreate/Update/DeleteUserProperty
+useUploadAvatar             → POST /admin/users/:id/avatar
+useUserRelations            → GET /admin/users/:id/relations · useCreate/DeleteUserRelation
+useInstructors              → GET /admin/instructors
+usePromoteInstructor / useUpdateInstructor / useRemoveInstructor → POST / PATCH / DELETE /admin/users/:id/instructor
+useCEPLookup                → GET /address/cep/:cep
+usePublicContacts           → GET /contacts (público)
+usePartners                 → GET /partners (público, publicGet)
+useContactMessages          → GET /admin/contacts/messages · useMarkContactMessageRead PATCH …/:id · useDeleteContactMessage
+useSendContactMessage       → POST /contacts/message (público, fetch cru)
+```
+
+**Os outros arquivos de `hooks/`**:
+- `useCourse.ts` — admin: `useAdminCourses` (`status`, `search`, `year`), `useCourseYears`, `useAdminCourse` (`adminCourseQuery`), criar/editar/excluir, capa, galeria, instrutores (`useAssignInstructor`, `useRemoveInstructorAssignment`), inscrições (`useAllCourseRegistrations`, `useAdminRegisterPerson`, `useConfirmAllRegistrations`), presença (`useSetRegistrationAttendance`, `useMarkUnmarkedAttendance`), `useCompleteCourse`; público: `useCourses`, `useCourse`, `useRegisterByCpf`, `useRegisterFull`.
+- `useNews.ts` — `useNews`, `useNewsDetail` (públicos), `useAdminNews` (`status`, `search`), criar/editar/excluir, `useUploadNewsBanner`, `useUploadNewsBlockImage`.
+- `useBanner.ts` — `useBanners` (público, publicGet), `useAdminBanners`, criar/editar/excluir, imagem, `useReorderBanners`.
+- `useCompanies.ts` — empresas: lista, detalhe, CRUD, vínculos (members; pela pessoa: `useLinkPersonToCompany`/`useUnlinkPersonFromCompany`), propriedades, parceria (`useSetCompanyPartner`, `useReorderPartners`, `useUploadCompanyPartnerLogo`), títulos (`useCompanyMemberTitles`, `COMMON_MEMBER_TITLES`), `companyDisplayName`.
+- `useFinance.ts` — categorias, caixas, lançamentos (+ export CSV, transferência, comprovantes), recorrências, formas de pagamento, fechamentos e `useFinanceSummary`.
+- `useUnimed.ts` — `useUnimedList`, `useUnimedByPerson`, `useUnimed`, criar/editar/excluir.
+- `useConvenios.ts` — `useConvenioMenu`, `usePublicConvenio` (públicos), admin CRUD e logo.
+- `useGalleries.ts` — `usePublicGalleries` (publicGet), admin CRUD, fotos (upload, legenda, ordem).
+- `useMarketQuotes.ts` — `useMarketQuotes`, `useQuoteHistory` (públicos), `useAdminMarketQuotes`, `useSaveDailyQuotes`, `useUpdateQuoteUnit`.
+- `useSiteSettings.ts` — `usePublicSiteSettings`, `useAdminSiteSettings`, `useUpdateSiteSettings`, `useUpdateQuotesSource`, `useOrgInfo` (com fallback de `lib/org-contact.ts`).
+- `usePublicContactsAdmin.ts`, `usePublicEvents.ts`, `useRooms.ts` (CRUD), `useRoomBookings.ts` (`useRoomBookings`, `useRoomSchedule`, CRUD), `useAuditTrail.ts` (trilha + tempo de guarda), `useNotifications.ts` (a cada 60s e ao voltar à aba), `useInvite.ts` (`useInvite`, `useAcceptInvite`, fetch cru).
+- Utilitários: `usePermissions`, `use-unsaved-guard`, `useRowSelection` (seleção que continua entre páginas), `useCrudDialog`, `useDebouncedValue`, `useConfirmDeletePhoto`, `useSeo`, `use-mobile`, `use-users` (`authenticateUser`, `refreshAuthToken`).
 
 ## API — Endpoints
 
+Os caminhos abaixo são os que o front chama, relativos a `API_BASE` (`/api` no navegador; o proxy tira o prefixo).
+
 **Auth**
-- `POST /api/auth/login` — `{ username, password }` → `{ token }` (JWT de 8h)
-- `POST /api/auth/refresh` — `Authorization: Bearer <token ainda válido>`, sem corpo → `{ token }` novo de 8h (401 se vencido, admin removido ou login há mais de 24h)
+- `POST /auth/login` — `{ username, password }` → `{ token }` (JWT de 8h). 401 = credenciais erradas; 429 = mais de 10 tentativas em 5 min por IP
+- `POST /auth/refresh` — `Authorization: Bearer <token ainda válido>`, sem corpo → `{ token }` novo (401 se vencido, admin removido ou login há mais de 24h)
 
 **Cursos (público)**
-- `GET /api/courses` — lista cursos públicos
-- `GET /api/courses/:id` — detalhe
-- `POST /api/courses/:id/register` — inscrição `{ name, phone, cpf, email? }`
-- `POST /api/courses/:id/register-full` — inscrição de quem não tem cadastro (`RegisterFullBody`: e-mail opcional; a pessoa é achada só pelo CPF)
+- `GET /courses?page&limit[&ended=include|exclude]` — cursos `PUBLIC` do site. **Ordem (SR-016, back `edde21b`)**: primeiro os que não terminaram (em andamento e próximos, do início mais cedo para o mais tarde), depois os terminados (do mais recente para o mais antigo). "Terminou" = o dia do fim já passou em Brasília (a mesma regra da inscrição). `ended=include` (padrão) traz os terminados no fim; `ended=exclude` deixa só os que não terminaram — é o que a home precisa (o ajuste da home para usar `exclude` ainda não foi feito)
+- `GET /courses/:id` — detalhe
+- `GET /users/lookup-cpf/:cpf` — existe cadastro com esse CPF? (devolve o nome mascarado para confirmar)
+- `POST /courses/:id/register-by-cpf` — `{ cpf }`: inscreve quem já tem cadastro
+- `POST /courses/:id/register-full` — inscrição de quem não tem cadastro (dados + endereço; e-mail opcional)
 
 **Cursos (admin)**
-- `GET /api/admin/courses` — lista admin
-- `POST /api/courses` — criar (aceita `eventNumber`, `minStudents`). "Duplicar curso" (menu do card e diálogo do curso) abre a criação preenchida (datas, prazo e nº do evento em branco; rascunho) e manda `copyCoverFromCourseId` (o backend copia a capa para um arquivo próprio) e `copyInstructorsFromCourseId` + `instructorAssignmentIds`; resposta `{ id, coverCopied?, instructorsCopied? }` (falhou → aviso para enviar a capa pela edição). Galeria não é copiada
-- `PATCH /api/courses/:id` — atualizar
-- `DELETE /api/courses/:id` — deletar
-- `POST /api/courses/:id/banner` — upload banner (multipart; gera também a miniatura WebP ~640px → `{ url, thumbUrl }`)
-- `POST /api/courses/:id/gallery` — upload foto (multipart)
-- `DELETE /api/courses/:id/gallery/:photoId` — remover foto
-- `GET /api/admin/courses/:id/registrations` — inscrições do curso (paginado)
-- `DELETE /api/admin/registrations/:id` — cancelar inscrição
-- `POST /api/admin/courses/:id/registrations` — "Inscrever pessoa" `{ userDataId }` (PersonPicker; já confirmada, ignora o prazo; já inscrita → 409; lotado → 409)
-- `PATCH /api/admin/courses/:id/registrations/confirm-all` — "Confirmar todas" → `{ confirmed }`
-- `POST /api/admin/courses/:id/start` — "Confirmar início" (diálogo avisa quantas inscrições faltam confirmar; não impede) → status `IN_PROGRESS`
-- `PATCH /api/admin/courses/:id/complete` — "Concluir curso" no diálogo do curso (só em andamento; senão 409) → `{ id, status: 'COMPLETED' }`
-- `PATCH /api/admin/registrations/:id/attendance` — presença `{ attended: true | false | null }` → `{ id, attended }` (`useSetRegistrationAttendance`, atualização otimista)
-- `PATCH /api/admin/courses/:id/registrations/attendance` — "Todos presentes" `{ attended: true }`: só confirmadas ainda sem marcar → `{ updated }`
-- Aba Inscrições: WhatsApp (`wa.me/55…`) e Ligar por linha, "Copiar telefones"/"Copiar e-mails" de todas as inscrições (`lib/contact-links.ts`, `lib/copy-text.ts`)
+- `GET /admin/courses` (`page`, `limit`, `status`, `search`, `year`) · `GET /admin/courses/years` · `GET /admin/courses/:id`
+- `POST /courses` — criar (aceita `eventNumber`, `minStudents`, `roomId`). "Duplicar curso" manda `copyCoverFromCourseId` e `copyInstructorsFromCourseId` + `instructorAssignmentIds`; resposta `{ id, coverCopied?, instructorsCopied? }`. Galeria não é copiada
+- `PATCH /courses/:id` — atualizar (`registrationDeadline` aceita `null`; `workloadHours` e `minStudents` não) · `DELETE /courses/:id`
+- `POST /courses/:id/banner` (multipart; gera a miniatura WebP → `{ url, thumbUrl }`) · `POST /courses/:id/gallery` · `DELETE /courses/:id/gallery/:photoId`
+- `POST /admin/courses/:id/instructors` · `DELETE /admin/courses/:id/instructors/:assignmentId`
+- `GET /admin/courses/:id/registrations` (paginado) · `POST /admin/courses/:id/registrations` `{ userDataId }` ("Inscrever pessoa": já confirmada, ignora o prazo; repetida ou lotado → 409)
+- `DELETE /admin/registrations/:id` · `PATCH /admin/registrations/:id/confirm` · `PATCH /admin/courses/:id/registrations/confirm-all` → `{ confirmed }`
+- `POST /admin/registrations/:id/ficha` (multipart) · `GET` · `DELETE` — ficha de inscrição escaneada
+- `POST /admin/courses/:id/start` → `IN_PROGRESS` · `PATCH /admin/courses/:id/complete` (só em andamento; senão 409) → `COMPLETED`
+- `PATCH /admin/registrations/:id/attendance` `{ attended: true | false | null }` · `PATCH /admin/courses/:id/registrations/attendance` `{ attended: true }` ("Todos presentes": só confirmadas sem marcar) → `{ updated }`
 
-**Usuários (admin)**
-- `GET /api/admin/users` — lista (paginado + filtros; `search` ignora acento e maiúscula — "joao" acha "João" — e aceita CPF com ou sem máscara)
-- `GET /api/admin/users/:id` — detalhe (inclui `userInstructor`)
-- `GET /api/admin/users/admins` — lista admins
-- `PUT /api/admin/users/:id/address` — atualizar endereço
-- `GET /api/admin/users/:id/properties` — propriedades rurais (paginado)
-- `POST /api/admin/users/:id/properties` — adicionar propriedade
-- `PATCH /api/admin/users/:id/properties/:propId` — editar propriedade/endereço (campos opcionais)
-- `DELETE /api/admin/users/:id/properties/:propId` — remover propriedade
-- `GET /api/admin/users/:id/relations` — relacionamentos (paginado)
-- `POST /api/admin/users/:id/relations` — adicionar relacionamento
-- `DELETE /api/admin/users/:id/relations/:relId` — remover relacionamento
-- `POST /api/admin/users/:id/avatar` — upload avatar (multipart)
-- `GET /api/admin/users/duplicates?limit=50` — possíveis cadastros repetidos (READ_USER): grupos com o mesmo nome normalizado, telefone ou e-mail, em que pelo menos um está sem CPF
-- `GET /api/admin/users/merge-preview?ids=a,b` — os dois cadastros com os números de cada um (comparação do diálogo)
-- `POST /api/admin/users/merge` — `{ keepId, removeId }` (DELETE_USER + UPDATE_USER); junta os dois cadastros da mesma pessoa
-- `POST /api/admin/users` — criar admin/funcionário
-- `PATCH /api/admin/users/:id` — atualizar admin/funcionário
+**Pessoas e administradores (admin)**
+- `GET /admin/users` — lista (paginado + filtros; `search` ignora acento e maiúscula e aceita CPF com ou sem máscara; `incompleteRegistration`, `activeMember`…)
+- `GET /admin/users/:id` — detalhe · `GET /admin/users/admins`
+- `POST /users` (CREATE_USER) — cadastro novo de pessoa; `PATCH /users/:id` · `DELETE /users/:id` — editar/excluir a pessoa
+- `PATCH /admin/users/:id` · `DELETE /admin/users/:id` — o acesso de administrador (usuário, senha, regra). Admin novo entra por convite
+- `GET/POST /admin/users/:id/properties` · `PATCH/DELETE /admin/users/:id/properties/:propId`
+- `GET/POST /admin/users/:id/relations` · `DELETE /admin/users/:id/relations/:relId`
+- `POST /admin/users/:id/avatar` (multipart)
+- `GET /admin/users/duplicates?limit=50` · `GET /admin/users/merge-preview?ids=a,b` · `POST /admin/users/merge` `{ keepId, removeId }` (DELETE_USER + UPDATE_USER)
+- `GET /admin/instructors` · `POST` / `PATCH` / `DELETE /admin/users/:id/instructor` — promover, editar, rebaixar instrutor
 
-**Empresas (admin)** — reusa as permissões `*_USER`; CNPJ guardado só com dígitos, único entre empresas ativas
-- `GET /api/admin/companies` — lista paginada (search nome/e-mail/CNPJ sem diferenciar acento, type PRIVATE|PUBLIC, isPartner)
-- `GET /api/admin/companies/titles` — títulos já usados nos vínculos (sugestões)
-- `GET /api/admin/companies/:id` — detalhe (members com a pessoa + properties)
-- `POST /api/admin/companies` · `PATCH /api/admin/companies/:id` (inclui `tradeName`, `address` da sede — null/vazio remove —, parceria e `primaryPropertyId`) · `DELETE /api/admin/companies/:id` (soft)
-- `POST /api/admin/companies/:id/members` `{ userDataId, title }` · `PATCH /members/:memberId` `{ title }` · `DELETE /members/:memberId`
-- `POST /api/admin/companies/:id/properties` · `PATCH /api/admin/companies/:id/properties/:propertyId` (editar) · `DELETE /api/admin/companies/:id/properties/:propertyId`
-- `POST /api/admin/companies/:id/partner-logo` — multipart (300×150, PNG); `PATCH` com `partnerLogo: null` remove
-
-**Instrutores (admin)**
-- `GET /api/admin/instructors` — lista instrutores
-- `POST /api/admin/users/:id/promote-instructor` — promover a instrutor
-- `PATCH /api/admin/users/:id/instructor` — atualizar dados de instrutor
-- `DELETE /api/admin/users/:id/instructor` — rebaixar instrutor
+**Empresas (admin)** — reusa as permissões `*_USER`; CNPJ só com dígitos, único entre empresas ativas
+- `GET /admin/companies` (search nome/e-mail/CNPJ sem diferenciar acento, `type` PRIVATE|PUBLIC, `isPartner`) · `GET /admin/companies/titles` · `GET /admin/companies/:id`
+- `POST /admin/companies` · `PATCH /admin/companies/:id` (inclui `tradeName`, `address` da sede — null/vazio remove —, parceria e `primaryPropertyId`) · `DELETE /admin/companies/:id` (soft)
+- `POST /admin/companies/:id/members` `{ userDataId, title }` · `PATCH /members/:memberId` `{ title }` · `DELETE /members/:memberId`
+- `POST /admin/companies/:id/properties` · `PATCH` / `DELETE /admin/companies/:id/properties/:propertyId`
+- `POST /admin/companies/:id/partner-logo` — multipart (300×150, PNG); `PATCH` com `partnerLogo: null` remove
 
 **Admin geral**
-- `GET /api/admin/me` — dados do admin logado (+ `dashboardPrefs`: blocos escondidos/ordem do Painel Geral)
-- `PATCH /api/admin/me/preferences` — `{ dashboardPrefs: { hidden: string[], order: string[], sizes: Record<bloco, 2|3|4> } }`
-- `GET /api/admin/dashboard/stats` — números do Painel Geral: `courses{total,public,private,unpublished,inProgress,completed}`,
-  `totalUsers`, `totalAdmins`, `totalRooms`, `registrations{last30Days,pendingConfirmation}`, `coursesStartingIn7Days`,
-  `unreadMessages`, `membershipsExpiring30Days`, `quotesToday{launched,period}` — cada bloco só vem com a permissão correspondente
-- `GET /api/admin/rules` — regras (paginado)
-- `POST /api/rules` — criar regra
-- `PATCH /api/rules/:id` — atualizar regra
-- `GET /api/partners` — empresas parceiras (público; ordem por partnerOrder)
-- `PATCH /api/admin/partners/reorder` — reordenar empresas parceiras `{ order: id[] }`
-- `GET /api/admin/contacts/messages` — mensagens de contato (paginado + filtros)
-- `PATCH /api/admin/contacts/messages/:id` — marcar mensagem como lida
-- `PATCH /api/admin/contacts/messages/:id/unread` — marcar como não lida (rota própria: a auditoria diz qual foi; mande corpo `{}`)
-- `DELETE /api/admin/contacts/messages/:id` — deletar mensagem
+- `GET /admin/me` — dados do admin logado + `permissions` + `dashboardPrefs`
+- `PATCH /admin/me` — `{ name?, username?, password?, currentPassword? }`: `password` (8+ caracteres) só vale com `currentPassword`; sem ela ou errada → 400 e nada é gravado (400, não 401, porque o painel desloga no 401). 10 pedidos por 5 min por IP (429)
+- `POST /admin/me/avatar` · `PATCH /admin/me/preferences` — `{ dashboardPrefs: { hidden: string[], order: string[], sizes: Record<bloco, 2|3|4> } }` (substitui o valor inteiro; até 4 KB)
+- `GET /admin/dashboard/stats` — `courses{…}`, `totalUsers`, `totalAdmins`, `totalRooms`, `registrations{last30Days,pendingConfirmation}`, `coursesStartingIn7Days`, `unreadMessages`, `membershipsExpiring30Days`, `quotesToday{launched,period}` — cada bloco só vem com a permissão
+- `GET /admin/rules` · `POST /rules` · `PATCH /rules/:id` · `DELETE /rules/:id`
+- `POST /admin/invites` (pessoa + regra → link) · `GET /admin/invites` (pendentes) · `DELETE /admin/invites/:id` (revogar) · `GET /invites/:token` e `POST /invites/:token/accept` (públicos)
 
-**Eventos (público)**
-- `GET /api/events` — eventos publicados que ainda não terminaram, por início (até 50): `{ id, title, description, startTime, endTime, roomName }`
+**Banners**
+- `GET /banners` (público: só os no ar) · `GET /admin/banners` · `POST /admin/banners` · `PATCH` / `DELETE /admin/banners/:id` · `POST /admin/banners/:id/image` (multipart) · `PATCH /admin/banners/reorder`
 
-**Contato (público)**
-- `GET /api/contacts` — contatos públicos, na ordem definida no admin
-- `GET /api/site-settings` — redes sociais, dados do sindicato (`org*`), `aboutText`, `quotesSource`
+**Notícias**
+- `GET /news?page&limit` e `GET /news/:id` (públicos; agendada dá 404 até a hora) · `GET /admin/news` (`status`, `search`)
+- `POST /news` · `PATCH /news/:id` (`publishAt` agenda) · `DELETE /news/:id` · `POST /news/:id/banner` · `POST /news/:id/image` (imagem de bloco)
 
-**Configurações do site (admin)**
-- `GET` · `PATCH /api/admin/site-settings` — `*_BANNER`; só grava os campos enviados
-- `GET /api/admin/public-contacts` (READ_USER) · `POST` `{ userDataId, title }` · `PATCH /:id` `{ title }` · `DELETE /:id` · `PATCH /reorder` `{ order: id[] }` (UPDATE_USER) — qualquer pessoa do cadastro, com ou sem login
-- `POST /api/contact` — enviar mensagem de contato
+**Mensagens de contato**
+- `POST /contacts/message` (público) — `{ name, email, phone?, subject?, message }`
+- `GET /admin/contacts/messages` (paginado + filtros) · `PATCH /admin/contacts/messages/:id` (lida) · `PATCH …/:id/unread` (não lida; mande corpo `{}`) · `DELETE …/:id`
 
-**Salas** — nome precisa ser da lista fixa (AUDITORIO, COZINHA, SALA DE VIDEO CONFERENCIA, SALA 1, SALA 2, SALA APL); repetido → 409
-- `GET /api/rooms` — lista
-- `POST /api/rooms` — criar · `PATCH /api/rooms/:id` · `DELETE /api/rooms/:id`
+**Site público e Configurações**
+- `GET /site-settings` (público) — redes, dados do sindicato (`org*`), `aboutText`, `quotesSource` · `GET` / `PATCH /admin/site-settings` (`*_BANNER`; só grava os campos enviados)
+- `GET /contacts` (público, na ordem do admin) · `GET /admin/public-contacts` · `POST` `{ userDataId, title }` · `PATCH /:id` · `DELETE /:id` · `PATCH /reorder`
+- `GET /partners` (público) · `PATCH /admin/partners/reorder` `{ order: id[] }`
+- `GET /events` (público) — eventos publicados que não terminaram (até 50)
 
-**Reservas de sala (agenda)** — eventos e reuniões; READ/CREATE/UPDATE/DELETE_COURSE; horário de parede no ISO (igual aos cursos)
-- `GET /api/admin/room-bookings?from&to[&roomId][&type=EVENT|MEETING][&search]` — reservas (responsável = pessoa ou nome, `seriesId`)
-- `GET /api/admin/room-schedule?from&to[&roomId]` — cursos + reservas (`kind` COURSE|EVENT|MEETING)
-- `POST /api/admin/room-bookings` (`repeat: { frequency: WEEKLY|MONTHLY, until }` opcional) → `{ ids, seriesId }` · `PATCH /:id` (só esta data) · `DELETE /:id?scope=one|future` — sala ocupada → 409 com a mensagem do conflito
-- `publicOnSite` + `publicDescription` no corpo: só evento pode ir para o site (reunião nunca); `description` continua sendo observação interna da equipe
+**Salas** — nome da lista fixa (AUDITORIO, COZINHA, SALA DE VIDEO CONFERENCIA, SALA 1, SALA 2, SALA APL); repetido → 409
+- `GET /rooms` · `POST /rooms` · `PATCH /rooms/:id` · `DELETE /rooms/:id`
 
-**Convênios** — gated por `*_CONVENIO`; preço em centavos (Int); listas em JSON
-- `GET /api/convenios` — menu público (ativos: id, slug, name, subtitle, logoUrl, order)
-- `GET /api/convenios/:slug` — página pública (inativo/inexistente → 404)
-- `GET /api/admin/convenios` · `GET /api/admin/convenios/:id`
-- `POST /api/admin/convenios` · `PATCH /api/admin/convenios/:id` (`logoUrl: null` remove o logo) · `DELETE /api/admin/convenios/:id`
-- `POST /api/admin/convenios/:id/logo` — multipart (reduzido para caber em 480×240, PNG)
+**Reservas de sala (agenda)** — eventos e reuniões; permissões `*_COURSE`; horário de parede
+- `GET /admin/room-bookings?from&to[&roomId][&type=EVENT|MEETING][&search]` · `GET /admin/room-schedule?from&to[&roomId]` (cursos + reservas, `kind` COURSE|EVENT|MEETING)
+- `POST /admin/room-bookings` (`repeat: { frequency: WEEKLY|MONTHLY, until }` opcional) → `{ ids, seriesId }` · `PATCH /:id` (só esta data) · `DELETE /:id?scope=one|future` — sala ocupada → 409
+- `publicOnSite` + `publicDescription`: só evento vai para o site; `description` é observação interna
 
-**Unimed (beneficiários)** — permissões de pessoa (`*_USER`); hooks em `useUnimed.ts`
-- `GET /api/admin/unimed` — paginado; `?search` (nome/CPF/telefone) e `?userDataId=` (cadastros da pessoa **e** aqueles em que ela é o titular — a aba Unimed da ficha usa `useUnimedByPerson`)
-- `GET /api/admin/unimed/:id` · `POST /api/admin/unimed` · `PATCH /api/admin/unimed/:id` · `DELETE /api/admin/unimed/:id` (soft)
-- `tipoMovimento` e `grauDependencia` são listas fixas (`lib/unimed-options.ts`); `cns` vai só com dígitos (15)
+**Convênios** — `*_CONVENIO`; preço em centavos
+- `GET /convenios` (menu público) · `GET /convenios/:slug` (inativo/inexistente → 404)
+- `GET /admin/convenios` · `GET /admin/convenios/:id` · `POST` · `PATCH /:id` (`logoUrl: null` remove) · `DELETE /:id` · `POST /admin/convenios/:id/logo` (multipart)
 
-**Cotações (home)** — produtos fixos: SOJA, MILHO, TRIGO, MANDIOCA, DOLAR (não se cria/exclui)
-- `GET /api/market-quotes` — produtos com preço lançado (público; `priceCents`, `unit`, `period`, `referenceDate`, `variation`)
-- `GET /api/admin/market-quotes` — os 5 produtos
-- `PUT /api/admin/market-quotes/daily` — `{ period: MORNING|AFTERNOON, prices: [{ id, priceCents }] }`; data = hoje (definida no backend)
-- `GET /api/market-quotes/history?days=30|90|180|365` — `[{ id, label, unit, points: [{ date, period, priceCents }] }]` (público)
-- `PUT /api/admin/market-quotes/source` — `{ source }` (UPDATE_MARKET_QUOTE); vazio esconde a fonte
-- `PATCH /api/admin/market-quotes/:id` — `{ unit }` (sc 60kg, sc 50kg, sc 40kg, t, kg, @ ou null) (UPDATE_MARKET_QUOTE)
+**Unimed (beneficiários)** — permissões `*_USER`
+- `GET /admin/unimed` (`search`; `userDataId` traz os cadastros da pessoa e aqueles em que ela é titular) · `GET /admin/unimed/:id` · `POST` · `PATCH /:id` · `DELETE /:id` (soft)
+- `tipoMovimento` e `grauDependencia` são listas fixas; `cns` só com dígitos (15). O PATCH grava `null` em todo campo vazio
 
-**Galerias (página Sobre)** — permissões `*_BANNER`
-- `GET /api/galleries` — ativas com pelo menos uma foto (público)
-- `GET /api/admin/galleries` · `POST /api/admin/galleries` · `PATCH /api/admin/galleries/:id` · `DELETE /api/admin/galleries/:id`
-- `PATCH /api/admin/galleries/reorder` `{ order: id[] }`
-- `POST /api/admin/galleries/:id/photos` (multipart; reduzida p/ 1600px JPEG) · `PATCH /photos/:photoId` `{ caption }` · `DELETE /photos/:photoId` · `PATCH /photos/reorder`
+**Cotações** — produtos fixos: SOJA, MILHO, TRIGO, MANDIOCA, DOLAR
+- `GET /market-quotes` · `GET /market-quotes/history?days=30|90|180|365` (públicos)
+- `GET /admin/market-quotes` · `PUT /admin/market-quotes/daily` `{ period, prices: [{ id, priceCents }] }` (data = hoje, do backend) · `PATCH /admin/market-quotes/:id` `{ unit }` · `PUT /admin/market-quotes/source` `{ source }` (vazio esconde a fonte)
+
+**Galerias (página Sobre)** — `*_BANNER`
+- `GET /galleries` (público) · `GET` / `POST /admin/galleries` · `PATCH` / `DELETE /:id` · `PATCH /admin/galleries/reorder`
+- `POST /admin/galleries/:id/photos` (multipart; reduzida p/ 1600px) · `PATCH /photos/:photoId` `{ caption }` · `DELETE /photos/:photoId` · `PATCH /photos/reorder`
 
 **Auditoria**
-- `GET /api/admin/audit-logs` — trilha de auditoria (paginado; `action=create|edit|delete|export|login|login_failed`, `ip` exato). Cada linha traz `summary`, a frase pronta ("Iniciou o curso "HORTA"", "Tentativa de login falhou (usuário "x")", montada no backend); a tela só a exibe. O filtro "Tipo" lista as entidades do backend (`lib/audit-entity.ts`, inclui "Login")
-- `GET /api/admin/audit-settings` (READ_AUDIT) — `{ retentionDays, options, oldestAt, total }`; `PATCH` (UPDATE_AUDIT) — `{ retentionDays }` (0 = guardar para sempre; senão 30 a 3650, painel oferece 90/180/365/730). Baixar o prazo apaga na hora os registros mais antigos (resposta traz `deleted`)
-- Cada linha também traz de onde veio — `ip`, `location` ("Terra Roxa, PR, Brasil", aproximado pelo IP; o backend consulta o ipwho.is), `device` ("Chrome no Windows"), `userAgent` — e `changes` (`[{ field, before, after }]` em edições/exclusões; senha trocada = `password` "alterada", sem valor). Linhas antigas: tudo null. Tentativas de login ficam na trilha (LOGIN, LOGIN_FAILED, LOGIN_BLOCKED), com o usuário digitado e nunca a senha
+- `GET /admin/audit-logs` — paginado; `action=create|edit|delete|export|login|login_failed`, `entity`, `actorId`, `ip`, `from`, `to`, `q`. Cada linha traz `summary` (frase pronta, montada no backend), `ip`, `location`, `device`, `userAgent` e `changes` (`[{ field, before, after }]`; senha trocada = "alterada", sem valor). As entidades do filtro "Tipo" vêm do backend (`src/lib/audit-entity.ts` de lá)
+- `GET /admin/audit-settings` (READ_AUDIT) → `{ retentionDays, options, oldestAt, total }` · `PATCH` (UPDATE_AUDIT) `{ retentionDays }` (0 = para sempre). Baixar o prazo apaga na hora os mais antigos
 
-**Exportação CSV** — `POST /api/admin/export/:dataset` (corpo JSON; GET com query também existe) (planilha `;` com BOM, abre no Excel; cada exportação vai para a auditoria como "Exportou")
-- Datasets: `people`, `companies`, `properties` (`ownerIds`), `unimed` (READ_USER) · `admins` (READ_USER_ADMIN) · `courses`, `registrations` (`courseIds`) (READ_COURSE) · `contact-messages` (READ_CONTACT) · `audit-logs` (READ_AUDIT) · `room-bookings` (READ_COURSE; from/to/roomId/type/search)
-- `ids=a,b` = selecionados ou um registro; sem `ids` = mesmos filtros da listagem
-- Telas: checkboxes + "Exportar" em Associados, Empresas, Administradores, Unimed, Cursos (cards), Mensagens; ícone de download por linha; "Exportar" no detalhe de pessoa/empresa/curso/mensagem; botão na Auditoria, na aba Inscrições do curso e na agenda do Painel Geral (reservas do dia, da semana ou de um período escolhido)
+**Exportação** — `POST /admin/export/:dataset` (corpo JSON; `ids` = selecionados ou um só; sem `ids` = mesmos filtros da listagem). O servidor manda sempre CSV (`;` com BOM); o **PDF** ("Relatório", A4 deitado) é montado no front a partir do mesmo CSV (`lib/relatorio-pdf.tsx`). Cada exportação vai para a auditoria
+- Datasets: `people`, `companies`, `properties` (`ownerIds`), `unimed` (READ_USER) · `admins`, `cadastros` (relatório dos 4 tipos num arquivo; READ_USER_ADMIN) · `courses`, `registrations` (`courseIds`), `room-bookings` (READ_COURSE) · `contact-messages` (READ_CONTACT) · `audit-logs` (READ_AUDIT)
 
-**Convites de admin**
-- `POST /api/admin/invites` — gera convite (pessoa + regra → token)
-- `GET /api/invites/:token` — dados do convite (público)
-- `POST /api/invites/:token/accept` — ativa acesso (define username/senha)
+**Financeiro (admin)** — `*_FINANCE`; valores em centavos
+- `GET /admin/finance/categories` (`?all=true` inclui inativas) · `POST` · `PATCH /:id` · `DELETE /:id`; o mesmo para `/accounts` (caixas) e `/payment-methods` (nome em caixa alta, único)
+- `GET /admin/finance/transactions` (from, to, type, categoryId, accountId, method, search; `totals` de todos os filtrados) · `GET …/transactions/export` (CSV) · `POST` · `PATCH /:id` · `DELETE /:id`
+- `POST /admin/finance/transfers` · `POST /admin/finance/transactions/:id/attachments` (multipart) · `GET` / `DELETE /admin/finance/attachments/:id`
+- `GET /admin/finance/summary?from&to` · recorrências: `GET /recurrences` · `POST` · `PATCH /:id` · `DELETE /:id` · `POST /recurrences/generate` → `{ created }`
+- `GET /admin/finance/closings?accountId&year` · `GET /closings/preview?accountId&month` · `POST /closings` `{ accountId, month, countedBalanceCents, notes? }` (esperado recalculado no servidor) · `DELETE /closings/:id` (reabrir)
 
-**Financeiro (admin)** — gated por `*_FINANCE`; valor sempre em centavos (Int)
-- `GET /api/admin/finance/categories` (?all=true inclui inativas) · `POST` · `PATCH /:id` · `DELETE /:id`
-- `GET /api/admin/finance/accounts` (caixas; ?all=true) · `POST` · `PATCH /:id` · `DELETE /:id`
-- `GET /api/admin/finance/transactions` — paginado + filtros (from, to, type, categoryId, accountId, method, search); `totals: { incomeCents, expenseCents }` de todos os filtrados (não só a página; sem transferências nem "só nota", como no summary)
-- `GET /api/admin/finance/transactions/export` — CSV (respeita filtros)
-- `POST /api/admin/finance/transactions` · `PATCH /:id` · `DELETE /:id`
-- `POST /api/admin/finance/transfers` — transferência entre caixas (2 lançamentos ligados)
-- `POST /api/admin/finance/transactions/:id/attachments` — comprovante (multipart)
-- `GET /api/admin/finance/attachments/:id` (download inline) · `DELETE /api/admin/finance/attachments/:id`
-- `GET /api/admin/finance/summary?from=&to=` — KPIs + por categoria + por mês + saldo por caixa
-- `GET /api/admin/finance/recurrences` (?all=true inclui pausadas) · `POST` · `PATCH /:id` · `DELETE /:id` (só o molde; lançamentos ficam)
-- `POST /api/admin/finance/recurrences/generate` → `{ created }` — cria os lançamentos que faltam até o mês atual (idempotente)
-- `GET /api/admin/finance/payment-methods` (?all=true) · `POST` `{ name }` · `PATCH /:id` · `DELETE /:id` — nome em caixa alta, único
-- `GET /api/admin/finance/closings?accountId&year` · `GET /closings/preview?accountId&month` (abertura, entradas, saídas, esperado, diferença)
-- `POST /api/admin/finance/closings` `{ accountId, month, countedBalanceCents, notes? }` (esperado recalculado no servidor) · `DELETE /:id` (reabrir)
-
-**Notificações (admin)** — sino do painel; pendências conforme as permissões de quem está logado
-- `GET /api/admin/notifications` — `{ unreadCount, pendingCount, events: [{ id, type, title, body, link, createdAt, read }], pending: [{ type, title, body, count, link, severity: info|warning }] }` (avisos dos últimos 30 dias)
-- `PATCH /api/admin/notifications/read` — `{ ids?: string[] }` (sem ids = todos) → `{ updated }`
+**Notificações (admin)**
+- `GET /admin/notifications` → `{ unreadCount, pendingCount, events: [...], pending: [...] }` · `PATCH /admin/notifications/read` `{ ids? }` → `{ updated }`
 
 **Utilitário**
-- `GET /api/address/cep/:cep` — lookup CEP (ViaCEP + cache local)
-
-## Estado Atual (setembro/2026)
-
-- Auth **funcional** — login/logout integrados com backend real.
-- Cursos **integrados com API real** — CRUD completo (criar, editar, deletar, banner, galeria, instrutores, inscrições).
-- Usuários admin: detalhe completo com propriedades/relacionamentos paginados, upload de avatar, promoção a instrutor.
-- Banners e mensagens de contato implementados. Datas do banner valem no horário de Brasília (entra à 0h do início, sai às 23h59 do término; a migration `20260919120000_banner_dates_brasilia` corrigiu as gravadas em UTC). Criar banner com imagem que falha: um aviso só e o painel reabre na edição do banner.
-- **DatePicker** (`ui/date-picker.tsx`): campo digitável dd/mm/aaaa com botão de calendário ao lado; mesmas props e valor `YYYY-MM-DD` (ou `""` enquanto o texto não é uma data válida — o campo fica vermelho ao sair).
-- **Redes sociais** (Configurações do site): o WhatsApp é digitado como telefone ((44) 99999-9999) e salvo como `https://wa.me/55…`; link colado também serve. "Alterações não salvas" e Salvar só com mudança.
-- Notícias, salas, admins e parceiros implementados.
-- **Empresas separadas de pessoas** (set/2026): `Company` tem vínculos N:N com pessoas (`CompanyMember`, cada um com título livre, ex.: SOCIO, CONTADOR), propriedades próprias (endereços; `Property` pertence a uma pessoa OU a uma empresa) e a parceria (antes flags em `UserData`). Lista na aba "Empresas" de `/admin/usuarios`. O CNPJ saiu do formulário de pessoa; as colunas `cnpj`/`isPartner`/`partner*` de `UserData` foram removidas (valores antigos de CNPJ e de tipo de membro fora da lista foram para as observações do associado). A migration criou uma empresa para cada pessoa ativa que era parceira ou tinha CNPJ, com a pessoa como RESPONSAVEL.
-- **Painel Geral** (`/admin/dashboard`, set/2026): a tela é `components/dashboard/DashboardPage` — o arquivo de rota só cuida da URL. Blocos, nesta ordem de fábrica: **Ações rápidas** (Novo associado `CREATE_USER` → `/admin/usuarios/novo`; Novo curso `CREATE_COURSE` → `/admin/cursos`, onde fica o botão que abre o formulário; Nova reserva `CREATE_COURSE` → põe `?nova=reserva` na URL e rola até a agenda, que abre o formulário; Lançar cotação `UPDATE_MARKET_QUOTE` → `/admin/cotacoes`); **Números** (inscrições a confirmar, cursos começando em 7 dias, mensagens não lidas, associações vencendo em 30 dias, cursos cadastrados e pessoas cadastradas — cada cartão é link para a tela; zero fica apagadinho, e o cartão de um número que o backend não mandou (sem permissão) não é desenhado; salas/administradores/inscrições de 30 dias viraram uma linha de apoio); **Cotações do dia** (âmbar "Cotações de hoje ainda não lançadas" em dia útil depois das 11h de Brasília; "lançadas (manhã/tarde)" quando já foram); **Financeiro do mês** (`READ_FINANCE`; entradas/saídas/saldo de `GET /admin/finance/summary` do mês corrente); **Calendário + agenda das salas** (`READ_COURSE`); **Cursos públicos** (vagas "8/40" com "quase lotado" ≥80% e "lotado" 100%, prazo "Inscrições até DD/MM" ou "Prazo encerrado"; consulta própria de 1 página); **Cadastros incompletos** (`READ_USER`); **Últimas ações** (`READ_AUDIT`, 5 últimas de `GET /admin/audit-logs?limit=5` com tempo relativo).
-- **Calendário do painel**: os dias vêm todos de `GET /admin/room-schedule` (cursos, eventos e reuniões) — o painel não pagina mais a lista de cursos. Bolinha por tipo, com as mesmas cores dos selos (`KIND_DOT_CLASS`), sempre 6 linhas, dia com nome por extenso no rótulo (leitor de tela) e "hoje" pelo relógio de Brasília. O mês segue o `?dia=` da URL (chegar pelo sino em outro mês abre o mês certo).
-- **Personalizar o painel** (set/2026, enxugado depois que o usuário reprovou o excesso de controles): "Personalizar" **congela o painel** no próprio `/admin/dashboard` e deixa os blocos manipuláveis — nada de janela, de amostra cortada nem de lista abstrata. O bloco continua sendo **o bloco de verdade, inteiro**, só que `inert` (não recebe clique nem foco), dentro de uma moldura tracejada (`EditableBlock`). São quatro coisas, e só: **mover** (arrastar o CARTÃO INTEIRO — `useSortable` do `@dnd-kit` com **estratégia própria**, `ESTRATEGIA_DO_PAINEL` sobre `previaDoArrasto` de `dashboard-drag.ts`: os blocos andam para onde vão ficar, mas **só por `transform`** — a ordem real só muda no `onDragEnd`. Duas coisas NÃO funcionam aqui e já foram tentadas: (a) as estratégias prontas (`rectSortingStrategy` e cia.) montam a prévia permutando os retângulos medidos e aplicando scaleX/scaleY, o que com blocos de larguras/alturas desiguais esticava um por cima do outro; (b) reordenar ao vivo no `onDragOver` fazia a grade refluir, o que trocava o bloco sob o cursor e os dois ficavam **se alternando sem parar**. A prévia por `transform` é segura porque o @dnd-kit mede os alvos com `getTransformAgnosticClientRect` e `MeasuringStrategy.WhileDragging` (congelados no início do gesto), então mover o desenho não mexe no alvo. `dashboard-drag.ts` é puro e testado (`src/test/lib/dashboard-drag.test.ts`): lê a grade pelas medidas (4 colunas no computador, 1 no celular: largura de coluna e vão saem dos próprios retângulos), refaz o empacotamento na ordem nova e devolve a distância; o teste-chave é que empacotar a ordem ATUAL reproduz as medidas. Junto: selo "Solte aqui" no cartão sob o cursor (prop `alvo` do `EditableBlock`), `closestCorners` (pelo centro, um bloco alto vencia um baixinho sob o cursor), `animateLayoutChanges: () => false` e `CSS.Translate` (não `CSS.Transform`, que escreve scaleX/scaleY); no mouse basta andar 8px, no dedo é apertar e segurar 250ms como quem move ícone de celular, e pelo teclado é Espaço, setas, Espaço, com os avisos do leitor de tela em português); **redimensionar** (puxar a alça do canto — ver "Largura dos blocos"); **remover** (o bloco SOME do painel); e **adicionar de volta** (área "Blocos que não estão no painel" no fim da tela, com "+ Adicionar <nome>" por bloco; sem nenhum removido, a área não existe). O botão "Remover" fica sobre a borda de cima, no canto direito, com texto e 44px — sobre a borda para não tapar número nem título. Barra sempre à vista (`EditModeBar`: no computador presa no alto depois da sidebar, no celular no pé da tela — é `fixed`, porque o `<main>` do painel tem overflow e mata o `sticky`) com o selo "Alterações não salvas", uma linha curta ("Segure e arraste um bloco para mudar a ordem." + "Puxe o canto de baixo para mudar a largura." de `lg` para cima), **Restaurar padrão**, **Cancelar** e **Salvar** (só o Salvar grava). Sair da tela com o rascunho pela metade pergunta antes (`useUnsavedGuard`). Fora do modo, o painel é exatamente o de sempre.
-- **Largura dos blocos — grade de 4 colunas** (set/2026, a pedido do usuário; antes eram 2 colunas com 'full'/'half'): o painel é **UMA grade de 4 colunas** de `lg` para cima (1 no celular) e **todo bloco cobre de 2 a 4 colunas** — `DashboardSpan = 2 | 3 | 4`, sem 1 coluna de propósito (cartão de 1 coluna ficava espremido e os tamanhos ficavam díspares demais, que era o que atrapalhava na tela e no código). O bloco ocupa as colunas dele **mesmo sozinho** (deixa o resto da linha vazio, não estica), e juntar blocos na mesma linha é a própria grade que faz. Consequência aceita: uma linha com um bloco de 3 deixa 1 coluna vazia, porque nada menor que 2 existe. `CLASSE_SPAN` mapeia 2/3/4 → `lg:col-span-N` (Tailwind precisa do nome escrito), `NOME_SPAN` dá "Meia linha"/"Três quartos da linha"/"Linha inteira". Cada bloco no modo de organizar tem uma **alça no canto de baixo à direita** (marca diagonal discreta num alvo de 44×44px, `cursor-nwse-resize`, escondida abaixo de `lg`): arrastar encolhe/aumenta **grudando na largura mais perto** das três (`spanMaisPerto`, pela largura em pixels de cada span), e o bloco muda **enquanto se arrasta**, com o nome do tamanho num balãozinho. A alça é `role="slider"` (`aria-valuemin` 2, `aria-valuemax` 4, `aria-valuenow` = span), focável por Tab, e ←/↓ e →/↑ andam **uma coluna por vez** sem passar de 2 nem de 4; ela interrompe (`stopPropagation`) ponteiro e teclado para o `@dnd-kit` não sair movendo o bloco. Padrão de fábrica: ações, números, cotações, financeiro e agenda com 4; cursos, cadastros incompletos e últimas ações com 2. **Preferências antigas migram**: `normalizePrefs` converte `'full'` → 4 e `'half'` → 2, então quem personalizou antes não perde o painel. Regras puras em `dashboard-prefs.ts` (`dashboardLayout`, `dropBlock`, `applyOrder`, `setBlockSize`, `toggleHidden`, `prefsDraft`, `sameDraft`, `prefsToSave`), testadas em `src/test/lib/dashboard-blocks.test.ts`.
-- **Preferências do painel**: `PATCH /admin/me/preferences` com `{ dashboardPrefs: { hidden: string[], order: string[], sizes: { <bloco>: 2 | 3 | 4 } } }` (colunas da grade de 4; `'full'`/`'half'` gravados antes viram 4 e 2 na leitura) (o backend substitui o valor inteiro e aceita até 4 KB de JSON; o que a tela manda tem ~330 bytes) e vale ao abrir a tela (`GET /admin/me`). Sem preferências, com preferências estragadas (bloco que não existe mais, largura inventada, campo com tipo errado) ou se a gravação falhar, fica o layout padrão; bloco que o admin não pode ver nunca entra, e mexer na ordem não muda o lugar dele.
-- **Notificações** (set/2026): sino no topo da barra lateral (embaixo do logo com a barra recolhida) e no topo da tela no celular. Número = avisos não lidos + pendências `warning` ("9+" acima de 9). Painel com "Pendências" (calculadas no backend; importantes primeiro, em âmbar) e "Avisos" (30 dias; clicar marca como lido e abre o `link`; "Marcar todas como lidas"). Links abrem pelo roteador (`navigate({ href })`, só caminhos `/admin`): `/admin/cursos?curso=<id>&aba=inscricoes`, `/admin/usuarios?incomplete=true` ou `?tab=admins` (a tela de usuários acompanha a URL mesmo já aberta), `/admin/configuracoes?tab=...`, `/admin/mensagens`, `/admin/cotacoes`, `/admin/dashboard?dia=<hoje>` (reservas de sala de hoje). Alertas de pendência não ficam no painel geral.
-- **Central de Ajuda** (`/admin/ajuda`, set/2026): documentação interna do painel, escrita para administrador leigo. Cada artigo é um **arquivo .md em `src/lib/help/articles/`** com cabeçalho entre `---` (`titulo`, `resumo`, `grupo`, `permissao`, `ordem`, `busca`) — criar o arquivo já põe o artigo na lista, no menu e na busca (`import.meta.glob` com `?raw` em `src/lib/help/index.ts`; nada de cadastrar em lugar nenhum). Grupos em `HELP_GROUPS`. O grupo **"Como fazer"** é por TAREFA ("como criar um curso", "como criar uma reserva"), passo a passo numerado, enquanto os outros são por TELA — quem está começando pergunta pela tarefa, não pelo nome do menu; cada receita termina apontando para o artigo da tela, e vice-versa. O cabeçalho aceita ainda `veja:` (ids separados por vírgula) que vira o **"Ver também"** do rodapé do artigo — `relatedArticles` some com quem a pessoa não pode abrir, e o teste garante que todo id apontado existe. O artigo com `permissao` só aparece para quem tem ela (`visibleArticles`), então cada um lê a ajuda das telas que enxerga. Busca sem acento/maiúscula exigindo todas as palavras, **inclusive no corpo do artigo** (`filterArticles`) — "juntar cadastros" acha o artigo de Usuários. Link `(?topico=<id>)` dentro do markdown navega pelo roteador (não recarrega). Tela em `components/ajuda/HelpPage.tsx` (menu à esquerda, artigo à direita renderizado com `react-markdown` + `remark-gfm`; no celular o menu dá lugar ao artigo, com "Assuntos" para voltar); botão **Imprimir** usa `window.print()` e o `print:hidden` tira menu/busca do papel. Mais três ajudas de leitura, todas em função pura testada: **"Nesta página"** (`articleSections` lê as linhas `## `, ignorando `###` e bloco de código; aparece a partir de 3 seções, e os `h2` ganham `id` por `slug`), **trecho na busca** (`searchExcerpt` mostra o pedaço do texto em volta da palavra buscada, sem a formatação do markdown — só o título não explica por que o artigo apareceu) e **`/` foca o campo de busca**. Item **Ajuda** na barra lateral (grupo Suporte, sem permissão) e na paleta Ctrl+K. Além disso, **cada tela do painel tem um "?" ao lado do título** (`components/ajuda/AjudaLink.tsx`, `topico` = nome do .md) que abre o artigo daquela tela — a dúvida acontece dentro da tela, não na seção de ajuda. Estão cobertas as 15 telas do menu; as fichas de pessoa e empresa (`usuarios/$id`, `empresas/$id`) ficaram de fora porque o título ali é o nome do cadastro ("Ajuda sobre João Silva" não faz sentido). Um teste varre os `.tsx` e exige que todo `topico` usado exista como artigo e que as telas do menu tenham o "?". A ajuda também aparece onde a pessoa trava: **"Por que não vejo esta tela?"** no `NoPermission` (aponta para `HELP_PERMISSOES` — a seção de permissões do artigo de boas-vindas, que NÃO exige permissão: quem vê o aviso é justamente quem não poderia abrir o artigo de administradores) e **"Como funciona esta tela"** no `EmptyState`, pela prop opcional `topico`, usada só quando a lista está vazia de verdade (na busca sem resultado a pessoa já conhece a tela). **"Imprimir tudo"** monta o manual inteiro (`ManualCompleto`, `hidden print:block`, uma página por artigo) com só o que aquele acesso enxerga — o conteúdo normal recebe `print:hidden` enquanto isso, e a impressão abre depois de dois `requestAnimationFrame` para o navegador ter desenhado os artigos. E **quem aceita um convite cai na Central de Ajuda**: `convite/$token.tsx` manda para `/login?redirect=/admin/ajuda` — é o único momento em que se sabe com certeza que a pessoa nunca usou o painel. Testes em `src/test/lib/help.test.ts` conferem cabeçalho, permissões reais e que todo link `?topico=` aponta para artigo existente.
-- Trilha de auditoria e convites de admin implementados.
-- **Ajustes de cadastro (set/2026)**: tipo de membro é select (Aluno, Produtor rural, Trabalhador rural assalariado/autônomo; o backend recusa valor fora da lista); CAD/PRO até 5; salas com nome de lista fixa; empresa com razão social (`name`), nome fantasia (`tradeName`, exibido quando houver — `companyDisplayName`) e endereço da sede no próprio cadastro (CEP com busca).
-- **Cotações**: produtos fixos; o admin só lança preço (centavos) e período manhã/tarde; a data é a do dia; a unidade de cada produto é escolhida na mesma tela (saca 60/50/40 kg, tonelada, quilo, arroba ou sem unidade) e só é salva no "Salvar cotações", junto com os preços (PATCH das unidades alteradas, depois PUT daily se houver preço; erro mostrado por produto). Preço >20% diferente do último lançado abre confirmação ("Corrigir" / "Salvar mesmo assim"); "Repetir último" preenche o preço anterior; Enter no preço vai para o próximo (não envia). Home mostra preço + unidade + dia/período + fonte (editável no admin de cotações) e linka para `/cotacoes` (histórico em gráfico/tabela).
-- **Exportação** (set/2026): tudo que tem lista no painel exporta em CSV — selecionados, todos com os filtros atuais ou um registro só (ver "Exportação CSV" acima). A planilha de inscrições do curso agora vem do backend.
-- **Listas fixas duplicadas com o backend** (`ROOM_NAMES`, `MEMBER_TYPES`, `MEMBER_STATUS`, `UNIMED_MOVEMENT_TYPES`, `UNIMED_DEPENDENCY_DEGREES`): existem nos dois repositórios e nada ligava uma à outra — divergir dava 400/409 sem explicação na tela. o teste que confere isso mora **no backend** (`src/lib/__tests__/listas-fixas_test.ts`), porque lá ler arquivo é nativo — o `tsconfig.app.json` daqui não tem os tipos do Node e o `npm run build` compila os testes junto. Ele lê os arquivos **deste** repositório quando ele está ao lado (`../sindicato-rural-tr-client-side`) e compara de verdade.
-- **Texto público sai como foi digitado** (set/2026): `upperNoAccents` continua nos ~70 campos de cadastro (nomes, endereços, razão social — ajuda busca e comparação), mas saiu dos **três que o visitante lê**: título do curso e observações (`CourseFormDialog`) e título da reserva (`BookingDialog`, que vai para `/eventos` quando marcada "Mostrar no site"). O site mostrava "MANEJO INTEGRADO DE PRAGAS NO MILHO". A busca do painel não depende mais da caixa alta: o backend ganhou colunas `course.nameSearch` e `RoomBooking.titleSearch`, preenchidas por trigger com `immutable_unaccent_lower()` (migração `20260929120000_course_booking_search`, mesmo desenho de `UserData.nameSearch`), então "manutencao" acha "Manutenção". **Cursos e reservas antigos continuam gravados em caixa alta** — só o que for criado ou editado daqui para frente sai como foi digitado.
-- **Um campo de pessoa, um lugar** (set/2026): o cadastro de pessoa vive em duas telas — `usuarios/novo` e a ficha `usuarios/$id` — e elas eram dois blocos de JSX escritos à mão com os **mesmos trinta campos repetidos**. Foi assim que a Situação do associado ficou só numa delas, e os rótulos já tinham divergido ("Nº cooperado" numa, "Nº observação" na outra, para a mesma coluna). Agora cada campo é desenhado uma vez em `components/cadastro/person-form-fields.tsx` (`PersonField`, mais o `FieldRow` e o `SelectField` que as duas usavam em versões diferentes) e os rótulos são dado em `lib/person-fields.ts`. O que é de cada tela vai por prop: `disabled` (modo leitura da ficha), `highlight` (destaque do Completar cadastro), `errors` e `idPrefix`. **A composição fica em cada tela**: qual campo entra em qual cartão e em que ordem — as duas agrupam diferente de propósito (o nascimento fica em Identidade no cadastro novo e em Documentos na ficha) e unificar isso mudaria o desenho sem ninguém ter pedido. `CAMPOS` é um `Record<PersonFieldName, …>`, então **esquecer um campo não compila**. Continuam por tela, e com razão: a foto de perfil, o CPF do cadastro novo (que consulta cadastro repetido enquanto se digita), o endereço/propriedade, os dados de instrutor e a busca de pessoa. Duas mudanças visíveis de propósito: "Nº cooperado" virou o rótulo dos dois, e Observações virou textarea nos dois (a ficha já era). Testes: `src/test/components/PersonField.test.tsx` (60 casos — cada campo grava na CHAVE certa, máscaras, modo leitura, erro, destaque) e `src/test/forms/cadastro-pessoa.test.ts` (todo campo do associado está nas duas telas).
-- **Situação do associado na ficha** (set/2026): o campo `memberStatus` (Ativo/Inativo) existia **só** no cadastro novo — dava para marcar ao criar e nunca mais mudar. Como a aba **Associados** filtra por `activeMember` (que exige `ACTIVE`) e quem se inscreve pelo site nasce com `memberStatus` nulo, essas pessoas nunca viravam associadas e não havia saída pelo painel. O campo entrou na ficha (`usuarios/$id.tsx`, cartão da associação) e as opções saíram do JSX para `MEMBER_STATUS` em `lib/member-types.ts`, usadas pelos dois formulários. `src/test/forms/cadastro-pessoa.test.ts` varre os dois arquivos e exige que todo campo do associado esteja **nos dois** — é o que segura a divergência enquanto os formulários forem separados.
-- **Sala no formulário de curso** (set/2026): a API devolve o **nome** da sala (`location`), não o `roomId`, e a lista de salas chega depois de o diálogo abrir — então a edição mostrava o select vazio ("Selecione a sala") num curso que tinha sala. Um efeito resolve o id por `roomIdByName` (o mesmo já usado na duplicação) e aplica com `form.reset`, não `setValue`: a sala gravada é o ponto de partida, não uma alteração — com `setValue` fechar o diálogo passaria a perguntar "sair sem salvar?" sem ninguém ter mexido.
-- **CPF / CIN** (set/2026): a Carteira de Identidade Nacional (CIN, Decreto 10.977/2022) não tem número próprio — o número dela **é o CPF**, igual em todo o país. Quem entrega a carteira nova no balcão não tem RG para ditar, então o campo onde se digita o número passou a se chamar **CPF / CIN** (`CPF_LABEL` em `lib/cin.ts`), com uma linha de apoio embaixo (`CIN_HINT`) no cadastro novo e na ficha. Vale nos três lugares em que alguém digita o número olhando um documento: `usuarios/novo`, `usuarios/$id` e o primeiro passo da inscrição pública em curso. **Onde o número só é exibido** (tabelas, PDFs, CSV, diálogo de juntar cadastros) continua escrito "CPF" — ali é o nome do dado, não uma instrução de onde copiar. Para o código nada mudou: mesmo campo `cpf`, mesmos 11 dígitos, mesma validação.
-- **RG opcional** (set/2026): a nova carteira de identidade brasileira usa o número do CPF, então quem tira documento agora não tem RG para informar. O RG **saiu da conta de "cadastro incompleto"** — no backend (`buildUserListWhere`, que alimenta o bloco Cadastros incompletos, o aviso do sino e o filtro `?incomplete=true`) e na ficha da pessoa (`getMissingFields` e o modo "Completar cadastro", onde o campo não é mais destacado em âmbar). O campo continua na tela e continua validado **quando preenchido** (7 a 9 dígitos), porque os cadastros antigos têm RG; o cadastro novo e a inscrição pelo site já o tratavam como opcional.
-- **E-mail e telefone de pessoa** (set/2026): podem repetir entre pessoas (casal, família) e o e-mail é opcional (`UserData.email: string | null`; vazio vai como null). Só o CPF identifica a pessoa e só ele dá "já cadastrado" (409 "CPF já cadastrado para outra pessoa."). Cadastro novo, ficha e inscrição pública no site não exigem e-mail (no site aparece "(opcional)"); telefone continua obrigatório. Onde o e-mail aparece (listas, contatos públicos, inscrições, PDFs) sem e-mail não mostra nada ou "—", e `mailto:` só sai quando há e-mail.
-- **Inscrições de curso**: selos "Associado" (situação ativa e validade em dia), "Parceira" (vínculo com empresa parceira ativa), cargo na diretoria e cargo de contato público; o CSV traz as mesmas colunas.
-- **Presença e "Concluído"** (set/2026): o curso inicia mesmo com inscrição não confirmada. Depois que começou (em andamento, concluído ou chegou o dia do início), cada inscrição confirmada tem os botões "Presente"/"Faltou" (clicar de novo desmarca), "Todos presentes" e a contagem "X presentes · Y faltas · Z sem marcar". O sistema NÃO emite certificado: quem emite é a FAEP (o botão foi retirado a pedido do usuário em set/2026). "Lista de presença" gera o PDF para assinar. O CSV de inscrições tem a coluna "Presença". Status `COMPLETED` ("Concluído") é sempre manual ("Concluir curso" num curso em andamento; a edição permite voltar): fora da lista do site, página abre pelo link e nunca aceita inscrição (bloqueio "ended", como curso terminado).
-- **Página do curso** (`/cursos/$id`): prazo de inscrição vale até o fim do dia em Brasília, ou até a hora quando o painel informou (`registrationDeadlineTime`, "HH:MM"; 00:00/null = dia inteiro; a página mostra "Inscrições até DD/MM/AAAA às HH:MM") e o curso aceita inscrição até o último dia; status `IN_PROGRESS`, curso terminado, prazo vencido ou lotado desligam "Inscrever-se" com o motivo — regra em `utils/course-status.ts`, a mesma do backend e do card. "Não existe" só com 404; outra falha mostra "Tentar de novo". No celular há barra presa ao pé (sticky) com preço e botão. CPF é conferido (dígitos) antes de seguir; formulário com algo digitado não fecha tocando fora/Esc (o X pede confirmação); menor de idade ganha link do `/termo-autorizacao-menor.pdf`. Depois de inscrever (ou se já estava inscrito, 409 "User already registered…" vira tela amigável): resumo, "Adicionar à agenda" (.ics + Google Agenda), "Enviar para meu WhatsApp" e telefone do sindicato.
-- **Home**: os números (associados, cursos realizados, anos, alunos) saíram. As galerias de fotos (História do Sindicato, FAEP, Patrulha Rural) ficam só na página Sobre (#galeria) — o usuário pediu para NÃO ter seção de galerias na home.
-- **Configurações** (`/admin/configuracoes`): centraliza o que é do site público — Dados do sindicato (telefone, e-mail, endereço, horário, busca do mapa e texto do Sobre; usados no rodapé, Contato, Sobre e convênios via `useOrgInfo`), Redes sociais, Galerias, Parceiros da home (adicionar empresa, logo, link, ordem, tirar) e Contatos públicos ("Nossa Equipe": qualquer pessoa do cadastro, com cargo e ordem). Permissões: Dados/Redes/Galerias `*_BANNER`; Parceiros e Contatos `*_USER`. A empresa não tem mais aba Parceria e o diálogo de admin não marca mais contato público — ambos apontam para cá. A aba **Salas** (set/2026) trouxe para cá a antiga tela `/admin/salas`: são seis salas de lista fixa e quase nunca mudam, então viraram um ajuste em vez de item do menu (nome, descrição e capacidade; permissões `*_COURSE`; a capacidade aparece ao escolher a sala do curso). `/admin/salas` redireciona para `?tab=salas`, e a tela de Cursos e a busca rápida apontam para lá.
-- **Cadastros repetidos** (item 42): a inscrição pública em curso só acha a pessoa pelo CPF, então quem já estava cadastrado sem CPF ganha um segundo cadastro. Em `/admin/usuarios` (aba Associados) o botão "Possíveis duplicados" lista os grupos (mesmo nome, telefone ou e-mail, com pelo menos um sem CPF) com atalho "Juntar"; no detalhe da pessoa, "Juntar cadastros" (DELETE_USER) abre o mesmo diálogo com PersonPicker. O diálogo compara os dois lado a lado (CPF, e-mail, telefone, criado em, nº de inscrições/empresas/propriedades/relações), deixa escolher qual fica e avisa o que vai ser movido. O backend faz tudo numa transação: inscrições (repetida no mesmo curso é cancelada), vínculos com empresas (repetido mantém o título do que fica), propriedades, relações, Unimed, contato público, instrutor e login; campos vazios do que fica são preenchidos com os do outro; o removido vira excluído (nunca apagado). Recusa CPFs diferentes e os dois com login (409).
-- **Convênios**: cada convênio ativo é um item próprio no menu do header público (entre Notícias e Sobre; sem submenu — pedido do usuário, são poucos); cada um tem página em `/convenios/$slug` (tabela de valores por faixa, documentos para adesão, destaques e texto). Conteúdo 100% editável em `/admin/convenios` (`ConvenioEditor` + `ConvenioPageView` compartilhado com a pré-visualização). Hooks em `useConvenios.ts`. Unimed semeado com os dados da página antiga (`ruraltr.com.br/pgs/print_unimed.php`). Regras com `UPDATE_BANNER` receberam as permissões `*_CONVENIO` na migration.
-- **Financeiro** (admin): lançamentos de caixa (valor em centavos Int), categorias, dashboard, comprovantes (anexo em Bytes no banco), export CSV, multi-caixa e transferência entre caixas, relatório PDF do período. Gated por `READ/CREATE/UPDATE/DELETE_FINANCE`. Filtros dos lançamentos vivem na URL (search params). Aba Lançamentos: totais (Entradas, Saídas, Saldo) dos filtros atuais vindos do backend (`totals`); "Registrar e novo" (mantém data/tipo/categoria/caixa/método); "Repetir" por linha (novo lançamento copiado, data de hoje, sem comprovantes nem números da nota); remover comprovante pede confirmação.
-- **Recorrentes** (set/2026): aba "Recorrentes" do Financeiro com o molde do lançamento que se repete todo mês (descrição, valor, dia 1–31, primeiro/último mês, categoria, caixa, forma). Ao abrir a tela, o backend cria os lançamentos que faltam até o mês atual — idempotente, cada mês entra uma vez só; mês mais curto que o dia usa o último dia dele. Lançamento gerado mostra o selo "Recorrente"; excluir a recorrência não apaga o que já foi lançado. Hooks em `useFinance.ts`, componentes em `src/components/financeiro/`, helpers de mês em `src/lib/finance-month.ts`.
-- **Forma de pagamento** vira lista cadastrável (`FinancePaymentMethod`): select no lançamento e na recorrência, com "+ Nova forma de pagamento" (CREATE_FINANCE). O lançamento continua guardando o texto. Filtro "Forma" na lista de lançamentos (na URL como `pm`) e no CSV. **Aba própria** (set/2026, `components/financeiro/PaymentMethodsTab.tsx`, `?tab=formas`): renomear, desativar e excluir. Antes elas só nasciam pelo "+ Nova forma" de dentro do select e **não havia como arrumar nada** — um "PIIX" digitado errado aparecia na lista de todo lançamento novo para sempre. O lançamento guarda o TEXTO da forma, então excluir não mexe em nada já lançado; e cadastrar um nome que já existe (mesmo excluído) reaproveita a linha, em vez de estourar o unique.
-- **Fechamento mensal**: aba "Fechamento" — escolhe caixa + mês, mostra saldo anterior, entradas, saídas e saldo esperado, recebe o saldo contado, destaca a diferença em vermelho quando não bate e guarda o fechamento (um por caixa/mês). Histórico do ano com opção de reabrir (DELETE_FINANCE).
-- **Notícias — agendamento e link** (set/2026): ao publicar dá para escolher "Publicar agora" ou "Agendar para" (data + hora de Brasília, `publishAt`); no site a notícia só aparece depois da hora marcada (o link direto dá 404 até lá) e o cartão do painel mostra o selo "Agendada para DD/MM/AAAA HH:MM". Notícia no ar ganha "Ver no site" e "Copiar link". A listagem tem busca por título e filtro Todas / Publicadas / Agendadas / Não publicadas. Regras puras em `lib/news-schedule.ts`.
-- **Eventos no site** (set/2026): no `BookingDialog` o evento (nunca a reunião) tem a opção "Mostrar no site" + "Texto do evento no site"; a agenda do dia marca esses eventos com o selo "No site". A página pública `/eventos` lista os eventos que ainda não terminaram, agrupados por mês, com data, horário e sala; há item "Eventos" no menu (depois de Cursos) e a faixa "Próximos eventos" na home, que só aparece quando há pelo menos um.
-- **Agenda das salas** (dentro do Painel Geral, set/2026): a tela própria `/admin/agenda` saiu — o calendário do `/admin/dashboard` é o controle. Filtros de sala e de tipo (Todos/Curso/Evento/Reunião) e o dia selecionado ficam na URL (`?dia=&sala=&tipo=`). A seção da agenda (`AgendaSection`) tem **Dia / Semana** (semana de segunda a domingo, no celular um dia embaixo do outro; clicar no dia passa o foco e volta para a visão do dia), busca por título ou responsável (com espera de 350 ms; só eventos e reuniões — cursos não entram na busca e a tela avisa), "Nova reserva" (CREATE_COURSE) já no dia/sala escolhidos, "Exportar" CSV das reservas do período visível ou de um período escolhido (READ_COURSE; cursos não entram na planilha), "Imprimir" (PDF da agenda do dia/semana, `lib/agenda-pdf.tsx`) e a **ocupação das salas** do dia (uma linha por sala mesmo vazia; fechada no celular). Tudo o que aparece vem de duas buscas do período visível (`/admin/room-schedule` para os cursos e `/admin/room-bookings` para as reservas, com o responsável) — nunca uma busca por dia —, e editar não pede a reserva de novo. Erro mostra "Tentar de novo"; vazio = "Nada marcado neste dia." (na busca, "Nada encontrado para …"). Curso abre `/admin/cursos?curso=<id>`; evento/reunião abre o `BookingDialog` (Tipo, Título, Sala, Data, Início/Término, "Termina em outro dia", responsável do cadastro ou nome digitado, descrição, "Mostrar no site", repetir toda semana/todo mês até uma data — só ao criar). 409 (sala ocupada) aparece dentro do diálogo. Reserva de uma repetição: editar muda só a data; excluir pergunta "Só esta data" / "Esta e as próximas". Ao editar, campos opcionais vazios vão como `null`.
-- **Ocupação das salas — o horário sempre escrito** (set/2026): o usuário não conseguia saber "de que hora a que hora" a sala estava ocupada (a barra só mostrava o título). Agora `RoomOccupancy` tem duas caras do MESMO dado (`occupancyRows`), escolhidas por `@container` pela largura do próprio bloco (não da tela — no Painel Geral a agenda divide o espaço com o calendário e num monitor de 1024px a faixa teria uns 280px):
-  - **abaixo de 640px** (celular e painel estreito): **lista por sala** — cabeçalho com o nome da sala e "Livre o dia todo" / "N horários marcados", e uma linha por item com **"08:00 às 12:00"** em negrito, título, tipo escrito e o aviso de virada de dia ("Começou antes deste dia", "Termina em outro dia", "Ocupa o dia inteiro") ou "fora das 07:00 às 22:00". Alvo de toque de 44px+; cada sala tem "Marcar reserva nesta sala" (CREATE_COURSE), que já sugere o primeiro horário livre (`suggestedFreeHour`). A lista mostra até o que cai fora das 07:00–22:00 — nada fica escondido.
-  - **de 640px para cima**: a faixa das 07:00 às 22:00, com **régua de hora em hora** (rótulo de 3 em 3 sempre; todas as horas quando o bloco passa de 900px), **linhas de grade de 1 em 1 hora** (mais fortes de 3 em 3) e o **horário escrito junto da barra**: dentro dela quando cabe ("08:00 às 12:00 · CURSO…"), senão no vazio ao lado (depois ou antes, o que couber) e, no aperto, na linha "Também nesta sala: …" embaixo da faixa. Quem cabe onde é conta pura (`occupancyLabelMinWidth`, pelo TAMANHO do texto — "23/09 20:00 às 24/09 10:00" pede quase o dobro de "08:00 às 12:00"); dois vizinhos que disputam o mesmo vazio ficam com metade cada. Sala sem nada diz "Livre o dia todo"; sala só com item fora do horário diz "Nada marcado entre 07:00 e 22:00" + "Fora das 07:00 às 22:00: …".
-  - Continuam valendo: uma linha por sala mesmo vazia, itens sobrepostos em faixas separadas, itens que entram/saem do dia (`cutBefore`/`cutAfter`), clicar num espaço livre abre a nova reserva naquela sala e hora, clicar num item abre ele, e o `aria-label` de cada barra/linha diz sala, tipo, título, horário e o aviso de virada de dia.
-- **Unimed** (set/2026): no formulário, tipo de movimento e grau de dependência viraram select de lista fixa (`lib/unimed-options.ts`) — cadastro antigo com texto fora da lista continua aparecendo como "(valor antigo)" e é aceito pelo backend ao salvar o mesmo registro; CNS com máscara "000 0000 0000 0000" (15 dígitos, gravado só com dígitos); o titular vinculado mostra o nome da pessoa (era "Usuário vinculado"); as ações da linha viraram um menu "Ações" com rótulos escritos (ícone sozinho não se explica no toque). Plano segue texto livre (o legado só tinha o nome/registro ANS do plano, sem lista). Ficha/Termo/Contrato agora baixam por `lib/unimed-docs.ts`, compartilhado com a aba Unimed da ficha da pessoa (`components/unimed/PersonUnimedTab.tsx`).
-- Deploy em produção via Docker (Dockerfile + docker-compose.prod.yml; servidor Node/Fastify em `server/index.mjs`).
-- **Conexão fraca / site público (set/2026)**: consultas repetem até 2x em falha de rede/5xx; home, listas, cotações e notícia mostram "Não foi possível carregar" + "Tentar de novo" (nunca "nenhum curso" quando a API falhou; notícia só diz "não existe" em 404); 404/erro/carregamento em português no router; cards de curso usam `coverImageThumb` (cursos antigos: capa inteira) e descrição sem markdown; faixa de cotações parada e rolável no toque; botão flutuante do WhatsApp; alvos de toque de 44px no menu e chamadas do site.
-
-## Comandos
-
-```bash
-# Desenvolvimento
-npm run dev      # dev server (Vite) → http://localhost:5173
-npm run build    # TypeScript check + Vite build → dist/
-npm run preview  # preview do build
-npm run lint     # ESLint
-
-# Produção (manual VPS)
-cp .env.production.example .env.production
-# editar .env.production com BACKEND_URL real (usado em runtime pelo server/index.mjs
-# para as meta OpenGraph; as chamadas da SPA usam o VITE_API_URL do build)
-docker compose -f docker-compose.prod.yml --env-file .env.production up -d --build
-```
-
-## Convenções
-
-- Aviso conhecido em desenvolvimento (só no console do Vite, não acontece no site publicado): "Cannot update a component while rendering a different component" nos formulários com React Hook Form + React 19.3 — vem da validação da própria biblioteca (testado em 7.76 e 7.88, ocorre nas duas). Ignorar nas baterias de navegador.
-- Outro aviso só de desenvolvimento: "This library called use() to suspend in a previous render…" — vem do TanStack Router (1.170, já a última) com React 19.3 ao carregar rotas sob Suspense. Navegação funciona; ignorar nas baterias.
-
-- Alias `@/` aponta para `src/`
-- Componentes shadcn ficam em `src/components/ui/`
-- Arquivo de rota exporta só `Route`: componente ou helper exportado de lá (e `validateSearch` com zod) não é dividido pelo `autoCodeSplitting` e vai para o bundle inicial do site público — coloque em `src/components`/`src/lib`
-- Lista suspensa dentro de `Dialog`: marque o contêiner com `data-escape-owner` enquanto aberta (Esc fecha só a lista; ver `ui/dialog.tsx`)
-- Rotas públicas sob `_public/`, admin sob `_admin/`
-- `routeTree.gen.ts` regenerado automaticamente ao salvar rotas — **nunca editar manualmente**
-- Todas chamadas API passam por `API_BASE` (`/api` com proxy do Vite em dev; `VITE_API_URL` direto em prod)
-- Datas ISO da API → `formatDateFromString()` para exibição
-- Máscaras de input em `src/utils/masks.ts` (CPF, telefone)
-- CPF é gravado só com dígitos (o backend normaliza): para exibir, sempre `maskCPF(cpf)`
-- Formulários: React Hook Form + Zod schemas centralizados em `src/lib/schemas.ts`
-- Erros HTTP: `apiFetch` lança `ApiError` (de `@/lib/api`) — sempre usar `instanceof ApiError` no catch para acessar `e.status`
-- Dados paginados: shape `PaginatedResponse<T>` de `useAdmin.ts` — `{ data, total, page, totalPages, limit }`
+- `GET /address/cep/:cep` — CEP (ViaCEP + cache)
