@@ -418,7 +418,7 @@ useSendContactMessage       → POST /contacts/message (público, fetch cru)
 - `useMarketQuotes.ts` — `useMarketQuotes`, `useQuoteHistory` (públicos), `useAdminMarketQuotes`, `useSaveDailyQuotes`, `useUpdateQuoteUnit`.
 - `useSiteSettings.ts` — `usePublicSiteSettings`, `useAdminSiteSettings`, `useUpdateSiteSettings`, `useUpdateQuotesSource`, `useOrgInfo` (com fallback de `lib/org-contact.ts`).
 - `usePublicContactsAdmin.ts`, `usePublicEvents.ts`, `useRooms.ts` (CRUD; `GET /rooms` exige READ_COURSE, então o Painel Geral chama `useRooms({ enabled })` só com a permissão), `useRoomBookings.ts` (`useRoomBookings`, `useRoomSchedule`, CRUD), `useAuditTrail.ts` (trilha + tempo de guarda), `useNotifications.ts` (a cada 60s e ao voltar à aba), `useInvite.ts` (`useInvite`, `useAcceptInvite`, fetch cru).
-- Utilitários: `usePermissions`, `use-unsaved-guard`, `useRowSelection` (seleção que continua entre páginas), `useCrudDialog`, `useDebouncedValue`, `useConfirmDeletePhoto`, `useSeo`, `use-mobile`, `use-users` (`authenticateUser`, `refreshAuthToken`).
+- Utilitários: `usePermissions`, `use-unsaved-guard`, `useRowSelection` (seleção que continua entre páginas), `useCrudDialog`, `useDebouncedValue`, `useConfirmDeletePhoto`, `useSeo`, `use-mobile` (768 px: sino, agenda), `use-compact-nav` (1024 px: o menu lateral do painel vira gaveta), `use-users` (`authenticateUser`, `refreshAuthToken`).
 
 ## API — Endpoints
 
