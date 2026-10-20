@@ -20,14 +20,18 @@ export function AdminSideBar({ ...props }: React.ComponentProps<typeof Sidebar>)
   const { data: me, isLoading: loadingMe } = useMe()
   const perms = me?.permissions ?? null
 
-  // Contagem global de mensagens de contato não lidas (badge na sidebar).
-  const { data: unreadData } = useContactMessages({ page: 1, limit: 1, read: false }, { refetchInterval: 60_000 })
-  const unread = unreadData?.total ?? 0
-
   function can(perm: string) {
     if (loadingMe || !perms) return true // ainda carregando → mostra tudo
     return perms.includes(perm)
   }
+
+  // Contagem global de mensagens de contato não lidas (badge na sidebar). Só
+  // pergunta com a permissão confirmada: sem READ_CONTACT a API responde 403.
+  const { data: unreadData } = useContactMessages(
+    { page: 1, limit: 1, read: false },
+    { refetchInterval: 60_000, enabled: !loadingMe && !!perms && perms.includes('READ_CONTACT') },
+  )
+  const unread = unreadData?.total ?? 0
 
   function openSearch() {
     // No celular a barra lateral cobre a tela: fecha antes de abrir a busca.

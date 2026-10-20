@@ -46,7 +46,8 @@ vi.mock('@/hooks/useAdmin', () => ({
   useUpdateDashboardPrefs: () => ({ mutateAsync: salvarPrefs, isPending: false }),
 }))
 
-vi.mock('@/hooks/useRooms', () => ({ useRooms: () => ({ data: [{ id: 'r1', name: 'AUDITORIO' }] }) }))
+const useRoomsMock = vi.fn((_opts?: { enabled?: boolean }) => ({ data: [{ id: 'r1', name: 'AUDITORIO' }] }))
+vi.mock('@/hooks/useRooms', () => ({ useRooms: (opts?: { enabled?: boolean }) => useRoomsMock(opts) }))
 vi.mock('@/hooks/useCourse', () => ({
   useAdminCourses: () => ({
     data: {
@@ -168,6 +169,19 @@ describe('Painel Geral', () => {
     render(<Painel />)
     expect(screen.getByText(/Financeiro em/)).toBeInTheDocument()
     expect(screen.getByText('Últimas ações')).toBeInTheDocument()
+  })
+
+  it('só pede a lista de salas (GET /rooms exige READ_COURSE) com a permissão', () => {
+    permissoes = ['READ_USER']
+    useRoomsMock.mockClear()
+    render(<Painel />)
+    expect(useRoomsMock).toHaveBeenCalledWith({ enabled: false })
+    expect(useRoomsMock).not.toHaveBeenCalledWith({ enabled: true })
+
+    useRoomsMock.mockClear()
+    permissoes = ['READ_USER', 'READ_COURSE']
+    render(<Painel />)
+    expect(useRoomsMock).toHaveBeenCalledWith({ enabled: true })
   })
 
   it('sem READ_FINANCE nem READ_AUDIT esses blocos somem', () => {

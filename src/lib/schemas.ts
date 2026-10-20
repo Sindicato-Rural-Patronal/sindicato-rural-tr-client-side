@@ -31,13 +31,15 @@ export const courseBaseSchema = z.object({
   startHour:       z.string().min(1, 'Horário de início obrigatório'),
   endDate:         z.string().min(1, 'Data de término obrigatória'),
   endHour:         z.string().min(1, 'Horário de término obrigatório'),
-  price:           z.number().min(0).optional(),
-  workloadHours:   z.number().int().min(0).optional(),
+  // null = campo vazio na tela. `undefined` não serve: o React Hook Form devolve
+  // o valor padrão (o do curso) quando o campo vira undefined.
+  price:           z.number().min(0).nullable().optional(),
+  workloadHours:   z.number().int().min(0).nullable().optional(),
   regDeadlineDate: z.string().optional().default(''),
   regDeadlineHour: z.string().optional().default(''),
   observations:    z.string().optional().default(''),
   eventNumber:     z.string().optional().default(''),
-  minStudents:     z.number().int().min(0).optional(),
+  minStudents:     z.number().int().min(0).nullable().optional(),
 })
 
 export type RoomFormData   = z.infer<typeof roomSchema>

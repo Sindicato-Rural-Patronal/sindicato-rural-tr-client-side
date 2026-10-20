@@ -28,6 +28,7 @@ import { useAdminUsers, type UserDataDetail } from '@/hooks/useAdmin'
 import { useAdminCompanies, companyDisplayName, type CompanyDetail } from '@/hooks/useCompanies'
 import { useOrgInfo } from '@/hooks/useSiteSettings'
 import { ORG_CONTACT } from '@/lib/org-contact'
+import { fornecedorDoLancamento } from '@/lib/relatorio-empenho'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -1092,7 +1093,7 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
 
       <div className="relative max-w-sm">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
-        <Input placeholder="Buscar na descrição..." className="pl-9" value={searchInput} onChange={e => setSearchInput(e.target.value)} />
+        <Input placeholder="Buscar na descrição ou no nome..." className="pl-9" value={searchInput} onChange={e => setSearchInput(e.target.value)} />
       </div>
 
       {listasFalharam && (
@@ -1144,6 +1145,9 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
                 {t.type === 'IN' ? '+ ' : t.type === 'OUT' ? '− ' : ''}{centsToBRL(t.amountCents)}
               </span>
             </div>
+            {fornecedorDoLancamento(t) && (
+              <p className="text-xs text-muted-foreground break-words">{fornecedorDoLancamento(t)}</p>
+            )}
             <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
               {!t.type && !t.transferId && <Badge variant="outline" className="text-muted-foreground">Nota</Badge>}
               {t.recurringId && (
@@ -1183,6 +1187,7 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
               <TableRow>
                 <TableHead>Data</TableHead>
                 <TableHead>Descrição</TableHead>
+                <TableHead>Nome / Razão social</TableHead>
                 <TableHead>Categoria</TableHead>
                 <TableHead className="hidden lg:table-cell">Caixa</TableHead>
                 <TableHead className="hidden md:table-cell">Método</TableHead>
@@ -1195,6 +1200,7 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
                 <TableRow key={i}>
                   <TableCell><Skeleton className="h-4 w-20" /></TableCell>
                   <TableCell><Skeleton className="h-4 w-40" /></TableCell>
+                  <TableCell><Skeleton className="h-4 w-32" /></TableCell>
                   <TableCell><Skeleton className="h-4 w-24" /></TableCell>
                   <TableCell className="hidden lg:table-cell"><Skeleton className="h-4 w-20" /></TableCell>
                   <TableCell className="hidden md:table-cell"><Skeleton className="h-4 w-16" /></TableCell>
@@ -1204,7 +1210,7 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
               ))}
               {!isLoading && !isError && rows.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={7} className="py-16 text-center">
+                  <TableCell colSpan={8} className="py-16 text-center">
                     <Wallet className="size-10 text-muted-foreground/30 mx-auto mb-3" />
                     <p className="text-sm font-medium text-foreground">Nenhum lançamento</p>
                     <p className="text-xs text-muted-foreground mt-1">
@@ -1245,6 +1251,9 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
                         </button>
                       )}
                     </span>
+                  </TableCell>
+                  <TableCell className="text-sm text-foreground break-words">
+                    {fornecedorDoLancamento(t) ?? <span className="text-muted-foreground">—</span>}
                   </TableCell>
                   <TableCell>
                     {t.category ? (

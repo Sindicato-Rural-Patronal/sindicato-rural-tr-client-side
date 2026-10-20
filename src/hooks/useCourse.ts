@@ -30,7 +30,14 @@ export type CreateCourseResponse = {
   instructorsCopied?: number
 }
 
-export type UpdateCourseBody = Partial<CreateCourseBody> & {
+export type UpdateCourseBody = Partial<Omit<CreateCourseBody, 'registrationDeadline' | 'observations' | 'eventNumber' | 'price' | 'workloadHours' | 'minStudents'>> & {
+  /** `null` apaga o valor gravado (nos números vira 0); ausente mantém. */
+  price?: number | null
+  workloadHours?: number | null
+  minStudents?: number | null
+  registrationDeadline?: string | null
+  observations?: string | null
+  eventNumber?: string | null
   preEnrolled?: number
   waitlist?: number
 }
@@ -213,13 +220,31 @@ export function useRemoveInstructorAssignment(courseId: string) {
   })
 }
 
+export type CpfLookup = { found: boolean; name: string | null }
+
+/**
+ * Consulta pública: o cadastro existe? Só responde `found: true` quando o CPF e
+ * os 4 últimos dígitos de um telefone do cadastro batem (POST para o CPF não ir
+ * na URL). Qualquer outro caso volta `found: false`; 5 erros por hora no mesmo
+ * CPF dão 429.
+ */
+export function useLookupCpf() {
+  return useMutation({
+    mutationFn: (body: { cpf: string; phoneEnd: string }): Promise<CpfLookup> =>
+      apiFetch('/users/lookup-cpf', {
+        method: 'POST',
+        body: JSON.stringify(body),
+      }).then(r => r.json()),
+  })
+}
+
 export function useRegisterByCpf(courseId: string) {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (cpf: string) =>
+    mutationFn: (body: { cpf: string; phoneEnd: string }) =>
       apiFetch(`/courses/${courseId}/register-by-cpf`, {
         method: 'POST',
-        body: JSON.stringify({ cpf }),
+        body: JSON.stringify(body),
       }).then(r => r.json()),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['courses', courseId] })

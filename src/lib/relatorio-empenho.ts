@@ -41,10 +41,18 @@ export function grupoDoLancamento(t: FinanceTransaction): GrupoEmpenho {
   return digitos(t.empenho?.cnpjCpf).length === 14 ? 'juridica' : 'fisica'
 }
 
-/** O nome que aparece na linha: o do fornecedor da nota, senão a descrição. */
+/**
+ * Quem está ligado ao lançamento: a razão social da nota de empenho, senão o
+ * nome fantasia. `null` quando a nota não tem nenhum dos dois — nunca cai na
+ * descrição (a lista mostra os dois lado a lado).
+ */
+export function fornecedorDoLancamento(t: FinanceTransaction): string | null {
+  return t.empenho?.razaoSocial?.trim() || t.empenho?.nomeFantasia?.trim() || null
+}
+
+/** O nome que aparece na linha do relatório: o do fornecedor da nota, senão a descrição. */
 export function nomeDoLancamento(t: FinanceTransaction): string {
-  const daNota = t.empenho?.razaoSocial?.trim() || t.empenho?.nomeFantasia?.trim()
-  return daNota || t.description
+  return fornecedorDoLancamento(t) ?? t.description
 }
 
 /**

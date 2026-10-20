@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import {
-  blocosDoRelatorio, despesasDoRelatorio, grupoDoLancamento, nomeDoLancamento,
+  blocosDoRelatorio, despesasDoRelatorio, fornecedorDoLancamento, grupoDoLancamento, nomeDoLancamento,
   situacaoDoLancamento, totalDoRelatorio,
 } from '@/lib/relatorio-empenho'
 import type { FinanceTransaction } from '@/hooks/useFinance'
@@ -64,6 +64,22 @@ describe('grupoDoLancamento', () => {
 
   it('tarifa de banco vai para DESPESAS BANCÁRIAS', () => {
     expect(grupoDoLancamento(lanc({ category: categoria('Tarifas bancárias') }))).toBe('bancarias')
+  })
+})
+
+describe('fornecedorDoLancamento', () => {
+  it('usa a razão social da nota', () => {
+    expect(fornecedorDoLancamento(lanc({ empenho: { razaoSocial: 'SANEPAR', nomeFantasia: 'SANEPAR FANTASIA' } }))).toBe('SANEPAR')
+  })
+
+  it('razão social vazia ou só espaços cai no nome fantasia', () => {
+    expect(fornecedorDoLancamento(lanc({ empenho: { razaoSocial: '  ', nomeFantasia: ' MERCADO CENTRAL ' } }))).toBe('MERCADO CENTRAL')
+  })
+
+  it('sem nenhum dos dois devolve null, sem usar a descrição', () => {
+    expect(fornecedorDoLancamento(lanc({ description: 'COMPRA DE MATERIAL' }))).toBeNull()
+    expect(fornecedorDoLancamento(lanc({ empenho: { cnpjCpf: '123.456.789-00' } }))).toBeNull()
+    expect(fornecedorDoLancamento(lanc({ empenho: { razaoSocial: '', nomeFantasia: '' } }))).toBeNull()
   })
 })
 
