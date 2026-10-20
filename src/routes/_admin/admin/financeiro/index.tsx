@@ -1093,7 +1093,7 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
 
       <div className="relative max-w-sm">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
-        <Input placeholder="Buscar na descrição..." className="pl-9" value={searchInput} onChange={e => setSearchInput(e.target.value)} />
+        <Input placeholder="Buscar na descrição ou no nome..." className="pl-9" value={searchInput} onChange={e => setSearchInput(e.target.value)} />
       </div>
 
       {listasFalharam && (
