@@ -873,7 +873,7 @@ type ContactMessagesFilters = {
   search?: string
 }
 
-export function useContactMessages(filters: ContactMessagesFilters = {}, options: { refetchInterval?: number } = {}) {
+export function useContactMessages(filters: ContactMessagesFilters = {}, options: { refetchInterval?: number; enabled?: boolean } = {}) {
   const { page = 1, limit = 20, read, search } = filters
   const params = new URLSearchParams({ page: String(page), limit: String(limit) })
   if (read !== null && read !== undefined) params.set('read', String(read))
@@ -883,6 +883,7 @@ export function useContactMessages(filters: ContactMessagesFilters = {}, options
     queryKey: ['admin', 'contacts', 'messages', page, limit, read ?? null, search ?? ''],
     queryFn: () => apiFetch(`/admin/contacts/messages?${params}`).then(r => r.json()),
     refetchInterval: options.refetchInterval,
+    enabled: options.enabled ?? true,
   })
 }
 
