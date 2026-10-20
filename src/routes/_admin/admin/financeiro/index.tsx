@@ -1051,8 +1051,8 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-        <div className="flex flex-wrap items-end gap-2">
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+        <div className="flex min-w-0 flex-wrap items-end gap-2">
           <div className="flex min-w-0 max-w-full flex-col gap-1">
             <Label className="text-[11px] text-muted-foreground">De</Label>
             <Input type="date" className="h-9 w-[150px]" value={search.from ?? ''} onChange={e => setSearch({ from: e.target.value || undefined, page: undefined })} />
