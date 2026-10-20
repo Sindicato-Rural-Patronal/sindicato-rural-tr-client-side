@@ -304,7 +304,7 @@ function DashboardTab({ enabled, onDrill }: {
           retrying={isFetching}
         />
       ) : (<>
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {kpis.map(k => {
           const cls = `rounded-xl border border-border bg-card p-4 flex flex-col gap-2 text-left ${
             k.drill ? 'transition-colors hover:bg-muted/50 cursor-pointer' : ''
@@ -322,7 +322,8 @@ function DashboardTab({ enabled, onDrill }: {
               {isLoading ? (
                 <Skeleton className="h-7 w-28" />
               ) : (
-                <span className={`text-2xl font-bold tabular-nums ${
+                // Quatro colunas só de xl em diante, com fonte menor até 2xl: valores de R$ 10 milhões não cabiam.
+                <span className={`text-2xl font-bold tabular-nums xl:text-lg 2xl:text-2xl ${
                   k.tone === 'result' && k.value < 0 ? 'text-red-600 dark:text-red-400'
                     : k.tone === 'result' ? 'text-emerald-600 dark:text-emerald-400'
                     : 'text-foreground'
