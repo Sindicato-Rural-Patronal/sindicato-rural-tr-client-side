@@ -19,9 +19,9 @@ type EditBody = Pick<CreateCourseBody, Required4> & UpdateCourseBody
  * Corpo do curso a partir do formulário (criar e editar montam o mesmo corpo).
  *
  * Na criação, campo em branco fica de fora. Na EDIÇÃO, fora do PATCH significa
- * "mantém o valor antigo": quem esvazia o prazo, as observações ou o número do
- * evento precisa mandar `null` para a API apagar. (Preço, carga horária e
- * mínimo de alunos esvaziados ainda não são enviados: dependem da API.)
+ * "mantém o valor antigo": quem esvazia um campo precisa mandar `null` para a
+ * API apagar. Nos numéricos (preço, carga horária, mínimo de alunos) a API
+ * grava 0, porque a coluna não aceita nulo.
  */
 export function buildCourseBody(data: CourseFormData, editing: false): CreateBody
 export function buildCourseBody(data: CourseFormData, editing: true): EditBody
@@ -36,11 +36,11 @@ export function buildCourseBody(data: CourseFormData, editing: boolean): EditBod
     startTime: toISO(data.startDate, data.startHour)!,
     endTime: toISO(data.endDate, data.endHour)!,
     ...(data.roomId ? { roomId: data.roomId } : {}),
-    ...(data.price != null ? { price: data.price } : {}),
-    ...(data.workloadHours != null ? { workloadHours: data.workloadHours } : {}),
+    ...(data.price != null ? { price: data.price } : editing ? { price: null } : {}),
+    ...(data.workloadHours != null ? { workloadHours: data.workloadHours } : editing ? { workloadHours: null } : {}),
     ...(deadline ? { registrationDeadline: deadline } : editing ? { registrationDeadline: null } : {}),
     ...(data.observations ? { observations: data.observations } : editing ? { observations: null } : {}),
     ...(data.eventNumber ? { eventNumber: data.eventNumber } : editing ? { eventNumber: null } : {}),
-    ...(data.minStudents != null ? { minStudents: data.minStudents } : {}),
+    ...(data.minStudents != null ? { minStudents: data.minStudents } : editing ? { minStudents: null } : {}),
   }
 }

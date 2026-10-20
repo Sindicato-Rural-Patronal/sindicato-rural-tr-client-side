@@ -310,7 +310,7 @@ O porquê de cada uma está em `docs/HISTORICO.md`.
 - **Campos de pessoa num lugar só**: cada campo é desenhado uma vez em `components/cadastro/person-form-fields.tsx`; as duas telas (`usuarios/novo` e `usuarios/$id`) só escolhem quais e em que cartão. `src/test/forms/cadastro-pessoa.test.ts` exige que todo campo do associado esteja nas duas.
 - **Caixa alta**: `upperNoAccents` nos campos de cadastro (nomes, endereços, razão social). Texto que o visitante lê sai **como foi digitado**: título e observações do curso, título da reserva que vai para `/eventos`.
 - **Listas fixas duplicadas com o backend**: `ROOM_NAMES`, `MEMBER_TYPES`, `MEMBER_STATUS`, `UNIMED_MOVEMENT_TYPES`, `UNIMED_DEPENDENCY_DEGREES`. Mudou uma, mude a outra; o teste que compara os dois repositórios mora no backend (`src/lib/__tests__/listas-fixas_test.ts`).
-- **Edição com campo opcional vazio**: na reserva, vai como `null`. No curso (`buildCourseBody` em `lib/course-body.ts`), prazo de inscrição, observações e número do evento esvaziados na edição vão como `null` (fora do PATCH a API mantém o valor antigo); preço, carga horária e mínimo de alunos esvaziados ainda NÃO são enviados — pendente, depende da API (SR-019). A criação nunca manda `null`.
+- **Edição com campo opcional vazio**: na reserva, vai como `null`. No curso (`buildCourseBody` em `lib/course-body.ts`), na edição todo campo opcional esvaziado vai como `null` (fora do PATCH a API mantém o valor antigo); nos números (preço, carga horária, mínimo de alunos) a API grava 0. A criação nunca manda `null`.
 - **Curso**: inicia mesmo com inscrição não confirmada; `COMPLETED` é sempre manual; o sistema NÃO emite certificado (quem emite é a FAEP).
 - **Home**: sem seção de galerias (ficam no Sobre, pedido do usuário); convênios são itens próprios no menu, sem submenu.
 - **Painel Geral — arrastar blocos**: a prévia do arrasto anda só por `transform` (`dashboard-drag.ts`) e a ordem real só muda no `onDragEnd`. Não use as estratégias prontas do `@dnd-kit` nem reordene no `onDragOver`: as duas coisas já foram tentadas e quebram (blocos esticados; blocos se alternando sem parar). Grade de 4 colunas, bloco de 2 a 4 (`DashboardSpan`); preferências antigas `'full'`/`'half'` viram 4 e 2 em `normalizePrefs`.
@@ -439,7 +439,7 @@ Os caminhos abaixo são os que o front chama, relativos a `API_BASE` (`/api` no 
 **Cursos (admin)**
 - `GET /admin/courses` (`page`, `limit`, `status`, `search`, `year`) · `GET /admin/courses/years` · `GET /admin/courses/:id`
 - `POST /courses` — criar (aceita `eventNumber`, `minStudents`, `roomId`). "Duplicar curso" manda `copyCoverFromCourseId` e `copyInstructorsFromCourseId` + `instructorAssignmentIds`; resposta `{ id, coverCopied?, instructorsCopied? }`. Galeria não é copiada
-- `PATCH /courses/:id` — atualizar (`registrationDeadline` aceita `null`; `workloadHours` e `minStudents` não) · `DELETE /courses/:id`
+- `PATCH /courses/:id` — atualizar (campo fora do corpo não muda; `null` limpa: `registrationDeadline`, `observations` e `eventNumber` ficam nulos, `price`, `workloadHours` e `minStudents` viram 0) · `DELETE /courses/:id`
 - `POST /courses/:id/banner` (multipart; gera a miniatura WebP → `{ url, thumbUrl }`) · `POST /courses/:id/gallery` · `DELETE /courses/:id/gallery/:photoId`
 - `POST /admin/courses/:id/instructors` · `DELETE /admin/courses/:id/instructors/:assignmentId`
 - `GET /admin/courses/:id/registrations` (paginado) · `POST /admin/courses/:id/registrations` `{ userDataId }` ("Inscrever pessoa": já confirmada, ignora o prazo; repetida ou lotado → 409)

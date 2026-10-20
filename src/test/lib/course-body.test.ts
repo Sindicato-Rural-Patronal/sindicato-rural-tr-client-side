@@ -43,11 +43,16 @@ describe('buildCourseBody: edição', () => {
     expect(body.registrationDeadline).toBe('2026-11-30T12:00:00.000Z')
   })
 
-  it('preço, carga horária e mínimo esvaziados ainda ficam fora (dependem da API)', () => {
+  it('preço, carga horária e mínimo esvaziados vão como null (a API grava 0)', () => {
     const body = buildCourseBody(form({ price: undefined, workloadHours: undefined, minStudents: undefined }), true)
-    expect(body).not.toHaveProperty('price')
-    expect(body).not.toHaveProperty('workloadHours')
-    expect(body).not.toHaveProperty('minStudents')
+    expect(body.price).toBeNull()
+    expect(body.workloadHours).toBeNull()
+    expect(body.minStudents).toBeNull()
+  })
+
+  it('zero digitado continua sendo 0, não null', () => {
+    const body = buildCourseBody(form({ price: 0, workloadHours: 0, minStudents: 0 }), true)
+    expect(body).toMatchObject({ price: 0, workloadHours: 0, minStudents: 0 })
   })
 })
 
@@ -57,6 +62,13 @@ describe('buildCourseBody: criação', () => {
     expect(body).not.toHaveProperty('registrationDeadline')
     expect(body).not.toHaveProperty('observations')
     expect(body).not.toHaveProperty('eventNumber')
+  })
+
+  it('números em branco também ficam fora, sem null', () => {
+    const body = buildCourseBody(form({ price: undefined, workloadHours: undefined, minStudents: undefined }), false)
+    expect(body).not.toHaveProperty('price')
+    expect(body).not.toHaveProperty('workloadHours')
+    expect(body).not.toHaveProperty('minStudents')
   })
 
   it('manda o horário de parede como ISO com Z, sem converter fuso', () => {
