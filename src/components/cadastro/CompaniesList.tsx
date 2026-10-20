@@ -186,7 +186,7 @@ export function CompaniesList() {
                   <TableCell className="w-10">
                     <SelectCheckbox checked={selection.isSelected(c.id)} onChange={() => selection.toggle(c.id)} label={`Selecionar ${companyDisplayName(c)}`} />
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="max-w-[10rem] sm:max-w-[22rem]">
                     <div className="flex min-w-0 items-center gap-2">
                       <Link to="/admin/empresas/$id" params={{ id: c.id }} className="truncate font-medium text-foreground hover:underline">
                         {companyDisplayName(c)}
