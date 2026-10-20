@@ -17,7 +17,8 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
   DialogDescription, DialogFooter,
 } from '@/components/ui/dialog'
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
+import { cn } from '@/lib/utils'
+import { Tabs, TabsList, TabsTrigger, TabsContent, tabsWrapClass } from '@/components/ui/tabs'
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
@@ -1018,7 +1019,7 @@ function RouteComponent() {
           </div>
         </div>
 
-        <TabsList className="mb-6">
+        <TabsList className={cn(tabsWrapClass, 'mb-6')}>
           <TabsTrigger value="pessoas" className="flex items-center gap-1.5">
             <Users className="size-3.5" />
             Pessoa física

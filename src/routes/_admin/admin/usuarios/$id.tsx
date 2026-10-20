@@ -21,7 +21,7 @@ import { MergePeopleDialog } from '@/components/cadastro/MergePeopleDialog'
 import { usePermissions } from '@/hooks/usePermissions'
 import { DeleteConfirmDialog } from '@/components/DeleteConfirmDialog'
 import { Pagination } from '@/components/ui/pagination'
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
+import { Tabs, TabsList, TabsTrigger, TabsContent, tabsWrapClass } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
 import { LoadErrorRetry } from '@/components/LoadErrorRetry'
 import { Input } from '@/components/ui/input'
@@ -1125,7 +1125,7 @@ function RouteComponent() {
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="mb-4">
+        <TabsList className={cn(tabsWrapClass, 'mb-4')}>
           <TabsTrigger value="dados"><User className="size-3.5 mr-1.5" /> Dados</TabsTrigger>
           <TabsTrigger value="propriedades">
             <TreePine className="size-3.5 mr-1.5" /> Propriedades
