@@ -1776,8 +1776,8 @@ function CategoriesTab({ enabled, canCreate, canUpdate, canDelete }: {
             <TableHeader>
               <TableRow>
                 <TableHead>Categoria</TableHead>
-                <TableHead className="w-[96px]">Tipo</TableHead>
-                <TableHead className="w-[96px]">Status</TableHead>
+                <TableHead className="hidden sm:table-cell sm:w-[96px]">Tipo</TableHead>
+                <TableHead className="hidden sm:table-cell sm:w-[96px]">Status</TableHead>
                 <TableHead className="w-[104px] text-right">Ações</TableHead>
               </TableRow>
             </TableHeader>
@@ -1805,13 +1805,20 @@ function CategoriesTab({ enabled, canCreate, canUpdate, canDelete }: {
                       <span className="mt-1 size-3 shrink-0 rounded-sm" style={{ backgroundColor: c.color }} />
                       <span className="min-w-0 break-words" title={c.name}>{c.name}</span>
                     </span>
+                    {/* No celular Tipo e Status saem das colunas (o nome ficava com uma letra por linha) e viram selos aqui. */}
+                    <div className="mt-1 flex flex-wrap gap-1 pl-5 sm:hidden">
+                      <Badge variant="outline" className={c.type === 'IN' ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}>
+                        {c.type === 'IN' ? 'Entrada' : 'Saída'}
+                      </Badge>
+                      <Badge variant={c.active ? 'default' : 'secondary'}>{c.active ? 'Ativa' : 'Inativa'}</Badge>
+                    </div>
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="hidden sm:table-cell">
                     <Badge variant="outline" className={c.type === 'IN' ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}>
                       {c.type === 'IN' ? 'Entrada' : 'Saída'}
                     </Badge>
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="hidden sm:table-cell">
                     <Badge variant={c.active ? 'default' : 'secondary'}>{c.active ? 'Ativa' : 'Inativa'}</Badge>
                   </TableCell>
                   <TableCell className="text-right">
@@ -1984,7 +1991,7 @@ function AccountsTab({ enabled, canCreate, canUpdate, canDelete }: {
             <TableHeader>
               <TableRow>
                 <TableHead>Caixa</TableHead>
-                <TableHead className="w-[96px]">Status</TableHead>
+                <TableHead className="hidden sm:table-cell sm:w-[96px]">Status</TableHead>
                 <TableHead className="w-[104px] text-right">Ações</TableHead>
               </TableRow>
             </TableHeader>
@@ -2011,8 +2018,11 @@ function AccountsTab({ enabled, canCreate, canUpdate, canDelete }: {
                       <Landmark className="mt-0.5 size-4 shrink-0" style={{ color: a.color }} />
                       <span className="min-w-0 break-words" title={a.name}>{a.name}</span>
                     </span>
+                    <div className="mt-1 pl-6 sm:hidden">
+                      <Badge variant={a.active ? 'default' : 'secondary'}>{a.active ? 'Ativo' : 'Inativo'}</Badge>
+                    </div>
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="hidden sm:table-cell">
                     <Badge variant={a.active ? 'default' : 'secondary'}>{a.active ? 'Ativo' : 'Inativo'}</Badge>
                   </TableCell>
                   <TableCell className="text-right">

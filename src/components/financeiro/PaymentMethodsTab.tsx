@@ -111,7 +111,7 @@ export function PaymentMethodsTab({ enabled, canCreate, canUpdate, canDelete }: 
             <TableHeader>
               <TableRow>
                 <TableHead>Forma de pagamento</TableHead>
-                <TableHead className="w-[96px]">Status</TableHead>
+                <TableHead className="hidden sm:table-cell sm:w-[96px]">Status</TableHead>
                 <TableHead className="w-[104px] text-right">Ações</TableHead>
               </TableRow>
             </TableHeader>
@@ -136,8 +136,13 @@ export function PaymentMethodsTab({ enabled, canCreate, canUpdate, canDelete }: 
               )}
               {formas.map(m => (
                 <TableRow key={m.id} className={m.active ? '' : 'opacity-60'}>
-                  <TableCell className="font-medium text-foreground whitespace-normal break-words" title={m.name}>{m.name}</TableCell>
-                  <TableCell>
+                  <TableCell className="font-medium text-foreground whitespace-normal">
+                    <span className="block break-words" title={m.name}>{m.name}</span>
+                    <Badge variant={m.active ? 'default' : 'secondary'} className="mt-1 sm:hidden">
+                      {m.active ? 'Ativa' : 'Inativa'}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="hidden sm:table-cell">
                     <Badge variant={m.active ? 'default' : 'secondary'}>
                       {m.active ? 'Ativa' : 'Inativa'}
                     </Badge>
