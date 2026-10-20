@@ -55,8 +55,8 @@ const courseFormSchema = courseBaseSchema
 const emptyFormDefaults: CourseFormData = {
   name: '', description: '', roomId: '', status: 'UNPUBLISHED',
   startDate: '', startHour: '', endDate: '', endHour: '',
-  price: undefined, workloadHours: undefined,
-  regDeadlineDate: '', regDeadlineHour: '', observations: '', eventNumber: '', minStudents: undefined,
+  price: null, workloadHours: null,
+  regDeadlineDate: '', regDeadlineHour: '', observations: '', eventNumber: '', minStudents: null,
 }
 
 function courseToForm(c: Course): CourseFormData {
@@ -69,14 +69,14 @@ function courseToForm(c: Course): CourseFormData {
     startHour: c.startTime ?? '',
     endDate: c.endDate ? c.endDate.slice(0, 10) : '',
     endHour: c.endTime ?? '',
-    price: c.price ?? undefined,
-    workloadHours: c.workloadHours ?? undefined,
+    price: c.price ?? null,
+    workloadHours: c.workloadHours ?? null,
     regDeadlineDate: c.registrationDeadline ? c.registrationDeadline.slice(0, 10) : '',
     // A API manda o dia e, à parte, a hora do prazo (null = sem hora, vale o dia todo).
     regDeadlineHour: c.registrationDeadline ? (c.registrationDeadlineTime ?? c.registrationDeadline.slice(11, 16)) : '',
     observations: c.observations ?? '',
     eventNumber: c.eventNumber ?? '',
-    minStudents: c.minStudents ?? undefined,
+    minStudents: c.minStudents ?? null,
   }
 }
 
@@ -612,21 +612,21 @@ roomId })
                   <FormField control={form.control} name="price" render={({ field }) => (
                     <FormItem>
                       <FormLabel>{t('admin.courses.form.price')}</FormLabel>
-                      <FormControl><Input type="number" min="0" step="0.01" placeholder="0" value={field.value ?? ''} onChange={e => field.onChange(e.target.value === '' ? undefined : e.target.valueAsNumber)} onBlur={field.onBlur} ref={field.ref} /></FormControl>
+                      <FormControl><Input type="number" min="0" step="0.01" placeholder="0" value={field.value ?? ''} onChange={e => field.onChange(e.target.value === '' ? null : e.target.valueAsNumber)} onBlur={field.onBlur} ref={field.ref} /></FormControl>
                       <FormMessage />
                     </FormItem>
                   )} />
                   <FormField control={form.control} name="workloadHours" render={({ field }) => (
                     <FormItem>
                       <FormLabel>{t('admin.courses.form.workload')}</FormLabel>
-                      <FormControl><Input type="number" min="0" placeholder="0" value={field.value ?? ''} onChange={e => field.onChange(e.target.value === '' ? undefined : e.target.valueAsNumber)} onBlur={field.onBlur} ref={field.ref} /></FormControl>
+                      <FormControl><Input type="number" min="0" placeholder="0" value={field.value ?? ''} onChange={e => field.onChange(e.target.value === '' ? null : e.target.valueAsNumber)} onBlur={field.onBlur} ref={field.ref} /></FormControl>
                       <FormMessage />
                     </FormItem>
                   )} />
                   <FormField control={form.control} name="minStudents" render={({ field }) => (
                     <FormItem>
                       <FormLabel>{t('admin.courses.form.minStudents')}</FormLabel>
-                      <FormControl><Input type="number" min="0" placeholder="0" value={field.value ?? ''} onChange={e => field.onChange(e.target.value === '' ? undefined : e.target.valueAsNumber)} onBlur={field.onBlur} ref={field.ref} /></FormControl>
+                      <FormControl><Input type="number" min="0" placeholder="0" value={field.value ?? ''} onChange={e => field.onChange(e.target.value === '' ? null : e.target.valueAsNumber)} onBlur={field.onBlur} ref={field.ref} /></FormControl>
                       <FormMessage />
                     </FormItem>
                   )} />

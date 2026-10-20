@@ -51,6 +51,7 @@ vi.mock('@/hooks/useRooms', () => ({
 }))
 
 const createMutate = vi.hoisted(() => vi.fn())
+const updateMutate = vi.hoisted(() => vi.fn())
 
 vi.mock('@/hooks/useCourse', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/hooks/useCourse')>()
@@ -59,7 +60,7 @@ vi.mock('@/hooks/useCourse', async (importOriginal) => {
     useAdminCourses: () => ({ data: [], isLoading: false, isError: false }),
     useAdminCourse: () => ({ data: null, isLoading: false }),
     useCreateCourse: () => ({ mutateAsync: createMutate, isPending: false }),
-    useUpdateCourse: () => ({ mutateAsync: vi.fn().mockResolvedValue({}), isPending: false }),
+    useUpdateCourse: () => ({ mutateAsync: updateMutate, isPending: false }),
     useDeleteCourse: () => ({ mutateAsync: vi.fn().mockResolvedValue({}), isPending: false }),
     useUploadBanner: () => ({ mutateAsync: vi.fn(), isPending: false }),
     useUploadGalleryPhoto: () => ({ mutateAsync: vi.fn(), isPending: false }),
@@ -228,4 +229,92 @@ describe('CourseFormDialog — duplicar curso', () => {
     expect(body.eventNumber).toBeUndefined()
     expect(body.registrationDeadline).toBeUndefined()
   }, 15000)
+})
+
+describe('CourseFormDialog — edição: apagar campos', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    updateMutate.mockResolvedValue({})
+  })
+
+  const curso = {
+    id: 'course-1',
+    status: 'PUBLIC',
+    title: 'MANEJO DE PASTAGEM',
+    description: 'Conteúdo',
+    maxStudents: 30,
+    minStudents: 5,
+    enrolled: 10,
+    preEnrolled: 0,
+    waitlist: 0,
+    coverImage: null,
+    price: 150,
+    startDate: '2026-08-10',
+    endDate: '2026-08-12',
+    startTime: '08:00',
+    endTime: '17:00',
+    workloadHours: 16,
+    location: 'Sala A',
+    instructorName: null,
+    registrationDeadline: '2026-08-05',
+    registrationDeadlineTime: null,
+    observations: 'Trazer bota',
+    eventNumber: '261676',
+    photoGallery: [],
+    instructors: [],
+  }
+
+  async function abrirEdicao() {
+    const { CourseFormDialog } = await import('@/components/courses/CourseFormDialog')
+    render(<CourseFormDialog open editing={curso as never} onClose={vi.fn()} />, { wrapper })
+  }
+
+  // Backspace de verdade: o campo esvazia (value === '') e precisa continuar vazio.
+  it('apagar Preço, Carga horária e Mín. alunos deixa o campo vazio e manda null no PATCH', async () => {
+    const user = userEvent.setup()
+    await abrirEdicao()
+
+    const preco = screen.getByLabelText('Preço')
+    const carga = screen.getByLabelText('Carga horária')
+    const minimo = screen.getByLabelText('Mín. alunos')
+    expect(preco).toHaveValue(150)
+    expect(carga).toHaveValue(16)
+    expect(minimo).toHaveValue(5)
+
+    await user.clear(preco)
+    await user.clear(carga)
+    await user.clear(minimo)
+
+    // o número anterior não volta
+    expect(preco).toHaveValue(null)
+    expect(carga).toHaveValue(null)
+    expect(minimo).toHaveValue(null)
+
+    const salvar = screen.getByRole('button', { name: 'Salvar' })
+    await waitFor(() => expect(salvar).not.toBeDisabled())
+    fireEvent.click(salvar)
+
+    await waitFor(() => expect(updateMutate).toHaveBeenCalled())
+    const body = updateMutate.mock.calls[0][0]
+    expect(body.price).toBeNull()
+    expect(body.workloadHours).toBeNull()
+    expect(body.minStudents).toBeNull()
+    // o que não foi apagado segue com o valor
+    expect(body).toMatchObject({ eventNumber: '261676', observations: 'Trazer bota' })
+  }, 20000)
+
+  it('digitar 0 manda 0, não null', async () => {
+    const user = userEvent.setup()
+    await abrirEdicao()
+    const preco = screen.getByLabelText('Preço')
+    await user.clear(preco)
+    await user.type(preco, '0')
+    expect(preco).toHaveValue(0)
+
+    const salvar = screen.getByRole('button', { name: 'Salvar' })
+    await waitFor(() => expect(salvar).not.toBeDisabled())
+    fireEvent.click(salvar)
+    await waitFor(() => expect(updateMutate).toHaveBeenCalled())
+    expect(updateMutate.mock.calls[0][0].price).toBe(0)
+  }, 20000)
 })

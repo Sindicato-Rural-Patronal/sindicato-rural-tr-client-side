@@ -29,12 +29,12 @@ export function courseToDuplicateForm(
     startHour: course.startTime ?? '',
     endDate: '',
     endHour: course.endTime ?? '',
-    price: course.price ?? undefined,
-    workloadHours: course.workloadHours ?? undefined,
+    price: course.price ?? null,
+    workloadHours: course.workloadHours ?? null,
     regDeadlineDate: '',
     regDeadlineHour: '',
     observations: course.observations ?? '',
     eventNumber: '',
-    minStudents: course.minStudents ?? undefined,
+    minStudents: course.minStudents ?? null,
   }
 }
