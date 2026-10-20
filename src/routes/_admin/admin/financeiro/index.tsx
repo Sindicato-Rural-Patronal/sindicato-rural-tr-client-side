@@ -35,7 +35,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
+import { Tabs, TabsList, TabsTrigger, TabsContent, tabsWrapClass } from '@/components/ui/tabs'
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table'
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
@@ -169,7 +169,7 @@ function RouteComponent() {
       </div>
 
       <Tabs value={search.tab} onValueChange={v => setSearch({ tab: v as FinanceTab })}>
-        <TabsList className="flex-wrap">
+        <TabsList className={tabsWrapClass}>
           <TabsTrigger value="dashboard">Visão geral</TabsTrigger>
           <TabsTrigger value="lancamentos">Lançamentos</TabsTrigger>
           <TabsTrigger value="recorrentes">Recorrentes</TabsTrigger>
@@ -683,14 +683,16 @@ function FilteredTotals({ totals, loading }: {
   ]
   return (
     <div className="flex flex-col gap-1.5">
-      <div className="grid grid-cols-3 gap-2">
+      {/* No celular os três cartões ficam em coluna (label à esquerda, valor inteiro à direita):
+          em três colunas o valor ficava cortado com "…". */}
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
         {items.map(i => (
-          <div key={i.label} className="flex min-w-0 flex-col rounded-lg border border-border bg-card px-3 py-2">
+          <div key={i.label} className="flex min-w-0 flex-row items-baseline justify-between gap-3 rounded-lg border border-border bg-card px-3 py-2 sm:flex-col sm:items-stretch sm:justify-start sm:gap-0">
             <span className="text-xs text-muted-foreground">{i.label}</span>
             {loading ? (
               <Skeleton className="mt-1 h-6 w-24 max-w-full" />
             ) : (
-              <span className={`truncate text-sm font-semibold tabular-nums sm:text-lg ${i.cls}`}>{centsToBRL(i.value)}</span>
+              <span className={`text-base font-semibold tabular-nums sm:truncate sm:text-lg ${i.cls}`}>{centsToBRL(i.value)}</span>
             )}
           </div>
         ))}
@@ -1051,15 +1053,15 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
     <div className="flex flex-col gap-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div className="flex flex-wrap items-end gap-2">
-          <div className="flex flex-col gap-1">
+          <div className="flex min-w-0 max-w-full flex-col gap-1">
             <Label className="text-[11px] text-muted-foreground">De</Label>
             <Input type="date" className="h-9 w-[150px]" value={search.from ?? ''} onChange={e => setSearch({ from: e.target.value || undefined, page: undefined })} />
           </div>
-          <div className="flex flex-col gap-1">
+          <div className="flex min-w-0 max-w-full flex-col gap-1">
             <Label className="text-[11px] text-muted-foreground">Até</Label>
             <Input type="date" className="h-9 w-[150px]" value={search.to ?? ''} onChange={e => setSearch({ to: e.target.value || undefined, page: undefined })} />
           </div>
-          <div className="flex flex-col gap-1">
+          <div className="flex min-w-0 max-w-full flex-col gap-1">
             <Label className="text-[11px] text-muted-foreground">Tipo</Label>
             <NativeSelect className="h-9" value={search.fType ?? ''} onChange={e => setSearch({ fType: (e.target.value || undefined) as FinanceType | undefined, page: undefined })}>
               <option value="">Todos</option>
@@ -1067,21 +1069,21 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
               <option value="OUT">Saídas</option>
             </NativeSelect>
           </div>
-          <div className="flex flex-col gap-1">
+          <div className="flex min-w-0 max-w-full flex-col gap-1">
             <Label className="text-[11px] text-muted-foreground">Categoria</Label>
             <NativeSelect className="h-9" value={search.cat ?? ''} onChange={e => setSearch({ cat: e.target.value || undefined, page: undefined })}>
               <option value="">Todas</option>
               {cats.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
             </NativeSelect>
           </div>
-          <div className="flex flex-col gap-1">
+          <div className="flex min-w-0 max-w-full flex-col gap-1">
             <Label className="text-[11px] text-muted-foreground">Caixa</Label>
             <NativeSelect className="h-9" value={search.acc ?? ''} onChange={e => setSearch({ acc: e.target.value || undefined, page: undefined })}>
               <option value="">Todos</option>
               {accs.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
             </NativeSelect>
           </div>
-          <div className="flex flex-col gap-1">
+          <div className="flex min-w-0 max-w-full flex-col gap-1">
             <Label className="text-[11px] text-muted-foreground">Forma</Label>
             <PaymentMethodSelect
               className="h-9"
@@ -1092,7 +1094,7 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
             />
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Button variant="outline" className="shrink-0" disabled={exporting || rows.length === 0} onClick={handleExport}>
             <Download className="size-4" /> {exporting ? 'Exportando...' : 'Exportar CSV'}
           </Button>
@@ -1613,7 +1615,7 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
                     <EmpInput label="Inscrição estadual" value={form.empenho.inscricaoEstadual} onChange={v => setEmp('inscricaoEstadual', v)} />
                   </div>
                   <EmpInput label="Endereço" value={form.empenho.endereco} onChange={v => setEmp('endereco', upperNoAccents(v))} />
-                  <div className="grid grid-cols-4 gap-2">
+                  <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                     <EmpInput label="Bairro" value={form.empenho.bairro} onChange={v => setEmp('bairro', upperNoAccents(v))} />
                     <EmpInput label="CEP" value={form.empenho.cep} onChange={v => setEmp('cep', v)} />
                     <EmpInput label="Cidade" value={form.empenho.cidade} onChange={v => setEmp('cidade', upperNoAccents(v))} />
@@ -1623,7 +1625,7 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
                     <EmpInput label="Telefone" value={form.empenho.telefone} onChange={v => setEmp('telefone', v)} />
                     <EmpInput label="Desconto (R$)" value={form.empenho.desconto} onChange={v => setEmp('desconto', maskMoney(v))} />
                   </div>
-                  <div className="grid grid-cols-4 gap-2">
+                  <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                     <EmpInput label="Banco" value={form.empenho.banco} onChange={v => setEmp('banco', upperNoAccents(v))} />
                     <EmpInput label="Agência" value={form.empenho.agencia} onChange={v => setEmp('agencia', v)} />
                     <EmpInput label="Conta" value={form.empenho.conta} onChange={v => setEmp('conta', v)} />
