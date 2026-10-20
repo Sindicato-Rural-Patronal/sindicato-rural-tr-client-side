@@ -234,7 +234,7 @@ function RouteComponent() {
                   <TableCell className="w-10">
                     <SelectCheckbox checked={selection.isSelected(r.id)} onChange={() => selection.toggle(r.id)} label={`Selecionar ${r.userData.name}`} />
                   </TableCell>
-                  <TableCell className="font-medium text-foreground">{r.userData.name}</TableCell>
+                  <TableCell className="max-w-[10rem] font-medium text-foreground sm:max-w-[22rem]"><span className="block truncate" title={r.userData.name}>{r.userData.name}</span></TableCell>
                   <TableCell className="hidden sm:table-cell tabular-nums text-muted-foreground">{r.userData.cpf ? maskCPF(r.userData.cpf) : '—'}</TableCell>
                   <TableCell className="hidden 2xl:table-cell text-muted-foreground">{r.plano ?? '—'}</TableCell>
                   <TableCell className="hidden xl:table-cell tabular-nums text-muted-foreground">{r.matricula ?? '—'}</TableCell>

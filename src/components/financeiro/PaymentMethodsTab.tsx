@@ -105,13 +105,14 @@ export function PaymentMethodsTab({ enabled, canCreate, canUpdate, canDelete }: 
       )}
 
       <div className="rounded-lg border border-border bg-card overflow-hidden">
-        <div className="overflow-x-auto">
-          <Table>
+        {/* Sem rolagem lateral: tabela fixa; o nome quebra linha (TableCell do shadcn é nowrap). */}
+        <div>
+          <Table className="table-fixed">
             <TableHeader>
               <TableRow>
                 <TableHead>Forma de pagamento</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Ações</TableHead>
+                <TableHead className="hidden sm:table-cell sm:w-[96px]">Status</TableHead>
+                <TableHead className="w-[104px] text-right">Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -124,7 +125,7 @@ export function PaymentMethodsTab({ enabled, canCreate, canUpdate, canDelete }: 
               ))}
               {!isLoading && !isError && formas.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={3} className="py-16 text-center">
+                  <TableCell colSpan={3} className="py-16 text-center whitespace-normal">
                     <CreditCard className="size-10 text-muted-foreground/30 mx-auto mb-3" />
                     <p className="text-sm font-medium text-foreground">Nenhuma forma de pagamento</p>
                     <p className="mt-1 text-sm text-muted-foreground">
@@ -135,8 +136,13 @@ export function PaymentMethodsTab({ enabled, canCreate, canUpdate, canDelete }: 
               )}
               {formas.map(m => (
                 <TableRow key={m.id} className={m.active ? '' : 'opacity-60'}>
-                  <TableCell className="font-medium text-foreground">{m.name}</TableCell>
-                  <TableCell>
+                  <TableCell className="font-medium text-foreground whitespace-normal">
+                    <span className="block break-words" title={m.name}>{m.name}</span>
+                    <Badge variant={m.active ? 'default' : 'secondary'} className="mt-1 sm:hidden">
+                      {m.active ? 'Ativa' : 'Inativa'}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="hidden sm:table-cell">
                     <Badge variant={m.active ? 'default' : 'secondary'}>
                       {m.active ? 'Ativa' : 'Inativa'}
                     </Badge>

@@ -110,7 +110,7 @@ function ConveniosAdminPage() {
 
               {list.map(c => (
                 <TableRow key={c.id} className={STICKY_ACTIONS_ROW}>
-                  <TableCell>
+                  <TableCell className="max-w-[10rem] sm:max-w-[22rem]">
                     <div className="flex items-center gap-3">
                       <div className="flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-md border bg-white">
                         {c.logoUrl

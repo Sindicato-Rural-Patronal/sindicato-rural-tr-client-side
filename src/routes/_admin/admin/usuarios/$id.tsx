@@ -21,7 +21,7 @@ import { MergePeopleDialog } from '@/components/cadastro/MergePeopleDialog'
 import { usePermissions } from '@/hooks/usePermissions'
 import { DeleteConfirmDialog } from '@/components/DeleteConfirmDialog'
 import { Pagination } from '@/components/ui/pagination'
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
+import { Tabs, TabsList, TabsTrigger, TabsContent, tabsWrapClass } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
 import { LoadErrorRetry } from '@/components/LoadErrorRetry'
 import { Input } from '@/components/ui/input'
@@ -1052,17 +1052,18 @@ function RouteComponent() {
   return (
     <div className="p-6 flex flex-col gap-6">
       {/* Header */}
-      <div className="flex items-start gap-4">
+      <div className="flex flex-wrap items-start gap-x-4 gap-y-3">
         <Button variant="ghost" size="icon" asChild className="mt-0.5">
           <Link to="/admin/usuarios">
             <ArrowLeft className="size-4" />
           </Link>
         </Button>
-        <div className="flex-1 min-w-0">
-          <h1 className="text-2xl font-bold tracking-tight text-foreground truncate">{user.name}</h1>
-          <div className="flex flex-wrap items-center gap-2 mt-1">
-            {user.email && <span className="text-sm text-muted-foreground">{user.email}</span>}
-            {user.cpf && <span className="text-xs font-mono text-muted-foreground">CPF: {maskCPF(user.cpf)}</span>}
+        {/* No celular o nome ocupa a linha ao lado da seta e os botões descem para a linha de baixo. */}
+        <div className="min-w-0 flex-1 basis-[12rem]">
+          <h1 className="line-clamp-3 break-words text-2xl font-bold tracking-tight text-foreground" title={user.name}>{user.name}</h1>
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mt-1">
+            {user.email && <span className="min-w-0 break-all text-sm text-muted-foreground">{user.email}</span>}
+            {user.cpf && <span className="whitespace-nowrap text-xs font-mono text-muted-foreground">CPF: {maskCPF(user.cpf)}</span>}
             {isIncomplete && !completeMode && (
               <Badge variant="outline" className="text-xs gap-1 border-amber-300 text-amber-700 dark:text-amber-400">
                 <AlertCircle className="size-3" />
@@ -1071,7 +1072,7 @@ function RouteComponent() {
             )}
           </div>
         </div>
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:shrink-0">
           {isIncomplete && !completeMode && (
             <Button
               size="sm"
@@ -1125,7 +1126,7 @@ function RouteComponent() {
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="mb-4">
+        <TabsList className={cn(tabsWrapClass, 'mb-4')}>
           <TabsTrigger value="dados"><User className="size-3.5 mr-1.5" /> Dados</TabsTrigger>
           <TabsTrigger value="propriedades">
             <TreePine className="size-3.5 mr-1.5" /> Propriedades

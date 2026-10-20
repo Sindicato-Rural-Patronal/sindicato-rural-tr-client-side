@@ -300,8 +300,9 @@ export function ClosingTab({ enabled, canCreate, canDelete }: {
                         {diffLabel(c.differenceCents)}
                       </Badge>
                     </TableCell>
-                    <TableCell className="hidden md:table-cell text-sm text-muted-foreground">
-                      {c.notes || '—'}
+                    {/* Observação comprida quebra linha (o TableCell do shadcn é nowrap) em vez de alargar a tabela. */}
+                    <TableCell className="hidden md:table-cell text-sm text-muted-foreground whitespace-normal">
+                      <span className="line-clamp-2 break-words" title={c.notes || undefined}>{c.notes || '—'}</span>
                     </TableCell>
                     <TableCell className="text-right">
                       {canDelete ? (

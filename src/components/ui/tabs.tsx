@@ -85,4 +85,15 @@ function TabsContent({
   )
 }
 
+/**
+ * Para barras com muitas abas, no celular: as abas quebram de linha e a barra
+ * cresce junto. O `TabsList` padrão tem altura fixa (h-8), e a aba que quebra de
+ * linha saía da barra e caía por cima do conteúdo. Usa o mesmo prefixo de variante
+ * da altura padrão para sobrescrevê-la; com uma linha só a barra continua com 32px.
+ * A altura da aba também é fixada (25px, a de sempre): em porcentagem ela dependia da
+ * altura da barra, que agora depende da aba.
+ */
+export const tabsWrapClass =
+  "h-auto max-w-full flex-wrap justify-start gap-y-0.5 group-data-horizontal/tabs:h-auto group-data-horizontal/tabs:min-h-8 [&_[data-slot=tabs-trigger]]:h-[25px]"
+
 export { Tabs, TabsList, TabsTrigger, TabsContent, tabsListVariants }

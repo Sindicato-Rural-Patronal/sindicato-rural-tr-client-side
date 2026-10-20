@@ -16,7 +16,8 @@ import { PropertiesManager } from '@/components/cadastro/PropertiesManager'
 import { DeleteConfirmDialog } from '@/components/DeleteConfirmDialog'
 import { LoadErrorRetry } from '@/components/LoadErrorRetry'
 import { errorStatus } from '@/lib/query-retry'
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
+import { cn } from '@/lib/utils'
+import { Tabs, TabsList, TabsTrigger, TabsContent, tabsWrapClass } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger,
@@ -149,7 +150,7 @@ function EmpresaPage() {
       </div>
 
       <Tabs value={tab} onValueChange={setTab}>
-        <TabsList className="mb-4 flex-wrap">
+        <TabsList className={cn(tabsWrapClass, 'mb-4')}>
           <TabsTrigger value="dados"><Building2 className="mr-1.5 size-3.5" /> Dados</TabsTrigger>
           <TabsTrigger value="pessoas"><Users className="mr-1.5 size-3.5" /> Pessoas <Count n={company.members.length} /></TabsTrigger>
           <TabsTrigger value="enderecos"><TreePine className="mr-1.5 size-3.5" /> Propriedades <Count n={company.properties.length} /></TabsTrigger>

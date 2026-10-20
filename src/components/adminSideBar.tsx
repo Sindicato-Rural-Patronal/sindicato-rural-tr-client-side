@@ -1,3 +1,4 @@
+import { cn } from '@/lib/utils'
 import * as React from 'react'
 import { BookOpen, HeartHandshake, HeartPulse, HelpCircle, Images, LayoutDashboard, Mail, Newspaper, ScrollText, Search, Settings, TrendingUp, Users, Wallet } from 'lucide-react'
 import { Link, useRouterState } from '@tanstack/react-router'
@@ -94,7 +95,7 @@ export function AdminSideBar({ ...props }: React.ComponentProps<typeof Sidebar>)
           {/* Sino ao lado do logo; com a barra recolhida (só ícones) fica embaixo dele. */}
           <SidebarMenuItem className="flex items-center gap-1 group-data-[collapsible=icon]:flex-col">
             <SidebarMenuButton size="lg" asChild className="min-w-0 flex-1">
-              <Link to="/admin/dashboard">
+              <Link to="/admin/dashboard" onClick={() => { if (isMobile) setOpenMobile(false) }}>
                 <img
                   src="/favicon.ico"
                   alt="Sindicato Rural"
@@ -151,7 +152,8 @@ export function AdminSideBar({ ...props }: React.ComponentProps<typeof Sidebar>)
                           asChild
                           className="h-10 rounded-lg transition-all"
                         >
-                          <Link to={item.url as never}>
+                          {/* Na gaveta (abaixo de lg) escolher uma tela fecha o menu. */}
+                          <Link to={item.url as never} onClick={() => { if (isMobile) setOpenMobile(false) }}>
                             <item.icon className="size-4" />
                             <span>{item.title}</span>
                           </Link>
@@ -171,7 +173,8 @@ export function AdminSideBar({ ...props }: React.ComponentProps<typeof Sidebar>)
         ))}
       </SidebarContent>
 
-      <SidebarFooter className="flex flex-col gap-2 pb-3">
+      {/* Na gaveta (celular/tablet) a lista rola por baixo do rodapé: a borda com sombra avisa que há mais itens. */}
+      <SidebarFooter className={cn('flex flex-col gap-2 pb-3', isMobile && 'border-t border-sidebar-border shadow-[0_-8px_8px_-8px_rgba(0,0,0,0.2)]')}>
         {/* O tema fica em Minha conta → Preferências. */}
         <NavUser user={user} />
       </SidebarFooter>

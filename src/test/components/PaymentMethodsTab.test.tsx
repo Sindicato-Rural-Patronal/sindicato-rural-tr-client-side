@@ -34,7 +34,8 @@ describe('PaymentMethodsTab', () => {
   it('lista as formas cadastradas', () => {
     render(<PaymentMethodsTab {...tudoLiberado} />)
     expect(screen.getByText('PIX')).toBeInTheDocument()
-    expect(screen.getByText('Ativa')).toBeInTheDocument()
+    // O selo aparece duas vezes no DOM: embaixo do nome (celular) e na coluna Status (sm em diante); o CSS esconde um deles.
+    expect(screen.getAllByText('Ativa')).toHaveLength(2)
   })
 
   it('cadastra uma forma nova', async () => {

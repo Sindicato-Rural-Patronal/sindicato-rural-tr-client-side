@@ -17,7 +17,8 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
   DialogDescription, DialogFooter,
 } from '@/components/ui/dialog'
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
+import { cn } from '@/lib/utils'
+import { Tabs, TabsList, TabsTrigger, TabsContent, tabsWrapClass } from '@/components/ui/tabs'
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
@@ -960,7 +961,7 @@ function RouteComponent() {
             </div>
             <p className="text-sm text-muted-foreground">Pessoas, empresas e administradores do sistema</p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             {ehAbaDePessoa && (
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <span className="hidden sm:inline">Itens por página:</span>
@@ -1018,7 +1019,7 @@ function RouteComponent() {
           </div>
         </div>
 
-        <TabsList className="mb-6">
+        <TabsList className={cn(tabsWrapClass, 'mb-6')}>
           <TabsTrigger value="pessoas" className="flex items-center gap-1.5">
             <Users className="size-3.5" />
             Pessoa física
@@ -1320,12 +1321,12 @@ function RouteComponent() {
                             label={`Selecionar ${u.name}`}
                           />
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="max-w-[10rem] sm:max-w-[22rem]">
                           <div className="flex items-center gap-3">
                             <InitialsAvatar name={u.name} avatar={u.avatar} size="sm" />
-                            <div>
-                              <p className="font-medium text-sm text-foreground">{u.name}</p>
-                              {u.email && <p className="text-xs text-muted-foreground md:hidden">{u.email}</p>}
+                            <div className="min-w-0">
+                              <p className="truncate font-medium text-sm text-foreground" title={u.name}>{u.name}</p>
+                              {u.email && <p className="truncate text-xs text-muted-foreground md:hidden" title={u.email}>{u.email}</p>}
                             </div>
                           </div>
                         </TableCell>

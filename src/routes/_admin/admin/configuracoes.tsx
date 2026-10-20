@@ -4,7 +4,8 @@ import { useTranslation } from 'react-i18next'
 import { usePermissions } from '@/hooks/usePermissions'
 import { NoPermission } from '@/components/NoPermission'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { cn } from '@/lib/utils'
+import { Tabs, TabsContent, TabsList, TabsTrigger, tabsWrapClass } from '@/components/ui/tabs'
 import { OrgInfoPanel } from '@/components/site-config/OrgInfoPanel'
 import { SocialLinksPanel } from '@/components/site-config/SocialLinksPanel'
 import { GalleriesPanel } from '@/components/site-config/GalleriesPanel'
@@ -62,7 +63,7 @@ function ConfiguracoesPage() {
       </div>
 
       <Tabs value={current} onValueChange={v => navigate({ search: { tab: v as Tab }, replace: true })}>
-        <TabsList className="mb-2 h-auto flex-wrap">
+        <TabsList className={cn(tabsWrapClass, 'mb-2')}>
           {available.dados && <TabsTrigger value="dados"><Building className="mr-1.5 size-3.5" /> Dados do sindicato</TabsTrigger>}
           {available.redes && <TabsTrigger value="redes"><Globe className="mr-1.5 size-3.5" /> Redes sociais</TabsTrigger>}
           {available.galerias && <TabsTrigger value="galerias"><Images className="mr-1.5 size-3.5" /> Galerias</TabsTrigger>}

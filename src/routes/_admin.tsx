@@ -32,7 +32,7 @@ function AdminLayout() {
       <LeaveConfirmHost />
       <AdminSideBar />
       <SidebarInset className="overflow-y-auto">
-        <header className="flex h-12 items-center gap-3 border-b px-4 md:hidden">
+        <header className="flex h-12 items-center gap-3 border-b px-4 lg:hidden">
           <SidebarTrigger />
           <NotificationBell className="ml-auto" />
         </header>

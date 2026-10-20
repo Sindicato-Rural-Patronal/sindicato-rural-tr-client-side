@@ -28,13 +28,14 @@ import { useAdminUsers, type UserDataDetail } from '@/hooks/useAdmin'
 import { useAdminCompanies, companyDisplayName, type CompanyDetail } from '@/hooks/useCompanies'
 import { useOrgInfo } from '@/hooks/useSiteSettings'
 import { ORG_CONTACT } from '@/lib/org-contact'
+import { cn } from '@/lib/utils'
 import { fornecedorDoLancamento } from '@/lib/relatorio-empenho'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
+import { Tabs, TabsList, TabsTrigger, TabsContent, tabsWrapClass } from '@/components/ui/tabs'
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table'
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
@@ -168,7 +169,7 @@ function RouteComponent() {
       </div>
 
       <Tabs value={search.tab} onValueChange={v => setSearch({ tab: v as FinanceTab })}>
-        <TabsList className="flex-wrap">
+        <TabsList className={tabsWrapClass}>
           <TabsTrigger value="dashboard">Visão geral</TabsTrigger>
           <TabsTrigger value="lancamentos">Lançamentos</TabsTrigger>
           <TabsTrigger value="recorrentes">Recorrentes</TabsTrigger>
@@ -303,7 +304,7 @@ function DashboardTab({ enabled, onDrill }: {
           retrying={isFetching}
         />
       ) : (<>
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {kpis.map(k => {
           const cls = `rounded-xl border border-border bg-card p-4 flex flex-col gap-2 text-left ${
             k.drill ? 'transition-colors hover:bg-muted/50 cursor-pointer' : ''
@@ -321,7 +322,8 @@ function DashboardTab({ enabled, onDrill }: {
               {isLoading ? (
                 <Skeleton className="h-7 w-28" />
               ) : (
-                <span className={`text-2xl font-bold tabular-nums ${
+                // Quatro colunas só de xl em diante, com fonte menor até 2xl: valores de R$ 10 milhões não cabiam.
+                <span className={`text-2xl font-bold tabular-nums xl:text-lg 2xl:text-2xl ${
                   k.tone === 'result' && k.value < 0 ? 'text-red-600 dark:text-red-400'
                     : k.tone === 'result' ? 'text-emerald-600 dark:text-emerald-400'
                     : 'text-foreground'
@@ -682,14 +684,16 @@ function FilteredTotals({ totals, loading }: {
   ]
   return (
     <div className="flex flex-col gap-1.5">
-      <div className="grid grid-cols-3 gap-2">
+      {/* No celular os três cartões ficam em coluna (label à esquerda, valor inteiro à direita):
+          em três colunas o valor ficava cortado com "…". */}
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
         {items.map(i => (
-          <div key={i.label} className="flex min-w-0 flex-col rounded-lg border border-border bg-card px-3 py-2">
+          <div key={i.label} className="flex min-w-0 flex-row items-baseline justify-between gap-3 rounded-lg border border-border bg-card px-3 py-2 sm:flex-col sm:items-stretch sm:justify-start sm:gap-0">
             <span className="text-xs text-muted-foreground">{i.label}</span>
             {loading ? (
               <Skeleton className="mt-1 h-6 w-24 max-w-full" />
             ) : (
-              <span className={`truncate text-sm font-semibold tabular-nums sm:text-lg ${i.cls}`}>{centsToBRL(i.value)}</span>
+              <span className={`text-base font-semibold tabular-nums sm:truncate sm:text-lg ${i.cls}`}>{centsToBRL(i.value)}</span>
             )}
           </div>
         ))}
@@ -716,6 +720,23 @@ const emptyTxForm = (): TxForm => ({
   type: 'OUT', amount: '', date: todayYmd(), description: '', method: '', categoryId: '', accountId: '', notes: '',
   empenho: emptyEmp(),
 })
+
+// Colunas da lista de lançamentos (tabela fixa, sem rolagem lateral). Descrição e
+// Nome / Razão social dividem o que sobra; as outras têm largura própria e,
+// conforme a tela, entram como coluna ou viram uma linha miúda embaixo da descrição
+// (SO_ABAIXO_*, o contrário do COL_* da mesma coluna).
+const COL_DATA = 'hidden lg:table-cell lg:w-[92px]'
+const COL_VALOR = 'w-[144px]'
+const COL_ACOES = 'w-[88px] lg:w-[160px]'
+const COL_NOME = 'hidden xl:table-cell'
+const COL_CATEGORIA = 'hidden xl:table-cell xl:w-[150px]'
+const COL_CAIXA = 'hidden 2xl:table-cell 2xl:w-[130px]'
+const COL_METODO = 'hidden 2xl:table-cell 2xl:w-[110px]'
+// Abaixo de lg a data também sai da coluna e vai para o topo da célula da descrição.
+const SO_ABAIXO_DE_NOME = 'xl:hidden'
+const SO_ABAIXO_DE_CATEGORIA = 'xl:hidden'
+const SO_ABAIXO_DE_CAIXA = '2xl:hidden'
+const SO_ABAIXO_DE_METODO = '2xl:hidden'
 
 function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, canDelete }: {
   enabled: boolean
@@ -1031,17 +1052,17 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-        <div className="flex flex-wrap items-end gap-2">
-          <div className="flex flex-col gap-1">
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+        <div className="flex min-w-0 flex-wrap items-end gap-2">
+          <div className="flex min-w-0 max-w-full flex-col gap-1">
             <Label className="text-[11px] text-muted-foreground">De</Label>
             <Input type="date" className="h-9 w-[150px]" value={search.from ?? ''} onChange={e => setSearch({ from: e.target.value || undefined, page: undefined })} />
           </div>
-          <div className="flex flex-col gap-1">
+          <div className="flex min-w-0 max-w-full flex-col gap-1">
             <Label className="text-[11px] text-muted-foreground">Até</Label>
             <Input type="date" className="h-9 w-[150px]" value={search.to ?? ''} onChange={e => setSearch({ to: e.target.value || undefined, page: undefined })} />
           </div>
-          <div className="flex flex-col gap-1">
+          <div className="flex min-w-0 max-w-full flex-col gap-1">
             <Label className="text-[11px] text-muted-foreground">Tipo</Label>
             <NativeSelect className="h-9" value={search.fType ?? ''} onChange={e => setSearch({ fType: (e.target.value || undefined) as FinanceType | undefined, page: undefined })}>
               <option value="">Todos</option>
@@ -1049,21 +1070,21 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
               <option value="OUT">Saídas</option>
             </NativeSelect>
           </div>
-          <div className="flex flex-col gap-1">
+          <div className="flex min-w-0 max-w-full flex-col gap-1">
             <Label className="text-[11px] text-muted-foreground">Categoria</Label>
             <NativeSelect className="h-9" value={search.cat ?? ''} onChange={e => setSearch({ cat: e.target.value || undefined, page: undefined })}>
               <option value="">Todas</option>
               {cats.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
             </NativeSelect>
           </div>
-          <div className="flex flex-col gap-1">
+          <div className="flex min-w-0 max-w-full flex-col gap-1">
             <Label className="text-[11px] text-muted-foreground">Caixa</Label>
             <NativeSelect className="h-9" value={search.acc ?? ''} onChange={e => setSearch({ acc: e.target.value || undefined, page: undefined })}>
               <option value="">Todos</option>
               {accs.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
             </NativeSelect>
           </div>
-          <div className="flex flex-col gap-1">
+          <div className="flex min-w-0 max-w-full flex-col gap-1">
             <Label className="text-[11px] text-muted-foreground">Forma</Label>
             <PaymentMethodSelect
               className="h-9"
@@ -1074,7 +1095,7 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
             />
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Button variant="outline" className="shrink-0" disabled={exporting || rows.length === 0} onClick={handleExport}>
             <Download className="size-4" /> {exporting ? 'Exportando...' : 'Exportar CSV'}
           </Button>
@@ -1181,36 +1202,40 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
       </div>
 
       <div className="rounded-lg border border-border bg-card overflow-hidden hidden md:block">
-        <div className="overflow-x-auto">
-          <Table>
+        {/* Sem rolagem lateral: a tabela é fixa e as células de texto quebram linha
+            (o TableCell do shadcn é nowrap, por isso o whitespace-normal). Data, Valor
+            e Ações têm largura própria e nunca quebram; o que não cabe vira linha
+            miúda embaixo da descrição (ver COL_* e SO_ABAIXO_*). */}
+        <div>
+          <Table className="table-fixed">
             <TableHeader>
               <TableRow>
-                <TableHead>Data</TableHead>
+                <TableHead className={COL_DATA}>Data</TableHead>
                 <TableHead>Descrição</TableHead>
-                <TableHead>Nome / Razão social</TableHead>
-                <TableHead>Categoria</TableHead>
-                <TableHead className="hidden lg:table-cell">Caixa</TableHead>
-                <TableHead className="hidden md:table-cell">Método</TableHead>
-                <TableHead className="text-right">Valor</TableHead>
-                <TableHead className="text-right">Ações</TableHead>
+                <TableHead className={COL_NOME}>Nome / Razão social</TableHead>
+                <TableHead className={COL_CATEGORIA}>Categoria</TableHead>
+                <TableHead className={COL_CAIXA}>Caixa</TableHead>
+                <TableHead className={COL_METODO}>Método</TableHead>
+                <TableHead className={cn('text-right', COL_VALOR)}>Valor</TableHead>
+                <TableHead className={cn('text-right', COL_ACOES)}>Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {isLoading && Array.from({ length: 6 }).map((_, i) => (
                 <TableRow key={i}>
-                  <TableCell><Skeleton className="h-4 w-20" /></TableCell>
-                  <TableCell><Skeleton className="h-4 w-40" /></TableCell>
-                  <TableCell><Skeleton className="h-4 w-32" /></TableCell>
-                  <TableCell><Skeleton className="h-4 w-24" /></TableCell>
-                  <TableCell className="hidden lg:table-cell"><Skeleton className="h-4 w-20" /></TableCell>
-                  <TableCell className="hidden md:table-cell"><Skeleton className="h-4 w-16" /></TableCell>
+                  <TableCell className={COL_DATA}><Skeleton className="h-4 w-16" /></TableCell>
+                  <TableCell><Skeleton className="h-4 w-4/5" /></TableCell>
+                  <TableCell className={COL_NOME}><Skeleton className="h-4 w-3/4" /></TableCell>
+                  <TableCell className={COL_CATEGORIA}><Skeleton className="h-4 w-20" /></TableCell>
+                  <TableCell className={COL_CAIXA}><Skeleton className="h-4 w-16" /></TableCell>
+                  <TableCell className={COL_METODO}><Skeleton className="h-4 w-14" /></TableCell>
                   <TableCell><Skeleton className="h-4 w-20 ml-auto" /></TableCell>
                   <TableCell><Skeleton className="h-7 w-16 ml-auto" /></TableCell>
                 </TableRow>
               ))}
               {!isLoading && !isError && rows.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={8} className="py-16 text-center">
+                  <TableCell colSpan={8} className="py-16 text-center whitespace-normal">
                     <Wallet className="size-10 text-muted-foreground/30 mx-auto mb-3" />
                     <p className="text-sm font-medium text-foreground">Nenhum lançamento</p>
                     <p className="text-xs text-muted-foreground mt-1">
@@ -1219,66 +1244,99 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
                   </TableCell>
                 </TableRow>
               )}
-              {rows.map(t => (
+              {rows.map(t => {
+                const fornecedor = fornecedorDoLancamento(t)
+                return (
                 <TableRow key={t.id}>
-                  <TableCell className="whitespace-nowrap text-muted-foreground tabular-nums text-xs">
+                  <TableCell className={cn('whitespace-nowrap text-muted-foreground tabular-nums text-xs align-top pt-3', COL_DATA)}>
                     {formatDateFromString(t.date.slice(0, 10))}
                   </TableCell>
-                  <TableCell className="font-medium text-foreground">
-                    <span className="inline-flex items-center gap-2">
+                  <TableCell className="font-medium text-foreground whitespace-normal align-top pt-3">
+                    <div className="flex items-start gap-2 min-w-0">
                       {t.transferId
-                        ? <ArrowLeftRight className="size-4 shrink-0 text-sky-600 dark:text-sky-400" />
+                        ? <ArrowLeftRight className="size-4 shrink-0 mt-0.5 text-sky-600 dark:text-sky-400" />
                         : t.type === 'IN'
-                          ? <ArrowUpCircle className="size-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
+                          ? <ArrowUpCircle className="size-4 shrink-0 mt-0.5 text-emerald-600 dark:text-emerald-400" />
                           : t.type === 'OUT'
-                            ? <ArrowDownCircle className="size-4 shrink-0 text-red-600 dark:text-red-400" />
-                            : <Receipt className="size-4 shrink-0 text-muted-foreground" />}
-                      {t.description}
-                      {!t.type && !t.transferId && <Badge variant="outline" className="text-muted-foreground">Nota</Badge>}
-                      {t.recurringId && (
-                        <Badge variant="outline" className="gap-1 text-muted-foreground" title="Criado por uma recorrência">
-                          <Repeat className="size-3" /> Recorrente
-                        </Badge>
-                      )}
-                      {t.attachments.length > 0 && (
-                        <button
-                          type="button"
-                          onClick={() => handleOpenAttachment(t.attachments[0].id)}
-                          title={`${t.attachments.length} comprovante(s) — abrir`}
-                          className="inline-flex items-center gap-0.5 rounded bg-muted px-1.5 py-0.5 text-[11px] text-muted-foreground hover:text-foreground"
-                        >
-                          <Paperclip className="size-3" />{t.attachments.length}
-                        </button>
-                      )}
-                    </span>
+                            ? <ArrowDownCircle className="size-4 shrink-0 mt-0.5 text-red-600 dark:text-red-400" />
+                            : <Receipt className="size-4 shrink-0 mt-0.5 text-muted-foreground" />}
+                      <div className="min-w-0 flex-1">
+                        <p className="whitespace-nowrap text-xs font-normal tabular-nums text-muted-foreground lg:hidden">{formatDateFromString(t.date.slice(0, 10))}</p>
+                        <p className="line-clamp-2 break-words" title={t.description}>{t.description}</p>
+                        {/* Abaixo da largura de cada coluna, o dado vira linha miúda aqui. */}
+                        {fornecedor && (
+                          <p className={cn('line-clamp-2 break-words text-xs font-normal text-muted-foreground', SO_ABAIXO_DE_NOME)} title={fornecedor}>{fornecedor}</p>
+                        )}
+                        <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs font-normal text-muted-foreground empty:hidden">
+                          {t.category && (
+                            <span className={cn('inline-flex min-w-0 max-w-full items-center gap-1', SO_ABAIXO_DE_CATEGORIA)} title={t.category.name}>
+                              <span className="size-2 shrink-0 rounded-sm" style={{ backgroundColor: t.category.color }} />
+                              <span className="truncate">{t.category.name}</span>
+                            </span>
+                          )}
+                          {t.account && (
+                            <span className={cn('inline-flex min-w-0 max-w-full items-center gap-1', SO_ABAIXO_DE_CAIXA)} title={t.account.name}>
+                              <Landmark className="size-3 shrink-0" style={{ color: t.account.color }} />
+                              <span className="truncate">{t.account.name}</span>
+                            </span>
+                          )}
+                          {t.method && <span className={cn('max-w-full truncate', SO_ABAIXO_DE_METODO)} title={t.method}>{t.method}</span>}
+                        </div>
+                        {((!t.type && !t.transferId) || t.recurringId || t.attachments.length > 0) && (
+                          <div className="mt-1 flex flex-wrap items-center gap-1">
+                            {!t.type && !t.transferId && <Badge variant="outline" className="text-muted-foreground">Nota</Badge>}
+                            {t.recurringId && (
+                              <Badge variant="outline" className="gap-1 text-muted-foreground" title="Criado por uma recorrência">
+                                <Repeat className="size-3" /> Recorrente
+                              </Badge>
+                            )}
+                            {t.attachments.length > 0 && (
+                              <button
+                                type="button"
+                                onClick={() => handleOpenAttachment(t.attachments[0].id)}
+                                title={`${t.attachments.length} comprovante(s) — abrir`}
+                                className="inline-flex items-center gap-0.5 rounded bg-muted px-1.5 py-0.5 text-[11px] font-normal text-muted-foreground hover:text-foreground"
+                              >
+                                <Paperclip className="size-3" />{t.attachments.length}
+                              </button>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </div>
                   </TableCell>
-                  <TableCell className="text-sm text-foreground break-words">
-                    {fornecedorDoLancamento(t) ?? <span className="text-muted-foreground">—</span>}
+                  <TableCell className={cn('text-sm text-foreground whitespace-normal align-top pt-3', COL_NOME)}>
+                    {fornecedor
+                      ? <p className="line-clamp-2 break-words" title={fornecedor}>{fornecedor}</p>
+                      : <span className="text-muted-foreground">—</span>}
                   </TableCell>
-                  <TableCell>
+                  <TableCell className={cn('whitespace-normal align-top pt-3', COL_CATEGORIA)}>
                     {t.category ? (
-                      <span className="inline-flex items-center gap-1.5 text-sm text-foreground">
-                        <span className="size-2.5 rounded-sm" style={{ backgroundColor: t.category.color }} />
-                        {t.category.name}
+                      <span className="inline-flex items-start gap-1.5 text-sm text-foreground" title={t.category.name}>
+                        <span className="mt-1.5 size-2.5 shrink-0 rounded-sm" style={{ backgroundColor: t.category.color }} />
+                        <span className="line-clamp-2 break-words">{t.category.name}</span>
                       </span>
                     ) : <span className="text-muted-foreground text-sm">—</span>}
                   </TableCell>
-                  <TableCell className="hidden lg:table-cell text-muted-foreground text-sm">
+                  <TableCell className={cn('text-muted-foreground text-sm whitespace-normal align-top pt-3', COL_CAIXA)}>
                     {t.account ? (
-                      <span className="inline-flex items-center gap-1.5 text-foreground">
-                        <Landmark className="size-3.5" style={{ color: t.account.color }} />
-                        {t.account.name}
+                      <span className="inline-flex items-start gap-1.5 text-foreground" title={t.account.name}>
+                        <Landmark className="mt-0.5 size-3.5 shrink-0" style={{ color: t.account.color }} />
+                        <span className="line-clamp-2 break-words">{t.account.name}</span>
                       </span>
                     ) : '—'}
                   </TableCell>
-                  <TableCell className="hidden md:table-cell text-muted-foreground text-sm">{t.method || '—'}</TableCell>
-                  <TableCell className={`text-right tabular-nums font-medium ${
-                    t.type === 'IN' ? 'text-emerald-600 dark:text-emerald-400' : t.type === 'OUT' ? 'text-red-600 dark:text-red-400' : 'text-muted-foreground'
-                  }`}>
+                  <TableCell className={cn('text-muted-foreground text-sm whitespace-normal align-top pt-3', COL_METODO)}>
+                    <span className="line-clamp-2 break-words" title={t.method || undefined}>{t.method || '—'}</span>
+                  </TableCell>
+                  <TableCell className={cn('text-right tabular-nums font-medium whitespace-nowrap align-top pt-3', COL_VALOR,
+                    t.type === 'IN' ? 'text-emerald-600 dark:text-emerald-400' : t.type === 'OUT' ? 'text-red-600 dark:text-red-400' : 'text-muted-foreground',
+                  )}>
                     {t.type === 'IN' ? '+ ' : t.type === 'OUT' ? '− ' : ''}{centsToBRL(t.amountCents)}
                   </TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex items-center justify-end gap-1">
+                  <TableCell className={cn('text-right align-top', COL_ACOES)}>
+                    {/* Abaixo de lg os botões ficam em 2×2 para a coluna caber; de lg em diante, numa linha. */}
+                    <div className="ml-auto grid w-fit grid-cols-2 justify-items-center gap-0.5 lg:flex lg:items-center lg:justify-end lg:gap-1">
                       {!t.transferId && (
                         <Button size="sm" variant="ghost" className="h-8 px-2 text-muted-foreground" disabled={notaBusy === t.id} onClick={() => gerarNota(t)} aria-label="Gerar Nota de Empenho" title="Gerar Nota de Empenho">
                           <Receipt className="size-4" />
@@ -1304,7 +1362,8 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
                     </div>
                   </TableCell>
                 </TableRow>
-              ))}
+                )
+              })}
             </TableBody>
           </Table>
         </div>
@@ -1327,7 +1386,7 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
             <DialogTitle>Transferir entre caixas</DialogTitle>
             <DialogDescription>Move dinheiro de um caixa para outro. Não conta como entrada nem saída.</DialogDescription>
           </DialogHeader>
-          <div className="flex flex-col gap-4">
+          <div className="flex min-w-0 flex-col gap-4">
             <div className="grid grid-cols-2 gap-3">
               <div className="flex flex-col gap-1.5">
                 <Label>De *</Label>
@@ -1379,7 +1438,7 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
                 : 'Entrada ou saída de caixa. Valor em reais.'}
             </DialogDescription>
           </DialogHeader>
-          <div className="flex flex-col gap-4">
+          <div className="flex min-w-0 flex-col gap-4">
             <div className="grid grid-cols-3 gap-2">
               <button
                 type="button"
@@ -1430,7 +1489,7 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
               <Input value={form.description} onChange={e => setF('description', upperNoAccents(e.target.value))} placeholder="Ex: Compra de material de escritório" />
             </div>
             <div className="grid grid-cols-2 gap-3">
-              <div className="flex flex-col gap-1.5">
+              <div className="flex min-w-0 flex-col gap-1.5">
                 <Label>Categoria</Label>
                 <NativeSelect
                   value={form.categoryId}
@@ -1450,7 +1509,7 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
                   )}
                 </NativeSelect>
               </div>
-              <div className="flex flex-col gap-1.5">
+              <div className="flex min-w-0 flex-col gap-1.5">
                 <Label>Caixa</Label>
                 <NativeSelect value={form.accountId} onChange={e => setF('accountId', e.target.value)}>
                   <option value="">Sem caixa</option>
@@ -1458,7 +1517,7 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
                 </NativeSelect>
               </div>
             </div>
-            <div className="flex flex-col gap-1.5">
+            <div className="flex min-w-0 flex-col gap-1.5">
               <Label>Forma de pagamento</Label>
               <PaymentMethodSelect
                 value={form.method}
@@ -1557,7 +1616,7 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
                     <EmpInput label="Inscrição estadual" value={form.empenho.inscricaoEstadual} onChange={v => setEmp('inscricaoEstadual', v)} />
                   </div>
                   <EmpInput label="Endereço" value={form.empenho.endereco} onChange={v => setEmp('endereco', upperNoAccents(v))} />
-                  <div className="grid grid-cols-4 gap-2">
+                  <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                     <EmpInput label="Bairro" value={form.empenho.bairro} onChange={v => setEmp('bairro', upperNoAccents(v))} />
                     <EmpInput label="CEP" value={form.empenho.cep} onChange={v => setEmp('cep', v)} />
                     <EmpInput label="Cidade" value={form.empenho.cidade} onChange={v => setEmp('cidade', upperNoAccents(v))} />
@@ -1567,7 +1626,7 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
                     <EmpInput label="Telefone" value={form.empenho.telefone} onChange={v => setEmp('telefone', v)} />
                     <EmpInput label="Desconto (R$)" value={form.empenho.desconto} onChange={v => setEmp('desconto', maskMoney(v))} />
                   </div>
-                  <div className="grid grid-cols-4 gap-2">
+                  <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                     <EmpInput label="Banco" value={form.empenho.banco} onChange={v => setEmp('banco', upperNoAccents(v))} />
                     <EmpInput label="Agência" value={form.empenho.agencia} onChange={v => setEmp('agencia', v)} />
                     <EmpInput label="Conta" value={form.empenho.conta} onChange={v => setEmp('conta', v)} />
@@ -1712,14 +1771,15 @@ function CategoriesTab({ enabled, canCreate, canUpdate, canDelete }: {
       )}
 
       <div className="rounded-lg border border-border bg-card overflow-hidden">
-        <div className="overflow-x-auto">
-          <Table>
+        {/* Sem rolagem lateral: tabela fixa; o nome quebra linha (TableCell do shadcn é nowrap). */}
+        <div>
+          <Table className="table-fixed">
             <TableHeader>
               <TableRow>
                 <TableHead>Categoria</TableHead>
-                <TableHead>Tipo</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Ações</TableHead>
+                <TableHead className="hidden sm:table-cell sm:w-[96px]">Tipo</TableHead>
+                <TableHead className="hidden sm:table-cell sm:w-[96px]">Status</TableHead>
+                <TableHead className="w-[104px] text-right">Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -1741,18 +1801,25 @@ function CategoriesTab({ enabled, canCreate, canUpdate, canDelete }: {
               )}
               {cats.map(c => (
                 <TableRow key={c.id} className={c.active ? '' : 'opacity-60'}>
-                  <TableCell className="font-medium text-foreground">
-                    <span className="inline-flex items-center gap-2">
-                      <span className="size-3 rounded-sm" style={{ backgroundColor: c.color }} />
-                      {c.name}
+                  <TableCell className="font-medium text-foreground whitespace-normal">
+                    <span className="flex items-start gap-2">
+                      <span className="mt-1 size-3 shrink-0 rounded-sm" style={{ backgroundColor: c.color }} />
+                      <span className="min-w-0 break-words" title={c.name}>{c.name}</span>
                     </span>
+                    {/* No celular Tipo e Status saem das colunas (o nome ficava com uma letra por linha) e viram selos aqui. */}
+                    <div className="mt-1 flex flex-wrap gap-1 pl-5 sm:hidden">
+                      <Badge variant="outline" className={c.type === 'IN' ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}>
+                        {c.type === 'IN' ? 'Entrada' : 'Saída'}
+                      </Badge>
+                      <Badge variant={c.active ? 'default' : 'secondary'}>{c.active ? 'Ativa' : 'Inativa'}</Badge>
+                    </div>
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="hidden sm:table-cell">
                     <Badge variant="outline" className={c.type === 'IN' ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}>
                       {c.type === 'IN' ? 'Entrada' : 'Saída'}
                     </Badge>
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="hidden sm:table-cell">
                     <Badge variant={c.active ? 'default' : 'secondary'}>{c.active ? 'Ativa' : 'Inativa'}</Badge>
                   </TableCell>
                   <TableCell className="text-right">
@@ -1919,13 +1986,14 @@ function AccountsTab({ enabled, canCreate, canUpdate, canDelete }: {
       )}
 
       <div className="rounded-lg border border-border bg-card overflow-hidden">
-        <div className="overflow-x-auto">
-          <Table>
+        {/* Sem rolagem lateral: tabela fixa; o nome quebra linha (TableCell do shadcn é nowrap). */}
+        <div>
+          <Table className="table-fixed">
             <TableHeader>
               <TableRow>
                 <TableHead>Caixa</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Ações</TableHead>
+                <TableHead className="hidden sm:table-cell sm:w-[96px]">Status</TableHead>
+                <TableHead className="w-[104px] text-right">Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -1946,13 +2014,16 @@ function AccountsTab({ enabled, canCreate, canUpdate, canDelete }: {
               )}
               {accs.map(a => (
                 <TableRow key={a.id} className={a.active ? '' : 'opacity-60'}>
-                  <TableCell className="font-medium text-foreground">
-                    <span className="inline-flex items-center gap-2">
-                      <Landmark className="size-4" style={{ color: a.color }} />
-                      {a.name}
+                  <TableCell className="font-medium text-foreground whitespace-normal">
+                    <span className="flex items-start gap-2">
+                      <Landmark className="mt-0.5 size-4 shrink-0" style={{ color: a.color }} />
+                      <span className="min-w-0 break-words" title={a.name}>{a.name}</span>
                     </span>
+                    <div className="mt-1 pl-6 sm:hidden">
+                      <Badge variant={a.active ? 'default' : 'secondary'}>{a.active ? 'Ativo' : 'Inativo'}</Badge>
+                    </div>
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="hidden sm:table-cell">
                     <Badge variant={a.active ? 'default' : 'secondary'}>{a.active ? 'Ativo' : 'Inativo'}</Badge>
                   </TableCell>
                   <TableCell className="text-right">
