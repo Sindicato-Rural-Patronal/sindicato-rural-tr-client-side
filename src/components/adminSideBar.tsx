@@ -95,7 +95,7 @@ export function AdminSideBar({ ...props }: React.ComponentProps<typeof Sidebar>)
           {/* Sino ao lado do logo; com a barra recolhida (só ícones) fica embaixo dele. */}
           <SidebarMenuItem className="flex items-center gap-1 group-data-[collapsible=icon]:flex-col">
             <SidebarMenuButton size="lg" asChild className="min-w-0 flex-1">
-              <Link to="/admin/dashboard">
+              <Link to="/admin/dashboard" onClick={() => { if (isMobile) setOpenMobile(false) }}>
                 <img
                   src="/favicon.ico"
                   alt="Sindicato Rural"
@@ -152,7 +152,8 @@ export function AdminSideBar({ ...props }: React.ComponentProps<typeof Sidebar>)
                           asChild
                           className="h-10 rounded-lg transition-all"
                         >
-                          <Link to={item.url as never}>
+                          {/* Na gaveta (abaixo de lg) escolher uma tela fecha o menu. */}
+                          <Link to={item.url as never} onClick={() => { if (isMobile) setOpenMobile(false) }}>
                             <item.icon className="size-4" />
                             <span>{item.title}</span>
                           </Link>
