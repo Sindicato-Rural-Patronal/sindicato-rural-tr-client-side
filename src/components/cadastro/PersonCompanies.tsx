@@ -246,9 +246,10 @@ export function PersonCompanies({ userId, personName, memberships }: {
                   <p className="text-xs text-muted-foreground">{companySubtitle(m.company)}</p>
                 </div>
               </Link>
-              <div className="flex flex-wrap items-center gap-2 sm:shrink-0">
+              <div className="flex min-w-0 max-w-full flex-wrap items-center gap-2 sm:max-w-[55%] sm:justify-end">
                 {m.company.isPartner && <Badge variant="outline" className="gap-1"><Handshake className="size-3" /> Parceira</Badge>}
-                <Badge variant="secondary">{m.title}</Badge>
+                {/* Cargo comprido quebra de linha em vez de alargar a tela. */}
+                <Badge variant="secondary" className="h-auto max-w-full whitespace-normal break-words text-left" title={m.title}>{m.title}</Badge>
                 {canEdit && (
                   <Button size="sm" variant="ghost" className="h-8 gap-1 px-2 text-muted-foreground hover:text-destructive"
                     onClick={() => setRemoveTarget(m)} aria-label={`Desvincular de ${companyDisplayName(m.company)}`}>

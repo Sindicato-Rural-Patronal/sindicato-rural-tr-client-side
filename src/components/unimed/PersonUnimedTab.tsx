@@ -32,9 +32,9 @@ const DOCS: { kind: DocKind; label: string; icon: typeof Receipt; run: (id: stri
 
 function Field({ label, value }: { label: string; value: string | null | undefined }) {
   return (
-    <div className="flex flex-col gap-0.5">
+    <div className="flex min-w-0 flex-col gap-0.5">
       <span className="text-[11px] uppercase tracking-wide text-muted-foreground">{label}</span>
-      <span className="text-sm text-foreground">{value?.trim() ? value : '—'}</span>
+      <span className="break-words text-sm text-foreground">{value?.trim() ? value : '—'}</span>
     </div>
   )
 }
