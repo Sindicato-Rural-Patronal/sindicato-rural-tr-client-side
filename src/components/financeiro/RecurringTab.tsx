@@ -177,18 +177,22 @@ export function RecurringTab({ enabled, canCreate, canUpdate, canDelete }: {
       )}
 
       <div className="rounded-lg border border-border bg-card overflow-hidden">
-        <div className="overflow-x-auto">
-          <Table>
+        {/* Sem rolagem lateral: tabela fixa, texto quebra linha (o TableCell do shadcn é
+            nowrap, por isso o whitespace-normal). Valor e Ações têm largura própria; o
+            resto entra como coluna conforme a tela e, abaixo disso, vira linha miúda
+            embaixo da descrição. */}
+        <div>
+          <Table className="table-fixed">
             <TableHeader>
               <TableRow>
                 <TableHead>Descrição</TableHead>
-                <TableHead className="text-right">Valor</TableHead>
-                <TableHead className="text-center">Dia</TableHead>
-                <TableHead className="hidden md:table-cell">Categoria</TableHead>
-                <TableHead className="hidden md:table-cell">Caixa</TableHead>
-                <TableHead>Situação</TableHead>
-                <TableHead className="hidden lg:table-cell">Próximo mês</TableHead>
-                <TableHead className="text-right">Ações</TableHead>
+                <TableHead className="w-[144px] text-right">Valor</TableHead>
+                <TableHead className="hidden lg:table-cell lg:w-[64px] text-center">Dia</TableHead>
+                <TableHead className="hidden xl:table-cell xl:w-[150px]">Categoria</TableHead>
+                <TableHead className="hidden xl:table-cell xl:w-[130px]">Caixa</TableHead>
+                <TableHead className="hidden lg:table-cell lg:w-[96px]">Situação</TableHead>
+                <TableHead className="hidden 2xl:table-cell 2xl:w-[120px]">Próximo mês</TableHead>
+                <TableHead className="w-[88px] lg:w-[128px] text-right">Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -199,7 +203,7 @@ export function RecurringTab({ enabled, canCreate, canUpdate, canDelete }: {
               ))}
               {!isLoading && !isError && rows.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={8} className="py-16 text-center">
+                  <TableCell colSpan={8} className="py-16 text-center whitespace-normal">
                     <Repeat className="size-10 text-muted-foreground/30 mx-auto mb-3" />
                     <p className="text-sm font-medium text-foreground">Nenhuma recorrência</p>
                     <p className="text-xs text-muted-foreground">
@@ -212,32 +216,44 @@ export function RecurringTab({ enabled, canCreate, canUpdate, canDelete }: {
                 const next = nextMonthToGenerate(r)
                 return (
                   <TableRow key={r.id} className={r.active ? '' : 'opacity-60'}>
-                    <TableCell className="font-medium text-foreground">
-                      <span className="inline-flex items-center gap-2">
-                        <Repeat className="size-4 shrink-0 text-muted-foreground" />
-                        {r.description}
-                      </span>
+                    <TableCell className="font-medium text-foreground whitespace-normal align-top pt-3">
+                      <div className="flex items-start gap-2 min-w-0">
+                        <Repeat className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+                        <div className="min-w-0 flex-1">
+                          <p className="line-clamp-2 break-words" title={r.description}>{r.description}</p>
+                          {/* O que ainda não virou coluna aparece aqui, miúdo. */}
+                          <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs font-normal text-muted-foreground">
+                            <span className="lg:hidden">Dia {r.dayOfMonth}</span>
+                            <Badge variant={r.active ? 'default' : 'secondary'} className="lg:hidden">
+                              {r.active ? 'Ativa' : 'Pausada'}
+                            </Badge>
+                            {r.category && <span className="max-w-full truncate xl:hidden" title={r.category.name}>{r.category.name}</span>}
+                            {r.account && <span className="max-w-full truncate xl:hidden" title={r.account.name}>{r.account.name}</span>}
+                          </div>
+                        </div>
+                      </div>
                     </TableCell>
-                    <TableCell className={`text-right tabular-nums font-medium ${r.type === 'IN' ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
+                    <TableCell className={`text-right tabular-nums font-medium whitespace-nowrap align-top pt-3 ${r.type === 'IN' ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
                       {r.type === 'IN' ? '+' : '−'} {centsToBRL(r.amountCents)}
                     </TableCell>
-                    <TableCell className="text-center tabular-nums">{r.dayOfMonth}</TableCell>
-                    <TableCell className="hidden md:table-cell text-sm text-muted-foreground">
-                      {r.category?.name ?? '—'}
+                    <TableCell className="hidden lg:table-cell text-center tabular-nums align-top pt-3">{r.dayOfMonth}</TableCell>
+                    <TableCell className="hidden xl:table-cell text-sm text-muted-foreground whitespace-normal align-top pt-3">
+                      <span className="line-clamp-2 break-words" title={r.category?.name}>{r.category?.name ?? '—'}</span>
                     </TableCell>
-                    <TableCell className="hidden md:table-cell text-sm text-muted-foreground">
-                      {r.account?.name ?? '—'}
+                    <TableCell className="hidden xl:table-cell text-sm text-muted-foreground whitespace-normal align-top pt-3">
+                      <span className="line-clamp-2 break-words" title={r.account?.name}>{r.account?.name ?? '—'}</span>
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="hidden lg:table-cell align-top pt-3">
                       <Badge variant={r.active ? 'default' : 'secondary'}>
                         {r.active ? 'Ativa' : 'Pausada'}
                       </Badge>
                     </TableCell>
-                    <TableCell className="hidden lg:table-cell text-sm text-muted-foreground">
+                    <TableCell className="hidden 2xl:table-cell text-sm text-muted-foreground whitespace-normal align-top pt-3">
                       {next ? monthLabel(next) : (r.active ? 'Encerrada' : '—')}
                     </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex items-center justify-end gap-1">
+                    <TableCell className="text-right align-top">
+                      {/* Abaixo de lg os botões ficam em 2×2 para a coluna caber. */}
+                      <div className="ml-auto grid w-fit grid-cols-2 justify-items-center gap-0.5 lg:flex lg:items-center lg:justify-end lg:gap-1">
                         {canUpdate && (
                           <Button
                             size="sm" variant="ghost" className="h-8 px-2"
