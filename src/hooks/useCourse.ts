@@ -30,7 +30,11 @@ export type CreateCourseResponse = {
   instructorsCopied?: number
 }
 
-export type UpdateCourseBody = Partial<CreateCourseBody> & {
+export type UpdateCourseBody = Partial<Omit<CreateCourseBody, 'registrationDeadline' | 'observations' | 'eventNumber'>> & {
+  /** `null` apaga o valor gravado; ausente mantém. */
+  registrationDeadline?: string | null
+  observations?: string | null
+  eventNumber?: string | null
   preEnrolled?: number
   waitlist?: number
 }

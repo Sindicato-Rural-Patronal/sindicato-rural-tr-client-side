@@ -11,6 +11,7 @@ import { useTranslation } from 'react-i18next'
 import { useAdminCourse, useCreateCourse, useUpdateCourse, useUploadBanner, useUploadGalleryPhoto } from '@/hooks/useCourse'
 import type { CreateCourseResponse } from '@/hooks/useCourse'
 import { useRooms } from '@/hooks/useRooms'
+import { buildCourseBody } from '@/lib/course-body'
 import { courseBaseSchema } from '@/lib/schemas'
 import type { CourseFormData } from '@/lib/schemas'
 import { courseToDuplicateForm, roomIdByName } from '@/lib/course-duplicate'
@@ -77,14 +78,6 @@ function courseToForm(c: Course): CourseFormData {
     eventNumber: c.eventNumber ?? '',
     minStudents: c.minStudents ?? undefined,
   }
-}
-
-function toISO(date: string, hour: string) {
-  if (!date) return undefined
-  // Hora "de parede", sem fuso: envia como se fosse UTC porque o backend devolve
-  // a hora fatiando o ISO em UTC. Converter do fuso local (new Date(...).toISOString())
-  // deslocava a hora no round-trip — digitava 08:00 e voltava 11:00.
-  return `${date}T${hour || '00:00'}:00.000Z`
 }
 
 // Botão "Enviar capa" sempre visível sobre a capa (no celular não há hover).
@@ -420,31 +413,15 @@ roomId })
       form.setError('roomId', { message: t('validation.roomRequired') })
       return
     }
-    const body = {
-      // Em branco vai como string vazia e o backend grava "CURSO SEM NOME" —
-      // a regra do nome genérico mora num lugar só, lá.
-      name: data.name ?? '',
-      description: data.description ?? '',
-      status: data.status,
-      startTime: toISO(data.startDate, data.startHour)!,
-      endTime: toISO(data.endDate, data.endHour)!,
-      ...(data.roomId ? { roomId: data.roomId } : {}),
-      ...(data.price != null ? { price: data.price } : {}),
-      ...(data.workloadHours != null ? { workloadHours: data.workloadHours } : {}),
-      ...(data.regDeadlineDate ? { registrationDeadline: toISO(data.regDeadlineDate, data.regDeadlineHour ?? '') } : {}),
-      ...(data.observations ? { observations: data.observations } : {}),
-      ...(data.eventNumber ? { eventNumber: data.eventNumber } : {}),
-      ...(data.minStudents != null ? { minStudents: data.minStudents } : {}),
-    }
     // Duplicar: a capa escolhida aqui vence a cópia; instrutores só os marcados.
     const wantCoverCopy = !!source && copyCover && !!source.coverImage && !stagedBanner
     const instructorIds = source ? source.instructors.filter(i => keptInstructors.has(i.id)).map(i => i.id) : []
     try {
       if (editing) {
-        await updateCourse.mutateAsync(body)
+        await updateCourse.mutateAsync(buildCourseBody(data, true))
       } else {
         const res = await createCourse.mutateAsync({
-          ...body,
+          ...buildCourseBody(data, false),
           roomId: data.roomId!,
           ...(wantCoverCopy ? { copyCoverFromCourseId: source!.id } : {}),
           ...(instructorIds.length > 0
