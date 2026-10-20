@@ -568,7 +568,8 @@ roomId })
                   </FormItem>
                 )} />
 
-                <div className="grid grid-cols-2 gap-4">
+                {/* Celular: início e término empilhados (data e hora lado a lado em cada um); com 2 colunas a data ficava com 45px. */}
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <FormItem>
                     <FormLabel>{t('admin.courses.form.startDate')}</FormLabel>
                     <div className="grid grid-cols-[1fr_auto] gap-2">
@@ -608,7 +609,7 @@ roomId })
                   <p className="text-xs text-muted-foreground">Sem hora: vale até o fim do dia.</p>
                 </FormItem>
 
-                <div className="grid grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
                   <FormField control={form.control} name="price" render={({ field }) => (
                     <FormItem>
                       <FormLabel>{t('admin.courses.form.price')}</FormLabel>
