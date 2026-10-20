@@ -1385,7 +1385,7 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
             <DialogTitle>Transferir entre caixas</DialogTitle>
             <DialogDescription>Move dinheiro de um caixa para outro. Não conta como entrada nem saída.</DialogDescription>
           </DialogHeader>
-          <div className="flex flex-col gap-4">
+          <div className="flex min-w-0 flex-col gap-4">
             <div className="grid grid-cols-2 gap-3">
               <div className="flex flex-col gap-1.5">
                 <Label>De *</Label>
@@ -1437,7 +1437,7 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
                 : 'Entrada ou saída de caixa. Valor em reais.'}
             </DialogDescription>
           </DialogHeader>
-          <div className="flex flex-col gap-4">
+          <div className="flex min-w-0 flex-col gap-4">
             <div className="grid grid-cols-3 gap-2">
               <button
                 type="button"
@@ -1488,7 +1488,7 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
               <Input value={form.description} onChange={e => setF('description', upperNoAccents(e.target.value))} placeholder="Ex: Compra de material de escritório" />
             </div>
             <div className="grid grid-cols-2 gap-3">
-              <div className="flex flex-col gap-1.5">
+              <div className="flex min-w-0 flex-col gap-1.5">
                 <Label>Categoria</Label>
                 <NativeSelect
                   value={form.categoryId}
@@ -1508,7 +1508,7 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
                   )}
                 </NativeSelect>
               </div>
-              <div className="flex flex-col gap-1.5">
+              <div className="flex min-w-0 flex-col gap-1.5">
                 <Label>Caixa</Label>
                 <NativeSelect value={form.accountId} onChange={e => setF('accountId', e.target.value)}>
                   <option value="">Sem caixa</option>
@@ -1516,7 +1516,7 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
                 </NativeSelect>
               </div>
             </div>
-            <div className="flex flex-col gap-1.5">
+            <div className="flex min-w-0 flex-col gap-1.5">
               <Label>Forma de pagamento</Label>
               <PaymentMethodSelect
                 value={form.method}

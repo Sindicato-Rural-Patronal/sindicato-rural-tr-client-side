@@ -395,7 +395,7 @@ export function RecurringTab({ enabled, canCreate, canUpdate, canDelete }: {
               </div>
             </div>
 
-            <div className="flex flex-col gap-1.5">
+            <div className="flex min-w-0 flex-col gap-1.5">
               <Label>Forma de pagamento</Label>
               <PaymentMethodSelect
                 value={crud.form.paymentMethod}
