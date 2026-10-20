@@ -10,6 +10,7 @@ import { AuthProvider } from '@/context/AuthContext'
 import { Toaster } from 'sonner'
 import { RouteErrorPage } from '@/components/RouteErrorPage'
 import { PageLoader } from '@/components/PageLoader'
+import { reloadForNewChunks } from '@/lib/chunk-reload'
 import './index.css';
 import './i18n';
 
@@ -37,18 +38,6 @@ try {
   })
 } catch { /* ignore */ }
 
-// Deploy troca os hashes dos chunks; uma aba aberta pode pedir um chunk que
-// não existe mais → import dinâmico falha. Recarrega UMA vez para pegar o
-// index/chunks novos. O flag evita loop caso a falha seja real (offline etc).
-function reloadForNewChunks() {
-  try {
-    if (sessionStorage.getItem('chunk-reload') === '1') return
-    sessionStorage.setItem('chunk-reload', '1')
-  } catch {
-    /* sessionStorage indisponível — segue sem guarda */
-  }
-  window.location.reload()
-}
 window.addEventListener('vite:preloadError', (e) => {
   e.preventDefault()
   reloadForNewChunks()

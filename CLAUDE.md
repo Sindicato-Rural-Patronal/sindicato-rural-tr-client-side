@@ -217,6 +217,7 @@ src/
 │   ├── api-error-message.ts         # apiErrorMessage: mensagem do backend → português (inclui 413 e 429 pelo status)
 │   ├── registration-errors.ts       # Erros da inscrição pelo site: registrationErrorMessage (429 do CPF mostra o texto do
 │   │                                #   servidor), isAlreadyRegistered, isCannotConfirmRegistration (409 → link do WhatsApp)
+│   ├── chunk-reload.ts              # Recarga automática depois de deploy (vite:preloadError): guarda por horário, 60 s entre recargas
 │   ├── login-error.ts               # loginErrorMessage: senha errada / 429 / sistema fora do ar / sem internet
 │   ├── auth-token.ts                # JWT no navegador: validade, renovação, safeAdminRedirect, loginHref
 │   ├── auth-guard.ts                # requirePermission (guarda de rota; lê o cache de meQuery)
@@ -279,7 +280,7 @@ src/
 │   ├── download.ts                  # saveBlob, openBlob, fileSlug
 │   ├── resize-image.ts              # resizeToSquare (avatar)
 │   ├── safe-url.ts, escape-html.ts  # Link digitado pelo admin; texto dinâmico em dangerouslySetInnerHTML
-└── main.tsx                         # Tema salvo, recarga única depois de deploy, router com telas padrão em português
+└── main.tsx                         # Tema salvo, recarga depois de deploy (lib/chunk-reload.ts), router com telas padrão em português
 ```
 
 ## Padrões do código
