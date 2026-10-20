@@ -126,14 +126,17 @@ describe('Inscrição pelo site: CPF + 4 últimos dígitos do telefone', () => {
     expect(await screen.findByText('Não encontramos cadastro com este CPF e telefone.')).toBeInTheDocument()
   })
 
-  it('"Já inscrito" continua levando à tela de inscrição existente', async () => {
+  it.each([
+    ['texto antigo (inglês)', 'User already registered for this course'],
+    ['texto novo (português)', 'Esta pessoa já está inscrita neste curso.'],
+  ])('"Já inscrito" leva à tela de inscrição existente: %s', async (_nome, mensagem) => {
     apiFetch.mockResolvedValueOnce(ok({ found: true, name: 'João D. S.' }))
     abrir()
     preencher()
     continuar()
     await screen.findByText('João D. S.')
 
-    apiFetch.mockRejectedValueOnce(new ApiError(409, 'User already registered for this course'))
+    apiFetch.mockRejectedValueOnce(new ApiError(409, mensagem))
     fireEvent.click(screen.getByRole('button', { name: 'Sim, confirmar inscrição' }))
     expect(await screen.findByText('Você já está inscrito neste curso.')).toBeInTheDocument()
   })
@@ -173,6 +176,16 @@ describe('Inscrição pelo site: cadastro novo', () => {
 
     expect(await screen.findByText(/Muitas tentativas com este CPF/)).toBeInTheDocument()
     expect(screen.queryByRole('link', { name: /WhatsApp/ })).not.toBeInTheDocument()
+  })
+
+  it.each([
+    ['texto antigo (inglês)', 'User already registered for this course'],
+    ['texto novo (português)', 'Esta pessoa já está inscrita neste curso.'],
+  ])('"já inscrito" no cadastro novo também abre a tela de inscrição existente: %s', async (_nome, mensagem) => {
+    await irAoFormulario()
+    apiFetch.mockRejectedValueOnce(new ApiError(409, mensagem))
+    fireEvent.click(screen.getByRole('button', { name: 'Confirmar inscrição' }))
+    expect(await screen.findByText('Você já está inscrito neste curso.')).toBeInTheDocument()
   })
 
   it('o link some ao tentar de novo', async () => {

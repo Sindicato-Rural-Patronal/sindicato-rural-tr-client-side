@@ -26,15 +26,39 @@ describe('registrationErrorMessage', () => {
   })
 })
 
+describe('textos de 409 da inscrição em apiErrorMessage', () => {
+  it.each([
+    ['User already registered for this course'],
+    ['Esta pessoa já está inscrita neste curso.'],
+  ])('"%s" sai igual em português', msg => {
+    expect(registrationErrorMessage(new ApiError(409, msg), 'x')).toBe('Usuário já inscrito neste curso.')
+  })
+
+  it.each([
+    ['Registrations unavailable for this course'],
+    ['Inscrições indisponíveis para este curso.'],
+  ])('"%s" sai igual em português', msg => {
+    expect(registrationErrorMessage(new ApiError(409, msg), 'x')).toBe('Inscrições indisponíveis para este curso.')
+  })
+})
+
 describe('classificação dos 409', () => {
   const sindicato = new ApiError(409, 'Não foi possível confirmar seu cadastro pelo site. Procure o Sindicato para fazer a inscrição.')
   const repetida = new ApiError(409, 'User already registered for this course')
+  const repetidaPt = new ApiError(409, 'Esta pessoa já está inscrita neste curso.')
 
   it('separa "Procure o Sindicato" de "já inscrito"', () => {
     expect(isCannotConfirmRegistration(sindicato)).toBe(true)
     expect(isAlreadyRegistered(sindicato)).toBe(false)
     expect(isAlreadyRegistered(repetida)).toBe(true)
     expect(isCannotConfirmRegistration(repetida)).toBe(false)
+  })
+
+  it('"já inscrito" vale no texto novo (português) e no antigo (inglês)', () => {
+    expect(isAlreadyRegistered(repetidaPt)).toBe(true)
+    expect(isAlreadyRegistered(repetida)).toBe(true)
+    expect(isCannotConfirmRegistration(repetidaPt)).toBe(false)
+    expect(isAlreadyRegistered(new ApiError(400, repetidaPt.message))).toBe(false)
   })
 
   it('só vale para 409', () => {

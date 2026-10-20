@@ -2,14 +2,19 @@ import { ApiError } from '@/lib/api'
 import { apiErrorMessage } from '@/lib/api-error-message'
 
 // Mensagem do backend para inscrição repetida (CourseRegistrationAlreadyExistsError).
-const ALREADY_REGISTERED = 'User already registered for this course'
+// A API passou a responder em português; o texto em inglês continua valendo
+// porque o front sobe antes do back e por um tempo fala com a API antiga.
+const ALREADY_REGISTERED = [
+  'Esta pessoa já está inscrita neste curso.',
+  'User already registered for this course',
+]
 
 // register-full com CPF que já tem cadastro e telefone que não confere (409). O
 // backend já responde em português; a tela acrescenta o link do WhatsApp.
 const CANNOT_CONFIRM_PREFIX = 'Não foi possível confirmar seu cadastro pelo site'
 
 export function isAlreadyRegistered(e: unknown) {
-  return e instanceof ApiError && e.status === 409 && e.message === ALREADY_REGISTERED
+  return e instanceof ApiError && e.status === 409 && ALREADY_REGISTERED.includes(e.message)
 }
 
 /** 409 "Procure o Sindicato": o CPF tem cadastro e o telefone digitado não é um dos dele. */
