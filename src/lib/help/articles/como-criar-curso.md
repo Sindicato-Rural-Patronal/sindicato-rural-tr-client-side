@@ -37,6 +37,9 @@ o que muda — datas, prazo e nº do evento. Vem como Rascunho.
 - **Inscrições** chegam pela página do curso no site.
 - Para inscrever alguém do balcão, veja
   [Como inscrever alguém num curso](?topico=como-inscrever-alguem).
+- O curso novo aparece na aba **Próximos**. **No dia do início, ele passa sozinho
+  para a aba Armazenados**; lá continuam os inscritos, a presença e o botão
+  **Concluir curso**.
 - No dia, **Confirmar início** passa o curso para *Em andamento*.
 
 > Enquanto o curso estiver **Público**, qualquer mudança que você salvar

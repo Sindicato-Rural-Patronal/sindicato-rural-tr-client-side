@@ -5,11 +5,39 @@ grupo: dia-a-dia
 ordem: 1
 permissao: READ_COURSE
 veja: como-criar-curso, como-inscrever-alguem, salas-e-agenda, usuarios, exportar-planilhas, fotos-e-imagens
-busca: curso aula turma inscricao inscritos aluno presenca lista certificado faep vagas cpf telefone 4 ultimos digitos site nao deixa inscrever apagar campo vazio
+busca: curso aula turma inscricao inscritos aluno presenca lista certificado faep vagas cpf telefone 4 ultimos digitos site nao deixa inscrever apagar campo vazio proximos armazenados aba arquivo sumiu ordem de chegada inscrito em data hora concluido
 ---
 
 Tudo de curso acontece em **Gestão › Cursos**. A lista mostra cada curso com o
 número de inscritos e as vagas. O botão **Novo curso** abre o formulário.
+
+## As abas Próximos e Armazenados
+
+A lista tem duas abas:
+
+| Aba | O que tem |
+|---|---|
+| **Próximos** | Os cursos cujo **dia do início ainda não chegou**, do mais próximo para o mais distante. É a aba que abre primeiro |
+| **Armazenados** | Os cursos cujo dia do início **é hoje ou já passou**, do mais recente para o mais antigo |
+
+**O curso muda de aba sozinho, no dia do início** (pelo horário de Brasília). Não
+precisa fazer nada. Por isso, se você procura um curso que começa hoje e não o
+vê em **Próximos**, olhe em **Armazenados**.
+
+Armazenados **não é arquivo morto**. Entram ali os cursos de **qualquer
+situação** que já chegaram ao dia do início — inclusive os que ainda estão
+*Públicos* ou *Em andamento*. Dentro do curso armazenado tudo continua
+funcionando: os **inscritos**, a **presença**, os documentos e o botão
+**Concluir curso**. Quando o curso é concluído, ele aparece marcado como
+**Concluído**.
+
+A busca e o filtro de **Ano** valem nas duas abas. Trocar de aba volta para a
+primeira página e **limpa os cursos que você tinha marcado** para exportar ou
+excluir, para você não mexer num curso que nem está à vista.
+
+> Se a aba estiver vazia, a tela diz **Nenhum curso próximo** ou **Nenhum curso
+> armazenado**. Isso quer dizer que a aba não tem curso — ele pode estar na
+> outra.
 
 ## Criando um curso
 
@@ -40,8 +68,9 @@ curso na agenda e evita que duas coisas sejam marcadas no mesmo horário.
 | **Concluído** | Encerrado. Nunca mais aceita inscrição |
 
 > **Concluído nunca acontece sozinho.** Um curso em andamento só é encerrado
-> quando alguém clica em **Concluir curso**. Se precisar, dá para voltar atrás
-> pela edição.
+> quando alguém clica em **Concluir curso** (no rodapé da janela do curso). Se
+> precisar, dá para voltar atrás pela edição. Concluir **não** muda o curso de
+> aba: quem manda nisso é o dia do início, não a situação.
 
 ### Apagar um valor na edição
 
@@ -61,8 +90,17 @@ motivo: prazo vencido, lotado, já começou ou já terminou.
 
 ## Inscrições
 
-Abra o curso e vá na aba **Inscrições**. Ali você vê quem se inscreveu, com
-selos que ajudam na hora de cobrar (ou não cobrar):
+Abra o curso e vá na aba **Inscrições**. Ali você vê quem se inscreveu, **na
+ordem em que chegaram**: quem se inscreveu primeiro fica no topo. Cada pessoa
+mostra o dia e a hora da inscrição, no horário de Brasília:
+
+> Inscrito em 12/10/2026 14:35
+
+Assim dá para ver quem chegou antes, inclusive entre duas pessoas que se
+inscreveram no mesmo dia. (A **Lista de presença** em papel continua em ordem
+alfabética, de propósito, para facilitar a assinatura.)
+
+Cada linha também tem selos que ajudam na hora de cobrar (ou não cobrar):
 
 - **Associado** — a pessoa está ativa e com a associação em dia
 - **Parceira** — tem vínculo com uma empresa parceira ativa
@@ -133,7 +171,9 @@ a decisão é sua.
 
 Depois que o curso começou, cada inscrição confirmada ganha os botões
 **Presente** e **Faltou** — clicar de novo desmarca. Há também **Todos
-presentes** e a contagem *X presentes · Y faltas · Z sem marcar*.
+presentes** e a contagem *X presentes · Y faltas · Z sem marcar*. No dia do
+início o curso já está na aba **Armazenados**: é lá que você o abre para marcar
+a presença.
 
 **Lista de presença** gera o PDF para assinar no dia. A coluna *Presença* também
 vai na planilha CSV.
@@ -146,3 +186,11 @@ vai na planilha CSV.
 Excluir é definitivo e leva junto as inscrições. Na prática, quase nunca é o que
 você quer: se o curso não vai mais acontecer, mude a situação para **Rascunho**
 (some do site e guarda o histórico).
+
+## Se algo der errado
+
+| O que aconteceu | O que fazer |
+|---|---|
+| O curso sumiu da lista | Olhe na aba **Armazenados**. No dia do início, o curso sai de **Próximos** sozinho. Se não estiver lá, tire a busca e o filtro de **Ano** |
+| A aba diz *Nenhum curso próximo* ou *Nenhum curso armazenado* | A aba está vazia, mas o curso pode estar na outra |
+| O botão **Exportar** levou mais cursos do que a aba mostra | A planilha de cursos respeita a busca, mas **não a aba nem o ano**. Para levar só alguns cursos, marque-os e use **Selecionados** |
