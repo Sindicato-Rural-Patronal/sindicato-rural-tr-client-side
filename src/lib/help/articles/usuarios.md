@@ -5,11 +5,38 @@ grupo: dia-a-dia
 ordem: 3
 permissao: READ_USER
 veja: como-cadastrar-associado, como-juntar-cadastros, empresas, unimed, cursos, exportar-planilhas
-busca: associado pessoa cadastro cpf ficha propriedade dependente duplicado juntar instrutor incompleto
+busca: associado selo pessoa fisica juridica abas cadastro cpf ficha foto ampliar propriedade dependente duplicado juntar instrutor incompleto situacao validade associacao
 ---
 
-**Gestão › Usuários** é o cadastro de pessoas do Sindicato. A tela tem três abas:
-**Associados**, **Empresas** e **Admins**.
+**Gestão › Usuários** é o cadastro de pessoas do Sindicato. A tela tem quatro
+abas:
+
+| Aba | O que mostra |
+|---|---|
+| **Pessoa física** | Todas as pessoas do cadastro, associadas ou não |
+| **Associados** | Só quem está com o selo **Associado** (veja abaixo) |
+| **Pessoa jurídica** | As empresas, com o botão **Nova empresa** |
+| **Administradores** | Quem tem acesso ao painel, com o botão **Novo admin** |
+
+## O selo "Associado"
+
+**Associado** é a pessoa que faz parte do Sindicato. O selo amarelo
+**Associado** aparece para quem está com a **Situação** *Ativo* e a **Validade da
+associação** em dia — em branco, ou de hoje em diante. Quem está *Inativo* ou com
+a validade vencida não ganha o selo.
+
+Você vê o selo em cinco lugares:
+
+- na **ficha**, ao lado do nome, no topo;
+- na lista de **Pessoa física** e de **Associados**, embaixo do nome;
+- na **busca de pessoa** dos formulários (por exemplo, em **Inscrever pessoa**);
+- na **Nota de Empenho** do Financeiro, ao vincular uma pessoa;
+- na lista de inscritos de um curso.
+
+Para mudar quem tem o selo, abra a ficha, clique em **Editar** e acerte a
+**Situação** e a **Validade da associação**, no cartão **Associação** da aba
+**Dados**. O selo não aparece sozinho em quem se inscreveu pelo site: essa
+pessoa nasce sem situação, até alguém marcar *Ativo*.
 
 ## Cadastrando uma pessoa
 
@@ -36,7 +63,18 @@ Clicar no nome abre a ficha completa, com:
 - **Relações** — dependentes e cônjuge
 - **Unimed** — quando a pessoa é beneficiária; veja [Unimed](?topico=unimed)
 
-Dá para trocar a **foto** e **Exportar** a ficha (PDF) ou a planilha CSV.
+Dá para trocar a **foto** e **Exportar** a ficha completa ou as propriedades em
+planilha CSV.
+
+### A foto do cadastro
+
+Na aba **Dados**, o campo **Foto de perfil** mostra a foto **grande**. **Clique
+nela para ampliar**: abre uma janela com a foto inteira, para conferir o rosto de
+quem está no balcão. Para fechar, use o **X** ou aperte **Esc**. Sem foto, o
+campo mostra só um boneco, e não há o que ampliar.
+
+Para trocar a foto, clique em **Editar** e use **Galeria** (um arquivo do
+computador) ou **Câmera**. A imagem é reduzida e recortada em quadrado sozinha.
 
 ### Instrutor
 
@@ -56,7 +94,7 @@ que mantém o cadastro do Sindicato utilizável.
 Como a inscrição pelo site só reconhece a pessoa **pelo CPF**, quem já estava no
 sistema sem CPF acaba ganhando um segundo cadastro. Duas saídas:
 
-1. Na aba **Associados**, o botão **Possíveis duplicados** lista os grupos
+1. Na aba **Pessoa física** (ou **Associados**), o botão **Possíveis duplicados** lista os grupos
    suspeitos (mesmo nome, telefone ou e-mail, com pelo menos um sem CPF), com o
    atalho **Juntar**.
 2. Na ficha da pessoa, o botão **Juntar cadastros**.

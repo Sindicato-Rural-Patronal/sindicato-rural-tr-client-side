@@ -19,10 +19,26 @@ busca: cadastrar associado pessoa nova ficha balcao criar novo cin identidade na
    não**.
 5. Escolha o **tipo de membro**: Aluno, Produtor rural ou Trabalhador rural
    assalariado/autônomo.
-6. Complete o que tiver: data de nascimento, RG, escolaridade, gênero.
-7. No **endereço**, digite o CEP e deixe o sistema buscar o resto. Esse
+6. No cartão **Associação**, marque a **Situação** como *Ativo* se a pessoa é
+   associada e preencha a **Validade da associação**. É isso que faz aparecer o
+   selo **Associado** (veja abaixo).
+7. Complete o que tiver: data de nascimento, RG, escolaridade, gênero.
+8. No **endereço**, digite o CEP e deixe o sistema buscar o resto. Esse
    endereço vira a **propriedade principal** da pessoa.
-8. Salve. A ficha abre em seguida, para você completar o que faltar.
+9. Salve. A ficha abre em seguida, para você completar o que faltar.
+
+## O selo "Associado"
+
+Na ficha, o selo **Associado** aparece ao lado do nome quando a **Situação** é
+*Ativo* e a **Validade da associação** está em branco ou de hoje em diante. Na
+lista de pessoas ele fica embaixo do nome. Pessoa cadastrada sem **Situação** não
+ganha o selo — e dá para marcar depois, em **Editar**. Veja
+[Usuários e associados](?topico=usuarios).
+
+## A foto na ficha
+
+Depois de salvar, a foto aparece **grande** na ficha, no campo **Foto de
+perfil**. **Clique nela para ampliar** e conferir o rosto.
 
 ## O que não impede o cadastro
 
