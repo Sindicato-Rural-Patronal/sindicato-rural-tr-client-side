@@ -42,6 +42,39 @@ describe('auditoria: valores de antes/depois', () => {
   })
 })
 
+describe('auditoria: reabrir o mês (Fechamento de caixa)', () => {
+  // DELETE /admin/finance/closings/:id apaga o fechamento; a trilha guarda o que
+  // estava fechado em `changes` (back: audit-snapshot.ts + removedSnapshot).
+  const reabertura = [
+    { field: 'month', before: '2026-10', after: null },
+    { field: 'account', before: 'BANCO', after: null },
+    { field: 'expectedBalanceCents', before: 130000, after: null },
+    { field: 'countedBalanceCents', before: 129500, after: null },
+    { field: 'differenceCents', before: -500, after: null },
+    { field: 'notes', before: 'FALTOU TROCO', after: null },
+    { field: 'closedAt', before: '2026-10-31T20:00:00.000Z', after: null },
+  ]
+
+  it('cada campo guardado tem nome em português', () => {
+    expect(auditChanges(reabertura).map(c => auditFieldLabel(c.field))).toEqual([
+      'Mês', 'Caixa', 'Saldo esperado', 'Saldo contado', 'Diferença', 'Observações', 'Fechado em',
+    ])
+  })
+
+  it('valores legíveis: mês "10/2026", dinheiro em reais e a hora do fechamento em Brasília', () => {
+    expect(formatAuditValue('month', '2026-10')).toBe('10/2026')
+    expect(formatAuditValue('countedBalanceCents', 129500).replace(/\s/g, ' ')).toBe('R$ 1.295,00')
+    expect(formatAuditValue('differenceCents', -500).replace(/\s/g, ' ')).toBe('-R$ 5,00')
+    expect(formatAuditValue('closedAt', '2026-10-31T20:00:00.000Z')).toMatch(/31\/10\/2026,? 17:00/)
+    expect(formatAuditValue('month', null)).toBe('—')
+  })
+
+  it('o formato de mês vale só para campo de mês (texto "2026-10" em outro campo sai como veio)', () => {
+    expect(formatAuditValue('startMonth', '2026-01')).toBe('01/2026')
+    expect(formatAuditValue('description', '2026-10')).toBe('2026-10')
+  })
+})
+
 describe('auditoria: lista de alterações', () => {
   it('ignora resposta antiga ou malformada', () => {
     expect(auditChanges(null)).toEqual([])

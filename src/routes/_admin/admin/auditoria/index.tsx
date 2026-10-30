@@ -70,7 +70,7 @@ export const Route = createFileRoute('/_admin/admin/auditoria/')({
 const ENTITIES = [
   'Administrador', 'Auditoria', 'Banner', 'Beneficiário Unimed', 'Caixa', 'Categoria financeira', 'Comprovante',
   'Configurações do site', 'Contato público', 'Convênio', 'Convite', 'Cotação', 'Curso', 'Empresa',
-  'Endereço', 'Exportação', 'Galeria', 'Inscrição', 'Instrutor', 'Lançamento', 'Login', 'Mensagem', 'Notícia',
+  'Endereço', 'Exportação', 'Fechamento de caixa', 'Galeria', 'Inscrição', 'Instrutor', 'Lançamento', 'Login', 'Mensagem', 'Notícia',
   'Propriedade', 'Regra', 'Relação', 'Reserva de sala', 'Sala', 'Transferência', 'Usuário',
 ]
 
