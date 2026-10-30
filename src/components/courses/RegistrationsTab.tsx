@@ -18,7 +18,6 @@ import { maskCPF, maskPhone } from '@/utils/masks'
 import { whatsappUrl, telHref, uniqueContactLines, phoneKey } from '@/lib/contact-links'
 import { copyText } from '@/lib/copy-text'
 import { cn } from '@/lib/utils'
-import { isActiveMember } from '@/lib/membership'
 import { downloadExport } from '@/lib/export'
 import { CheckCheck, CheckCircle2, CircleCheckBig, Circle, ClipboardList, Eye, FileDown, FileSpreadsheet, Loader2, Mail, Paperclip, Phone, PlayCircle, UserCheck, UserPlus, UserRoundCheck, UserRoundX, UserX, X } from 'lucide-react'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -30,6 +29,7 @@ import type { Course } from '@/@types/course'
 import { LoadErrorRetry } from '@/components/LoadErrorRetry'
 import { Pagination } from '@/components/ui/pagination'
 import { DeleteConfirmDialog } from '@/components/DeleteConfirmDialog'
+import { MemberBadge } from '@/components/MemberBadge'
 import { PersonPicker } from '@/components/PersonPicker'
 import type { PickedPerson } from '@/components/PersonPicker'
 
@@ -581,9 +581,7 @@ export function RegistrationsTab({
                       {age} anos
                     </span>
                   )}
-                  {isActiveMember(reg.userData.memberStatus, reg.userData.membershipValidUntil) && (
-                    <span className="inline-flex items-center rounded-full border border-amber-200 bg-amber-100 px-1.5 text-[10px] font-medium text-amber-700 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-400" title="Associado em dia">Associado</span>
-                  )}
+                  <MemberBadge person={reg.userData} />
                   {reg.userData.companyMemberships.length > 0 && (
                     <span
                       className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-100 px-1.5 text-[10px] font-medium text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-400"

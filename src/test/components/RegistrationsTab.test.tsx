@@ -140,6 +140,36 @@ describe('inscritos do curso: data e hora da inscrição', () => {
   })
 })
 
+describe('inscritos do curso: selo "Associado"', () => {
+  // O mesmo MemberBadge do cadastro (lib/membership.ts): ATIVO e validade vazia ou de hoje em diante.
+  function comSocio(id: string, name: string, memberStatus: 'ACTIVE' | 'INACTIVE' | null, membershipValidUntil: string | null) {
+    const r = inscricao(id, name, '2026-10-29T14:05:00.000Z')
+    return { ...r, userData: { ...r.userData, memberStatus, membershipValidUntil } }
+  }
+
+  it('associado em dia: selo "Associado" com a dica "Associado em dia", junto do nome', async () => {
+    simular([comSocio('r1', 'Zilda Alves', 'ACTIVE', null), comSocio('r2', 'Bruno Lima', 'ACTIVE', '2099-12-31T00:00:00.000Z')])
+    abrir()
+    await screen.findByText('Zilda Alves')
+    const selos = screen.getAllByText('Associado')
+    expect(selos).toHaveLength(2)
+    for (const selo of selos) expect(selo).toHaveAttribute('title', 'Associado em dia')
+    const linha = screen.getByText('Zilda Alves').closest('.rounded-lg') as HTMLElement
+    expect(within(linha).getByText('Associado')).toBeInTheDocument()
+  })
+
+  it('sem selo para quem não está em dia: inativo, validade vencida ou sem situação', async () => {
+    simular([
+      comSocio('r1', 'Zilda Alves', 'INACTIVE', null),
+      comSocio('r2', 'Bruno Lima', 'ACTIVE', '2020-01-31T00:00:00.000Z'),
+      comSocio('r3', 'Ana Souza', null, null),
+    ])
+    abrir()
+    await screen.findByText('Ana Souza')
+    expect(screen.queryByText('Associado')).not.toBeInTheDocument()
+  })
+})
+
 describe('inscritos do curso: presença continua funcionando', () => {
   it('curso cujo dia de início chegou mostra a presença (é o que cai em Armazenados)', async () => {
     simular(ORDEM_DE_CHEGADA, { startDate: brasiliaToday() })
