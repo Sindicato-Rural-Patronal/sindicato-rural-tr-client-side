@@ -77,8 +77,10 @@ docker compose -f docker-compose.prod.yml --env-file .env.production up -d --bui
                               calendário + agenda das salas, cursos públicos, cadastros incompletos, últimas ações;
                               ?dia=AAAA-MM-DD&sala=<id>&tipo=COURSE|EVENT|MEETING&nova=reserva; "Personalizar" blocos
 /admin/cursos               → _admin/admin/cursos/index.tsx (CRUD em diálogos: criar, editar, duplicar, inscrições;
-                              ?curso=<id>&aba=inscricoes abre a janela do curso; ?ano=<ano> é o filtro de ano,
-                              SEPARADO da busca por texto; os anos vêm de GET /admin/courses/years)
+                              abas "Próximos" (padrão) e "Armazenados" = ?lista=armazenados, a lista inteira é
+                              components/courses/CoursesList; ?curso=<id>&aba=inscricoes abre a janela do curso
+                              de QUALQUER aba; ?ano=<ano> é o filtro de ano, SEPARADO da busca por texto; os anos
+                              vêm de GET /admin/courses/years)
 /admin/noticias             → _admin/admin/noticias/index.tsx
 /admin/usuarios             → _admin/admin/usuarios/index.tsx (abas ?tab=pessoas (padrão)|associados|empresas|admins;
                               ?page, ?q, ?incomplete=true; "Possíveis duplicados"; regras e convites na aba admins)
@@ -190,7 +192,11 @@ src/
 │   ├── conta/PerfilTab.tsx          # Aba Perfil de Minha conta: foto, nome, usuário; trocar a senha pede a senha atual
 │   ├── convenio/                    # ConvenioEditor (admin) e ConvenioPageView (página pública e pré-visualização)
 │   ├── cotacoes/                    # QuoteHistoryChart (gráfico SVG), QuoteDayCard e CotacaoSimples (tela /cotacao)
-│   ├── courses/                     # CourseFormDialog (criar/editar/duplicar — fora do arquivo da rota para o editor de
+│   ├── courses/                     # CoursesList (lista do painel com as abas Próximos/Armazenados, filtros, cartões e paginação),
+│   │                                #   AdminCourseCard + CourseCardSkeleton, RegistrationsTab (aba "Inscrições" da janela do
+│   │                                #   curso: ordem de chegada, "Inscrito em dd/mm/aaaa hh:mm", presença, fichas) — os três fora
+│   │                                #   do arquivo da rota para poder ser testados;
+│   │                                #   CourseFormDialog (criar/editar/duplicar — fora do arquivo da rota para o editor de
 │   │                                #   markdown não ir ao bundle inicial), PhotoGrid; RegistrationDialog (inscrição pelo
 │   │                                #   site em /cursos/$id: CPF + 4 últimos dígitos do telefone → confirmar cadastro ou
 │   │                                #   formulário novo; fora do arquivo da rota para poder ser testado)
@@ -248,6 +254,7 @@ src/
 │   ├── agenda-pdf.tsx               # "Imprimir" da agenda
 │   ├── dashboard-agenda.ts          # parseDashboardSearch (?dia&sala&tipo&nova) e kindDays
 │   ├── calendar-links.ts            # .ics, Google Agenda e WhatsApp do curso
+│   ├── course-views.ts              # Abas Próximos/Armazenados da lista de cursos: COURSE_VIEWS, ?lista= (courseViewFromSlug/ToSlug), textos
 │   ├── course-duplicate.ts          # roomIdByName (a API devolve o NOME da sala) e courseToDuplicateForm ("Duplicar curso")
 │   ├── lista-presenca-pdf.tsx       # Lista de presença (uma folha por dia)
 │   ├── ficha-inscricao-pdf.tsx      # Ficha de inscrição do curso
@@ -273,6 +280,7 @@ src/
 ├── utils/
 │   ├── format-data-from-string.ts   # formatDateFromString (YYYY-MM-DD ou ISO → DD/MM/YYYY, sem fuso)
 │   ├── dates.ts                     # toIso, toYmd(date), todayYmd() (fuso local)
+│   ├── format-datetime-brasilia.ts  # formatDateTimeBrasilia(iso): instante real (createdAt) → "dd/mm/aaaa hh:mm" de Brasília; NÃO serve para horário de parede
 │   ├── date-input.ts                # maskDateBr, parseDateBr, ymdToBr — do DatePicker
 │   ├── course-status.ts             # getCourseSituation, getRegistrationBlock, hasCourseEnded… — dia em Brasília, igual ao backend
 │   ├── course-attendance.ts         # Presença: contagens, courseDays, sortByName
@@ -314,6 +322,8 @@ O porquê de cada uma está em `docs/HISTORICO.md`.
 - **Caixa alta**: `upperNoAccents` nos campos de cadastro (nomes, endereços, razão social). Texto que o visitante lê sai **como foi digitado**: título e observações do curso, título da reserva que vai para `/eventos`.
 - **Listas fixas duplicadas com o backend**: `ROOM_NAMES`, `MEMBER_TYPES`, `MEMBER_STATUS`, `UNIMED_MOVEMENT_TYPES`, `UNIMED_DEPENDENCY_DEGREES`. Mudou uma, mude a outra; o teste que compara os dois repositórios mora no backend (`src/lib/__tests__/listas-fixas_test.ts`).
 - **Edição com campo opcional vazio**: na reserva, vai como `null`. No curso (`buildCourseBody` em `lib/course-body.ts`), na edição todo campo opcional esvaziado vai como `null` (fora do PATCH a API mantém o valor antigo); nos números (preço, carga horária, mínimo de alunos) a API grava 0. A criação nunca manda `null`.
+- **Abas da lista de cursos (SR-059, A9)**: "Próximos" = o dia do início ainda não chegou; "Armazenados" = o dia do início é hoje ou já passou (Brasília), de qualquer status, o concluído marcado como "Concluído". Quem separa é o backend (`GET /admin/courses?view=upcoming|stored`, sem job): o curso muda de aba sozinho no dia do início. A aba vai na URL (`?lista=armazenados`; Próximos é o padrão e não aparece). Trocar de aba volta para a página 1 e zera a seleção (senão "Excluir selecionados" alcançaria cursos fora da tela); busca e ano continuam. A janela do curso (`?curso=<id>`, inscritos, presença, documentos, "Concluir curso") é a mesma nas duas abas. Só a lista do gerenciamento usa `view`: Painel Geral, site público e seletores listam sem ele. A planilha "Exportar" de cursos aceita busca e status, não aba nem ano; por isso o "Todos" do menu não mostra o total da aba.
+- **Inscritos do curso (SR-059, A6)**: a API entrega da mais antiga para a mais nova e a tela mostra **na ordem recebida** (não reordene no front). Cada inscrição mostra "Inscrito em dd/mm/aaaa hh:mm" (`formatDateTimeBrasilia`, `createdAt` é um instante real, não horário de parede), em qualquer largura. A lista de presença em papel continua em ordem alfabética (`sortByName`), de propósito.
 - **Curso**: inicia mesmo com inscrição não confirmada; `COMPLETED` é sempre manual; o sistema NÃO emite certificado (quem emite é a FAEP).
 - **Home**: sem seção de galerias (ficam no Sobre, pedido do usuário); convênios são itens próprios no menu, sem submenu.
 - **Painel Geral — arrastar blocos**: a prévia do arrasto anda só por `transform` (`dashboard-drag.ts`) e a ordem real só muda no `onDragEnd`. Não use as estratégias prontas do `@dnd-kit` nem reordene no `onDragOver`: as duas coisas já foram tentadas e quebram (blocos esticados; blocos se alternando sem parar). Grade de 4 colunas, bloco de 2 a 4 (`DashboardSpan`); preferências antigas `'full'`/`'half'` viram 4 e 2 em `normalizePrefs`.
@@ -410,7 +420,7 @@ useSendContactMessage       → POST /contacts/message (público, fetch cru)
 ```
 
 **Os outros arquivos de `hooks/`**:
-- `useCourse.ts` — admin: `useAdminCourses` (`status`, `search`, `year`), `useCourseYears`, `useAdminCourse` (`adminCourseQuery`), criar/editar/excluir, capa, galeria, instrutores (`useAssignInstructor`, `useRemoveInstructorAssignment`), inscrições (`useAllCourseRegistrations`, `useAdminRegisterPerson`, `useConfirmAllRegistrations`), presença (`useSetRegistrationAttendance`, `useMarkUnmarkedAttendance`), `useCompleteCourse`; público: `useCourses`, `useCourse`, `useLookupCpf` (POST, CPF + 4 últimos dígitos), `useRegisterByCpf` (`{ cpf, phoneEnd }`), `useRegisterFull`.
+- `useCourse.ts` — admin: `useAdminCourses` (`status`, `search`, `year`, `view`; a aba é parte da chave do cache), `useCourseYears`, `useAdminCourse` (`adminCourseQuery`), criar/editar/excluir, capa, galeria, instrutores (`useAssignInstructor`, `useRemoveInstructorAssignment`), inscrições (`useAllCourseRegistrations`, `useAdminRegisterPerson`, `useConfirmAllRegistrations`), presença (`useSetRegistrationAttendance`, `useMarkUnmarkedAttendance`), `useCompleteCourse`; público: `useCourses`, `useCourse`, `useLookupCpf` (POST, CPF + 4 últimos dígitos), `useRegisterByCpf` (`{ cpf, phoneEnd }`), `useRegisterFull`.
 - `useNews.ts` — `useNews`, `useNewsDetail` (públicos), `useAdminNews` (`status`, `search`), criar/editar/excluir, `useUploadNewsBanner`, `useUploadNewsBlockImage`.
 - `useBanner.ts` — `useBanners` (público, publicGet), `useAdminBanners`, criar/editar/excluir, imagem, `useReorderBanners`.
 - `useCompanies.ts` — empresas: lista, detalhe, CRUD, vínculos (members; pela pessoa: `useLinkPersonToCompany`/`useUnlinkPersonFromCompany`), propriedades, parceria (`useSetCompanyPartner`, `useReorderPartners`, `useUploadCompanyPartnerLogo`), títulos (`useCompanyMemberTitles`, `COMMON_MEMBER_TITLES`), `companyDisplayName`.
@@ -440,12 +450,12 @@ Os caminhos abaixo são os que o front chama, relativos a `API_BASE` (`/api` no 
 - Os três: 5 erros por hora no mesmo CPF → 429 "Muitas tentativas com este CPF…". `registrationErrorMessage` (`lib/registration-errors.ts`) mostra a mensagem do servidor, que o `apiErrorMessage` trocaria pelo texto genérico do login
 
 **Cursos (admin)**
-- `GET /admin/courses` (`page`, `limit`, `status`, `search`, `year`) · `GET /admin/courses/years` · `GET /admin/courses/:id`
+- `GET /admin/courses` (`page`, `limit`, `status`, `search`, `year`, `view=upcoming|stored` — só o gerenciamento manda `view`) · `GET /admin/courses/years` · `GET /admin/courses/:id`
 - `POST /courses` — criar (aceita `eventNumber`, `minStudents`, `roomId`). "Duplicar curso" manda `copyCoverFromCourseId` e `copyInstructorsFromCourseId` + `instructorAssignmentIds`; resposta `{ id, coverCopied?, instructorsCopied? }`. Galeria não é copiada
 - `PATCH /courses/:id` — atualizar (campo fora do corpo não muda; `null` limpa: `registrationDeadline`, `observations` e `eventNumber` ficam nulos, `price`, `workloadHours` e `minStudents` viram 0) · `DELETE /courses/:id`
 - `POST /courses/:id/banner` (multipart; gera a miniatura WebP → `{ url, thumbUrl }`) · `POST /courses/:id/gallery` · `DELETE /courses/:id/gallery/:photoId`
 - `POST /admin/courses/:id/instructors` · `DELETE /admin/courses/:id/instructors/:assignmentId`
-- `GET /admin/courses/:id/registrations` (paginado) · `POST /admin/courses/:id/registrations` `{ userDataId }` ("Inscrever pessoa": já confirmada, ignora o prazo; repetida ou lotado → 409)
+- `GET /admin/courses/:id/registrations` (paginado; da inscrição MAIS ANTIGA para a mais nova, com `createdAt`) · `POST /admin/courses/:id/registrations` `{ userDataId }` ("Inscrever pessoa": já confirmada, ignora o prazo; repetida ou lotado → 409)
 - `DELETE /admin/registrations/:id` · `PATCH /admin/registrations/:id/confirm` · `PATCH /admin/courses/:id/registrations/confirm-all` → `{ confirmed }`
 - `POST /admin/registrations/:id/ficha` (multipart) · `GET` · `DELETE` — ficha de inscrição escaneada
 - `POST /admin/courses/:id/start` → `IN_PROGRESS` · `PATCH /admin/courses/:id/complete` (só em andamento; senão 409) → `COMPLETED`
