@@ -1488,6 +1488,17 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
               <Label>Descrição *</Label>
               <Input value={form.description} onChange={e => setF('description', upperNoAccents(e.target.value))} placeholder="Ex: Compra de material de escritório" />
             </div>
+            {/* Mesmo campo da Nota de Empenho (empenho.razaoSocial): aparece aqui para quem não abre a nota.
+                Mostra o nome na lista e entra na busca e no relatório. */}
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="lanc-razao-social">Nome / Razão social</Label>
+              <Input
+                id="lanc-razao-social"
+                value={form.empenho.razaoSocial}
+                onChange={e => setEmp('razaoSocial', upperNoAccents(e.target.value))}
+                placeholder="Quem recebeu ou pagou (fornecedor, empresa ou pessoa)"
+              />
+            </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="flex min-w-0 flex-col gap-1.5">
                 <Label>Categoria</Label>
@@ -1610,7 +1621,6 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
                     <EmpInput label="Nota fiscal Nº" value={form.empenho.notaFiscal} onChange={v => setEmp('notaFiscal', v)} />
                   </div>
                   <EmpInput label="Nome fantasia" value={form.empenho.nomeFantasia} onChange={v => setEmp('nomeFantasia', upperNoAccents(v))} />
-                  <EmpInput label="Razão social" value={form.empenho.razaoSocial} onChange={v => setEmp('razaoSocial', upperNoAccents(v))} />
                   <div className="grid grid-cols-2 gap-2">
                     <EmpInput label="CNPJ / CPF" value={form.empenho.cnpjCpf} onChange={v => setEmp('cnpjCpf', v)} />
                     <EmpInput label="Inscrição estadual" value={form.empenho.inscricaoEstadual} onChange={v => setEmp('inscricaoEstadual', v)} />
