@@ -49,6 +49,14 @@ Esse CPF já está em outra ficha. Provavelmente é um cadastro repetido: procur
 pessoa em Usuários e use **Juntar cadastros**. Veja
 [Usuários e associados](?topico=usuarios).
 
+### "A pessoa não consegue se inscrever no curso pelo site"
+
+O site pede o **CPF e os 4 últimos números do telefone** do cadastro. Se o
+telefone não bate, a pessoa cai no cadastro novo e, com o CPF já cadastrado, é
+recusada com *"Procure o Sindicato"*. Atualize o telefone na ficha (há até três)
+ou inscreva pelo painel. Depois de 5 erros na mesma hora com o mesmo CPF, o
+site bloqueia o CPF por uma hora. Veja [Cursos e inscrições](?topico=cursos).
+
 ### "Perdi o que eu tinha digitado"
 
 Se você saiu da tela, o sistema pergunta **"Sair sem salvar?"** antes. Fechar ou

@@ -22,7 +22,8 @@ Ela só mostra telas que a sua permissão libera — é a mesma regra do menu.
 
 Dentro de cada tela há a busca própria, que procura no que faz sentido ali: em
 Usuários é nome, CPF, telefone e e-mail; em Cursos é título, instrutor e número
-do evento; na agenda é título e responsável.
+do evento; na agenda é título e responsável; no Financeiro é a descrição e também a razão
+social ou o nome fantasia da nota (não o CNPJ).
 
 A busca de pessoas também **ignora acento**: `joao` acha *João*. E o **CPF pode
 ser digitado com ou sem pontinhos**.

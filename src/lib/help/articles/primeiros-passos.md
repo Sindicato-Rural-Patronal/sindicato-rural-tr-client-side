@@ -36,8 +36,11 @@ Por isso vale a regra de ouro: **na dúvida, não apague — pergunte.**
 ## Achando as coisas
 
 A **barra lateral** à esquerda tem tudo, separada em blocos: Principal, Gestão,
-Financeiro e Configurações. No celular ela fica escondida — toque no botão de
-menu no topo da tela.
+Financeiro e Configurações. **Em telas com menos de 1024 px de largura** (celular
+e tablet) ela vira uma **gaveta**: fica escondida, e você abre tocando no botão
+de menu no topo da tela. Escolher uma tela fecha a gaveta sozinha. Se a lista
+for comprida, role até o fim: a borda com sombra acima do seu nome avisa que
+ainda há itens (como **Ajuda**) embaixo. No computador, ela fica sempre aberta.
 
 Quando não souber onde fica alguma coisa, use a **busca de telas**:
 
@@ -49,7 +52,7 @@ direto. A busca ignora acento e maiúscula: digitar `cotacoes` acha *Cotações*
 
 ## O sino de notificações
 
-O **sino** fica no topo da barra lateral (e no topo da tela, no celular). O
+O **sino** fica no topo da barra lateral (e no topo da tela, no celular e no tablet, onde o menu é uma gaveta). O
 número em cima dele junta duas coisas:
 
 - **Pendências** — coisas que estão esperando por alguém, calculadas pelo

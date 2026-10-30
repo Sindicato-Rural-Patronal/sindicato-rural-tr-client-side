@@ -5,7 +5,7 @@ grupo: gestao
 ordem: 1
 permissao: READ_FINANCE
 veja: como-registrar-lancamento, exportar-planilhas, busca-e-filtros, auditoria
-busca: financeiro caixa lancamento entrada saida saldo categoria comprovante recorrente fechamento transferencia relatorio pdf
+busca: financeiro caixa lancamento entrada saida saldo categoria comprovante recorrente fechamento transferencia relatorio pdf nome razao social fornecedor nome fantasia empenho cnpj coluna buscar planilha
 ---
 
 **Financeiro** tem seis abas. Começa no **Dashboard**, mas o trabalho do dia a
@@ -19,6 +19,20 @@ do mês inteiro. Mudou o filtro, mudou o total.
 
 Os filtros ficam no endereço da página, então **dá para salvar o link nos
 favoritos** ou mandar para um colega e ele vê a mesma lista.
+
+### Nome / Razão social
+
+A lista tem a coluna **Nome / Razão social**, para saber **a quem o lançamento
+se refere**. O valor vem da **Nota de Empenho** do lançamento: a razão social
+e, se ela estiver vazia, o nome fantasia. Lançamento sem nota (ou com a nota sem
+nenhum dos dois) mostra **—**.
+
+Em tela larga (a partir de 1280 px) é uma coluna; em tela menor o nome desce
+para uma linha miúda embaixo da descrição, no mesmo lugar.
+
+A **busca** ("Buscar na descrição ou no nome…") acha pela descrição **e** pela
+razão social ou nome fantasia, sem diferenciar maiúscula nem acento: "sao jose"
+acha "SÃO JOSÉ". A busca **não** procura pelo CNPJ ou CPF.
 
 Atalhos:
 
@@ -69,3 +83,9 @@ aba, e um fechamento pode ser **reaberto** por quem tem permissão de exclusão.
 
 Há **exportação em CSV** (com os filtros atuais) e **relatório em PDF** do
 período.
+
+A planilha dos lançamentos tem as colunas Data, Tipo, Caixa, Categoria,
+Descrição, **Nome / Razão social**, **CNPJ / CPF**, Método, Recorrente, Valor
+(R$) e Observações. As duas em destaque saem da Nota de Empenho e ficam vazias
+quando o lançamento não tem nota. A busca digitada na tela vale também para a
+planilha.

@@ -38,6 +38,10 @@ Associados, Empresas, Administradores, Unimed, Cursos, Inscrições de um curso,
 Mensagens, Auditoria, Financeiro e as reservas da agenda. Também há exportação
 no detalhe de uma pessoa, de uma empresa, de um curso e de uma mensagem.
 
+A planilha do **Financeiro** traz as colunas **Nome / Razão social** e **CNPJ /
+CPF** da Nota de Empenho (vazias quando o lançamento não tem nota). Veja
+[Financeiro](?topico=financeiro).
+
 ## Duas coisas para lembrar
 
 1. **Toda exportação fica registrada na [Auditoria](?topico=auditoria)**, com o

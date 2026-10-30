@@ -32,6 +32,8 @@ o que muda — datas, prazo e nº do evento. Vem como Rascunho.
 
 ## Depois de criado
 
+- Ao **editar**, apagar um campo opcional apaga o valor (valor, carga horária e
+  mínimo de alunos ficam em 0). Veja [Cursos e inscrições](?topico=cursos).
 - **Inscrições** chegam pela página do curso no site.
 - Para inscrever alguém do balcão, veja
   [Como inscrever alguém num curso](?topico=como-inscrever-alguem).

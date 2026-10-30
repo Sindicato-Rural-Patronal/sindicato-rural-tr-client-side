@@ -5,7 +5,7 @@ grupo: dia-a-dia
 ordem: 1
 permissao: READ_COURSE
 veja: como-criar-curso, como-inscrever-alguem, salas-e-agenda, usuarios, exportar-planilhas, fotos-e-imagens
-busca: curso aula turma inscricao inscritos aluno presenca lista certificado faep vagas
+busca: curso aula turma inscricao inscritos aluno presenca lista certificado faep vagas cpf telefone 4 ultimos digitos site nao deixa inscrever apagar campo vazio
 ---
 
 Tudo de curso acontece em **Gestão › Cursos**. A lista mostra cada curso com o
@@ -43,6 +43,16 @@ curso na agenda e evita que duas coisas sejam marcadas no mesmo horário.
 > quando alguém clica em **Concluir curso**. Se precisar, dá para voltar atrás
 > pela edição.
 
+### Apagar um valor na edição
+
+Ao **editar** um curso, esvaziar um campo opcional **apaga o valor** de verdade:
+*Prazo de inscrição*, *Observações* e *Nº do evento* ficam vazios. Antes, o
+campo em branco era ignorado e o valor antigo continuava lá.
+
+*Valor*, *Carga horária* e *Mín. alunos* são numéricos e o sistema não guarda
+"vazio" para eles: ao apagar, ficam **0**. Na tela, o campo aparece em branco
+mesmo assim.
+
 ### Prazo de inscrição
 
 O prazo vale **até o fim do dia** que você escolher. Se você também informar a
@@ -61,6 +71,33 @@ selos que ajudam na hora de cobrar (ou não cobrar):
 Uma inscrição precisa ser **confirmada**. Inscrição não confirmada **não impede
 o curso de começar** — ela só fica lá, contando no aviso do painel. Quando está
 tudo certo, **Confirmar todas** resolve a lista inteira de uma vez.
+
+### Como a pessoa se inscreve pelo site
+
+No site, quem clica em *Inscrever-se* digita o **CPF** e os **4 últimos números
+do telefone** do cadastro dela. É assim para proteger quem já tem cadastro: só o
+CPF não basta para entrar na ficha de alguém.
+
+- **O par bate com um cadastro:** o site mostra o nome com as iniciais
+  ("João S.") e pergunta *É você?*. Confirmando, a inscrição entra.
+- **O par não bate, ou o CPF não existe:** a resposta é a **mesma** nos dois
+  casos, de propósito — o site nunca revela se um CPF tem cadastro. A pessoa
+  segue para o formulário de cadastro simples.
+- **O CPF já tem cadastro, mas o telefone digitado no formulário não é um dos
+  dele:** o site recusa com *"Não foi possível confirmar seu cadastro pelo site.
+  Procure o Sindicato"* e mostra o botão do WhatsApp. Nada é vinculado nem
+  alterado na ficha existente.
+- **Cinco erros na mesma hora com o mesmo CPF:** o site bloqueia aquele CPF por
+  uma hora (*"Muitas tentativas com este CPF"*).
+
+O sistema confere o telefone com os **três campos** da ficha (*Telefone*,
+*Telefone 2* e *Telefone 3*), olhando só os números. Máscara e o 55 do país não
+atrapalham.
+
+> **Alguém reclamou que o site não deixa se inscrever?** Quase sempre é o
+> telefone: o cadastro antigo tem um número que a pessoa não usa mais. Abra a
+> ficha em [Usuários e associados](?topico=usuarios), atualize o telefone ou
+> inscreva a pessoa pelo painel (logo abaixo), que não depende disso.
 
 ### Inscrever alguém pelo painel
 
