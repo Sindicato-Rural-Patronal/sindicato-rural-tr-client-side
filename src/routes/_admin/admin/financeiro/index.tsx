@@ -10,7 +10,7 @@ import {
   useFinanceAccounts, useCreateFinanceAccount, useUpdateFinanceAccount, useDeleteFinanceAccount,
   useCreateFinanceTransfer, fetchFinanceTransactionsForRange, useGenerateFinanceRecurrences,
   useUploadFinanceAttachment, useDeleteFinanceAttachment, openFinanceAttachment, exportFinanceTransactions,
-  useFinanceClosings,
+  useFinanceClosings, useFinanceNextNumber,
   type FinanceType, type FinanceCategory, type FinanceAccount, type FinanceTransaction, type TransactionFilters, type Empenho,
   type FinanceAttachment,
 } from '@/hooks/useFinance'
@@ -54,6 +54,8 @@ import { ClosingTab } from '@/components/financeiro/ClosingTab'
 import { PaymentMethodSelect } from '@/components/financeiro/PaymentMethodSelect'
 import { PaymentMethodsTab } from '@/components/financeiro/PaymentMethodsTab'
 import { ReciboButton } from '@/components/financeiro/ReciboButton'
+import { NumeroField } from '@/components/financeiro/NumeroField'
+import { NumeroSaltoDialog } from '@/components/financeiro/NumeroSaltoDialog'
 import { ClosedMonthBadge, ClosedMonthNotice, LockedReason } from '@/components/financeiro/ClosedMonth'
 import { MemberBadge } from '@/components/MemberBadge'
 import { AjudaLink } from '@/components/ajuda/AjudaLink'
@@ -61,6 +63,10 @@ import {
   closedMonthForRow, closedMonthForTransaction, closedMonthForTransfer, closedMonthMessage,
   type ClosedMonth, type LockTarget,
 } from '@/lib/finance-closed-month'
+import {
+  ehNumeroEmUso, escolherNumero, lerNumeroDigitado, numeroValido, rotuloDoNumero, saltoDaSequencia,
+  textoDaTransferencia, textoDoRegistro, type Salto,
+} from '@/lib/finance-number'
 import type { MemberFields } from '@/lib/membership'
 
 type FinanceTab = 'dashboard' | 'lancamentos' | 'recorrentes' | 'categorias' | 'caixas' | 'formas' | 'fechamento'
@@ -74,11 +80,17 @@ type FinanceSearch = {
   /** Filtro por forma de pagamento (texto do lançamento). */
   pm?: string
   q?: string
+  /** Ordem da lista: `number` = por Nº (o maior primeiro); sem ele, por data (o mais novo primeiro). */
+  ord?: 'number'
   page?: number
 }
 const TABS: FinanceTab[] = ['dashboard', 'lancamentos', 'recorrentes', 'categorias', 'caixas', 'formas', 'fechamento']
 function str(v: unknown): string | undefined {
   return typeof v === 'string' && v.trim() ? v : undefined
+}
+// Busca: um link escrito à mão com `?q=125` chega como número (o roteador lê JSON); a busca por Nº é só dígitos.
+function searchText(v: unknown): string | undefined {
+  return typeof v === 'number' && Number.isFinite(v) ? String(v) : str(v)
 }
 
 export const Route = createFileRoute('/_admin/admin/financeiro/')({
@@ -94,7 +106,8 @@ export const Route = createFileRoute('/_admin/admin/financeiro/')({
       cat: str(s.cat),
       acc: str(s.acc),
       pm: str(s.pm),
-      q: str(s.q),
+      q: searchText(s.q),
+      ord: s.ord === 'number' ? 'number' : undefined,
       page: Number.isFinite(page) && page > 1 ? page : undefined,
     }
   },
@@ -721,6 +734,8 @@ function FilteredTotals({ totals, loading }: {
 }
 
 type TxForm = {
+  /** Nº digitado (só dígitos). Vazio = automático (o POST não manda `number`). */
+  number: string
   type: FinanceType | null
   amount: string
   date: string
@@ -732,7 +747,7 @@ type TxForm = {
   empenho: EmpForm
 }
 const emptyTxForm = (): TxForm => ({
-  type: 'OUT', amount: '', date: todayYmd(), description: '', method: '', categoryId: '', accountId: '', notes: '',
+  number: '', type: 'OUT', amount: '', date: todayYmd(), description: '', method: '', categoryId: '', accountId: '', notes: '',
   empenho: emptyEmp(),
 })
 
@@ -740,6 +755,7 @@ const emptyTxForm = (): TxForm => ({
 // Nome / Razão social dividem o que sobra; as outras têm largura própria e,
 // conforme a tela, entram como coluna ou viram uma linha miúda embaixo da descrição
 // (SO_ABAIXO_*, o contrário do COL_* da mesma coluna).
+const COL_NUMERO = 'w-[64px]'
 const COL_DATA = 'hidden lg:table-cell lg:w-[92px]'
 const COL_VALOR = 'w-[144px]'
 // Cinco botões em lançamento de entrada (Nota, Recibo, Repetir, Editar, Excluir): 5 x 32 px + 4 x 4 px + o respiro da célula.
@@ -766,7 +782,8 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
     from: search.from, to: search.to,
     type: search.fType ?? '',
     categoryId: search.cat, accountId: search.acc, method: search.pm, search: search.q,
-  }), [page, search.from, search.to, search.fType, search.cat, search.acc, search.pm, search.q])
+    orderBy: search.ord,
+  }), [page, search.from, search.to, search.fType, search.cat, search.acc, search.pm, search.q, search.ord])
   const { data, isLoading, isError, isFetching, refetch, error: listError } = useFinanceTransactions(filters, { enabled })
   const catsQuery = useFinanceCategories({ enabled })
   const accsQuery = useFinanceAccounts({ enabled })
@@ -792,6 +809,15 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
   const [editId, setEditId] = useState<string | null>(null)
   const [form, setForm] = useState<TxForm>(emptyTxForm)
   const [formSnapshot, setFormSnapshot] = useState('')
+  // Nº do lançamento em edição como estava: só vai no PATCH se mudou, e esvaziar o campo é recusado.
+  const [editOriginalNumber, setEditOriginalNumber] = useState<number | null>(null)
+  // Erro do campo "Nº" (número inválido ou 409 "já é de outro lançamento"), embaixo dele.
+  const [numberError, setNumberError] = useState<string | null>(null)
+  // Nº digitado que pula a sequência, esperando a confirmação (e se era "Registrar e novo").
+  const [jump, setJump] = useState<{ salto: Salto; andNew: boolean } | null>(null)
+  const numberInputRef = useRef<HTMLInputElement>(null)
+  // Conferindo o próximo Nº na API: os botões de salvar ficam desligados (senão o clique duplo grava duas vezes).
+  const [checkingNumber, setCheckingNumber] = useState(false)
   const [confirmClose, setConfirmClose] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<FinanceTransaction | null>(null)
@@ -811,6 +837,8 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
   const [transferOpen, setTransferOpen] = useState(false)
   const [transfer, setTransfer] = useState({ fromAccountId: '', toAccountId: '', amount: '', date: todayYmd(), description: '' })
   const [transferError, setTransferError] = useState<string | null>(null)
+  // O próximo Nº automático, para o campo "Nº" do formulário: só com o formulário aberto.
+  const nextNumber = useFinanceNextNumber({ enabled: enabled && dialogOpen })
 
   const rows = data?.data ?? []
   // Lançamento em edição — reflete os comprovantes atualizados após cada upload.
@@ -861,7 +889,7 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
   }
   const [empenhoOpen, setEmpenhoOpen] = useState(false)
   const [notaBusy, setNotaBusy] = useState<string | null>(null)
-  async function gerarNota(t: { id?: string; amountCents: number; date: string; description: string; empenho: Empenho | null }) {
+  async function gerarNota(t: { id?: string; number?: number | null; amountCents: number; date: string; description: string; empenho: Empenho | null }) {
     setNotaBusy(t.id ?? 'preview')
     try {
       const { downloadNotaEmpenho } = await import('@/lib/nota-empenho-pdf')
@@ -876,26 +904,31 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
   function abrirNovo() {
     setEditId(null)
     setEditOriginal(null)
+    setEditOriginalNumber(null)
     setRepeating(false)
     const f = emptyTxForm()
     setForm(f)
     setFormSnapshot(JSON.stringify(f))
     setPendingFiles([])
     setError(null)
+    setNumberError(null)
     setDialogOpen(true)
   }
 
   // "Repetir": novo lançamento com os dados de um existente e a data de hoje.
   // Comprovantes não vão junto; da Nota de Empenho ficam os dados do fornecedor,
-  // sem os números (empenho, nota fiscal, cheque), que são de cada documento.
+  // sem os números (Nº anterior, nota fiscal, cheque), que são de cada documento.
+  // O Nº do lançamento abre vazio: o novo recebe o próximo automático.
   function abrirRepetir(t: FinanceTransaction) {
     setEditId(null)
     setEditOriginal(null)
+    setEditOriginalNumber(null)
     setRepeating(true)
     // Categoria/caixa desativados depois não vão para o lançamento novo.
     const catOk = !!t.categoryId && (!categories || cats.some(c => c.id === t.categoryId))
     const accOk = !!t.accountId && (!accounts || accs.some(a => a.id === t.accountId))
     const f: TxForm = {
+      number: '',
       type: t.type,
       amount: maskMoney(String(t.amountCents)),
       date: todayYmd(),
@@ -910,14 +943,17 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
     setFormSnapshot(JSON.stringify(f))
     setPendingFiles([])
     setError(null)
+    setNumberError(null)
     setDialogOpen(true)
   }
 
   function abrirEditar(t: FinanceTransaction) {
     setEditId(t.id)
     setEditOriginal({ accountId: t.accountId, date: t.date })
+    setEditOriginalNumber(t.number)
     setRepeating(false)
     const f: TxForm = {
+      number: numeroValido(t.number) ? String(t.number) : '',
       type: t.type,
       amount: maskMoney(String(t.amountCents)),
       date: t.date.slice(0, 10),
@@ -932,6 +968,7 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
     setFormSnapshot(JSON.stringify(f))
     setPendingFiles([])
     setError(null)
+    setNumberError(null)
     setDialogOpen(true)
   }
 
@@ -941,15 +978,37 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
     else setDialogOpen(false)
   }
 
+  // Um Nº digitado só pede confirmação se pula a sequência: maior que o próximo automático.
+  // O próximo nunca diminui (conta os excluídos), então o valor já carregado serve para dizer
+  // "não pula"; para dizer "pula" a conta usa o valor de agora, que outra pessoa pode ter mudado.
+  // Se o próximo não carregar, não há como saber: segue sem perguntar e a API decide (409 se repetido).
+  async function conferirSalto(digitado: number): Promise<Salto | null> {
+    const conhecido = nextNumber.data?.next
+    if (numeroValido(conhecido) && digitado <= conhecido) return null
+    const atual = await nextNumber.refetch()
+    return saltoDaSequencia(digitado, atual.data?.next)
+  }
+
   // `andNew` ("Registrar e novo"): registra e deixa o diálogo aberto para o próximo.
-  async function handleSubmit(andNew = false) {
+  // `saltoConfirmado`: a pergunta de "pula a sequência" já foi respondida com "Usar o Nº …".
+  async function handleSubmit(andNew = false, saltoConfirmado = false) {
     setError(null)
+    setNumberError(null)
+    const escolha = escolherNumero(form.number, { editando: !!editId, original: editOriginalNumber })
+    if (!escolha.ok) { setNumberError(escolha.erro); numberInputRef.current?.focus(); return }
     const amountCents = moneyToCents(form.amount)
     if (amountCents <= 0) { setError('Informe um valor maior que zero.'); return }
     if (!form.description.trim()) { setError('Informe a descrição.'); return }
     // O aviso embaixo da data já diz por quê; os botões ficam desligados.
     if (formLockReason) return
+    if (escolha.enviar !== undefined && !saltoConfirmado) {
+      setCheckingNumber(true)
+      const salto = await conferirSalto(escolha.enviar).finally(() => setCheckingNumber(false))
+      if (salto) { setJump({ salto, andNew }); return }
+    }
     const body = {
+      // Vazio (ou sem mudança, na edição) = o corpo não leva `number`.
+      ...(escolha.enviar !== undefined ? { number: escolha.enviar } : {}),
       type: form.type,
       amountCents,
       date: form.date,
@@ -965,8 +1024,7 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
         await updateTx.mutateAsync({ id: editId, body })
         toast.success('Lançamento atualizado!')
       } else {
-        const resp = await createTx.mutateAsync(body)
-        const created = await resp.json()
+        const created = await createTx.mutateAsync(body)
         // Sobe os comprovantes escolhidos no fluxo "Novo" para o lançamento recém-criado.
         if (created?.id && pendingFiles.length > 0) {
           for (const file of pendingFiles) {
@@ -978,7 +1036,7 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
             }
           }
         }
-        toast.success('Lançamento registrado!')
+        toast.success(textoDoRegistro(created?.number))
         if (andNew) {
           // Mantém data, tipo, categoria, caixa e método; limpa valor, descrição,
           // observações, comprovantes e Nota de Empenho.
@@ -994,6 +1052,7 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
           setFormSnapshot(JSON.stringify(next))
           setPendingFiles([])
           setRepeating(false)
+          setEditOriginalNumber(null)
           amountInputRef.current?.focus()
           return
         }
@@ -1001,7 +1060,10 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
       setDialogOpen(false)
     } catch (e) {
       const msg = apiErrorMessage(e, 'Erro ao salvar o lançamento.')
-      setError(msg)
+      // "O número 123 já é de outro lançamento.": embaixo do campo Nº, com o foco nele
+      // (o campo fica no topo e o diálogo rola; o erro geral fica lá embaixo, junto dos botões).
+      if (ehNumeroEmUso(e)) { setNumberError(msg); numberInputRef.current?.focus() }
+      else setError(msg)
       toast.error(msg)
     }
   }
@@ -1077,14 +1139,15 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
     if (amountCents <= 0) { setTransferError('Informe um valor maior que zero.'); return }
     if (transferLockReason) return
     try {
-      await createTransfer.mutateAsync({
+      const result = await createTransfer.mutateAsync({
         fromAccountId: transfer.fromAccountId,
         toAccountId: transfer.toAccountId,
         amountCents,
         date: transfer.date,
         description: transfer.description.trim() || undefined,
       })
-      toast.success('Transferência registrada!')
+      // Sempre automática: a API devolve os dois lançamentos (saída e entrada) com os Nº seguidos.
+      toast.success(textoDaTransferencia(result?.transactions))
       setTransferOpen(false)
     } catch (e) {
       const msg = apiErrorMessage(e, 'Erro ao transferir.')
@@ -1096,7 +1159,10 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
   // Inclui o upload dos comprovantes: o diálogo só fecha depois que todos sobem
   // (fluxo "Novo"), então o botão deve continuar travado até lá — senão o usuário
   // clica de novo e cria um lançamento duplicado.
-  const saving = createTx.isPending || updateTx.isPending || uploadAtt.isPending
+  // Nº da prévia da Nota de Empenho aberta de dentro do formulário: o digitado, ou o atual na edição; sem nenhum, a nota sai sem Nº.
+  const numeroLido = lerNumeroDigitado(form.number)
+  const numeroDaPrevia = numeroLido.tipo === 'numero' ? numeroLido.valor : editId ? editOriginalNumber : null
+  const saving = createTx.isPending || updateTx.isPending || uploadAtt.isPending || checkingNumber
 
   return (
     <div className="flex flex-col gap-4">
@@ -1142,6 +1208,20 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
               emptyLabel="Todas"
             />
           </div>
+          <div className="flex min-w-0 max-w-full flex-col gap-1">
+            <Label className="text-[11px] text-muted-foreground" htmlFor="lanc-ordem">Ordenar por</Label>
+            {/* Os dois vão do maior para o menor: a data mais nova e o maior Nº primeiro. */}
+            <NativeSelect
+              id="lanc-ordem"
+              className="h-9"
+              title="Data: da mais nova para a mais antiga. Nº: do maior para o menor."
+              value={search.ord ?? ''}
+              onChange={e => setSearch({ ord: e.target.value === 'number' ? 'number' : undefined, page: undefined })}
+            >
+              <option value="">Data</option>
+              <option value="number">Nº</option>
+            </NativeSelect>
+          </div>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <Button variant="outline" className="shrink-0" disabled={exporting || rows.length === 0} onClick={handleExport}>
@@ -1162,11 +1242,12 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
 
       <div className="relative max-w-sm">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
-        {/* A API acha pela descrição, pelo nome / razão social e pelo CNPJ/CPF da Nota de Empenho (com ou sem pontuação).
+        {/* A API acha pelo Nº (e pelo "Nº anterior"), pela descrição, pelo nome / razão social e pelo CNPJ/CPF da Nota de Empenho (com ou sem pontuação).
             Sem "Buscar na" no começo: com ele o texto não cabia no celular (360 px) e o "CPF" sumia. A lupa já diz que é busca. */}
         <Input
-          placeholder="Descrição, nome ou CNPJ/CPF..."
-          aria-label="Buscar lançamentos na descrição, no nome ou no CNPJ/CPF"
+          placeholder="Nº, descrição, nome ou CNPJ/CPF..."
+          aria-label="Buscar lançamentos no Nº, na descrição, no nome ou no CNPJ/CPF"
+          title="Acha pelo Nº, pelo Nº anterior, pela descrição, pelo nome / razão social ou pelo CNPJ/CPF"
           className="pl-9"
           value={searchInput}
           onChange={e => setSearchInput(e.target.value)}
@@ -1236,6 +1317,7 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
                 </Badge>
               )}
               {lockReason && <ClosedMonthBadge reason={lockReason} />}
+              {numeroValido(t.number) && <span className="font-medium tabular-nums text-foreground">{rotuloDoNumero(t.number)}</span>}
               <span className="tabular-nums">{formatDateFromString(t.date.slice(0, 10))}</span>
               {t.category && <span className="inline-flex items-center gap-1"><span className="size-2 rounded-sm" style={{ backgroundColor: t.category.color }} />{t.category.name}</span>}
               {t.account && <span className="inline-flex items-center gap-1"><Landmark className="size-3" style={{ color: t.account.color }} />{t.account.name}</span>}
@@ -1276,6 +1358,7 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
           <Table className="table-fixed">
             <TableHeader>
               <TableRow>
+                <TableHead className={COL_NUMERO}>Nº</TableHead>
                 <TableHead className={COL_DATA}>Data</TableHead>
                 <TableHead>Descrição</TableHead>
                 <TableHead className={COL_NOME}>Nome / Razão social</TableHead>
@@ -1289,6 +1372,7 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
             <TableBody>
               {isLoading && Array.from({ length: 6 }).map((_, i) => (
                 <TableRow key={i}>
+                  <TableCell className={COL_NUMERO}><Skeleton className="h-4 w-8" /></TableCell>
                   <TableCell className={COL_DATA}><Skeleton className="h-4 w-16" /></TableCell>
                   <TableCell><Skeleton className="h-4 w-4/5" /></TableCell>
                   <TableCell className={COL_NOME}><Skeleton className="h-4 w-3/4" /></TableCell>
@@ -1301,7 +1385,7 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
               ))}
               {!isLoading && !isError && rows.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={8} className="py-16 text-center whitespace-normal">
+                  <TableCell colSpan={9} className="py-16 text-center whitespace-normal">
                     <Wallet className="size-10 text-muted-foreground/30 mx-auto mb-3" />
                     <p className="text-sm font-medium text-foreground">Nenhum lançamento</p>
                     <p className="text-xs text-muted-foreground mt-1">
@@ -1315,6 +1399,10 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
                 const lockReason = rowLockReason(t)
                 return (
                 <TableRow key={t.id}>
+                  {/* Número comprido quebra em duas linhas em vez de passar por cima da data. */}
+                  <TableCell className={cn('break-all whitespace-normal font-medium tabular-nums text-xs text-foreground align-top pt-3', COL_NUMERO)}>
+                    {numeroValido(t.number) ? t.number : <span className="font-normal text-muted-foreground">—</span>}
+                  </TableCell>
                   <TableCell className={cn('whitespace-nowrap text-muted-foreground tabular-nums text-xs align-top pt-3', COL_DATA)}>
                     {formatDateFromString(t.date.slice(0, 10))}
                   </TableCell>
@@ -1523,6 +1611,15 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
             </DialogDescription>
           </DialogHeader>
           <div className="flex min-w-0 flex-col gap-4">
+            {/* Vazio = automático ("Automático (próximo: 128)"). Digitado à frente do próximo, pede confirmação ao salvar. */}
+            <NumeroField
+              value={form.number}
+              onChange={v => { setF('number', v); setNumberError(null) }}
+              proximo={nextNumber.data?.next}
+              editando={!!editId}
+              erro={numberError}
+              inputRef={numberInputRef}
+            />
             <div className="grid grid-cols-3 gap-2">
               <button
                 type="button"
@@ -1708,10 +1805,10 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
                       },
                     }))}
                   />
-                  <div className="grid grid-cols-2 gap-2">
-                    <EmpInput label="Nº empenho" value={form.empenho.numero} onChange={v => setEmp('numero', v)} />
-                    <EmpInput label="Nota fiscal Nº" value={form.empenho.notaFiscal} onChange={v => setEmp('notaFiscal', v)} />
-                  </div>
+                  {/* "Nº anterior": o número que o lançamento tinha no sistema antigo ou na nota em papel (empenho.numero).
+                      O Nº do lançamento é o campo do topo do formulário. Linha inteira: o rótulo é longo. */}
+                  <EmpInput label="Nº anterior (sistema antigo ou nota em papel)" value={form.empenho.numero} onChange={v => setEmp('numero', v)} />
+                  <EmpInput label="Nota fiscal Nº" value={form.empenho.notaFiscal} onChange={v => setEmp('notaFiscal', v)} />
                   <EmpInput label="Nome fantasia" value={form.empenho.nomeFantasia} onChange={v => setEmp('nomeFantasia', upperNoAccents(v))} />
                   <div className="grid grid-cols-2 gap-2">
                     <EmpInput label="CNPJ / CPF" value={form.empenho.cnpjCpf} onChange={v => setEmp('cnpjCpf', v)} />
@@ -1737,7 +1834,7 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
                   <Button
                     type="button" variant="outline" size="sm" className="w-fit"
                     disabled={notaBusy === 'preview'}
-                    onClick={() => gerarNota({ amountCents: moneyToCents(form.amount), date: form.date, description: form.description, empenho: empToBody(form.empenho) })}
+                    onClick={() => gerarNota({ number: numeroDaPrevia, amountCents: moneyToCents(form.amount), date: form.date, description: form.description, empenho: empToBody(form.empenho) })}
                   >
                     <Receipt className="size-4" /> Gerar Nota de Empenho
                   </Button>
@@ -1760,6 +1857,18 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Nº digitado à frente do próximo: "Esse número pula do 128 para o 5000. Os próximos automáticos continuam do 5001." */}
+      <NumeroSaltoDialog
+        salto={jump?.salto ?? null}
+        pending={saving}
+        onCancel={() => { setJump(null); numberInputRef.current?.focus() }}
+        onConfirm={() => {
+          const andNew = jump?.andNew ?? false
+          setJump(null)
+          void handleSubmit(andNew, true)
+        }}
+      />
 
       <ConfirmCloseDialog
         open={confirmClose}
