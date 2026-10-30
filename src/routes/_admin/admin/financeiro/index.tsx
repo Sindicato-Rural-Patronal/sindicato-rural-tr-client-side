@@ -53,6 +53,7 @@ import { RecurringTab } from '@/components/financeiro/RecurringTab'
 import { ClosingTab } from '@/components/financeiro/ClosingTab'
 import { PaymentMethodSelect } from '@/components/financeiro/PaymentMethodSelect'
 import { PaymentMethodsTab } from '@/components/financeiro/PaymentMethodsTab'
+import { ReciboButton } from '@/components/financeiro/ReciboButton'
 import { ClosedMonthBadge, ClosedMonthNotice, LockedReason } from '@/components/financeiro/ClosedMonth'
 import { MemberBadge } from '@/components/MemberBadge'
 import { AjudaLink } from '@/components/ajuda/AjudaLink'
@@ -741,7 +742,8 @@ const emptyTxForm = (): TxForm => ({
 // (SO_ABAIXO_*, o contrário do COL_* da mesma coluna).
 const COL_DATA = 'hidden lg:table-cell lg:w-[92px]'
 const COL_VALOR = 'w-[144px]'
-const COL_ACOES = 'w-[88px] lg:w-[160px]'
+// Cinco botões em lançamento de entrada (Nota, Recibo, Repetir, Editar, Excluir): 5 x 32 px + 4 x 4 px + o respiro da célula.
+const COL_ACOES = 'w-[88px] lg:w-[196px]'
 const COL_NOME = 'hidden xl:table-cell'
 const COL_CATEGORIA = 'hidden xl:table-cell xl:w-[150px]'
 const COL_CAIXA = 'hidden 2xl:table-cell 2xl:w-[130px]'
@@ -783,6 +785,8 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
   const createTransfer = useCreateFinanceTransfer()
   const uploadAtt = useUploadFinanceAttachment()
   const deleteAtt = useDeleteFinanceAttachment()
+  // Dados do sindicato no cabeçalho do recibo (SR-065).
+  const org = useOrgInfo()
 
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editId, setEditId] = useState<string | null>(null)
@@ -1242,6 +1246,7 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
                 {!t.transferId && (
                   <Button size="sm" variant="ghost" className="h-7 px-2 text-muted-foreground" disabled={notaBusy === t.id} onClick={() => gerarNota(t)} aria-label="Gerar Nota de Empenho"><Receipt className="size-4" /></Button>
                 )}
+                <ReciboButton tx={t} org={org} className="h-7 px-2" />
                 {canCreate && !t.transferId && (
                   <Button size="sm" variant="ghost" className="h-7 px-2" onClick={() => abrirRepetir(t)} aria-label="Repetir (novo lançamento igual, com a data de hoje)"><Repeat className="size-4" /></Button>
                 )}
@@ -1405,6 +1410,8 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
                           <Receipt className="size-4" />
                         </Button>
                       )}
+                      {/* Recibo só em entrada; funciona com o mês fechado (só lê o lançamento). */}
+                      <ReciboButton tx={t} org={org} className="h-8 px-2" />
                       {canCreate && !t.transferId && (
                         <Button size="sm" variant="ghost" className="h-8 px-2" onClick={() => abrirRepetir(t)} aria-label="Repetir" title="Repetir (novo lançamento igual, com a data de hoje)">
                           <Repeat className="size-4" />
