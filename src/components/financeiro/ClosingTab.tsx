@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { toast } from 'sonner'
 import { Scale, Lock, Unlock, Landmark } from 'lucide-react'
-import { apiErrorMessage } from '@/lib/api-error-message'
+import { apiErrorMessage, loadErrorMessage } from '@/lib/api-error-message'
 import { centsToBRL, maskMoney, moneyToCents } from '@/utils/masks'
 import { upperNoAccents } from '@/utils/text-format'
 import {
@@ -18,7 +18,7 @@ import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@
 import { NativeSelect } from '@/components/ui/native-select'
 import { DeleteConfirmDialog } from '@/components/DeleteConfirmDialog'
 import { LoadErrorRetry } from '@/components/LoadErrorRetry'
-import { currentMonth, monthLabel } from '@/lib/finance-month'
+import { currentMonth, monthLabel, monthNumeric } from '@/lib/finance-month'
 
 /** Classe de cor da diferença: vermelho quando não bate. */
 function diffClass(cents: number): string {
@@ -47,7 +47,7 @@ export function ClosingTab({ enabled, canCreate, canDelete }: {
   const effectiveAccountId = accountId || accs[0]?.id || ''
   const year = month.slice(0, 4)
 
-  const { data: preview, isLoading: previewLoading, isError: previewError, isFetching: previewFetching, refetch: refetchPreview } = useFinanceClosingPreview(
+  const { data: preview, isLoading: previewLoading, isError: previewError, isFetching: previewFetching, refetch: refetchPreview, error: previewFailure } = useFinanceClosingPreview(
     { accountId: effectiveAccountId, month },
     { enabled },
   )
@@ -117,11 +117,19 @@ export function ClosingTab({ enabled, canCreate, canDelete }: {
 
   return (
     <div className="flex flex-col gap-6">
-      <p className="max-w-2xl text-sm text-muted-foreground">
-        Conferência do caixa no fim do mês: o sistema calcula o saldo esperado (o que
-        havia antes do mês, mais as entradas, menos as saídas) e você digita o que foi
-        contado de verdade. A diferença fica registrada.
-      </p>
+      <div className="flex max-w-2xl flex-col gap-1.5 text-sm text-muted-foreground">
+        <p>
+          Conferência do caixa no fim do mês: o sistema calcula o saldo esperado (o que
+          havia antes do mês, mais as entradas, menos as saídas) e você digita o que foi
+          contado de verdade. A diferença fica registrada.
+        </p>
+        {/* A trava do mês fechado (SR-054/SR-060): por caixa e mês, como o fechamento. */}
+        <p>
+          Com o mês fechado, os lançamentos desse caixa com data no mês não podem ser
+          criados, editados nem excluídos (os comprovantes continuam livres). Para mudar
+          algum, use "Reabrir mês".
+        </p>
+      </div>
 
       {/* ── Fechar um mês ─────────────────────────────────────────────────── */}
       <div className="rounded-lg border border-border bg-card p-4 flex flex-col gap-4">
@@ -154,7 +162,7 @@ export function ClosingTab({ enabled, canCreate, canDelete }: {
         {previewFailed ? (
           <LoadErrorRetry
             variant="inline"
-            message="Não foi possível calcular o saldo esperado deste mês."
+            message={loadErrorMessage(previewFailure, 'Não foi possível calcular o saldo esperado deste mês.')}
             onRetry={() => void refetchPreview()}
             retrying={previewFetching}
           />
@@ -202,7 +210,7 @@ export function ClosingTab({ enabled, canCreate, canDelete }: {
             </span>
             {canDelete && (
               <Button variant="outline" size="sm" onClick={() => setReopenTarget(alreadyClosed)}>
-                <Unlock className="size-4" /> Reabrir
+                <Unlock className="size-4" /> Reabrir mês
               </Button>
             )}
           </div>
@@ -255,16 +263,19 @@ export function ClosingTab({ enabled, canCreate, canDelete }: {
           />
         )}
         <div className="rounded-lg border border-border bg-card overflow-hidden">
-          <div className="overflow-x-auto">
-            <Table>
+          {/* Sem rolagem lateral: tabela fixa. No celular, esperado, contado e diferença
+              saem das colunas e viram linhas miúdas embaixo do mês (em 360 px a tabela
+              rolava de lado). */}
+          <div>
+            <Table className="table-fixed">
               <TableHeader>
                 <TableRow>
                   <TableHead>Mês</TableHead>
-                  <TableHead className="text-right">Esperado</TableHead>
-                  <TableHead className="text-right">Contado</TableHead>
-                  <TableHead>Diferença</TableHead>
+                  <TableHead className="hidden sm:table-cell sm:w-[128px] text-right">Esperado</TableHead>
+                  <TableHead className="hidden sm:table-cell sm:w-[128px] text-right">Contado</TableHead>
+                  <TableHead className="hidden sm:table-cell sm:w-[150px]">Diferença</TableHead>
                   <TableHead className="hidden md:table-cell">Observações</TableHead>
-                  <TableHead className="text-right">Ações</TableHead>
+                  <TableHead className="w-[56px] lg:w-[150px] text-right">Ações</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -292,26 +303,36 @@ export function ClosingTab({ enabled, canCreate, canDelete }: {
                 )}
                 {rows.map(c => (
                   <TableRow key={c.id}>
-                    <TableCell className="font-medium text-foreground">{monthLabel(c.month)}</TableCell>
-                    <TableCell className="text-right tabular-nums">{centsToBRL(c.expectedBalanceCents)}</TableCell>
-                    <TableCell className="text-right tabular-nums">{centsToBRL(c.countedBalanceCents)}</TableCell>
-                    <TableCell>
+                    <TableCell className="font-medium text-foreground whitespace-normal align-top">
+                      {monthLabel(c.month)}
+                      <div className="mt-1 flex flex-col items-start gap-0.5 text-xs font-normal text-muted-foreground sm:hidden">
+                        <span className="tabular-nums">Esperado {centsToBRL(c.expectedBalanceCents)}</span>
+                        <span className="tabular-nums">Contado {centsToBRL(c.countedBalanceCents)}</span>
+                        <Badge variant={c.differenceCents === 0 ? 'secondary' : 'destructive'}>
+                          {diffLabel(c.differenceCents)}
+                        </Badge>
+                      </div>
+                    </TableCell>
+                    <TableCell className="hidden sm:table-cell text-right tabular-nums align-top">{centsToBRL(c.expectedBalanceCents)}</TableCell>
+                    <TableCell className="hidden sm:table-cell text-right tabular-nums align-top">{centsToBRL(c.countedBalanceCents)}</TableCell>
+                    <TableCell className="hidden sm:table-cell align-top">
                       <Badge variant={c.differenceCents === 0 ? 'secondary' : 'destructive'}>
                         {diffLabel(c.differenceCents)}
                       </Badge>
                     </TableCell>
                     {/* Observação comprida quebra linha (o TableCell do shadcn é nowrap) em vez de alargar a tabela. */}
-                    <TableCell className="hidden md:table-cell text-sm text-muted-foreground whitespace-normal">
+                    <TableCell className="hidden md:table-cell text-sm text-muted-foreground whitespace-normal align-top">
                       <span className="line-clamp-2 break-words" title={c.notes || undefined}>{c.notes || '—'}</span>
                     </TableCell>
-                    <TableCell className="text-right">
+                    <TableCell className="text-right align-top">
                       {canDelete ? (
                         <Button
                           size="sm" variant="ghost" className="h-8 px-2"
                           onClick={() => setReopenTarget(c)}
-                          aria-label="Reabrir" title="Reabrir o mês"
+                          aria-label={`Reabrir mês ${monthNumeric(c.month)}`} title="Reabrir mês"
                         >
                           <Unlock className="size-4" />
+                          <span className="hidden lg:inline">Reabrir mês</span>
                         </Button>
                       ) : (
                         <span className="text-xs text-muted-foreground">—</span>
@@ -328,16 +349,15 @@ export function ClosingTab({ enabled, canCreate, canDelete }: {
       <DeleteConfirmDialog
         open={!!reopenTarget}
         onOpenChange={o => { if (!o) setReopenTarget(null) }}
-        title="Reabrir o mês"
+        title="Reabrir mês"
         description={
-          <>
-            O fechamento de {reopenTarget ? monthLabel(reopenTarget.month) : ''} será apagado
-            e o mês poderá ser fechado de novo. Os lançamentos não são alterados.
-          </>
+          reopenTarget
+            ? `Reabrir ${monthNumeric(reopenTarget.month)} no caixa ${accountName(reopenTarget.accountId)} libera criar, editar e excluir os lançamentos desse mês. A reabertura fica registrada na auditoria.`
+            : ''
         }
         onConfirm={handleReopen}
         pending={deleteClosing.isPending}
-        confirmLabel="Reabrir"
+        confirmLabel="Reabrir mês"
         pendingLabel="Reabrindo..."
       />
     </div>
