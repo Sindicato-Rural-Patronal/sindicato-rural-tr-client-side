@@ -4,15 +4,18 @@ resumo: O que cada palavra do sistema quer dizer, em português claro.
 grupo: primeiros-passos
 ordem: 7
 veja: primeiros-passos, problemas-comuns
-busca: glossario dicionario termo palavra significado o que e duvida vocabulario cin rg identidade documento
+busca: glossario dicionario termo palavra significado o que e duvida vocabulario cin rg identidade documento associado selo armazenados proximos fechamento mes fechado reabrir tema cinza verde
 ---
 
 Palavras que aparecem no painel e nem sempre querem dizer o que parecem.
 
 ## Cadastro e pessoas
 
-**Associado** — pessoa do cadastro com situação ativa e validade em dia. É o que
-faz aparecer o selo *Associado* nas inscrições de curso.
+**Associado** — pessoa do cadastro com **Situação** *Ativo* e **Validade da
+associação** em dia (em branco, ou de hoje em diante). É o que faz aparecer o
+selo *Associado*: na ficha, na lista de pessoas, na busca de pessoa dos
+formulários, na Nota de Empenho e nas inscrições de curso. Quem está *Inativo*
+ou com a validade vencida não ganha o selo.
 
 **Tipo de membro** — Aluno, Produtor rural ou Trabalhador rural
 assalariado/autônomo. Lista fechada; o sistema recusa qualquer outro valor.
@@ -37,7 +40,8 @@ delas está sem CPF. Resolve-se com **Juntar cadastros**.
 a uma empresa, nunca às duas.
 
 **Vínculo** — a ligação entre uma pessoa e uma empresa, com um título que você
-escreve (SOCIO, CONTADOR, RESPONSAVEL…).
+escreve (SOCIO, CONTADOR, RESPONSAVEL…). Aqui "sócio" é o dono da empresa, não o
+associado do Sindicato.
 
 **Instrutor** — pessoa do cadastro promovida a instrutor, com bio e redes
 sociais, para poder ser vinculada a cursos.
@@ -46,6 +50,13 @@ sociais, para poder ser vinculada a cursos.
 
 **Situação** — Público, Privado, Rascunho, Em andamento ou Concluído. Veja
 [Cursos e inscrições](?topico=cursos).
+
+**Próximos** — a aba da lista de cursos com os que ainda não começaram. É a que
+abre primeiro.
+
+**Armazenados** — a aba dos cursos que já chegaram ao dia do início. O curso
+muda para cá sozinho, nesse dia (pelo horário de Brasília), seja qual for a
+situação dele. Inscritos, presença e **Concluir curso** continuam funcionando.
 
 **Inscrição confirmada** — a que conta como vaga garantida. Inscrição não
 confirmada não impede o curso de começar.
@@ -85,11 +96,25 @@ transferência entre eles.
 
 **Categoria** — a classificação do lançamento.
 
-**Recorrente** — o molde de um lançamento que se repete todo mês. O sistema cria
-os que faltam quando você abre a tela.
+**Nome / Razão social** — quem recebeu ou quem pagou o lançamento. Fica no
+formulário, logo abaixo da Descrição, e aparece na lista, na busca e nos
+relatórios.
 
-**Fechamento** — conferência do mês: o sistema mostra o saldo esperado, você
-informa o contado e ele destaca a diferença.
+**Recorrente** — o molde de um lançamento que se repete todo mês. O sistema cria
+os que faltam quando você abre a tela. Pode ser **Pausada** e **Reativada**; ao
+reativar, os meses da pausa não são lançados.
+
+**Fechamento** — a conferência do caixa no fim do mês (o sistema mostra o saldo
+esperado, você informa o contado e ele destaca a diferença) **e a trava do
+mês**: depois de fechado, o caixa não aceita lançamento novo, edição nem
+exclusão naquele mês, até alguém reabrir.
+
+**Mês fechado** — o selo (com cadeado) da linha de um lançamento cujo mês está
+fechado no caixa dele. **Editar** e **Excluir** ficam desligados.
+
+**Reabrir mês** — desfaz o fechamento de um caixa e mês e libera as alterações.
+Só aparece para quem pode excluir no Financeiro, e fica registrado na
+auditoria.
 
 ## Sistema
 
@@ -104,3 +129,6 @@ muda todo mundo que a usa.
 
 **Sessão** — o tempo em que você fica logado: 8 horas, renovando enquanto usa,
 até 24 horas depois de entrar.
+
+**Tema** — a aparência do painel: *Claro*, *Escuro*, *Sistema*, *Cinza* ou
+*Verde-claro*. Cada pessoa escolhe o seu, em **Minha conta › Preferências**.

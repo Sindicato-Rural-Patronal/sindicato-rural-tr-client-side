@@ -23,6 +23,10 @@ A diferença entre a primeira e a segunda é a que mais confunde: **"Todos" não
 "o banco inteiro"**, é tudo o que casa com os filtros que você deixou ligados.
 Se quiser mesmo tudo, limpe os filtros antes.
 
+**Cursos** tem uma exceção: a planilha respeita a busca, mas **não a aba**
+(*Próximos* ou *Armazenados*) **nem o filtro de Ano**. Para levar só alguns
+cursos, marque-os na lista e use **Selecionados**.
+
 A seleção **continua valendo quando você troca de página** — dá para marcar
 cinco pessoas na página 1, ir à página 3, marcar mais três e exportar as oito.
 O contador no topo mostra "8 selecionados · Limpar".
@@ -39,8 +43,8 @@ Mensagens, Auditoria, Financeiro e as reservas da agenda. Também há exportaç�
 no detalhe de uma pessoa, de uma empresa, de um curso e de uma mensagem.
 
 A planilha do **Financeiro** traz as colunas **Nome / Razão social** e **CNPJ /
-CPF** da Nota de Empenho (vazias quando o lançamento não tem nota). Veja
-[Financeiro](?topico=financeiro).
+CPF** (o nome vem do campo do formulário; o CNPJ ou CPF, da Nota de Empenho —
+vazios quando o lançamento não tem). Veja [Financeiro](?topico=financeiro).
 
 ## Duas coisas para lembrar
 
