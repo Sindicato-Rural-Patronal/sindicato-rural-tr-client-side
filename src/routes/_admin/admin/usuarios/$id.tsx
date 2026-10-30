@@ -16,6 +16,8 @@ import { useDebouncedValue } from '@/hooks/useDebouncedValue'
 import { PropertiesManager } from '@/components/cadastro/PropertiesManager'
 import { PersonCompanies } from '@/components/cadastro/PersonCompanies'
 import { CameraDialog } from '@/components/cadastro/CameraDialog'
+import { PersonPhoto } from '@/components/cadastro/PersonPhoto'
+import { PERSON_PHOTO_SIZE, resizeToSquare } from '@/utils/resize-image'
 import { PersonUnimedTab } from '@/components/unimed/PersonUnimedTab'
 import { MergePeopleDialog } from '@/components/cadastro/MergePeopleDialog'
 import { usePermissions } from '@/hooks/usePermissions'
@@ -228,33 +230,9 @@ function DadosTab({ userId, user, completeMode, onCompleteModeEnd, hasNoProperti
     if (fieldErrors[k as CampoValidado]) setFieldErrors(prev => ({ ...prev, [k]: undefined }))
   }
 
-  function resizeToSquare(file: File, size = 400): Promise<File> {
-    return new Promise((resolve, reject) => {
-      const img = new Image()
-      const url = URL.createObjectURL(file)
-      img.onload = () => {
-        URL.revokeObjectURL(url)
-        const canvas = document.createElement('canvas')
-        canvas.width = size
-        canvas.height = size
-        const ctx = canvas.getContext('2d')!
-        const side = Math.min(img.width, img.height)
-        const sx = (img.width - side) / 2
-        const sy = (img.height - side) / 2
-        ctx.drawImage(img, sx, sy, side, side, 0, 0, size, size)
-        canvas.toBlob(blob => {
-          if (!blob) { reject(new Error('canvas toBlob failed')); return }
-          resolve(new File([blob], 'avatar.jpg', { type: 'image/jpeg' }))
-        }, 'image/jpeg', 0.85)
-      }
-      img.onerror = reject
-      img.src = url
-    })
-  }
-
   async function uploadAvatarFile(file: File) {
     try {
-      const resized = await resizeToSquare(file)
+      const resized = await resizeToSquare(file, PERSON_PHOTO_SIZE)
       const res = await uploadAvatar.mutateAsync(resized)
       const data = await res.json()
       if (data.avatarUrl) {
@@ -539,10 +517,7 @@ function DadosTab({ userId, user, completeMode, onCompleteModeEnd, hasNoProperti
           <PersonField campo="nickname" ctx={campos} />
           <FieldRow label="Foto de perfil" highlight={hi('avatar')}>
             <div className="flex items-center gap-3">
-              {form.avatar
-                ? <img src={form.avatar} alt="" className="size-16 rounded-full object-cover shrink-0 border" />
-                : <div className="size-16 rounded-full bg-muted flex items-center justify-center border shrink-0"><User className="size-7 text-muted-foreground" /></div>
-              }
+              <PersonPhoto src={form.avatar} name={form.name} />
               {editing && (
                 <div className="flex flex-col gap-2">
                   <input ref={avatarInputRef} type="file" accept="image/*" className="hidden" onChange={handleAvatarFile} />

@@ -4,7 +4,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { ApiError, apiFetch, apiUpload } from '@/lib/api'
-import { resizeToSquare } from '@/utils/resize-image'
+import { PERSON_PHOTO_SIZE, resizeToSquare } from '@/utils/resize-image'
 import { apiErrorMessage } from '@/lib/api-error-message'
 import { useCEPLookup, invalidateUserViews, type PaginatedResponse, type UserData } from '@/hooks/useAdmin'
 import { Button } from '@/components/ui/button'
@@ -169,7 +169,7 @@ function RouteComponent() {
     try {
       // Mesmo recorte quadrado do avatar da ficha, para a foto do balcão não
       // sair esticada.
-      const quadrada = await resizeToSquare(arquivo)
+      const quadrada = await resizeToSquare(arquivo, PERSON_PHOTO_SIZE)
       setFoto(quadrada)
       // Libera a prévia anterior: tirar várias fotos seguidas deixaria uma
       // fila de blobs presos na memória da aba.

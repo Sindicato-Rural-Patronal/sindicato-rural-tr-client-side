@@ -184,6 +184,7 @@ src/
 │   │                                #   (PersonField + FieldRow + SelectField); CameraDialog (foto pela câmera no cadastro);
 │   │                                #   cadastros repetidos: MergePeopleDialog, DuplicatePeopleList, merge-people.ts;
 │   │                                #   empresas: CompaniesList, CompanyForm, CompanyMembersPanel, PersonCompanies;
+│   │                                #   PersonPhoto (foto da ficha: 128/160 px, clique amplia num diálogo);
 │   │                                #   PropertiesManager (propriedades/endereços de pessoa e empresa; lápis só com `onUpdate`;
 │   │                                #   `loadError` mostra a falha em vez de "Nenhuma propriedade")
 │   ├── conta/PerfilTab.tsx          # Aba Perfil de Minha conta: foto, nome, usuário; trocar a senha pede a senha atual
@@ -280,7 +281,7 @@ src/
 │   ├── cpf.ts, cnpj.ts              # Validação (CPF comparado só pelos dígitos)
 │   ├── age.ts, extenso.ts, format-currency.ts, text-format.ts (upperNoAccents)
 │   ├── download.ts                  # saveBlob, openBlob, fileSlug
-│   ├── resize-image.ts              # resizeToSquare (avatar)
+│   ├── resize-image.ts              # resizeToSquare (recorte quadrado, sem ampliar; foto de pessoa = PERSON_PHOTO_SIZE 800 px, avatar do admin 256)
 │   ├── safe-url.ts, escape-html.ts  # Link digitado pelo admin; texto dinâmico em dangerouslySetInnerHTML
 └── main.tsx                         # Tema salvo, recarga depois de deploy (lib/chunk-reload.ts), router com telas padrão em português
 ```
