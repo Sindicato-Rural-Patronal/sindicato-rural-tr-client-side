@@ -111,7 +111,7 @@ docker compose -f docker-compose.prod.yml --env-file .env.production up -d --bui
 
 Layouts pai:
 - `_public.tsx` — Header + Footer público + botão flutuante do WhatsApp
-- `_admin.tsx` — Sidebar admin (AdminSideBar), token-gated (valida JWT + expiração); no celular, topo com SidebarTrigger + sino de notificações; monta `CommandPalette` e `LeaveConfirmHost`
+- `_admin.tsx` — Sidebar admin (AdminSideBar), token-gated (valida JWT + expiração); liga o tema Cinza/Verde-claro do painel (`syncTheme(true)`) ao entrar e desliga ao sair; no celular, topo com SidebarTrigger + sino de notificações; monta `CommandPalette` e `LeaveConfirmHost`
 
 `routeTree.gen.ts` é **gerado automaticamente** pelo TanStack Router — não editar manualmente.
 
@@ -162,7 +162,7 @@ src/
 │   ├── notifications/NotificationBell.tsx # Sino (avisos não lidos + pendências warning): Popover no computador,
 │   │                                #   Sheet no celular; abre o link pelo roteador
 │   ├── ThemeToggle.tsx              # Claro/escuro no cabeçalho público
-│   ├── ThemeSetting.tsx             # Claro/escuro/sistema em Minha conta (chave `theme` no localStorage; main.tsx aplica)
+│   ├── ThemeSetting.tsx             # Claro/escuro/sistema/Cinza/Verde-claro em Minha conta (chave `theme` no localStorage)
 │   ├── PersonPicker.tsx             # Busca de pessoa do cadastro (lista suspensa; "Cadastrar nova pessoa" em outra aba, só com CREATE_USER)
 │   ├── PasswordInput.tsx            # Campo de senha com mostrar/ocultar (repassa `ref`)
 │   ├── PasswordStrengthHint.tsx     # Força da senha: barra + rótulo + até 2 dicas; só orienta, nunca bloqueia
@@ -217,6 +217,8 @@ src/
 │   ├── api-error-message.ts         # apiErrorMessage: mensagem do backend → português (inclui 413 e 429 pelo status)
 │   ├── registration-errors.ts       # Erros da inscrição pelo site: registrationErrorMessage (429 do CPF mostra o texto do
 │   │                                #   servidor), isAlreadyRegistered, isCannotConfirmRegistration (409 → link do WhatsApp)
+│   ├── theme.ts                     # Tema: ThemeMode, readStoredTheme, syncTheme(inAdmin), saveTheme. Cinza e Verde-claro (fundo fosco,
+│   │                                #   cartões brancos) só valem no painel: `data-painel` no <html> liga as cores de index.css
 │   ├── chunk-reload.ts              # Recarga automática depois de deploy (vite:preloadError): guarda por horário, 60 s entre recargas
 │   ├── login-error.ts               # loginErrorMessage: senha errada / 429 / sistema fora do ar / sem internet
 │   ├── auth-token.ts                # JWT no navegador: validade, renovação, safeAdminRedirect, loginHref

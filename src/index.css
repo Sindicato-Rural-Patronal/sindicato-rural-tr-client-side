@@ -124,6 +124,37 @@
     --sidebar-ring: oklch(0.556 0 0);
 }
 
+/*
+ * Temas de fundo do painel admin (Cinza e Verde-claro). Só o FUNDO da tela muda: cartões,
+ * diálogos, menus e campos continuam brancos (--background/--card/--popover não mudam).
+ * Ligados por `data-painel` no <html>, que só existe dentro do painel (lib/theme.ts).
+ * Contraste conferido (WCAG, razão de luminância): texto principal 15:1+, texto
+ * secundário (muted-foreground) 6:1+ sobre o fundo, 7:1+ sobre os cartões; texto de erro
+ * (destructive) 5:1+ sobre o fundo; borda dos campos 3:1 sobre o cartão branco.
+ */
+html[data-painel="cinza"] {
+    --painel-fundo: oklch(0.925 0.003 250);
+}
+html[data-painel="verde"] {
+    --painel-fundo: oklch(0.945 0.03 150);
+    --sidebar: oklch(0.975 0.015 150);
+}
+html[data-painel] {
+    --muted-foreground: oklch(0.44 0.012 250);
+    --destructive: oklch(0.5 0.19 27);
+    --input: oklch(0.66 0.004 250);
+}
+html[data-painel] body,
+html[data-painel] [data-slot="sidebar-inset"] {
+    background-color: var(--painel-fundo);
+}
+/* Campos (transparentes por padrão) ficam brancos sobre o fundo fosco, como os cartões. */
+html[data-painel] [data-slot="input"]:not([type="checkbox"]):not([type="radio"]),
+html[data-painel] [data-slot="textarea"],
+html[data-painel] [data-slot="select-trigger"] {
+    background-color: var(--card);
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
