@@ -17,6 +17,8 @@ import { PropertiesManager } from '@/components/cadastro/PropertiesManager'
 import { PersonCompanies } from '@/components/cadastro/PersonCompanies'
 import { CameraDialog } from '@/components/cadastro/CameraDialog'
 import { PersonPhoto } from '@/components/cadastro/PersonPhoto'
+import { PersonHeading } from '@/components/cadastro/PersonHeading'
+import { MemberBadge } from '@/components/MemberBadge'
 import { PERSON_PHOTO_SIZE, resizeToSquare } from '@/utils/resize-image'
 import { PersonUnimedTab } from '@/components/unimed/PersonUnimedTab'
 import { MergePeopleDialog } from '@/components/cadastro/MergePeopleDialog'
@@ -859,6 +861,7 @@ function RelacoesTab({ userId }: { userId: string }) {
                       className={`w-full text-left px-3 py-2 text-sm hover:bg-muted transition-colors ${form.targetId === u.id ? 'bg-muted' : ''}`}
                     >
                       <span className="font-medium">{u.name}</span>
+                      <MemberBadge person={u} className="ml-2 align-middle" />
                       {u.cpf && <span className="text-xs text-muted-foreground ml-2">{maskCPF(u.cpf)}</span>}
                     </button>
                   ))}
@@ -1035,7 +1038,7 @@ function RouteComponent() {
         </Button>
         {/* No celular o nome ocupa a linha ao lado da seta e os botões descem para a linha de baixo. */}
         <div className="min-w-0 flex-1 basis-[12rem]">
-          <h1 className="line-clamp-3 break-words text-2xl font-bold tracking-tight text-foreground" title={user.name}>{user.name}</h1>
+          <PersonHeading person={user} />
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mt-1">
             {user.email && <span className="min-w-0 break-all text-sm text-muted-foreground">{user.email}</span>}
             {user.cpf && <span className="whitespace-nowrap text-xs font-mono text-muted-foreground">CPF: {maskCPF(user.cpf)}</span>}

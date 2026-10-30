@@ -46,6 +46,7 @@ import { PasswordStrengthHint } from '@/components/PasswordStrengthHint'
 import { STICKY_ACTIONS_CELL, STICKY_ACTIONS_ROW } from '@/lib/table-sticky-actions'
 import { CompaniesList } from '@/components/cadastro/CompaniesList'
 import { DuplicatePeopleList } from '@/components/cadastro/DuplicatePeopleList'
+import { PersonNameCell } from '@/components/cadastro/PersonNameCell'
 import { useAdminCompanies } from '@/hooks/useCompanies'
 import { MEMBER_TYPES } from '@/lib/member-types'
 import { downloadExport, type ExportDataset, type ExportFormat, type ExportParams } from '@/lib/export'
@@ -1324,13 +1325,7 @@ function RouteComponent() {
                         {/* Sem rolagem lateral: o nome tem largura máxima (reticências) e as colunas menores
                             só entram quando há espaço (o menu fixo come 256px a partir de lg). */}
                         <TableCell className="max-w-[8rem] sm:max-w-[16rem] xl:max-w-[14rem]">
-                          <div className="flex items-center gap-3">
-                            <InitialsAvatar name={u.name} avatar={u.avatar} size="sm" />
-                            <div className="min-w-0">
-                              <p className="truncate font-medium text-sm text-foreground" title={u.name}>{u.name}</p>
-                              {u.email && <p className="truncate text-xs text-muted-foreground md:hidden" title={u.email}>{u.email}</p>}
-                            </div>
-                          </div>
+                          <PersonNameCell person={u} />
                         </TableCell>
                         <TableCell className="hidden max-w-[12rem] text-sm text-muted-foreground md:table-cell 2xl:max-w-[20rem]">
                           <span className="block truncate" title={u.email || undefined}>{u.email || '—'}</span>

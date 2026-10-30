@@ -166,6 +166,7 @@ src/
 │   ├── ThemeToggle.tsx              # Claro/escuro no cabeçalho público
 │   ├── ThemeSetting.tsx             # Claro/escuro/sistema/Cinza/Verde-claro em Minha conta (chave `theme` no localStorage)
 │   ├── PersonPicker.tsx             # Busca de pessoa do cadastro (lista suspensa; "Cadastrar nova pessoa" em outra aba, só com CREATE_USER)
+│   ├── MemberBadge.tsx              # Selo "Associado" (amarelo; só some para quem não está em dia): lista de pessoas, ficha e busca de pessoa
 │   ├── PasswordInput.tsx            # Campo de senha com mostrar/ocultar (repassa `ref`)
 │   ├── PasswordStrengthHint.tsx     # Força da senha: barra + rótulo + até 2 dicas; só orienta, nunca bloqueia
 │   ├── InitialsAvatar.tsx           # Foto ou iniciais
@@ -187,6 +188,7 @@ src/
 │   │                                #   cadastros repetidos: MergePeopleDialog, DuplicatePeopleList, merge-people.ts;
 │   │                                #   empresas: CompaniesList, CompanyForm, CompanyMembersPanel, PersonCompanies;
 │   │                                #   PersonPhoto (foto da ficha: 128/160 px, clique amplia num diálogo);
+│   │                                #   PersonNameCell (coluna Nome da lista de pessoas) e PersonHeading (título da ficha), os dois com o MemberBadge;
 │   │                                #   PropertiesManager (propriedades/endereços de pessoa e empresa; lápis só com `onUpdate`;
 │   │                                #   `loadError` mostra a falha em vez de "Nenhuma propriedade")
 │   ├── conta/PerfilTab.tsx          # Aba Perfil de Minha conta: foto, nome, usuário; trocar a senha pede a senha atual
@@ -243,7 +245,7 @@ src/
 │   ├── user-form-options.ts         # Opções dos selects do cadastro de pessoa
 │   ├── cin.ts                       # CPF_LABEL ("CPF / CIN") e CIN_HINT
 │   ├── member-types.ts              # MEMBER_TYPES e MEMBER_STATUS (listas fixas, iguais às do backend) + memberTypeLabel
-│   ├── membership.ts                # isActiveMember (selo "Associado")
+│   ├── membership.ts                # isActiveMember / personIsActiveMember (selo "Associado": ACTIVE e validade vazia ou de hoje em diante, dia em Brasília)
 │   ├── room-names.ts                # ROOM_NAMES (lista fixa, igual à do backend)
 │   ├── unimed-options.ts            # UNIMED_MOVEMENT_TYPES, UNIMED_DEPENDENCY_DEGREES (listas fixas) + unimedOptionsWith
 │   ├── unimed-docs.ts               # Baixa Ficha/Termo/Contrato pelo id; unimed-{ficha,termo,contrato}-pdf.tsx,
@@ -317,6 +319,7 @@ O porquê de cada uma está em `docs/HISTORICO.md`.
 
 - **Relógio de Brasília** em tudo que é "dia": prazo de inscrição (até o fim do dia, ou até `registrationDeadlineTime`), curso terminado, banner no ar (0h do início às 23h59 do fim), notícia agendada, "hoje" do painel. As regras ficam em `utils/course-status.ts`, `lib/banner-dates.ts`, `lib/news-schedule.ts` e espelham as do backend.
 - **Horário de parede**: cursos e reservas guardam o horário como ISO com `Z`, mas ele é a hora de Brasília escrita (`lib/agenda.ts`: `wallDate`/`wallTime`/`toWallIso`). Não converta fuso.
+- **Selo "Associado"** (`components/MemberBadge.tsx`, regra em `lib/membership.ts`): `memberStatus === 'ACTIVE'` e `membershipValidUntil` vazia ou de hoje em diante pelo relógio de Brasília (a mesma do filtro `activeMember` e da API). Aparece na lista de inscritos do curso, nas abas Pessoas e Associados (`PersonNameCell`, embaixo do nome para não tirar espaço dele), no topo da ficha (`PersonHeading`) e na busca de pessoa (`PersonPicker`, contatos públicos, relações da ficha). `GET /admin/users` e `GET /admin/users/:id` trazem os dois campos; telas novas que listem pessoas devem usar o `MemberBadge`, não repetir a regra. (A lista de inscritos ainda tem o selo desenhado à mão em `RegistrationsTab`; vale trocá-lo pelo `MemberBadge`.)
 - **Pessoa**: só o CPF identifica (gravado só com dígitos; exibir com `maskCPF`). E-mail é opcional; e-mail e telefone podem repetir entre pessoas; telefone é obrigatório. RG é opcional (a CIN usa o CPF), mas validado quando preenchido. Onde se DIGITA o número, o rótulo é "CPF / CIN" (`lib/cin.ts`); onde só se exibe, "CPF".
 - **Campos de pessoa num lugar só**: cada campo é desenhado uma vez em `components/cadastro/person-form-fields.tsx`; as duas telas (`usuarios/novo` e `usuarios/$id`) só escolhem quais e em que cartão. `src/test/forms/cadastro-pessoa.test.ts` exige que todo campo do associado esteja nas duas.
 - **Caixa alta**: `upperNoAccents` nos campos de cadastro (nomes, endereços, razão social). Texto que o visitante lê sai **como foi digitado**: título e observações do curso, título da reserva que vai para `/eventos`.

@@ -13,6 +13,7 @@ import { DeleteConfirmDialog } from '@/components/DeleteConfirmDialog'
 import { EmptyState } from '@/components/EmptyState'
 import { InitialsAvatar } from '@/components/InitialsAvatar'
 import { LoadErrorRetry } from '@/components/LoadErrorRetry'
+import { MemberBadge } from '@/components/MemberBadge'
 import { usePermissions } from '@/hooks/usePermissions'
 import { useAdminUsers, type UserData } from '@/hooks/useAdmin'
 import { useDebouncedValue } from '@/hooks/useDebouncedValue'
@@ -73,7 +74,10 @@ function AddContactDialog({ existingIds, pending, onClose, onSubmit }: {
                       className="flex items-center gap-3 rounded-md px-3 py-2 text-left transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50">
                       <InitialsAvatar name={p.name} avatar={p.avatar} size="sm" />
                       <span className="min-w-0 flex-1">
-                        <span className="block truncate text-sm font-medium">{p.name}</span>
+                        <span className="flex min-w-0 items-center gap-1.5">
+                          <span className="truncate text-sm font-medium">{p.name}</span>
+                          <MemberBadge person={p} />
+                        </span>
                         <span className="block truncate text-xs text-muted-foreground">
                           {already ? 'Já é contato público' : [p.cpf ? maskCPF(p.cpf) : null, p.email].filter(Boolean).join(' · ')}
                         </span>
