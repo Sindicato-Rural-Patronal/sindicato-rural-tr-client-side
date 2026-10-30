@@ -1305,9 +1305,9 @@ function RouteComponent() {
                       </TableHead>
                       <TableHead>Nome</TableHead>
                       <TableHead className="hidden md:table-cell">Email</TableHead>
-                      <TableHead className="hidden lg:table-cell">Telefone</TableHead>
-                      <TableHead className="hidden lg:table-cell">CPF</TableHead>
-                      <TableHead className="hidden md:table-cell">Cadastro</TableHead>
+                      <TableHead className="hidden xl:table-cell">Telefone</TableHead>
+                      <TableHead className="hidden xl:table-cell">CPF</TableHead>
+                      <TableHead className="hidden xl:table-cell">Cadastro</TableHead>
                       <TableHead className={`w-28 text-right ${STICKY_ACTIONS_CELL}`}>Ações</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -1321,7 +1321,9 @@ function RouteComponent() {
                             label={`Selecionar ${u.name}`}
                           />
                         </TableCell>
-                        <TableCell className="max-w-[10rem] sm:max-w-[22rem]">
+                        {/* Sem rolagem lateral: o nome tem largura máxima (reticências) e as colunas menores
+                            só entram quando há espaço (o menu fixo come 256px a partir de lg). */}
+                        <TableCell className="max-w-[8rem] sm:max-w-[16rem] xl:max-w-[14rem]">
                           <div className="flex items-center gap-3">
                             <InitialsAvatar name={u.name} avatar={u.avatar} size="sm" />
                             <div className="min-w-0">
@@ -1330,10 +1332,12 @@ function RouteComponent() {
                             </div>
                           </div>
                         </TableCell>
-                        <TableCell className="text-muted-foreground text-sm hidden md:table-cell">{u.email || '—'}</TableCell>
-                        <TableCell className="text-muted-foreground text-sm hidden lg:table-cell">{u.phone}</TableCell>
-                        <TableCell className="text-muted-foreground text-sm font-mono hidden lg:table-cell">{u.cpf ? maskCPF(u.cpf) : '—'}</TableCell>
-                        <TableCell className="text-muted-foreground text-sm hidden md:table-cell">
+                        <TableCell className="hidden max-w-[12rem] text-sm text-muted-foreground md:table-cell 2xl:max-w-[20rem]">
+                          <span className="block truncate" title={u.email || undefined}>{u.email || '—'}</span>
+                        </TableCell>
+                        <TableCell className="text-muted-foreground text-sm hidden xl:table-cell">{u.phone}</TableCell>
+                        <TableCell className="text-muted-foreground text-sm font-mono hidden xl:table-cell">{u.cpf ? maskCPF(u.cpf) : '—'}</TableCell>
+                        <TableCell className="text-muted-foreground text-sm hidden xl:table-cell">
                           {new Date(u.createdAt).toLocaleDateString('pt-BR')}
                         </TableCell>
                         <TableCell className={`text-right ${STICKY_ACTIONS_CELL}`}>
@@ -1467,7 +1471,7 @@ function RouteComponent() {
                     )}
                     <TableHead>Administrador</TableHead>
                     <TableHead className="hidden md:table-cell">Email</TableHead>
-                    <TableHead>Regra</TableHead>
+                    <TableHead className="hidden md:table-cell">Regra</TableHead>
                     <TableHead className={`w-28 text-right ${STICKY_ACTIONS_CELL}`}>Ações</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -1483,20 +1487,24 @@ function RouteComponent() {
                           />
                         </TableCell>
                       )}
-                      <TableCell>
+                      <TableCell className="max-w-[8rem] sm:max-w-[16rem]">
                         <div className="flex items-center gap-3">
                           <InitialsAvatar name={a.userData.name} avatar={a.userData.avatar} size="sm" />
-                          <div>
-                            <p className="font-medium text-sm text-foreground">{a.userData.name}</p>
-                            <p className="text-xs text-muted-foreground font-mono">@{a.username}</p>
+                          <div className="min-w-0">
+                            <p className="truncate font-medium text-sm text-foreground" title={a.userData.name}>{a.userData.name}</p>
+                            <p className="truncate text-xs text-muted-foreground font-mono" title={`@${a.username}`}>@{a.username}</p>
+                            {/* No celular a regra sai da coluna e vem para cá. */}
+                            <p className="truncate text-xs text-muted-foreground md:hidden" title={a.rules.name}>{a.rules.name}</p>
                           </div>
                         </div>
                       </TableCell>
-                      <TableCell className="text-muted-foreground text-sm hidden md:table-cell">{a.userData.email || '—'}</TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-1.5 flex-wrap">
-                          <Shield className="size-3.5 text-muted-foreground" />
-                          <Badge variant="outline" className="text-xs">{a.rules.name}</Badge>
+                      <TableCell className="hidden max-w-[12rem] text-sm text-muted-foreground md:table-cell 2xl:max-w-[20rem]">
+                        <span className="block truncate" title={a.userData.email || undefined}>{a.userData.email || '—'}</span>
+                      </TableCell>
+                      <TableCell className="hidden max-w-[12rem] md:table-cell">
+                        <div className="flex items-center gap-1.5">
+                          <Shield className="size-3.5 shrink-0 text-muted-foreground" />
+                          <Badge variant="outline" className="min-w-0 max-w-full text-xs" title={a.rules.name}><span className="truncate">{a.rules.name}</span></Badge>
                         </div>
                       </TableCell>
                       <TableCell className={`text-right ${STICKY_ACTIONS_CELL}`}>
