@@ -5,7 +5,7 @@ grupo: gestao
 ordem: 2
 permissao: READ_AUDIT
 veja: administradores, seguranca, exportar-planilhas
-busca: auditoria historico trilha log quem alterou ip navegador retencao guarda exportar
+busca: auditoria historico trilha log quem alterou ip navegador retencao guarda exportar fechamento de caixa fechou reabriu mes
 ---
 
 **Gestão › Auditoria** é o histórico do painel: quem fez, o que fez e quando.
@@ -25,11 +25,24 @@ vê que o preço foi de R$ 100 para R$ 10.
 
 ## Filtrando
 
-Dá para filtrar por tipo de ação, tipo de registro, administrador, período,
-texto e até por **IP**. Os filtros ficam no endereço da página — o link pode ser
-guardado ou enviado a um colega.
+Os filtros são **Ação** (criações, edições, exclusões, exportações, logins),
+**Tipo** (o assunto: curso, lançamento, caixa…), **Quem** (o administrador),
+**De** e **Até** (o período), o **IP** e a busca por texto. Os filtros ficam no
+endereço da página — o link pode ser guardado ou enviado a um colega.
 
 Há também **exportação** do resultado.
+
+### Fechamento de caixa
+
+Quando alguém fecha ou reabre um mês no Financeiro, a trilha registra. Para ver
+só isso, escolha **Fechamento de caixa** no filtro **Tipo**. As linhas dizem:
+
+- *Fechou o mês "10/2026 · BANCO"*
+- *Reabriu o mês "10/2026 · BANCO"*
+
+Ao abrir a linha de uma reabertura, **O que mudou** mostra o que estava fechado
+(mês, caixa, saldo esperado, saldo contado e diferença). É o jeito de responder
+"quem reabriu o mês de outubro?". Veja [Financeiro](?topico=financeiro).
 
 ## Tempo de guarda
 
