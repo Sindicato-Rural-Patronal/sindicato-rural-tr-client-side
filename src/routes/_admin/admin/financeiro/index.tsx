@@ -2,7 +2,7 @@ import { createFileRoute } from '@tanstack/react-router'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { usePermissions } from '@/hooks/usePermissions'
-import { apiErrorMessage } from '@/lib/api-error-message'
+import { apiErrorMessage, loadErrorMessage } from '@/lib/api-error-message'
 import {
   useFinanceSummary, useFinanceCategories, useFinanceTransactions,
   useCreateFinanceTransaction, useUpdateFinanceTransaction, useDeleteFinanceTransaction,
@@ -10,6 +10,7 @@ import {
   useFinanceAccounts, useCreateFinanceAccount, useUpdateFinanceAccount, useDeleteFinanceAccount,
   useCreateFinanceTransfer, fetchFinanceTransactionsForRange, useGenerateFinanceRecurrences,
   useUploadFinanceAttachment, useDeleteFinanceAttachment, openFinanceAttachment, exportFinanceTransactions,
+  useFinanceClosings,
   type FinanceType, type FinanceCategory, type FinanceAccount, type FinanceTransaction, type TransactionFilters, type Empenho,
   type FinanceAttachment,
 } from '@/hooks/useFinance'
@@ -23,7 +24,7 @@ import {
   Download, Landmark, ArrowLeftRight, FileDown, Receipt, ChevronDown, User, Repeat,
   Building2,
 } from 'lucide-react'
-import { apiFetch } from '@/lib/api'
+import { apiFetch, ApiError } from '@/lib/api'
 import { useAdminUsers, type UserDataDetail } from '@/hooks/useAdmin'
 import { useAdminCompanies, companyDisplayName, type CompanyDetail } from '@/hooks/useCompanies'
 import { useOrgInfo } from '@/hooks/useSiteSettings'
@@ -52,7 +53,14 @@ import { RecurringTab } from '@/components/financeiro/RecurringTab'
 import { ClosingTab } from '@/components/financeiro/ClosingTab'
 import { PaymentMethodSelect } from '@/components/financeiro/PaymentMethodSelect'
 import { PaymentMethodsTab } from '@/components/financeiro/PaymentMethodsTab'
+import { ClosedMonthBadge, ClosedMonthNotice, LockedReason } from '@/components/financeiro/ClosedMonth'
+import { MemberBadge } from '@/components/MemberBadge'
 import { AjudaLink } from '@/components/ajuda/AjudaLink'
+import {
+  closedMonthForRow, closedMonthForTransaction, closedMonthForTransfer, closedMonthMessage,
+  type ClosedMonth, type LockTarget,
+} from '@/lib/finance-closed-month'
+import type { MemberFields } from '@/lib/membership'
 
 type FinanceTab = 'dashboard' | 'lancamentos' | 'recorrentes' | 'categorias' | 'caixas' | 'formas' | 'fechamento'
 type FinanceSearch = {
@@ -216,7 +224,7 @@ function DashboardTab({ enabled, onDrill }: {
     () => (preset === 'custom' ? custom : presetRange(preset)),
     [preset, custom],
   )
-  const { data, isLoading, isError, isFetching, refetch } = useFinanceSummary(range, { enabled })
+  const { data, isLoading, isError, isFetching, refetch, error } = useFinanceSummary(range, { enabled })
   // Sem o resumo, os cartões mostravam R$ 0,00 — que parece resultado de verdade.
   const summaryFailed = isError && !data
   const [pdfBusy, setPdfBusy] = useState(false)
@@ -299,7 +307,7 @@ function DashboardTab({ enabled, onDrill }: {
       {summaryFailed ? (
         <LoadErrorRetry
           className="rounded-xl border border-border bg-card"
-          message="Não foi possível carregar o resumo financeiro."
+          message={loadErrorMessage(error, 'Não foi possível carregar o resumo financeiro.')}
           onRetry={() => void refetch()}
           retrying={isFetching}
         />
@@ -563,10 +571,11 @@ function VincularCadastro({ current, onPickUser, onPickCompany, onClear }: {
   const isFetching = aba === 'pessoa' ? pessoas.isFetching : empresas.isFetching
   const buscaFalhou = aba === 'pessoa' ? pessoas.isError : empresas.isError
   const buscarDeNovo = () => void (aba === 'pessoa' ? pessoas.refetch() : empresas.refetch())
-  const results = !buscando
+  // `pessoa` só na aba Pessoa: é o que liga o selo "Associado" ao lado do nome.
+  const results: { id: string; nome: string; doc: string; pessoa?: MemberFields }[] = !buscando
     ? []
     : aba === 'pessoa'
-      ? (pessoas.data?.data ?? []).map(u => ({ id: u.id, nome: u.name, doc: u.cpf ? maskCPF(u.cpf) : '' }))
+      ? (pessoas.data?.data ?? []).map(u => ({ id: u.id, nome: u.name, doc: u.cpf ? maskCPF(u.cpf) : '', pessoa: u }))
       : (empresas.data?.data ?? []).map(c => ({
         id: c.id,
         nome: companyDisplayName(c),
@@ -656,9 +665,14 @@ function VincularCadastro({ current, onPickUser, onPickCompany, onClear }: {
               disabled={loadingId !== null}
               onMouseDown={e => e.preventDefault()}
               onClick={() => pick(item.id)}
-              className="flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-sm hover:bg-accent disabled:opacity-50"
+              className="@container flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-sm hover:bg-accent disabled:opacity-50"
             >
-              <span className="truncate">{item.nome}</span>
+              {/* Como no PersonPicker: o selo fica ao lado do nome quando a lista é larga e
+                  desce para baixo dele numa lista estreita (celular), sem espremer o nome. */}
+              <span className="flex min-w-0 flex-col items-start @sm:flex-row @sm:items-center @sm:gap-1.5">
+                <span className="max-w-full truncate">{item.nome}</span>
+                {item.pessoa && <MemberBadge person={item.pessoa} />}
+              </span>
               <span className="shrink-0 text-xs text-muted-foreground">{item.doc}</span>
             </button>
           ))}
@@ -751,7 +765,7 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
     type: search.fType ?? '',
     categoryId: search.cat, accountId: search.acc, method: search.pm, search: search.q,
   }), [page, search.from, search.to, search.fType, search.cat, search.acc, search.pm, search.q])
-  const { data, isLoading, isError, isFetching, refetch } = useFinanceTransactions(filters, { enabled })
+  const { data, isLoading, isError, isFetching, refetch, error: listError } = useFinanceTransactions(filters, { enabled })
   const catsQuery = useFinanceCategories({ enabled })
   const accsQuery = useFinanceAccounts({ enabled })
   const categories = catsQuery.data
@@ -759,6 +773,10 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
   // Categorias e caixas alimentam os filtros e o formulário: sem eles os
   // selects ficam vazios sem explicação.
   const listasFalharam = (catsQuery.isError && !categories) || (accsQuery.isError && !accounts)
+  // Meses fechados de todos os caixas (pares accountId + month): travam editar e
+  // excluir na lista e avisam no formulário. Se não carregar, a tela não trava
+  // nada e o 409 da API continua aparecendo com o texto dela.
+  const { data: closings } = useFinanceClosings({}, { enabled })
   const createTx = useCreateFinanceTransaction()
   const updateTx = useUpdateFinanceTransaction()
   const deleteTx = useDeleteFinanceTransaction()
@@ -773,6 +791,8 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
   const [confirmClose, setConfirmClose] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<FinanceTransaction | null>(null)
+  // Caixa e data do lançamento em edição como estavam: tirá-lo de um mês fechado também é recusado.
+  const [editOriginal, setEditOriginal] = useState<LockTarget | null>(null)
   // Comprovante que o usuário pediu para remover, aguardando a confirmação.
   const [attachmentToDelete, setAttachmentToDelete] = useState<FinanceAttachment | null>(null)
   // Novo lançamento copiado de outro ("Repetir") — só muda o texto do diálogo.
@@ -796,6 +816,19 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
   const accs = accounts ?? []
   const catsForType = form.type ? cats.filter(c => c.type === form.type) : []
   const [exporting, setExporting] = useState(false)
+
+  // ── Mês fechado ──
+  // Nome do caixa para o motivo: da lista de caixas ou, se ele foi desativado, do próprio lançamento.
+  function accountNameOf(id: string): string | null {
+    return accs.find(a => a.id === id)?.name ?? rows.find(r => r.accountId === id)?.account?.name ?? null
+  }
+  const reasonOf = (c: ClosedMonth | null) => (c ? closedMonthMessage(c.month, accountNameOf(c.accountId)) : null)
+  // "Repetir" não entra aqui: cria um lançamento com a data de hoje, e quem confere essa data nova é o formulário.
+  const rowLockReason = (t: FinanceTransaction) => reasonOf(closedMonthForRow(t, rows, closings))
+  const formLockReason = dialogOpen
+    ? reasonOf(closedMonthForTransaction({ accountId: form.accountId || null, date: form.date }, closings, editId ? editOriginal : null))
+    : null
+  const transferLockReason = transferOpen ? reasonOf(closedMonthForTransfer(transfer, closings)) : null
 
   // Busca: campo local com debounce → grava em `q` na URL (evita 1 request/tecla).
   const [searchInput, setSearchInput] = useState(search.q ?? '')
@@ -838,6 +871,7 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
 
   function abrirNovo() {
     setEditId(null)
+    setEditOriginal(null)
     setRepeating(false)
     const f = emptyTxForm()
     setForm(f)
@@ -852,6 +886,7 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
   // sem os números (empenho, nota fiscal, cheque), que são de cada documento.
   function abrirRepetir(t: FinanceTransaction) {
     setEditId(null)
+    setEditOriginal(null)
     setRepeating(true)
     // Categoria/caixa desativados depois não vão para o lançamento novo.
     const catOk = !!t.categoryId && (!categories || cats.some(c => c.id === t.categoryId))
@@ -876,6 +911,7 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
 
   function abrirEditar(t: FinanceTransaction) {
     setEditId(t.id)
+    setEditOriginal({ accountId: t.accountId, date: t.date })
     setRepeating(false)
     const f: TxForm = {
       type: t.type,
@@ -907,6 +943,8 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
     const amountCents = moneyToCents(form.amount)
     if (amountCents <= 0) { setError('Informe um valor maior que zero.'); return }
     if (!form.description.trim()) { setError('Informe a descrição.'); return }
+    // O aviso embaixo da data já diz por quê; os botões ficam desligados.
+    if (formLockReason) return
     const body = {
       type: form.type,
       amountCents,
@@ -929,7 +967,11 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
         if (created?.id && pendingFiles.length > 0) {
           for (const file of pendingFiles) {
             try { await uploadAtt.mutateAsync({ transactionId: created.id, file }) }
-            catch { toast.error(`Falha ao anexar "${file.name}".`) }
+            catch (e) {
+              toast.error(e instanceof ApiError
+                ? `Falha ao anexar "${file.name}": ${apiErrorMessage(e, 'erro ao enviar o arquivo.')}`
+                : `Falha ao anexar "${file.name}".`)
+            }
           }
         }
         toast.success('Lançamento registrado!')
@@ -996,7 +1038,7 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
 
   async function handleOpenAttachment(id: string) {
     try { await openFinanceAttachment(id) }
-    catch { toast.error('Erro ao abrir o comprovante.') }
+    catch (e) { toast.error(e instanceof ApiError ? apiErrorMessage(e, 'Erro ao abrir o comprovante.') : 'Erro ao abrir o comprovante.') }
   }
 
   function handlePickPending(e: React.ChangeEvent<HTMLInputElement>) {
@@ -1009,8 +1051,9 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
     setExporting(true)
     try {
       await exportFinanceTransactions(filters)
-    } catch {
-      toast.error('Erro ao exportar.')
+    } catch (e) {
+      // Resposta da API (ex.: filtro recusado, 400) diz o motivo; sem resposta, o texto genérico.
+      toast.error(e instanceof ApiError ? apiErrorMessage(e, 'Erro ao exportar.') : 'Erro ao exportar.')
     } finally {
       setExporting(false)
     }
@@ -1028,6 +1071,7 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
     if (!transfer.fromAccountId || !transfer.toAccountId) { setTransferError('Escolha os caixas de origem e destino.'); return }
     if (transfer.fromAccountId === transfer.toAccountId) { setTransferError('Origem e destino devem ser diferentes.'); return }
     if (amountCents <= 0) { setTransferError('Informe um valor maior que zero.'); return }
+    if (transferLockReason) return
     try {
       await createTransfer.mutateAsync({
         fromAccountId: transfer.fromAccountId,
@@ -1114,7 +1158,15 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
 
       <div className="relative max-w-sm">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
-        <Input placeholder="Buscar na descrição ou no nome..." className="pl-9" value={searchInput} onChange={e => setSearchInput(e.target.value)} />
+        {/* A API acha pela descrição, pelo nome / razão social e pelo CNPJ/CPF da Nota de Empenho (com ou sem pontuação).
+            Sem "Buscar na" no começo: com ele o texto não cabia no celular (360 px) e o "CPF" sumia. A lupa já diz que é busca. */}
+        <Input
+          placeholder="Descrição, nome ou CNPJ/CPF..."
+          aria-label="Buscar lançamentos na descrição, no nome ou no CNPJ/CPF"
+          className="pl-9"
+          value={searchInput}
+          onChange={e => setSearchInput(e.target.value)}
+        />
       </div>
 
       {listasFalharam && (
@@ -1126,10 +1178,11 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
         />
       )}
 
+      {/* Filtro de data com ano fora de 1900–2999: a API diz o motivo (400), e ele aparece aqui. */}
       {isError && !data && (
         <LoadErrorRetry
           className="rounded-lg border border-border bg-card"
-          message="Não foi possível carregar os lançamentos."
+          message={loadErrorMessage(listError, 'Não foi possível carregar os lançamentos.')}
           onRetry={() => void refetch()}
           retrying={isFetching}
         />
@@ -1149,7 +1202,9 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
             <p className="text-xs text-muted-foreground mt-1">{canCreate ? 'Toque em "Novo lançamento".' : 'Nada com esses filtros.'}</p>
           </div>
         )}
-        {rows.map(t => (
+        {rows.map(t => {
+          const lockReason = rowLockReason(t)
+          return (
           <div key={t.id} className="rounded-lg border border-border bg-card p-3 flex flex-col gap-2">
             <div className="flex items-start justify-between gap-3">
               <span className="inline-flex items-start gap-2 font-medium text-foreground min-w-0">
@@ -1176,6 +1231,7 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
                   <Repeat className="size-3" /> Recorrente
                 </Badge>
               )}
+              {lockReason && <ClosedMonthBadge reason={lockReason} />}
               <span className="tabular-nums">{formatDateFromString(t.date.slice(0, 10))}</span>
               {t.category && <span className="inline-flex items-center gap-1"><span className="size-2 rounded-sm" style={{ backgroundColor: t.category.color }} />{t.category.name}</span>}
               {t.account && <span className="inline-flex items-center gap-1"><Landmark className="size-3" style={{ color: t.account.color }} />{t.account.name}</span>}
@@ -1190,15 +1246,20 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
                   <Button size="sm" variant="ghost" className="h-7 px-2" onClick={() => abrirRepetir(t)} aria-label="Repetir (novo lançamento igual, com a data de hoje)"><Repeat className="size-4" /></Button>
                 )}
                 {canUpdate && !t.transferId && (
-                  <Button size="sm" variant="ghost" className="h-7 px-2" onClick={() => abrirEditar(t)} aria-label="Editar"><Pencil className="size-4" /></Button>
+                  <LockedReason reason={lockReason}>
+                    <Button size="sm" variant="ghost" className="h-7 px-2" disabled={!!lockReason} onClick={() => abrirEditar(t)} aria-label="Editar"><Pencil className="size-4" /></Button>
+                  </LockedReason>
                 )}
                 {canDelete && (
-                  <Button size="sm" variant="ghost" className="h-7 px-2 text-muted-foreground hover:text-destructive" onClick={() => setDeleteTarget(t)} aria-label="Excluir"><Trash2 className="size-4" /></Button>
+                  <LockedReason reason={lockReason}>
+                    <Button size="sm" variant="ghost" className="h-7 px-2 text-muted-foreground hover:text-destructive" disabled={!!lockReason} onClick={() => setDeleteTarget(t)} aria-label="Excluir"><Trash2 className="size-4" /></Button>
+                  </LockedReason>
                 )}
               </span>
             </div>
           </div>
-        ))}
+          )
+        })}
       </div>
 
       <div className="rounded-lg border border-border bg-card overflow-hidden hidden md:block">
@@ -1246,6 +1307,7 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
               )}
               {rows.map(t => {
                 const fornecedor = fornecedorDoLancamento(t)
+                const lockReason = rowLockReason(t)
                 return (
                 <TableRow key={t.id}>
                   <TableCell className={cn('whitespace-nowrap text-muted-foreground tabular-nums text-xs align-top pt-3', COL_DATA)}>
@@ -1282,7 +1344,7 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
                           )}
                           {t.method && <span className={cn('max-w-full truncate', SO_ABAIXO_DE_METODO)} title={t.method}>{t.method}</span>}
                         </div>
-                        {((!t.type && !t.transferId) || t.recurringId || t.attachments.length > 0) && (
+                        {((!t.type && !t.transferId) || t.recurringId || lockReason || t.attachments.length > 0) && (
                           <div className="mt-1 flex flex-wrap items-center gap-1">
                             {!t.type && !t.transferId && <Badge variant="outline" className="text-muted-foreground">Nota</Badge>}
                             {t.recurringId && (
@@ -1290,6 +1352,7 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
                                 <Repeat className="size-3" /> Recorrente
                               </Badge>
                             )}
+                            {lockReason && <ClosedMonthBadge reason={lockReason} />}
                             {t.attachments.length > 0 && (
                               <button
                                 type="button"
@@ -1347,15 +1410,21 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
                           <Repeat className="size-4" />
                         </Button>
                       )}
+                      {/* Mês fechado: editar e excluir desligados, com o motivo ao passar o mouse.
+                          "Repetir" continua: cria outro lançamento, e o formulário confere a data nova. */}
                       {canUpdate && !t.transferId && (
-                        <Button size="sm" variant="ghost" className="h-8 px-2" onClick={() => abrirEditar(t)} aria-label="Editar" title="Editar">
-                          <Pencil className="size-4" />
-                        </Button>
+                        <LockedReason reason={lockReason}>
+                          <Button size="sm" variant="ghost" className="h-8 px-2" disabled={!!lockReason} onClick={() => abrirEditar(t)} aria-label="Editar" title="Editar">
+                            <Pencil className="size-4" />
+                          </Button>
+                        </LockedReason>
                       )}
                       {canDelete && (
-                        <Button size="sm" variant="ghost" className="h-8 px-2 text-muted-foreground hover:text-destructive" onClick={() => setDeleteTarget(t)} aria-label="Excluir" title="Excluir">
-                          <Trash2 className="size-4" />
-                        </Button>
+                        <LockedReason reason={lockReason}>
+                          <Button size="sm" variant="ghost" className="h-8 px-2 text-muted-foreground hover:text-destructive" disabled={!!lockReason} onClick={() => setDeleteTarget(t)} aria-label="Excluir" title="Excluir">
+                            <Trash2 className="size-4" />
+                          </Button>
+                        </LockedReason>
                       )}
                       {/* Fora de transferência sempre há o botão da nota; o traço é só para transferência sem ação. */}
                       {t.transferId && !canDelete && <span className="text-xs text-muted-foreground">—</span>}
@@ -1409,10 +1478,18 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
                 <Input inputMode="numeric" placeholder="R$ 0,00" value={transfer.amount} onChange={e => setTransfer(p => ({ ...p, amount: maskMoney(e.target.value) }))} />
               </div>
               <div className="flex flex-col gap-1.5">
-                <Label>Data *</Label>
-                <Input type="date" value={transfer.date} onChange={e => setTransfer(p => ({ ...p, date: e.target.value }))} />
+                <Label htmlFor="transf-data">Data *</Label>
+                <Input
+                  id="transf-data"
+                  type="date"
+                  value={transfer.date}
+                  onChange={e => setTransfer(p => ({ ...p, date: e.target.value }))}
+                  aria-describedby={transferLockReason ? 'transf-mes-fechado' : undefined}
+                />
               </div>
             </div>
+            {/* Embaixo da data, na largura toda (meia coluna no celular deixaria o texto em 7 linhas). */}
+            {transferLockReason && <ClosedMonthNotice id="transf-mes-fechado" reason={transferLockReason} />}
             <div className="flex flex-col gap-1.5">
               <Label>Descrição</Label>
               <Input value={transfer.description} onChange={e => setTransfer(p => ({ ...p, description: e.target.value }))} placeholder="Opcional (ex: reforço de caixa)" />
@@ -1421,7 +1498,7 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setTransferOpen(false)}>Cancelar</Button>
-            <Button onClick={handleTransfer} disabled={createTransfer.isPending}>
+            <Button onClick={handleTransfer} disabled={createTransfer.isPending || !!transferLockReason}>
               {createTransfer.isPending ? 'Transferindo...' : 'Transferir'}
             </Button>
           </DialogFooter>
@@ -1480,10 +1557,18 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
                 <Input ref={amountInputRef} inputMode="numeric" placeholder="R$ 0,00" value={form.amount} onChange={e => setF('amount', maskMoney(e.target.value))} />
               </div>
               <div className="flex flex-col gap-1.5">
-                <Label>Data *</Label>
-                <Input type="date" value={form.date} onChange={e => setF('date', e.target.value)} />
+                <Label htmlFor="lanc-data">Data *</Label>
+                <Input
+                  id="lanc-data"
+                  type="date"
+                  value={form.date}
+                  onChange={e => setF('date', e.target.value)}
+                  aria-describedby={formLockReason ? 'lanc-mes-fechado' : undefined}
+                />
               </div>
             </div>
+            {/* Caixa + data num mês fechado: aviso embaixo da data, na largura toda, e salvar desligado. */}
+            {formLockReason && <ClosedMonthNotice id="lanc-mes-fechado" reason={formLockReason} />}
             <div className="flex flex-col gap-1.5">
               <Label>Descrição *</Label>
               <Input value={form.description} onChange={e => setF('description', upperNoAccents(e.target.value))} placeholder="Ex: Compra de material de escritório" />
@@ -1658,11 +1743,11 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
           <DialogFooter>
             <Button variant="outline" onClick={requestCloseDialog}>Cancelar</Button>
             {!editId && (
-              <Button variant="outline" onClick={() => handleSubmit(true)} disabled={saving} title="Registra este e deixa o formulário aberto para o próximo">
+              <Button variant="outline" onClick={() => handleSubmit(true)} disabled={saving || !!formLockReason} title="Registra este e deixa o formulário aberto para o próximo">
                 Registrar e novo
               </Button>
             )}
-            <Button onClick={() => handleSubmit()} disabled={saving}>
+            <Button onClick={() => handleSubmit()} disabled={saving || !!formLockReason}>
               {saving ? 'Salvando...' : editId ? 'Salvar' : 'Registrar'}
             </Button>
           </DialogFooter>

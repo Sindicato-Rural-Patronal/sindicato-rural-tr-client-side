@@ -12,6 +12,12 @@ export function monthLabel(ym: string): string {
   return `${MONTHS_ABBR[(m ?? 1) - 1]}/${String(y).slice(2)}`
 }
 
+/** "2026-10" → "10/2026" (o formato das mensagens do mês fechado e da auditoria). */
+export function monthNumeric(ym: string): string {
+  const [y, m] = ym.split('-')
+  return `${m}/${y}`
+}
+
 /** Mês atual como "AAAA-MM". */
 export function currentMonth(now = new Date()): string {
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
