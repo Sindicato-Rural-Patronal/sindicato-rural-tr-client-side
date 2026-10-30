@@ -1,3 +1,4 @@
+import type { LucideIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import * as React from 'react'
 import { BookOpen, HeartHandshake, HeartPulse, HelpCircle, Images, LayoutDashboard, Mail, Newspaper, ScrollText, Search, Settings, TrendingUp, Users, Wallet } from 'lucide-react'
@@ -13,6 +14,9 @@ import {
   SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarMenuBadge, SidebarSeparator,
   useSidebar,
 } from '@/components/ui/sidebar'
+
+type NavItem = { title: string; url: string; icon: LucideIcon; perm: string | string[] | null }
+type NavSection = { label: string; pinned?: boolean; items: NavItem[] }
 
 export function AdminSideBar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { location } = useRouterState()
@@ -46,7 +50,7 @@ export function AdminSideBar({ ...props }: React.ComponentProps<typeof Sidebar>)
     avatar: me?.avatar ?? '',
   }
 
-  const navSections = [
+  const navSections: NavSection[] = [
     {
       label: t('admin.sidebar.main'),
       items: [
@@ -75,6 +79,7 @@ export function AdminSideBar({ ...props }: React.ComponentProps<typeof Sidebar>)
     },
     {
       label: t('admin.sidebar.settings'),
+      pinned: true,
       items: [
         { title: t('admin.sidebar.settings'), url: '/admin/configuracoes', icon: Settings, perm: ['READ_BANNER', 'READ_USER'] },
       ],
@@ -82,11 +87,47 @@ export function AdminSideBar({ ...props }: React.ComponentProps<typeof Sidebar>)
     {
       // Documentação interna do painel: aberta a qualquer administrador.
       label: t('admin.sidebar.support'),
+      pinned: true,
       items: [
         { title: t('admin.sidebar.help'), url: '/admin/ajuda', icon: HelpCircle, perm: null },
       ],
     },
   ]
+
+  const allowed = (item: NavItem) =>
+    !item.perm || (Array.isArray(item.perm) ? item.perm.some(can) : can(item.perm))
+
+  function renderItem(item: NavItem) {
+    const active = location.pathname.startsWith(item.url)
+    return (
+      <SidebarMenuItem key={item.title}>
+        <SidebarMenuButton
+          isActive={active}
+          tooltip={item.title}
+          asChild
+          className="h-10 rounded-lg transition-all"
+        >
+          {/* Na gaveta (abaixo de lg) escolher uma tela fecha o menu. */}
+          <Link to={item.url as never} onClick={() => { if (isMobile) setOpenMobile(false) }}>
+            <item.icon className="size-4" />
+            <span>{item.title}</span>
+          </Link>
+        </SidebarMenuButton>
+        {item.url === '/admin/mensagens' && unread > 0 && (
+          <SidebarMenuBadge className="bg-primary text-primary-foreground">
+            {unread > 99 ? '99+' : unread}
+          </SidebarMenuBadge>
+        )}
+      </SidebarMenuItem>
+    )
+  }
+
+  // Na gaveta (celular/tablet) a lista é longa e rola; Configurações e Ajuda saem dela e
+  // ficam fixas no rodapé, sempre à vista (também em 360x640). No menu fixo (lg em diante)
+  // continuam na lista, como sempre.
+  const pinnedSections = isMobile ? navSections.filter(sec => sec.pinned) : []
+  const listSections = navSections.filter(sec => !pinnedSections.includes(sec))
+  const pinnedItems = pinnedSections.flatMap(sec => sec.items).filter(allowed)
 
   return (
     <Sidebar collapsible="icon" {...props}>
@@ -133,7 +174,7 @@ export function AdminSideBar({ ...props }: React.ComponentProps<typeof Sidebar>)
           </SidebarMenuItem>
         </SidebarMenu>
 
-        {navSections.map((section, i) => (
+        {listSections.map((section, i) => (
           <React.Fragment key={section.label}>
             {i > 0 && <SidebarSeparator className="my-2" />}
             <SidebarGroup className="p-0">
@@ -142,30 +183,7 @@ export function AdminSideBar({ ...props }: React.ComponentProps<typeof Sidebar>)
               </SidebarGroupLabel>
               <SidebarGroupContent>
                 <SidebarMenu>
-                  {section.items.filter(item => !item.perm || (Array.isArray(item.perm) ? item.perm.some(can) : can(item.perm))).map((item) => {
-                    const active = location.pathname.startsWith(item.url)
-                    return (
-                      <SidebarMenuItem key={item.title}>
-                        <SidebarMenuButton
-                          isActive={active}
-                          tooltip={item.title}
-                          asChild
-                          className="h-10 rounded-lg transition-all"
-                        >
-                          {/* Na gaveta (abaixo de lg) escolher uma tela fecha o menu. */}
-                          <Link to={item.url as never} onClick={() => { if (isMobile) setOpenMobile(false) }}>
-                            <item.icon className="size-4" />
-                            <span>{item.title}</span>
-                          </Link>
-                        </SidebarMenuButton>
-                        {item.url === '/admin/mensagens' && unread > 0 && (
-                          <SidebarMenuBadge className="bg-primary text-primary-foreground">
-                            {unread > 99 ? '99+' : unread}
-                          </SidebarMenuBadge>
-                        )}
-                      </SidebarMenuItem>
-                    )
-                  })}
+                  {section.items.filter(allowed).map(renderItem)}
                 </SidebarMenu>
               </SidebarGroupContent>
             </SidebarGroup>
@@ -175,6 +193,9 @@ export function AdminSideBar({ ...props }: React.ComponentProps<typeof Sidebar>)
 
       {/* Na gaveta (celular/tablet) a lista rola por baixo do rodapé: a borda com sombra avisa que há mais itens. */}
       <SidebarFooter className={cn('flex flex-col gap-2 pb-3', isMobile && 'border-t border-sidebar-border shadow-[0_-8px_8px_-8px_rgba(0,0,0,0.2)]')}>
+        {pinnedItems.length > 0 && (
+          <SidebarMenu>{pinnedItems.map(renderItem)}</SidebarMenu>
+        )}
         {/* O tema fica em Minha conta → Preferências. */}
         <NavUser user={user} />
       </SidebarFooter>
