@@ -209,8 +209,10 @@ src/
 │   │                                #   course-capacity.ts (vagas), month-range.ts (mês atual em Brasília)
 │   ├── export/                      # ExportMenu (selecionados / todos com filtros / extras; CSV ou PDF), ExportOneButton,
 │   │                                #   SelectCheckbox, SelectionInfo; BulkDeleteButton (exclusão em massa)
-│   ├── financeiro/                  # Abas que saíram do arquivo da rota: ClosingTab (fechamento), RecurringTab,
-│   │                                #   PaymentMethodsTab, PaymentMethodSelect (select com "+ Nova forma")
+│   ├── financeiro/                  # Abas que saíram do arquivo da rota: ClosingTab (fechamento, "Reabrir mês"),
+│   │                                #   RecurringTab (reativar pede confirmação), PaymentMethodsTab, PaymentMethodSelect
+│   │                                #   (select com "+ Nova forma"); ClosedMonth (selo "Mês fechado", aviso do formulário,
+│   │                                #   LockedReason = motivo no title de botão desligado)
 │   ├── galerias/                    # GalleryAlbumCard (fotos, legenda, ordem), GalleryAlbumDialog
 │   ├── site-config/                 # Abas de Configurações: OrgInfoPanel (dados do sindicato + texto do Sobre),
 │   │                                #   SocialLinksPanel, GalleriesPanel, PartnersPanel (+ PartnerEditDialog),
@@ -223,7 +225,8 @@ src/
 ├── lib/
 │   ├── api.ts                       # API_BASE, ApiError (status), apiFetch / apiUpload (Bearer; 401 → login)
 │   ├── public-fetch.ts              # publicGet<T>(path): GET de rota pública SEM token; erro HTTP = Error("HTTP nnn")
-│   ├── api-error-message.ts         # apiErrorMessage: mensagem do backend → português (inclui 413 e 429 pelo status)
+│   ├── api-error-message.ts         # apiErrorMessage: mensagem do backend → português (inclui 413 e 429 pelo status);
+│   │                                #   loadErrorMessage: consulta que falhou com 400 mostra o motivo da API, o resto o texto da tela
 │   ├── registration-errors.ts       # Erros da inscrição pelo site: registrationErrorMessage (429 do CPF mostra o texto do
 │   │                                #   servidor), isAlreadyRegistered, isCannotConfirmRegistration (409 → link do WhatsApp)
 │   ├── theme.ts                     # Tema: ThemeMode, readStoredTheme, syncTheme(inAdmin), saveTheme. Cinza e Verde-claro (fundo fosco,
@@ -263,7 +266,8 @@ src/
 │   ├── nota-empenho-pdf.tsx (+assets), relatorio-empenho.ts, relatorio-empenho-pdf.tsx, extenso-legado.ts
 │   │                                # Nota de empenho e "Relatório de despesas" no formato em papel do sindicato
 │   ├── finance-report-pdf.tsx       # Relatório financeiro do período
-│   ├── finance-month.ts             # Meses do Financeiro (fechamento, recorrências)
+│   ├── finance-month.ts             # Meses do Financeiro (fechamento, recorrências); monthNumeric "2026-10" → "10/2026"
+│   ├── finance-closed-month.ts      # Trava do mês fechado (SR-060): closedMonthForRow/Transaction/Transfer, closedMonthMessage
 │   ├── news-schedule.ts             # Agendamento de notícia (relógio de Brasília)
 │   ├── public-events.ts             # Eventos públicos: agrupar por mês, rótulo da data
 │   ├── quote-utils.ts, quote-price-check.ts # Cotações: rótulos/unidades/período; aviso de variação >20%
@@ -319,7 +323,8 @@ O porquê de cada uma está em `docs/HISTORICO.md`.
 
 - **Relógio de Brasília** em tudo que é "dia": prazo de inscrição (até o fim do dia, ou até `registrationDeadlineTime`), curso terminado, banner no ar (0h do início às 23h59 do fim), notícia agendada, "hoje" do painel. As regras ficam em `utils/course-status.ts`, `lib/banner-dates.ts`, `lib/news-schedule.ts` e espelham as do backend.
 - **Horário de parede**: cursos e reservas guardam o horário como ISO com `Z`, mas ele é a hora de Brasília escrita (`lib/agenda.ts`: `wallDate`/`wallTime`/`toWallIso`). Não converta fuso.
-- **Selo "Associado"** (`components/MemberBadge.tsx`, regra em `lib/membership.ts`): `memberStatus === 'ACTIVE'` e `membershipValidUntil` vazia ou de hoje em diante pelo relógio de Brasília (a mesma do filtro `activeMember` e da API). Aparece na lista de inscritos do curso, nas abas Pessoas e Associados (`PersonNameCell`, embaixo do nome para não tirar espaço dele), no topo da ficha (`PersonHeading`) e na busca de pessoa (`PersonPicker`, contatos públicos, relações da ficha). `GET /admin/users` e `GET /admin/users/:id` trazem os dois campos; telas novas que listem pessoas devem usar o `MemberBadge`, não repetir a regra. (A lista de inscritos ainda tem o selo desenhado à mão em `RegistrationsTab`; vale trocá-lo pelo `MemberBadge`.)
+- **Selo "Associado"** (`components/MemberBadge.tsx`, regra em `lib/membership.ts`): `memberStatus === 'ACTIVE'` e `membershipValidUntil` vazia ou de hoje em diante pelo relógio de Brasília (a mesma do filtro `activeMember` e da API). Aparece na lista de inscritos do curso (`RegistrationsTab`), nas abas Pessoas e Associados (`PersonNameCell`, embaixo do nome para não tirar espaço dele), no topo da ficha (`PersonHeading`) e na busca de pessoa (`PersonPicker`, contatos públicos, relações da ficha e a aba Pessoa de "Vincular" na Nota de Empenho do Financeiro). `GET /admin/users` e `GET /admin/users/:id` trazem os dois campos; telas novas que listem pessoas devem usar o `MemberBadge`, não repetir a regra.
+- **Mês fechado no Financeiro** (SR-060, sobre a trava da API da SR-054): o fechamento é por **caixa e mês**, e com o mês fechado os lançamentos daquele caixa com data no mês não são criados, editados nem excluídos (nem entram ou saem de lá); transferência olha a origem e o destino; lançamento sem caixa e comprovantes ficam livres. O mês é o da data em UTC, como na API. A tela sabe o que está fechado por `GET /admin/finance/closings` (sem filtro, todos os caixas) e a regra fica em `lib/finance-closed-month.ts`. Na lista, a linha ganha o selo "Mês fechado" e Editar/Excluir ficam desligados, com o motivo no `title` do invólucro (`LockedReason`: o `Button` desligado é `pointer-events-none`); perna de transferência olha a outra perna se ela estiver na página. "Repetir" continua ligado: o formulário confere a data nova. No formulário de lançamento e no de transferência, o aviso aparece embaixo da data, na largura toda, e os botões de salvar desligam; na edição, tirar o lançamento de um mês fechado também conta. Texto único: `closedMonthMessage` → "Mês 10/2026 fechado no caixa BANCO. Para mudar, reabra o mês na aba Fechamento.". Se a lista de fechamentos não carregar, nada trava e o 409 da API aparece no formulário com o texto dela (`apiErrorMessage` passa o `error` como veio). Reabrir é "Reabrir mês" na aba Fechamento, só com DELETE_FINANCE. Reativar recorrência pausada pede confirmação: os meses da pausa não são lançados.
 - **Pessoa**: só o CPF identifica (gravado só com dígitos; exibir com `maskCPF`). E-mail é opcional; e-mail e telefone podem repetir entre pessoas; telefone é obrigatório. RG é opcional (a CIN usa o CPF), mas validado quando preenchido. Onde se DIGITA o número, o rótulo é "CPF / CIN" (`lib/cin.ts`); onde só se exibe, "CPF".
 - **Campos de pessoa num lugar só**: cada campo é desenhado uma vez em `components/cadastro/person-form-fields.tsx`; as duas telas (`usuarios/novo` e `usuarios/$id`) só escolhem quais e em que cartão. `src/test/forms/cadastro-pessoa.test.ts` exige que todo campo do associado esteja nas duas.
 - **Caixa alta**: `upperNoAccents` nos campos de cadastro (nomes, endereços, razão social). Texto que o visitante lê sai **como foi digitado**: título e observações do curso, título da reserva que vai para `/eventos`.
@@ -540,10 +545,11 @@ Os caminhos abaixo são os que o front chama, relativos a `API_BASE` (`/api` no 
 
 **Financeiro (admin)** — `*_FINANCE`; valores em centavos
 - `GET /admin/finance/categories` (`?all=true` inclui inativas) · `POST` · `PATCH /:id` · `DELETE /:id`; o mesmo para `/accounts` (caixas) e `/payment-methods` (nome em caixa alta, único)
-- `GET /admin/finance/transactions` (from, to, type, categoryId, accountId, method, search; `totals` de todos os filtrados) · `GET …/transactions/export` (CSV) · `POST` · `PATCH /:id` · `DELETE /:id`
+- `GET /admin/finance/transactions` (from, to, type, categoryId, accountId, method, search — descrição, nome / razão social ou CNPJ/CPF da Nota de Empenho; o CNPJ/CPF só quando o termo tem só números e pontuação, com 3+ dígitos; `totals` de todos os filtrados) · `GET …/transactions/export` (CSV) · `POST` · `PATCH /:id` · `DELETE /:id`
 - `POST /admin/finance/transfers` · `POST /admin/finance/transactions/:id/attachments` (multipart) · `GET` / `DELETE /admin/finance/attachments/:id`
+- Mês fechado no caixa → **409** `{ error: "O mês 10/2026 está fechado no caixa \"BANCO\". Reabra o mês para mudar lançamentos dele." }` em criar, editar e excluir lançamento e em criar transferência. Entrada inválida → 400 com o motivo em português (SR-055, ex.: "Data inválida: use um ano entre 1900 e 2999."); os formulários mostram o `error` como veio, e a lista, o resumo e a prévia do fechamento mostram o 400 no lugar do "Não foi possível carregar" (`loadErrorMessage`)
 - `GET /admin/finance/summary?from&to` · recorrências: `GET /recurrences` · `POST` · `PATCH /:id` · `DELETE /:id` · `POST /recurrences/generate` → `{ created }`
-- `GET /admin/finance/closings?accountId&year` · `GET /closings/preview?accountId&month` · `POST /closings` `{ accountId, month, countedBalanceCents, notes? }` (esperado recalculado no servidor) · `DELETE /closings/:id` (reabrir)
+- `GET /admin/finance/closings[?accountId&year]` (sem filtro = todos os caixas: é o que a aba Lançamentos usa para a trava) · `GET /closings/preview?accountId&month` · `POST /closings` `{ accountId, month, countedBalanceCents, notes? }` (esperado recalculado no servidor) · `DELETE /closings/:id` ("Reabrir mês", DELETE_FINANCE; vai para a auditoria como "Reabriu o mês "10/2026 · BANCO"", entidade "Fechamento de caixa")
 
 **Notificações (admin)**
 - `GET /admin/notifications` → `{ unreadCount, pendingCount, events: [...], pending: [...] }` · `PATCH /admin/notifications/read` `{ ids? }` → `{ updated }`
