@@ -128,6 +128,12 @@ export const AUDIT_FIELD_LABELS: Record<string, string> = {
   account: 'Caixa',
   color: 'Cor',
   notes: 'Observações',
+  // Fechamento de caixa: reabrir apaga o fechamento, e a trilha guarda o que estava fechado.
+  month: 'Mês',
+  expectedBalanceCents: 'Saldo esperado',
+  countedBalanceCents: 'Saldo contado',
+  differenceCents: 'Diferença',
+  closedAt: 'Fechado em',
 }
 
 export function auditFieldLabel(field: string): string {
@@ -165,6 +171,9 @@ export function formatAuditValue(field: string, value: AuditValue | undefined): 
     if (field.endsWith('Cents')) return (value / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
     return value.toLocaleString('pt-BR')
   }
+  // Mês do Financeiro ("2026-10", fechamento e recorrência) → "10/2026".
+  const ym = /^(\d{4})-(\d{2})$/.exec(value)
+  if (ym && (field === 'month' || field.endsWith('Month'))) return `${ym[2]}/${ym[1]}`
   const iso = value.match(ISO_RE)
   if (iso) {
     const [, y, m, d, hh, mm] = iso

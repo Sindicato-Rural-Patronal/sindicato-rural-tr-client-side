@@ -7,7 +7,7 @@ veja: painel-geral, mensagens, cotacoes
 busca: sino notificacao aviso pendencia nao lida alerta numero vermelho
 ---
 
-O **sino** fica no topo da barra lateral (e no alto da tela, no celular). O
+O **sino** fica no topo da barra lateral (e no alto da tela, no celular e no tablet, onde o menu é uma gaveta). O
 número em cima dele soma duas coisas diferentes, e entender a diferença ajuda:
 
 ## Pendências

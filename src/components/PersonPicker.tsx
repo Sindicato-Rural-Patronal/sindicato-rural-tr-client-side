@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { ExternalLink, Search } from 'lucide-react'
 import { Input } from '@/components/ui/input'
+import { MemberBadge } from '@/components/MemberBadge'
 import { useAdminUsers } from '@/hooks/useAdmin'
 import { useDebouncedValue } from '@/hooks/useDebouncedValue'
 import { usePermissions } from '@/hooks/usePermissions'
@@ -90,9 +91,14 @@ export function PersonPicker({
                 disabled={excluded}
                 onMouseDown={e => e.preventDefault()}
                 onClick={() => { onPick({ id: u.id, name: u.name, cpf: u.cpf }); setQ(''); setOpen(false) }}
-                className="flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-sm hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
+                className="@container flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-sm hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
               >
-                <span className="truncate">{u.name}</span>
+                {/* O selo fica ao lado do nome quando a lista é larga; numa lista estreita (gaveta, celular)
+                    desce para baixo do nome, para não deixar o nome só com 4 letras. */}
+                <span className="flex min-w-0 flex-col items-start @sm:flex-row @sm:items-center @sm:gap-1.5">
+                  <span className="max-w-full truncate">{u.name}</span>
+                  <MemberBadge person={u} />
+                </span>
                 <span className="shrink-0 text-xs text-muted-foreground">
                   {excluded ? excludedLabel : u.cpf ? maskCPF(u.cpf) : ''}
                 </span>

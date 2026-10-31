@@ -6,7 +6,9 @@ import { NotificationBell } from '@/components/notifications/NotificationBell'
 import { SidebarProvider, SidebarInset, SidebarTrigger } from '@/components/ui/sidebar'
 import { useSessionRenewal } from '@/context/AuthContext'
 import { isTokenValid, safeAdminRedirect } from '@/lib/auth-token'
+import { syncTheme } from '@/lib/theme'
 import { createFileRoute, Outlet, redirect } from '@tanstack/react-router'
+import { useLayoutEffect } from 'react'
 
 export const Route = createFileRoute('/_admin')({
   beforeLoad: ({ location }) => {
@@ -25,6 +27,18 @@ export const Route = createFileRoute('/_admin')({
 
 function AdminLayout() {
   useSessionRenewal()
+
+  // Temas Cinza e Verde-claro valem só no painel: liga ao entrar, desliga ao sair, e
+  // acompanha a troca feita em outra aba (evento `storage`).
+  useLayoutEffect(() => {
+    syncTheme(true)
+    const onStorage = (e: StorageEvent) => { if (e.key === 'theme') syncTheme(true) }
+    window.addEventListener('storage', onStorage)
+    return () => {
+      window.removeEventListener('storage', onStorage)
+      syncTheme(false)
+    }
+  }, [])
 
   return (
     <SidebarProvider>

@@ -32,9 +32,14 @@ o que muda — datas, prazo e nº do evento. Vem como Rascunho.
 
 ## Depois de criado
 
+- Ao **editar**, apagar um campo opcional apaga o valor (valor, carga horária e
+  mínimo de alunos ficam em 0). Veja [Cursos e inscrições](?topico=cursos).
 - **Inscrições** chegam pela página do curso no site.
 - Para inscrever alguém do balcão, veja
   [Como inscrever alguém num curso](?topico=como-inscrever-alguem).
+- O curso novo aparece na aba **Próximos**. **No dia do início, ele passa sozinho
+  para a aba Armazenados**; lá continuam os inscritos, a presença e o botão
+  **Concluir curso**.
 - No dia, **Confirmar início** passa o curso para *Em andamento*.
 
 > Enquanto o curso estiver **Público**, qualquer mudança que você salvar

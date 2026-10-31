@@ -21,7 +21,7 @@ formato é o motivo mais comum de "ficou feio no site".
 | **Galerias** | Página *Sobre* | Qualquer uma |
 | **Logo do parceiro** | Página inicial | Deitada, fundo transparente se possível |
 | **Logo do convênio** | Página do convênio e menu | Deitada |
-| **Foto de pessoa** | Ficha e *Nossa Equipe* | Quadrada (o sistema recorta) |
+| **Foto de pessoa** | Ficha (grande; um clique amplia) e *Nossa Equipe* | Quadrada (o sistema recorta e reduz) |
 
 ## Regras que valem para todas
 

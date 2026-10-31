@@ -88,3 +88,14 @@ export function apiErrorMessage(err: unknown, fallback?: string): string {
 
   return raw || fallback || i18n.t('apiErrors.generic')
 }
+
+/**
+ * Texto de uma consulta que não carregou. 400 é filtro que a API recusou (data
+ * com ano fora de 1900–2999, mês malformado — SR-055) e ela diz o quê, em
+ * português: mostrar "Não foi possível carregar" esconderia o motivo e o
+ * "Tentar de novo" não resolveria. Rede e 5xx ficam com o texto da tela.
+ */
+export function loadErrorMessage(err: unknown, fallback: string): string {
+  if (!(err instanceof ApiError) || err.status !== 400 || /^HTTP \d+$/.test(err.message)) return fallback
+  return apiErrorMessage(err, fallback)
+}

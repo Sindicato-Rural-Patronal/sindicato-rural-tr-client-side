@@ -77,8 +77,10 @@ docker compose -f docker-compose.prod.yml --env-file .env.production up -d --bui
                               calendário + agenda das salas, cursos públicos, cadastros incompletos, últimas ações;
                               ?dia=AAAA-MM-DD&sala=<id>&tipo=COURSE|EVENT|MEETING&nova=reserva; "Personalizar" blocos
 /admin/cursos               → _admin/admin/cursos/index.tsx (CRUD em diálogos: criar, editar, duplicar, inscrições;
-                              ?curso=<id>&aba=inscricoes abre a janela do curso; ?ano=<ano> é o filtro de ano,
-                              SEPARADO da busca por texto; os anos vêm de GET /admin/courses/years)
+                              abas "Próximos" (padrão) e "Armazenados" = ?lista=armazenados, a lista inteira é
+                              components/courses/CoursesList; ?curso=<id>&aba=inscricoes abre a janela do curso
+                              de QUALQUER aba; ?ano=<ano> é o filtro de ano, SEPARADO da busca por texto; os anos
+                              vêm de GET /admin/courses/years)
 /admin/noticias             → _admin/admin/noticias/index.tsx
 /admin/usuarios             → _admin/admin/usuarios/index.tsx (abas ?tab=pessoas (padrão)|associados|empresas|admins;
                               ?page, ?q, ?incomplete=true; "Possíveis duplicados"; regras e convites na aba admins)
@@ -111,7 +113,7 @@ docker compose -f docker-compose.prod.yml --env-file .env.production up -d --bui
 
 Layouts pai:
 - `_public.tsx` — Header + Footer público + botão flutuante do WhatsApp
-- `_admin.tsx` — Sidebar admin (AdminSideBar), token-gated (valida JWT + expiração); no celular, topo com SidebarTrigger + sino de notificações; monta `CommandPalette` e `LeaveConfirmHost`
+- `_admin.tsx` — Sidebar admin (AdminSideBar), token-gated (valida JWT + expiração); liga o tema Cinza/Verde-claro do painel (`syncTheme(true)`) ao entrar e desliga ao sair; no celular, topo com SidebarTrigger + sino de notificações; monta `CommandPalette` e `LeaveConfirmHost`
 
 `routeTree.gen.ts` é **gerado automaticamente** pelo TanStack Router — não editar manualmente.
 
@@ -162,8 +164,9 @@ src/
 │   ├── notifications/NotificationBell.tsx # Sino (avisos não lidos + pendências warning): Popover no computador,
 │   │                                #   Sheet no celular; abre o link pelo roteador
 │   ├── ThemeToggle.tsx              # Claro/escuro no cabeçalho público
-│   ├── ThemeSetting.tsx             # Claro/escuro/sistema em Minha conta (chave `theme` no localStorage; main.tsx aplica)
+│   ├── ThemeSetting.tsx             # Claro/escuro/sistema/Cinza/Verde-claro em Minha conta (chave `theme` no localStorage)
 │   ├── PersonPicker.tsx             # Busca de pessoa do cadastro (lista suspensa; "Cadastrar nova pessoa" em outra aba, só com CREATE_USER)
+│   ├── MemberBadge.tsx              # Selo "Associado" (amarelo; só some para quem não está em dia): lista de pessoas, ficha e busca de pessoa
 │   ├── PasswordInput.tsx            # Campo de senha com mostrar/ocultar (repassa `ref`)
 │   ├── PasswordStrengthHint.tsx     # Força da senha: barra + rótulo + até 2 dicas; só orienta, nunca bloqueia
 │   ├── InitialsAvatar.tsx           # Foto ou iniciais
@@ -184,12 +187,18 @@ src/
 │   │                                #   (PersonField + FieldRow + SelectField); CameraDialog (foto pela câmera no cadastro);
 │   │                                #   cadastros repetidos: MergePeopleDialog, DuplicatePeopleList, merge-people.ts;
 │   │                                #   empresas: CompaniesList, CompanyForm, CompanyMembersPanel, PersonCompanies;
+│   │                                #   PersonPhoto (foto da ficha: 128/160 px, clique amplia num diálogo);
+│   │                                #   PersonNameCell (coluna Nome da lista de pessoas) e PersonHeading (título da ficha), os dois com o MemberBadge;
 │   │                                #   PropertiesManager (propriedades/endereços de pessoa e empresa; lápis só com `onUpdate`;
 │   │                                #   `loadError` mostra a falha em vez de "Nenhuma propriedade")
 │   ├── conta/PerfilTab.tsx          # Aba Perfil de Minha conta: foto, nome, usuário; trocar a senha pede a senha atual
 │   ├── convenio/                    # ConvenioEditor (admin) e ConvenioPageView (página pública e pré-visualização)
 │   ├── cotacoes/                    # QuoteHistoryChart (gráfico SVG), QuoteDayCard e CotacaoSimples (tela /cotacao)
-│   ├── courses/                     # CourseFormDialog (criar/editar/duplicar — fora do arquivo da rota para o editor de
+│   ├── courses/                     # CoursesList (lista do painel com as abas Próximos/Armazenados, filtros, cartões e paginação),
+│   │                                #   AdminCourseCard + CourseCardSkeleton, RegistrationsTab (aba "Inscrições" da janela do
+│   │                                #   curso: ordem de chegada, "Inscrito em dd/mm/aaaa hh:mm", presença, fichas) — os três fora
+│   │                                #   do arquivo da rota para poder ser testados;
+│   │                                #   CourseFormDialog (criar/editar/duplicar — fora do arquivo da rota para o editor de
 │   │                                #   markdown não ir ao bundle inicial), PhotoGrid; RegistrationDialog (inscrição pelo
 │   │                                #   site em /cursos/$id: CPF + 4 últimos dígitos do telefone → confirmar cadastro ou
 │   │                                #   formulário novo; fora do arquivo da rota para poder ser testado)
@@ -200,8 +209,11 @@ src/
 │   │                                #   course-capacity.ts (vagas), month-range.ts (mês atual em Brasília)
 │   ├── export/                      # ExportMenu (selecionados / todos com filtros / extras; CSV ou PDF), ExportOneButton,
 │   │                                #   SelectCheckbox, SelectionInfo; BulkDeleteButton (exclusão em massa)
-│   ├── financeiro/                  # Abas que saíram do arquivo da rota: ClosingTab (fechamento), RecurringTab,
-│   │                                #   PaymentMethodsTab, PaymentMethodSelect (select com "+ Nova forma")
+│   ├── financeiro/                  # Abas que saíram do arquivo da rota: ClosingTab (fechamento, "Reabrir mês"),
+│   │                                #   RecurringTab (reativar pede confirmação), PaymentMethodsTab, PaymentMethodSelect
+│   │                                #   (select com "+ Nova forma"); ClosedMonth (selo "Mês fechado", aviso do formulário,
+│   │                                #   LockedReason = motivo no title de botão desligado); ReciboButton (botão "Gerar recibo
+│   │                                #   em PDF" da linha de ENTRADA, SR-065; recebe `org` de useOrgInfo; testável fora da rota)
 │   ├── galerias/                    # GalleryAlbumCard (fotos, legenda, ordem), GalleryAlbumDialog
 │   ├── site-config/                 # Abas de Configurações: OrgInfoPanel (dados do sindicato + texto do Sobre),
 │   │                                #   SocialLinksPanel, GalleriesPanel, PartnersPanel (+ PartnerEditDialog),
@@ -214,9 +226,12 @@ src/
 ├── lib/
 │   ├── api.ts                       # API_BASE, ApiError (status), apiFetch / apiUpload (Bearer; 401 → login)
 │   ├── public-fetch.ts              # publicGet<T>(path): GET de rota pública SEM token; erro HTTP = Error("HTTP nnn")
-│   ├── api-error-message.ts         # apiErrorMessage: mensagem do backend → português (inclui 413 e 429 pelo status)
+│   ├── api-error-message.ts         # apiErrorMessage: mensagem do backend → português (inclui 413 e 429 pelo status);
+│   │                                #   loadErrorMessage: consulta que falhou com 400 mostra o motivo da API, o resto o texto da tela
 │   ├── registration-errors.ts       # Erros da inscrição pelo site: registrationErrorMessage (429 do CPF mostra o texto do
 │   │                                #   servidor), isAlreadyRegistered, isCannotConfirmRegistration (409 → link do WhatsApp)
+│   ├── theme.ts                     # Tema: ThemeMode, readStoredTheme, syncTheme(inAdmin), saveTheme. Cinza e Verde-claro (fundo fosco,
+│   │                                #   cartões brancos) só valem no painel: `data-painel` no <html> liga as cores de index.css
 │   ├── chunk-reload.ts              # Recarga automática depois de deploy (vite:preloadError): guarda por horário, 60 s entre recargas
 │   ├── login-error.ts               # loginErrorMessage: senha errada / 429 / sistema fora do ar / sem internet
 │   ├── auth-token.ts                # JWT no navegador: validade, renovação, safeAdminRedirect, loginHref
@@ -234,7 +249,7 @@ src/
 │   ├── user-form-options.ts         # Opções dos selects do cadastro de pessoa
 │   ├── cin.ts                       # CPF_LABEL ("CPF / CIN") e CIN_HINT
 │   ├── member-types.ts              # MEMBER_TYPES e MEMBER_STATUS (listas fixas, iguais às do backend) + memberTypeLabel
-│   ├── membership.ts                # isActiveMember (selo "Associado")
+│   ├── membership.ts                # isActiveMember / personIsActiveMember (selo "Associado": ACTIVE e validade vazia ou de hoje em diante, dia em Brasília)
 │   ├── room-names.ts                # ROOM_NAMES (lista fixa, igual à do backend)
 │   ├── unimed-options.ts            # UNIMED_MOVEMENT_TYPES, UNIMED_DEPENDENCY_DEGREES (listas fixas) + unimedOptionsWith
 │   ├── unimed-docs.ts               # Baixa Ficha/Termo/Contrato pelo id; unimed-{ficha,termo,contrato}-pdf.tsx,
@@ -245,13 +260,18 @@ src/
 │   ├── agenda-pdf.tsx               # "Imprimir" da agenda
 │   ├── dashboard-agenda.ts          # parseDashboardSearch (?dia&sala&tipo&nova) e kindDays
 │   ├── calendar-links.ts            # .ics, Google Agenda e WhatsApp do curso
+│   ├── course-views.ts              # Abas Próximos/Armazenados da lista de cursos: COURSE_VIEWS, ?lista= (courseViewFromSlug/ToSlug), textos
 │   ├── course-duplicate.ts          # roomIdByName (a API devolve o NOME da sala) e courseToDuplicateForm ("Duplicar curso")
 │   ├── lista-presenca-pdf.tsx       # Lista de presença (uma folha por dia)
 │   ├── ficha-inscricao-pdf.tsx      # Ficha de inscrição do curso
 │   ├── nota-empenho-pdf.tsx (+assets), relatorio-empenho.ts, relatorio-empenho-pdf.tsx, extenso-legado.ts
 │   │                                # Nota de empenho e "Relatório de despesas" no formato em papel do sindicato
+│   ├── recibo.ts, recibo-pdf.tsx    # Recibo de entrada do Financeiro (SR-065, F4), desenho PADRÃO: recibo.ts é puro (podeGerarRecibo,
+│   │                                #   pagadorDoRecibo, trechosDoRecibo = a frase, montarRecibo, nomeDoArquivoRecibo, emissorDoRecibo e
+│   │                                #   RECIBO_TEXTOS = TODOS os textos); recibo-pdf.tsx só desenha (ESTILO no topo = TODOS os estilos)
 │   ├── finance-report-pdf.tsx       # Relatório financeiro do período
-│   ├── finance-month.ts             # Meses do Financeiro (fechamento, recorrências)
+│   ├── finance-month.ts             # Meses do Financeiro (fechamento, recorrências); monthNumeric "2026-10" → "10/2026"
+│   ├── finance-closed-month.ts      # Trava do mês fechado (SR-060): closedMonthForRow/Transaction/Transfer, closedMonthMessage
 │   ├── news-schedule.ts             # Agendamento de notícia (relógio de Brasília)
 │   ├── public-events.ts             # Eventos públicos: agrupar por mês, rótulo da data
 │   ├── quote-utils.ts, quote-price-check.ts # Cotações: rótulos/unidades/período; aviso de variação >20%
@@ -270,6 +290,7 @@ src/
 ├── utils/
 │   ├── format-data-from-string.ts   # formatDateFromString (YYYY-MM-DD ou ISO → DD/MM/YYYY, sem fuso)
 │   ├── dates.ts                     # toIso, toYmd(date), todayYmd() (fuso local)
+│   ├── format-datetime-brasilia.ts  # formatDateTimeBrasilia(iso): instante real (createdAt) → "dd/mm/aaaa hh:mm" de Brasília; NÃO serve para horário de parede
 │   ├── date-input.ts                # maskDateBr, parseDateBr, ymdToBr — do DatePicker
 │   ├── course-status.ts             # getCourseSituation, getRegistrationBlock, hasCourseEnded… — dia em Brasília, igual ao backend
 │   ├── course-attendance.ts         # Presença: contagens, courseDays, sortByName
@@ -278,7 +299,7 @@ src/
 │   ├── cpf.ts, cnpj.ts              # Validação (CPF comparado só pelos dígitos)
 │   ├── age.ts, extenso.ts, format-currency.ts, text-format.ts (upperNoAccents)
 │   ├── download.ts                  # saveBlob, openBlob, fileSlug
-│   ├── resize-image.ts              # resizeToSquare (avatar)
+│   ├── resize-image.ts              # resizeToSquare (recorte quadrado, sem ampliar; foto de pessoa = PERSON_PHOTO_SIZE 800 px, avatar do admin 256)
 │   ├── safe-url.ts, escape-html.ts  # Link digitado pelo admin; texto dinâmico em dangerouslySetInnerHTML
 └── main.tsx                         # Tema salvo, recarga depois de deploy (lib/chunk-reload.ts), router com telas padrão em português
 ```
@@ -306,11 +327,16 @@ O porquê de cada uma está em `docs/HISTORICO.md`.
 
 - **Relógio de Brasília** em tudo que é "dia": prazo de inscrição (até o fim do dia, ou até `registrationDeadlineTime`), curso terminado, banner no ar (0h do início às 23h59 do fim), notícia agendada, "hoje" do painel. As regras ficam em `utils/course-status.ts`, `lib/banner-dates.ts`, `lib/news-schedule.ts` e espelham as do backend.
 - **Horário de parede**: cursos e reservas guardam o horário como ISO com `Z`, mas ele é a hora de Brasília escrita (`lib/agenda.ts`: `wallDate`/`wallTime`/`toWallIso`). Não converta fuso.
+- **Selo "Associado"** (`components/MemberBadge.tsx`, regra em `lib/membership.ts`): `memberStatus === 'ACTIVE'` e `membershipValidUntil` vazia ou de hoje em diante pelo relógio de Brasília (a mesma do filtro `activeMember` e da API). Aparece na lista de inscritos do curso (`RegistrationsTab`), nas abas Pessoas e Associados (`PersonNameCell`, embaixo do nome para não tirar espaço dele), no topo da ficha (`PersonHeading`) e na busca de pessoa (`PersonPicker`, contatos públicos, relações da ficha e a aba Pessoa de "Vincular" na Nota de Empenho do Financeiro). `GET /admin/users` e `GET /admin/users/:id` trazem os dois campos; telas novas que listem pessoas devem usar o `MemberBadge`, não repetir a regra.
+- **Mês fechado no Financeiro** (SR-060, sobre a trava da API da SR-054): o fechamento é por **caixa e mês**, e com o mês fechado os lançamentos daquele caixa com data no mês não são criados, editados nem excluídos (nem entram ou saem de lá); transferência olha a origem e o destino; lançamento sem caixa e comprovantes ficam livres. O mês é o da data em UTC, como na API. A tela sabe o que está fechado por `GET /admin/finance/closings` (sem filtro, todos os caixas) e a regra fica em `lib/finance-closed-month.ts`. Na lista, a linha ganha o selo "Mês fechado" e Editar/Excluir ficam desligados, com o motivo no `title` do invólucro (`LockedReason`: o `Button` desligado é `pointer-events-none`); perna de transferência olha a outra perna se ela estiver na página. "Repetir" continua ligado: o formulário confere a data nova. No formulário de lançamento e no de transferência, o aviso aparece embaixo da data, na largura toda, e os botões de salvar desligam; na edição, tirar o lançamento de um mês fechado também conta. Texto único: `closedMonthMessage` → "Mês 10/2026 fechado no caixa BANCO. Para mudar, reabra o mês na aba Fechamento.". Se a lista de fechamentos não carregar, nada trava e o 409 da API aparece no formulário com o texto dela (`apiErrorMessage` passa o `error` como veio). Reabrir é "Reabrir mês" na aba Fechamento, só com DELETE_FINANCE. Reativar recorrência pausada pede confirmação: os meses da pausa não são lançados.
+- **Recibo de entrada (SR-065, F4)**: botão "Gerar recibo em PDF" (ícone `HandCoins`) na lista do Financeiro, ao lado da Nota de Empenho, **só em lançamento de entrada** (`type === 'IN'` e sem `transferId`: saída, "só nota" e a perna de entrada de uma transferência não têm). Funciona com o mês fechado (só lê o lançamento). O desenho é **padrão**, feito antes de o cliente mandar o modelo que usa hoje; para ajustar, textos em `RECIBO_TEXTOS` (`lib/recibo.ts`) e estilos em `ESTILO` (topo de `lib/recibo-pdf.tsx`), sem mexer no resto. Frase: "Recebemos de <Nome / Razão social>, CNPJ|CPF <documento formatado>, <endereço>, a importância de R$ x (<extenso do legado>), referente a <descrição>."; os dados de quem pagou são os do `empenho` do lançamento (os mesmos da Nota de Empenho e da coluna "Nome / Razão social": `fornecedorDoLancamento`, `cnpjCpf`, endereço/bairro/cidade/UF/CEP), a frase se adapta sem nome e/ou sem documento (o endereço só entra havendo um dos dois) e o rótulo é CPF (11 dígitos), CNPJ (14) ou "CNPJ/CPF" (outro tamanho, como foi digitado). Linha "Forma de pagamento" só com forma; "<Cidade das Configurações>, <data por extenso>" (o dia da data do lançamento, sem fuso); assinatura "Sindicato Rural de Terra Roxa" / "Assinatura do responsável". O quadro "Nº" só aparece com `number` no lançamento (campo da SR-064; o tipo do recibo já aceita `number?: number | null`) e também entra no nome do arquivo (`recibo-<número ou AAAA-MM-DD>-<nome curto>.pdf`). Cabeçalho: emblema (`SINDICATO_EMBLEMA_PNG` de `unimed-pdf-assets.ts`; a Nota de Empenho só tem o fundo inteiro, sem logo solto), nome fixo, CNPJ de `ORG_CONTACT` (as Configurações não têm nome nem CNPJ) e endereço/telefone de `useOrgInfo`. A4 em pé, uma via, só preto e cinza (o emblema sai cinza na impressão). **Armadilha do react-pdf**: pontuação que abre um trecho novo (", referente a") deixa a linha quebrar ali com um hífen no fim da linha; por isso `trechosDoRecibo` cola a pontuação no trecho anterior (há teste).
 - **Pessoa**: só o CPF identifica (gravado só com dígitos; exibir com `maskCPF`). E-mail é opcional; e-mail e telefone podem repetir entre pessoas; telefone é obrigatório. RG é opcional (a CIN usa o CPF), mas validado quando preenchido. Onde se DIGITA o número, o rótulo é "CPF / CIN" (`lib/cin.ts`); onde só se exibe, "CPF".
 - **Campos de pessoa num lugar só**: cada campo é desenhado uma vez em `components/cadastro/person-form-fields.tsx`; as duas telas (`usuarios/novo` e `usuarios/$id`) só escolhem quais e em que cartão. `src/test/forms/cadastro-pessoa.test.ts` exige que todo campo do associado esteja nas duas.
 - **Caixa alta**: `upperNoAccents` nos campos de cadastro (nomes, endereços, razão social). Texto que o visitante lê sai **como foi digitado**: título e observações do curso, título da reserva que vai para `/eventos`.
 - **Listas fixas duplicadas com o backend**: `ROOM_NAMES`, `MEMBER_TYPES`, `MEMBER_STATUS`, `UNIMED_MOVEMENT_TYPES`, `UNIMED_DEPENDENCY_DEGREES`. Mudou uma, mude a outra; o teste que compara os dois repositórios mora no backend (`src/lib/__tests__/listas-fixas_test.ts`).
 - **Edição com campo opcional vazio**: na reserva, vai como `null`. No curso (`buildCourseBody` em `lib/course-body.ts`), na edição todo campo opcional esvaziado vai como `null` (fora do PATCH a API mantém o valor antigo); nos números (preço, carga horária, mínimo de alunos) a API grava 0. A criação nunca manda `null`.
+- **Abas da lista de cursos (SR-059, A9)**: "Próximos" = o dia do início ainda não chegou; "Armazenados" = o dia do início é hoje ou já passou (Brasília), de qualquer status, o concluído marcado como "Concluído". Quem separa é o backend (`GET /admin/courses?view=upcoming|stored`, sem job): o curso muda de aba sozinho no dia do início. A aba vai na URL (`?lista=armazenados`; Próximos é o padrão e não aparece). Trocar de aba volta para a página 1 e zera a seleção (senão "Excluir selecionados" alcançaria cursos fora da tela); busca e ano continuam. A janela do curso (`?curso=<id>`, inscritos, presença, documentos, "Concluir curso") é a mesma nas duas abas. Só a lista do gerenciamento usa `view`: Painel Geral, site público e seletores listam sem ele. A planilha "Exportar" de cursos aceita busca e status, não aba nem ano; por isso o "Todos" do menu não mostra o total da aba.
+- **Inscritos do curso (SR-059, A6)**: a API entrega da mais antiga para a mais nova e a tela mostra **na ordem recebida** (não reordene no front). Cada inscrição mostra "Inscrito em dd/mm/aaaa hh:mm" (`formatDateTimeBrasilia`, `createdAt` é um instante real, não horário de parede), em qualquer largura. A lista de presença em papel continua em ordem alfabética (`sortByName`), de propósito.
 - **Curso**: inicia mesmo com inscrição não confirmada; `COMPLETED` é sempre manual; o sistema NÃO emite certificado (quem emite é a FAEP).
 - **Home**: sem seção de galerias (ficam no Sobre, pedido do usuário); convênios são itens próprios no menu, sem submenu.
 - **Painel Geral — arrastar blocos**: a prévia do arrasto anda só por `transform` (`dashboard-drag.ts`) e a ordem real só muda no `onDragEnd`. Não use as estratégias prontas do `@dnd-kit` nem reordene no `onDragOver`: as duas coisas já foram tentadas e quebram (blocos esticados; blocos se alternando sem parar). Grade de 4 colunas, bloco de 2 a 4 (`DashboardSpan`); preferências antigas `'full'`/`'half'` viram 4 e 2 em `normalizePrefs`.
@@ -407,7 +433,7 @@ useSendContactMessage       → POST /contacts/message (público, fetch cru)
 ```
 
 **Os outros arquivos de `hooks/`**:
-- `useCourse.ts` — admin: `useAdminCourses` (`status`, `search`, `year`), `useCourseYears`, `useAdminCourse` (`adminCourseQuery`), criar/editar/excluir, capa, galeria, instrutores (`useAssignInstructor`, `useRemoveInstructorAssignment`), inscrições (`useAllCourseRegistrations`, `useAdminRegisterPerson`, `useConfirmAllRegistrations`), presença (`useSetRegistrationAttendance`, `useMarkUnmarkedAttendance`), `useCompleteCourse`; público: `useCourses`, `useCourse`, `useLookupCpf` (POST, CPF + 4 últimos dígitos), `useRegisterByCpf` (`{ cpf, phoneEnd }`), `useRegisterFull`.
+- `useCourse.ts` — admin: `useAdminCourses` (`status`, `search`, `year`, `view`; a aba é parte da chave do cache), `useCourseYears`, `useAdminCourse` (`adminCourseQuery`), criar/editar/excluir, capa, galeria, instrutores (`useAssignInstructor`, `useRemoveInstructorAssignment`), inscrições (`useAllCourseRegistrations`, `useAdminRegisterPerson`, `useConfirmAllRegistrations`), presença (`useSetRegistrationAttendance`, `useMarkUnmarkedAttendance`), `useCompleteCourse`; público: `useCourses`, `useCourse`, `useLookupCpf` (POST, CPF + 4 últimos dígitos), `useRegisterByCpf` (`{ cpf, phoneEnd }`), `useRegisterFull`.
 - `useNews.ts` — `useNews`, `useNewsDetail` (públicos), `useAdminNews` (`status`, `search`), criar/editar/excluir, `useUploadNewsBanner`, `useUploadNewsBlockImage`.
 - `useBanner.ts` — `useBanners` (público, publicGet), `useAdminBanners`, criar/editar/excluir, imagem, `useReorderBanners`.
 - `useCompanies.ts` — empresas: lista, detalhe, CRUD, vínculos (members; pela pessoa: `useLinkPersonToCompany`/`useUnlinkPersonFromCompany`), propriedades, parceria (`useSetCompanyPartner`, `useReorderPartners`, `useUploadCompanyPartnerLogo`), títulos (`useCompanyMemberTitles`, `COMMON_MEMBER_TITLES`), `companyDisplayName`.
@@ -437,12 +463,12 @@ Os caminhos abaixo são os que o front chama, relativos a `API_BASE` (`/api` no 
 - Os três: 5 erros por hora no mesmo CPF → 429 "Muitas tentativas com este CPF…". `registrationErrorMessage` (`lib/registration-errors.ts`) mostra a mensagem do servidor, que o `apiErrorMessage` trocaria pelo texto genérico do login
 
 **Cursos (admin)**
-- `GET /admin/courses` (`page`, `limit`, `status`, `search`, `year`) · `GET /admin/courses/years` · `GET /admin/courses/:id`
+- `GET /admin/courses` (`page`, `limit`, `status`, `search`, `year`, `view=upcoming|stored` — só o gerenciamento manda `view`) · `GET /admin/courses/years` · `GET /admin/courses/:id`
 - `POST /courses` — criar (aceita `eventNumber`, `minStudents`, `roomId`). "Duplicar curso" manda `copyCoverFromCourseId` e `copyInstructorsFromCourseId` + `instructorAssignmentIds`; resposta `{ id, coverCopied?, instructorsCopied? }`. Galeria não é copiada
 - `PATCH /courses/:id` — atualizar (campo fora do corpo não muda; `null` limpa: `registrationDeadline`, `observations` e `eventNumber` ficam nulos, `price`, `workloadHours` e `minStudents` viram 0) · `DELETE /courses/:id`
 - `POST /courses/:id/banner` (multipart; gera a miniatura WebP → `{ url, thumbUrl }`) · `POST /courses/:id/gallery` · `DELETE /courses/:id/gallery/:photoId`
 - `POST /admin/courses/:id/instructors` · `DELETE /admin/courses/:id/instructors/:assignmentId`
-- `GET /admin/courses/:id/registrations` (paginado) · `POST /admin/courses/:id/registrations` `{ userDataId }` ("Inscrever pessoa": já confirmada, ignora o prazo; repetida ou lotado → 409)
+- `GET /admin/courses/:id/registrations` (paginado; da inscrição MAIS ANTIGA para a mais nova, com `createdAt`) · `POST /admin/courses/:id/registrations` `{ userDataId }` ("Inscrever pessoa": já confirmada, ignora o prazo; repetida ou lotado → 409)
 - `DELETE /admin/registrations/:id` · `PATCH /admin/registrations/:id/confirm` · `PATCH /admin/courses/:id/registrations/confirm-all` → `{ confirmed }`
 - `POST /admin/registrations/:id/ficha` (multipart) · `GET` · `DELETE` — ficha de inscrição escaneada
 - `POST /admin/courses/:id/start` → `IN_PROGRESS` · `PATCH /admin/courses/:id/complete` (só em andamento; senão 409) → `COMPLETED`
@@ -524,10 +550,11 @@ Os caminhos abaixo são os que o front chama, relativos a `API_BASE` (`/api` no 
 
 **Financeiro (admin)** — `*_FINANCE`; valores em centavos
 - `GET /admin/finance/categories` (`?all=true` inclui inativas) · `POST` · `PATCH /:id` · `DELETE /:id`; o mesmo para `/accounts` (caixas) e `/payment-methods` (nome em caixa alta, único)
-- `GET /admin/finance/transactions` (from, to, type, categoryId, accountId, method, search; `totals` de todos os filtrados) · `GET …/transactions/export` (CSV) · `POST` · `PATCH /:id` · `DELETE /:id`
+- `GET /admin/finance/transactions` (from, to, type, categoryId, accountId, method, search — descrição, nome / razão social ou CNPJ/CPF da Nota de Empenho; o CNPJ/CPF só quando o termo tem só números e pontuação, com 3+ dígitos; `totals` de todos os filtrados) · `GET …/transactions/export` (CSV) · `POST` · `PATCH /:id` · `DELETE /:id`
 - `POST /admin/finance/transfers` · `POST /admin/finance/transactions/:id/attachments` (multipart) · `GET` / `DELETE /admin/finance/attachments/:id`
+- Mês fechado no caixa → **409** `{ error: "O mês 10/2026 está fechado no caixa \"BANCO\". Reabra o mês para mudar lançamentos dele." }` em criar, editar e excluir lançamento e em criar transferência. Entrada inválida → 400 com o motivo em português (SR-055, ex.: "Data inválida: use um ano entre 1900 e 2999."); os formulários mostram o `error` como veio, e a lista, o resumo e a prévia do fechamento mostram o 400 no lugar do "Não foi possível carregar" (`loadErrorMessage`)
 - `GET /admin/finance/summary?from&to` · recorrências: `GET /recurrences` · `POST` · `PATCH /:id` · `DELETE /:id` · `POST /recurrences/generate` → `{ created }`
-- `GET /admin/finance/closings?accountId&year` · `GET /closings/preview?accountId&month` · `POST /closings` `{ accountId, month, countedBalanceCents, notes? }` (esperado recalculado no servidor) · `DELETE /closings/:id` (reabrir)
+- `GET /admin/finance/closings[?accountId&year]` (sem filtro = todos os caixas: é o que a aba Lançamentos usa para a trava) · `GET /closings/preview?accountId&month` · `POST /closings` `{ accountId, month, countedBalanceCents, notes? }` (esperado recalculado no servidor) · `DELETE /closings/:id` ("Reabrir mês", DELETE_FINANCE; vai para a auditoria como "Reabriu o mês "10/2026 · BANCO"", entidade "Fechamento de caixa")
 
 **Notificações (admin)**
 - `GET /admin/notifications` → `{ unreadCount, pendingCount, events: [...], pending: [...] }` · `PATCH /admin/notifications/read` `{ ids? }` → `{ updated }`

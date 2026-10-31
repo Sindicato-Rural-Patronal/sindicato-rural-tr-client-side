@@ -1,42 +1,26 @@
 import { useEffect, useState } from 'react'
-import { Moon, Sun, Monitor } from 'lucide-react'
+import { Leaf, Moon, Monitor, Palette, Sun } from 'lucide-react'
+import { readStoredTheme, saveTheme, type ThemeMode } from '@/lib/theme'
 
-type Mode = 'light' | 'dark' | 'system'
-
-function currentMode(): Mode {
-  try {
-    const s = localStorage.getItem('theme')
-    if (s === 'light' || s === 'dark') return s
-    return 'system'
-  } catch {
-    return 'system'
-  }
-}
-
-function applyMode(mode: Mode) {
-  try {
-    localStorage.setItem('theme', mode)
-    const prefersDark = window.matchMedia?.('(prefers-color-scheme: dark)').matches
-    const dark = mode === 'dark' || (mode === 'system' && prefersDark)
-    document.documentElement.classList.toggle('dark', !!dark)
-    window.dispatchEvent(new Event('themechange'))
-  } catch {
-    /* localStorage indisponível — ignora */
-  }
-}
-
-const OPTIONS: { mode: Mode; label: string; Icon: typeof Sun }[] = [
+const OPTIONS: { mode: ThemeMode; label: string; Icon: typeof Sun }[] = [
   { mode: 'light', label: 'Claro', Icon: Sun },
   { mode: 'dark', label: 'Escuro', Icon: Moon },
   { mode: 'system', label: 'Sistema', Icon: Monitor },
+  { mode: 'gray', label: 'Cinza', Icon: Palette },
+  { mode: 'green', label: 'Verde-claro', Icon: Leaf },
 ]
 
-/** Seletor de tema com 3 opções (claro/escuro/sistema). */
+/**
+ * Seletor de tema do painel: claro, escuro, sistema, cinza e verde-claro.
+ * Cinza e Verde-claro (fundo fosco, cartões brancos) valem só no painel admin;
+ * o site público continua claro mesmo com um deles salvo. A escolha fica no
+ * navegador (localStorage `theme`), como a de sempre.
+ */
 export function ThemeSetting() {
-  const [mode, setMode] = useState<Mode>(currentMode)
+  const [mode, setMode] = useState<ThemeMode>(readStoredTheme)
 
   useEffect(() => {
-    const sync = () => setMode(currentMode())
+    const sync = () => setMode(readStoredTheme())
     window.addEventListener('themechange', sync)
     window.addEventListener('storage', sync)
     return () => {
@@ -45,26 +29,31 @@ export function ThemeSetting() {
     }
   }, [])
 
-  function pick(m: Mode) {
-    applyMode(m)
+  function pick(m: ThemeMode) {
+    saveTheme(m, true)
     setMode(m)
   }
 
   return (
-    <div className="inline-flex rounded-md border border-border p-0.5">
-      {OPTIONS.map(o => (
-        <button
-          key={o.mode}
-          type="button"
-          onClick={() => pick(o.mode)}
-          aria-pressed={mode === o.mode}
-          className={`inline-flex items-center gap-1.5 rounded px-3 py-1.5 text-sm font-medium transition-colors ${
-            mode === o.mode ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'
-          }`}
-        >
-          <o.Icon className="size-4" /> {o.label}
-        </button>
-      ))}
+    <div className="flex flex-col gap-2">
+      <div role="group" aria-label="Tema do painel" className="inline-flex max-w-full flex-wrap gap-0.5 rounded-md border border-border p-0.5">
+        {OPTIONS.map(o => (
+          <button
+            key={o.mode}
+            type="button"
+            onClick={() => pick(o.mode)}
+            aria-pressed={mode === o.mode}
+            className={`inline-flex items-center gap-1.5 rounded px-3 py-1.5 text-sm font-medium transition-colors ${
+              mode === o.mode ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            <o.Icon className="size-4" /> {o.label}
+          </button>
+        ))}
+      </div>
+      <p className="text-xs text-muted-foreground">
+        Cinza e Verde-claro mudam só o fundo do painel; o site público continua claro.
+      </p>
     </div>
   )
 }

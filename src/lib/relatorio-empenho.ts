@@ -1,4 +1,4 @@
-import type { FinanceTransaction } from '@/hooks/useFinance'
+import type { Empenho, FinanceTransaction } from '@/hooks/useFinance'
 import { upperNoAccents } from '@/utils/text-format'
 
 // Relatório de despesas por empenho, no formato que o sindicato já usa no
@@ -46,7 +46,7 @@ export function grupoDoLancamento(t: FinanceTransaction): GrupoEmpenho {
  * nome fantasia. `null` quando a nota não tem nenhum dos dois — nunca cai na
  * descrição (a lista mostra os dois lado a lado).
  */
-export function fornecedorDoLancamento(t: FinanceTransaction): string | null {
+export function fornecedorDoLancamento(t: { empenho?: Empenho | null }): string | null {
   return t.empenho?.razaoSocial?.trim() || t.empenho?.nomeFantasia?.trim() || null
 }
 

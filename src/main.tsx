@@ -11,28 +11,18 @@ import { Toaster } from 'sonner'
 import { RouteErrorPage } from '@/components/RouteErrorPage'
 import { PageLoader } from '@/components/PageLoader'
 import { reloadForNewChunks } from '@/lib/chunk-reload'
+import { isAdminPath, readStoredTheme, syncTheme } from '@/lib/theme'
 import './index.css';
 import './i18n';
 
-// Aplica o tema salvo antes do render (evita flash claro→escuro).
-// 'light' | 'dark' | 'system' (ou ausente = segue o SO).
-function applyTheme() {
-  try {
-    const stored = localStorage.getItem('theme')
-    const prefersDark = window.matchMedia?.('(prefers-color-scheme: dark)').matches
-    const dark = stored === 'dark' || ((stored === 'system' || !stored) && prefersDark)
-    document.documentElement.classList.toggle('dark', !!dark)
-  } catch {
-    /* localStorage indisponível — mantém tema claro padrão */
-  }
-}
-applyTheme()
+// Aplica o tema salvo antes do render (evita flash claro→escuro). Cinza e Verde-claro só
+// valem no painel (/admin), ver lib/theme.ts; o layout do painel cuida das trocas de tela.
+syncTheme(isAdminPath(window.location.pathname))
 // No modo "sistema", acompanha mudanças do SO ao vivo.
 try {
   window.matchMedia?.('(prefers-color-scheme: dark)').addEventListener('change', () => {
-    const stored = localStorage.getItem('theme')
-    if (stored === 'system' || !stored) {
-      applyTheme()
+    if (readStoredTheme() === 'system') {
+      syncTheme(isAdminPath(window.location.pathname))
       window.dispatchEvent(new Event('themechange'))
     }
   })

@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { toast } from 'sonner'
 import { Repeat, Plus, Pencil, Trash2, Pause, Play } from 'lucide-react'
 import { apiErrorMessage } from '@/lib/api-error-message'
@@ -17,13 +18,25 @@ import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from '@/components/ui/dialog'
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription,
+  AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 import { NativeSelect } from '@/components/ui/native-select'
 import { ConfirmCloseDialog } from '@/components/confirm-close-dialog'
 import { DeleteConfirmDialog } from '@/components/DeleteConfirmDialog'
 import { LoadErrorRetry } from '@/components/LoadErrorRetry'
 import { useCrudDialog } from '@/hooks/useCrudDialog'
 import { currentMonth, monthLabel, nextMonthToGenerate } from '@/lib/finance-month'
- import { PaymentMethodSelect } from './PaymentMethodSelect'
+import { PaymentMethodSelect } from './PaymentMethodSelect'
+
+/**
+ * Reativar uma recorrência pausada não lança os meses da pausa: a API volta a
+ * lançar a partir do mês atual (SR-054). Aparece na confirmação do botão e no
+ * formulário, quando a caixa "Ativa" é ligada numa recorrência pausada.
+ */
+const REACTIVATE_NOTE =
+  'Os meses em que ela ficou pausada não serão lançados. Ela volta a lançar a partir deste mês.'
 
 type RecForm = {
   type: FinanceType
@@ -120,13 +133,23 @@ export function RecurringTab({ enabled, canCreate, canUpdate, canDelete }: {
     }
   }
 
+  // Pausar é direto; reativar pede confirmação, porque os meses da pausa não voltam.
+  const [reactivateTarget, setReactivateTarget] = useState<FinanceRecurrence | null>(null)
+
   async function toggleActive(r: FinanceRecurrence) {
     try {
       await updateRec.mutateAsync({ id: r.id, body: { active: !r.active } })
-      toast.success(r.active ? 'Recorrência pausada.' : 'Recorrência ativada.')
+      toast.success(r.active ? 'Recorrência pausada.' : 'Recorrência reativada.')
+      return true
     } catch (e) {
       toast.error(apiErrorMessage(e, 'Erro ao alterar a recorrência.'))
+      return false
     }
+  }
+
+  async function handleReactivate() {
+    if (!reactivateTarget) return
+    if (await toggleActive(reactivateTarget)) setReactivateTarget(null)
   }
 
   async function handleDelete() {
@@ -149,7 +172,8 @@ export function RecurringTab({ enabled, canCreate, canUpdate, canDelete }: {
           Lançamentos que se repetem todo mês (aluguel, salários, mensalidades). Ao abrir
           o Financeiro, os lançamentos que faltam são criados automaticamente até o mês
           atual — cada mês entra uma vez só. Mês mais curto que o dia escolhido usa o
-          último dia dele.
+          último dia dele. Mês fechado no caixa da recorrência fica sem o lançamento
+          até ser reaberto.
         </p>
         {canCreate && (
           <Button onClick={crud.openCreate} className="shrink-0">
@@ -257,10 +281,10 @@ export function RecurringTab({ enabled, canCreate, canUpdate, canDelete }: {
                         {canUpdate && (
                           <Button
                             size="sm" variant="ghost" className="h-8 px-2"
-                            onClick={() => toggleActive(r)}
+                            onClick={() => (r.active ? void toggleActive(r) : setReactivateTarget(r))}
                             disabled={updateRec.isPending}
-                            aria-label={r.active ? 'Pausar' : 'Ativar'}
-                            title={r.active ? 'Pausar' : 'Ativar'}
+                            aria-label={r.active ? 'Pausar' : 'Reativar'}
+                            title={r.active ? 'Pausar' : 'Reativar'}
                           >
                             {r.active ? <Pause className="size-4" /> : <Play className="size-4" />}
                           </Button>
@@ -422,6 +446,10 @@ export function RecurringTab({ enabled, canCreate, canUpdate, canDelete }: {
               <span className={`inline-block size-4 rounded-sm border ${crud.form.active ? 'bg-emerald-500 border-emerald-500' : 'border-input'}`} />
               {crud.form.active ? 'Ativa (gera todo mês)' : 'Pausada (não gera)'}
             </button>
+            {/* Ligar "Ativa" numa recorrência pausada é reativar: o mesmo aviso do botão da lista. */}
+            {crud.editing && !crud.editing.active && crud.form.active && (
+              <p className="-mt-2 text-xs text-muted-foreground">{REACTIVATE_NOTE}</p>
+            )}
 
             {crud.error && <p className="text-sm text-destructive">{crud.error}</p>}
           </div>
@@ -439,6 +467,29 @@ export function RecurringTab({ enabled, canCreate, canUpdate, canDelete }: {
         onConfirm={crud.forceClose}
         onCancel={() => crud.setConfirmCloseOpen(false)}
       />
+
+      <AlertDialog open={!!reactivateTarget} onOpenChange={o => { if (!o && !updateRec.isPending) setReactivateTarget(null) }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Reativar recorrência</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="flex flex-col gap-2">
+                <p className="break-words">Reativar "{reactivateTarget?.description}"?</p>
+                <p>{REACTIVATE_NOTE}</p>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={updateRec.isPending}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={updateRec.isPending}
+              onClick={e => { e.preventDefault(); void handleReactivate() }}
+            >
+              {updateRec.isPending ? 'Reativando...' : 'Reativar'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <DeleteConfirmDialog
         open={!!crud.deleteTarget}

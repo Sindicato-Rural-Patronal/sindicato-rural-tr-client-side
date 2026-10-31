@@ -10,14 +10,17 @@ busca: inscrever pessoa curso balcao telefone matricular vaga
 
 Nem todo mundo se inscreve pelo site: muita gente liga ou aparece no balcão.
 
-1. Abra **Gestão › Cursos** e clique no curso.
+1. Abra **Gestão › Cursos** e clique no curso. Se o dia do início dele já
+   chegou, ele está na aba **Armazenados**, não em **Próximos**.
 2. Vá na aba **Inscrições**.
 3. Clique em **Inscrever pessoa**.
 4. Busque a pessoa no cadastro pelo nome ou CPF.
 5. Confirme.
 
 Pronto. A inscrição entra **já confirmada** e **ignora o prazo**, porque quem
-está inscrevendo é o Sindicato.
+está inscrevendo é o Sindicato. Ela aparece na **lista por ordem de chegada**,
+com o dia e a hora (*Inscrito em dd/mm/aaaa hh:mm*). Quem é associado em dia
+mostra o selo **Associado**, já na busca do passo 4 e depois na lista.
 
 ## O que ela não ignora
 

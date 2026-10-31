@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { apiFetch, apiUpload } from '@/lib/api'
 import type { Course } from '@/@types/course'
 import type { Registration } from '@/hooks/useAdmin'
+import type { CourseView } from '@/lib/course-views'
 
 export type CreateCourseBody = {
   name: string
@@ -80,15 +81,24 @@ export function useAdminCourses(params: {
   search?: string
   /** Ano de início. Filtro próprio — a busca por texto não deduz ano. */
   year?: number
+  /**
+   * Aba da tela de gerenciamento: `upcoming` (o dia do início ainda não chegou) ou
+   * `stored` (o dia do início é hoje ou já passou). Sem `view` a lista é a de
+   * sempre — é o caso do Painel Geral.
+   */
+  view?: CourseView
 }) {
-  const { page, limit, status, search, year } = params
+  const { page, limit, status, search, year, view } = params
   const qs = new URLSearchParams({ page: String(page), limit: String(limit) })
   if (status) qs.set('status', status)
   if (search?.trim()) qs.set('search', search.trim())
   if (year) qs.set('year', String(year))
+  if (view) qs.set('view', view)
 
   return useQuery<PaginatedCourses>({
-    queryKey: ['admin', 'courses', page, limit, status ?? '', search ?? '', year ?? ''],
+    // `view` na chave: cada aba tem a sua lista no cache (a mesma página 1 de
+    // Próximos e de Armazenados não pode se misturar).
+    queryKey: ['admin', 'courses', page, limit, status ?? '', search ?? '', year ?? '', view ?? ''],
     queryFn: () => apiFetch(`/admin/courses?${qs}`).then(r => r.json()),
   })
 }

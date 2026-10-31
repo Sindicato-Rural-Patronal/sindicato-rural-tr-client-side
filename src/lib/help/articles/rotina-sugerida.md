@@ -31,8 +31,11 @@ assumindo o painel e não sabe por onde começar o dia.
 
 ## Todo mês
 
-- **Financeiro** — lance o que faltou, confira as **recorrentes** e faça o
-  **fechamento** do mês anterior (caixa por caixa).
+- **Financeiro** — lance o que faltou, anexe os comprovantes que faltam, confira
+  as **recorrentes** e só então faça o **fechamento** do mês anterior (caixa por
+  caixa). Fechar **tranca o mês**: depois disso o caixa não aceita lançamento
+  novo, edição nem exclusão com data naquele mês, até alguém reabrir em
+  **Financeiro › Fechamento**. Veja [Financeiro](?topico=financeiro).
 - **Associações vencendo** — o painel mostra as dos próximos 30 dias.
 - **Notícias** — o site parado dá impressão de sindicato parado.
 

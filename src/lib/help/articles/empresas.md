@@ -11,7 +11,7 @@ busca: empresa cnpj razao social nome fantasia socio contador parceira parceiro 
 Empresa e pessoa são **cadastros separados**. Isso mudou em setembro de 2026: o
 CNPJ saiu da ficha de pessoa e virou cadastro próprio.
 
-A lista fica na aba **Empresas** de **Gestão › Usuários**.
+A lista fica na aba **Pessoa jurídica** de **Gestão › Usuários**.
 
 ## Cadastrando
 
