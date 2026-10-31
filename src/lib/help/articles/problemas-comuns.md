@@ -4,7 +4,7 @@ resumo: O que fazer quando algo não abre, não salva ou não aparece no site.
 grupo: primeiros-passos
 ordem: 3
 veja: primeiros-passos, glossario, auditoria
-busca: erro problema duvida nao abre nao salva sessao expirada permissao sumiu lento tentar de novo mensagem campo erro do servidor valor invalido mes fechado travado curso sumiu armazenados
+busca: erro problema duvida nao abre nao salva sessao expirada permissao sumiu lento tentar de novo mensagem campo erro do servidor valor invalido mes fechado travado curso sumiu armazenados numero lancamento ja e de outro recibo sem nome
 ---
 
 Antes de ligar para alguém, veja se o caso é um destes.
@@ -91,6 +91,20 @@ fechado, os lançamentos desse caixa naquele mês ficam trancados: **Editar** e
 **Excluir** desligados, e o formulário mostra uma faixa amarela. Quem tem
 permissão de excluir no Financeiro reabre o mês em **Financeiro › Fechamento**
 (**Reabrir mês**). Veja [Financeiro](?topico=financeiro).
+
+### "O sistema diz que o número já é de outro lançamento"
+
+Você digitou, no campo **Nº** do lançamento, um número que já foi usado: *O
+número 123 já é de outro lançamento.* ou *O número 123 já é de um lançamento
+excluído.* O número de um lançamento excluído também não volta. Nada foi
+gravado. Digite outro número, ou deixe o campo **Nº** vazio para o sistema dar o
+próximo. Veja [Financeiro](?topico=financeiro).
+
+### "O recibo saiu sem o nome de quem pagou"
+
+O recibo usa o que está no lançamento. Abra o **Editar**, preencha o **Nome /
+Razão social** e, na seção **Nota de Empenho**, o **CNPJ / CPF** e o endereço, e
+gere o recibo de novo. Veja [Como emitir um recibo](?topico=como-emitir-recibo).
 
 ### "Não acho o curso na lista"
 

@@ -4,7 +4,7 @@ resumo: Tirar qualquer lista do painel em CSV para abrir no Excel.
 grupo: dia-a-dia
 ordem: 7
 veja: busca-e-filtros, usuarios, cursos, financeiro
-busca: exportar csv excel planilha baixar relatorio lista selecionados download
+busca: exportar csv excel planilha baixar relatorio lista selecionados download numero n anterior ordem lancamentos financeiro
 ---
 
 Toda lista do painel exporta em planilha. O botão **Exportar** fica no topo da
@@ -42,9 +42,12 @@ Associados, Empresas, Administradores, Unimed, Cursos, Inscrições de um curso,
 Mensagens, Auditoria, Financeiro e as reservas da agenda. Também há exportação
 no detalhe de uma pessoa, de uma empresa, de um curso e de uma mensagem.
 
-A planilha do **Financeiro** traz as colunas **Nome / Razão social** e **CNPJ /
-CPF** (o nome vem do campo do formulário; o CNPJ ou CPF, da Nota de Empenho —
-vazios quando o lançamento não tem). Veja [Financeiro](?topico=financeiro).
+A planilha do **Financeiro** (botão **Exportar CSV**, na aba **Lançamentos**)
+começa pela coluna **Nº**, o número do lançamento, e traz também **Nome / Razão
+social**, **CNPJ / CPF** e **Nº anterior**. O nome vem do campo do formulário; o
+CNPJ ou CPF e o Nº anterior, da Nota de Empenho — vazios quando o lançamento não
+tem. As linhas saem **na mesma ordem da tela**: se a lista está em **Ordenar
+por › Nº**, a planilha também. Veja [Financeiro](?topico=financeiro).
 
 ## Duas coisas para lembrar
 
