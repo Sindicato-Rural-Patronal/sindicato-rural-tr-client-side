@@ -134,6 +134,11 @@ export type FinanceClosingPreview = {
 
 export type FinanceTransaction = {
   id: string
+  /**
+   * Nº do lançamento (decisão 005): inteiro que nunca se repete, nem com lançamento excluído.
+   * `null` só nos excluídos antes da numeração, que a API não lista.
+   */
+  number: number | null
   // null = "só nota" (sem lançamento no caixa; fora de saldo/KPIs).
   type: FinanceType | null
   amountCents: number
@@ -193,6 +198,8 @@ export type AccountInput = {
 }
 
 export type TransactionInput = {
+  /** Nº digitado (inteiro ≥ 1). Sem ele a API dá o próximo; no PATCH não aceita `null`. */
+  number?: number
   type: FinanceType | null
   amountCents: number
   date: string
@@ -202,6 +209,12 @@ export type TransactionInput = {
   categoryId?: string | null
   accountId?: string | null
   empenho?: Empenho | null
+}
+
+/** Resposta da transferência: os dois lançamentos gerados, a saída (menor Nº) e a entrada. */
+export type TransferResult = {
+  message: string
+  transactions: FinanceTransaction[]
 }
 
 export type TransferInput = {
@@ -223,7 +236,10 @@ export type TransactionFilters = {
   accountId?: string
   /** Forma de pagamento (texto do lançamento; o backend ignora maiúsculas). */
   method?: string
+  /** Busca: Nº, "Nº anterior", descrição, nome / razão social ou CNPJ/CPF. */
   search?: string
+  /** `date` (padrão: data, o mais novo primeiro) ou `number` (Nº, o maior primeiro). Vale na lista e no CSV. */
+  orderBy?: 'date' | 'number'
 }
 
 // ── Categorias ──────────────────────────────────────────────────────────────
@@ -318,6 +334,7 @@ function buildQuery(filters: TransactionFilters): string {
   if (filters.accountId) p.set('accountId', filters.accountId)
   if (filters.method) p.set('method', filters.method)
   if (filters.search) p.set('search', filters.search)
+  if (filters.orderBy === 'number') p.set('orderBy', 'number')
   const s = p.toString()
   return s ? `?${s}` : ''
 }
@@ -341,11 +358,25 @@ export function useFinanceTransactions(
   })
 }
 
+/** O próximo Nº automático (o maior + 1, contando os excluídos). Só informativo: não reserva o número. */
+export function useFinanceNextNumber(opts: { enabled?: boolean } = {}) {
+  return useQuery<{ next: number }>({
+    queryKey: ['finance', 'next-number'],
+    queryFn: () => apiFetch('/admin/finance/transactions/next-number').then(r => r.json()),
+    // Sempre fresco: o formulário mostra "Automático (próximo: N)" e confere o salto com ele.
+    staleTime: 0,
+    enabled: opts.enabled ?? true,
+  })
+}
+
+/** Cria o lançamento e devolve a linha criada (com o `number`). */
 export function useCreateFinanceTransaction() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (body: TransactionInput) =>
-      apiFetch('/admin/finance/transactions', { method: 'POST', body: JSON.stringify(body) }),
+    mutationFn: async (body: TransactionInput) => {
+      const res = await apiFetch('/admin/finance/transactions', { method: 'POST', body: JSON.stringify(body) })
+      return (await res.json()) as FinanceTransaction
+    },
     onSuccess: () => invalidateFinance(qc),
   })
 }
@@ -370,8 +401,10 @@ export function useDeleteFinanceTransaction() {
 export function useCreateFinanceTransfer() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (body: TransferInput) =>
-      apiFetch('/admin/finance/transfers', { method: 'POST', body: JSON.stringify(body) }),
+    mutationFn: async (body: TransferInput) => {
+      const res = await apiFetch('/admin/finance/transfers', { method: 'POST', body: JSON.stringify(body) })
+      return (await res.json()) as TransferResult
+    },
     onSuccess: () => invalidateFinance(qc),
   })
 }

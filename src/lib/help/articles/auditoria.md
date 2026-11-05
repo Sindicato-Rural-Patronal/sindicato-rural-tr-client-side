@@ -5,7 +5,7 @@ grupo: gestao
 ordem: 2
 permissao: READ_AUDIT
 veja: administradores, seguranca, exportar-planilhas
-busca: auditoria historico trilha log quem alterou ip navegador retencao guarda exportar fechamento de caixa fechou reabriu mes
+busca: auditoria historico trilha log quem alterou ip navegador retencao guarda exportar fechamento de caixa fechou reabriu mes lancamento numero n corrigiu numero financeiro
 ---
 
 **Gestão › Auditoria** é o histórico do painel: quem fez, o que fez e quando.
@@ -31,6 +31,20 @@ Os filtros são **Ação** (criações, edições, exclusões, exportações, lo
 endereço da página — o link pode ser guardado ou enviado a um colega.
 
 Há também **exportação** do resultado.
+
+### Lançamentos do Financeiro
+
+A frase de um lançamento traz o número dele, o **Nº**:
+
+- *Criou o lançamento "nº 123 — Compra de adubo"*
+- *Editou o lançamento "nº 123 — Compra de adubo"*
+
+Assim dá para reconhecer um lançamento pelo número que aparece na lista do
+Financeiro: escolha **Lançamento** no filtro **Tipo** e procure o número na
+frase. Quando alguém **corrige o número**, abra a linha: em **O que mudou**
+aparece o campo **Nº**, com o número de **Antes** (12) e o de **Depois** (15).
+Registros de antes da numeração seguem sem número na frase (*Criou um
+lançamento*).
 
 ### Fechamento de caixa
 

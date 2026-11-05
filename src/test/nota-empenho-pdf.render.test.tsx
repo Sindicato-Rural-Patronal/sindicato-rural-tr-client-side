@@ -72,6 +72,27 @@ describe('nota de empenho pdf', { timeout: 30_000 }, () => {
     expect(pageCount(buf)).toBe('1')
   })
 
+  it('Nº do lançamento e "Nº anterior" no quadro de identificação, numa página só', async () => {
+    const doc = <NotaEmpenhoDocument tx={{ ...pj, number: 130 }} />
+    const buf = await renderToBuffer(doc)
+    await save('nota-empenho-numero.pdf', doc)
+    expect(pageCount(buf)).toBe('1')
+  })
+
+  it('Nº grande e "Nº anterior" comprido continuam numa página só', async () => {
+    const doc = <NotaEmpenhoDocument tx={{ ...pf, number: 2147483647, empenho: { ...pf.empenho, numero: 'NE-2024/0007-SISTEMA-ANTIGO-COPIA-EM-PAPEL' } }} />
+    const buf = await renderToBuffer(doc)
+    await save('nota-empenho-numero-longo.pdf', doc)
+    expect(pageCount(buf)).toBe('1')
+  })
+
+  it('só o "Nº anterior", sem Nº (prévia de um lançamento novo), e sem nenhum dos dois', async () => {
+    const soAnterior = await renderToBuffer(<NotaEmpenhoDocument tx={{ ...pj, number: null }} />)
+    expect(pageCount(soAnterior)).toBe('1')
+    const nenhum = await renderToBuffer(<NotaEmpenhoDocument tx={{ ...pj, empenho: { ...pj.empenho, numero: '' } }} />)
+    expect(pageCount(nenhum)).toBe('1')
+  })
+
   it('renders with no empenho data at all', async () => {
     const buf = await renderToBuffer(<NotaEmpenhoDocument tx={{ amountCents: 100, date: '2026-09-17', description: '', empenho: null }} />)
     expect(pageCount(buf)).toBe('1')

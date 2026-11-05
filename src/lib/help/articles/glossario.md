@@ -4,7 +4,7 @@ resumo: O que cada palavra do sistema quer dizer, em português claro.
 grupo: primeiros-passos
 ordem: 7
 veja: primeiros-passos, problemas-comuns
-busca: glossario dicionario termo palavra significado o que e duvida vocabulario cin rg identidade documento associado selo armazenados proximos fechamento mes fechado reabrir tema cinza verde
+busca: glossario dicionario termo palavra significado o que e duvida vocabulario cin rg identidade documento associado selo armazenados proximos fechamento mes fechado reabrir tema cinza verde numero n anterior recibo nota de empenho lancamento sequencia
 ---
 
 Palavras que aparecem no painel e nem sempre querem dizer o que parecem.
@@ -96,9 +96,28 @@ transferência entre eles.
 
 **Categoria** — a classificação do lançamento.
 
+**Nº** — o número do lançamento no sistema. Todo lançamento tem um, e ele
+**nunca se repete**, nem com o de um lançamento excluído. Vazio no formulário,
+é automático (o próximo da sequência); também dá para digitar um número. Veja
+[Financeiro](?topico=financeiro).
+
+**Nº anterior** — o número que o lançamento tinha **fora** do sistema: no sistema
+antigo ou numa nota em papel. É o antigo *Nº empenho*, e fica na seção Nota de
+Empenho do formulário. Não é o mesmo que o **Nº**.
+
 **Nome / Razão social** — quem recebeu ou quem pagou o lançamento. Fica no
 formulário, logo abaixo da Descrição, e aparece na lista, na busca e nos
 relatórios.
+
+**Nota de Empenho** — o documento em PDF de um lançamento, no formato que o
+Sindicato usa em papel, com os dados do fornecedor. Os campos dela ficam numa
+seção do formulário do lançamento, e o PDF sai pelo botão **Gerar Nota de
+Empenho**, na linha ou dentro do formulário.
+
+**Recibo** — o PDF que o Sindicato entrega a quem pagou. Só os lançamentos de
+**entrada** têm o botão **Gerar recibo em PDF**. Leva o **Nº** do lançamento, o
+valor por extenso e os dados de quem pagou. Veja
+[Como emitir um recibo](?topico=como-emitir-recibo).
 
 **Recorrente** — o molde de um lançamento que se repete todo mês. O sistema cria
 os que faltam quando você abre a tela. Pode ser **Pausada** e **Reativada**; ao

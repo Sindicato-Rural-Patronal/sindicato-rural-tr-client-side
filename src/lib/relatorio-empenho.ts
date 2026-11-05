@@ -1,10 +1,12 @@
 import type { Empenho, FinanceTransaction } from '@/hooks/useFinance'
+import { numeroValido } from '@/lib/finance-number'
 import { upperNoAccents } from '@/utils/text-format'
 
 // Relatório de despesas por empenho, no formato que o sindicato já usa no
 // sistema antigo (relatorio_empenho.php): as saídas do período separadas em
-// Pessoa física, Pessoa jurídica, Tributos e Despesas bancárias, com o nº do
-// empenho, a data, o nome, o valor e a situação.
+// Pessoa física, Pessoa jurídica, Tributos e Despesas bancárias, com o Nº do
+// lançamento (SR-066: `number`, não mais o "Nº empenho" digitado), a data, o nome,
+// o valor e a situação.
 
 export type GrupoEmpenho = 'fisica' | 'juridica' | 'tributos' | 'bancarias'
 
@@ -91,10 +93,28 @@ export type BlocoEmpenho = {
   totalCents: number
 }
 
+/** O Nº que sai na primeira coluna: o do lançamento, ou "—" quando não tem. */
+export function numeroDaLinha(t: Pick<FinanceTransaction, 'number'>): string {
+  return numeroValido(t.number) ? String(t.number) : '—'
+}
+
+/**
+ * Por data e, no mesmo dia, pelo Nº do lançamento (do menor para o maior: a ordem em que foram
+ * lançados). Sem Nº, depois dos que têm. A data compara só o dia, como o resto do relatório.
+ */
+function porDataENumero(a: FinanceTransaction, b: FinanceTransaction): number {
+  const dia = a.date.slice(0, 10).localeCompare(b.date.slice(0, 10))
+  if (dia !== 0) return dia
+  const na = numeroValido(a.number) ? a.number : Number.POSITIVE_INFINITY
+  const nb = numeroValido(b.number) ? b.number : Number.POSITIVE_INFINITY
+  if (na === nb) return 0
+  return na < nb ? -1 : 1
+}
+
 function paraLinha(t: FinanceTransaction): LinhaEmpenho {
   return {
     id: t.id,
-    numero: t.empenho?.numero?.trim() || '—',
+    numero: numeroDaLinha(t),
     date: t.date,
     nome: nomeDoLancamento(t),
     amountCents: t.amountCents,
@@ -112,9 +132,8 @@ export function blocosDoRelatorio(transacoes: readonly FinanceTransaction[]): Bl
   return GRUPOS.map(grupo => {
     const linhas = despesas
       .filter(t => grupoDoLancamento(t) === grupo)
+      .sort(porDataENumero)
       .map(paraLinha)
-      // Por data e, no mesmo dia, pelo nº do empenho — a ordem em que foram emitidos.
-      .sort((a, b) => a.date.localeCompare(b.date) || a.numero.localeCompare(b.numero, 'pt-BR', { numeric: true }))
 
     return {
       grupo,

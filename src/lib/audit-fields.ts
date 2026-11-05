@@ -120,6 +120,7 @@ export const AUDIT_FIELD_LABELS: Record<string, string> = {
   referenceDate: 'Data de referência',
   quotesSource: 'Fonte das cotações',
   // Financeiro
+  number: 'Nº',
   amountCents: 'Valor',
   date: 'Data',
   type: 'Tipo',
@@ -168,6 +169,8 @@ export function formatAuditValue(field: string, value: AuditValue | undefined): 
     return value ? 'Sim' : 'Não'
   }
   if (typeof value === 'number') {
+    // Nº do lançamento é identificador: "1234", não "1.234".
+    if (field === 'number') return String(value)
     if (field.endsWith('Cents')) return (value / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
     return value.toLocaleString('pt-BR')
   }

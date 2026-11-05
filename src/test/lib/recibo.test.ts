@@ -5,6 +5,7 @@ import {
   type ReciboData,
 } from '@/lib/recibo'
 import { ORG_CONTACT } from '@/lib/org-contact'
+import type { FinanceTransaction } from '@/hooks/useFinance'
 
 /** O "R$ 1.234,56" do Intl usa espaço sem quebra; nos textos comparamos com espaço comum. */
 const plano = (t: ReciboData) => textoPlano(trechosDoRecibo(t)).replace(/\u00a0/g, ' ')
@@ -248,6 +249,30 @@ describe('emissorDoRecibo', () => {
     const e = emissorDoRecibo({ street: '', district: '', city: 'Terra Roxa', state: '', zip: '', phone: '' })
     expect(e.linhasEndereco).toEqual(['Terra Roxa'])
     expect(e.telefone).toBe('')
+  })
+})
+
+describe('recibo de um lançamento que veio da API (SR-066: `number`)', () => {
+  // O mesmo objeto que a lista do Financeiro entrega ao ReciboButton: o `number` do lançamento
+  // vale no quadro "Nº" e no nome do arquivo; o "Nº anterior" (`empenho.numero`) não aparece no recibo.
+  const daApi = {
+    id: 'l1', number: 130, type: 'IN', transferId: null, amountCents: 123456, date: '2026-10-30T00:00:00.000Z',
+    description: 'MENSALIDADE DE OUTUBRO', method: null,
+    empenho: { numero: '3144', razaoSocial: 'COOPERATIVA AGRICOLA LTDA', cnpjCpf: '11222333000181' },
+  } as FinanceTransaction
+
+  it('o quadro "Nº" é o número do lançamento, não o "Nº anterior"', () => {
+    expect(montarRecibo(daApi, { cidade: 'Terra Roxa' }).numero).toBe('130')
+  })
+
+  it('o nome do arquivo usa o número do lançamento', () => {
+    expect(nomeDoArquivoRecibo(daApi)).toBe('recibo-130-cooperativa-agricola-ltda.pdf')
+  })
+
+  it('lançamento sem número (só os excluídos antigos): sem quadro, e o arquivo usa a data', () => {
+    const semNumero = { ...daApi, number: null } as FinanceTransaction
+    expect(montarRecibo(semNumero, { cidade: 'Terra Roxa' }).numero).toBeNull()
+    expect(nomeDoArquivoRecibo(semNumero)).toBe('recibo-2026-10-30-cooperativa-agricola-ltda.pdf')
   })
 })
 

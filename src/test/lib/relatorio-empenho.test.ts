@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   blocosDoRelatorio, despesasDoRelatorio, fornecedorDoLancamento, grupoDoLancamento, nomeDoLancamento,
-  situacaoDoLancamento, totalDoRelatorio,
+  numeroDaLinha, situacaoDoLancamento, totalDoRelatorio,
 } from '@/lib/relatorio-empenho'
 import type { FinanceTransaction } from '@/hooks/useFinance'
 
@@ -9,6 +9,7 @@ import type { FinanceTransaction } from '@/hooks/useFinance'
 function lanc(over: Partial<FinanceTransaction> = {}): FinanceTransaction {
   return {
     id: Math.random().toString(36).slice(2),
+    number: null,
     type: 'OUT',
     amountCents: 10000,
     date: '2026-09-01',
@@ -149,18 +150,55 @@ describe('blocosDoRelatorio', () => {
     expect(totalDoRelatorio(blocosDoRelatorio(lista))).toBe(33735 + 23000 + 90077)
   })
 
-  it('ordena por data e, no mesmo dia, pelo número do empenho', () => {
-    const mesmoDia = [
-      lanc({ date: '2026-09-04', empenho: { numero: '3148', cnpjCpf: '1' } }),
-      lanc({ date: '2026-09-01', empenho: { numero: '3141', cnpjCpf: '1' } }),
-      lanc({ date: '2026-09-01', empenho: { numero: '3120', cnpjCpf: '1' } }),
-    ]
-    const fisica = blocosDoRelatorio(mesmoDia).find(b => b.grupo === 'fisica')!
-    expect(fisica.linhas.map(l => l.numero)).toEqual(['3120', '3141', '3148'])
+  it('a coluna "Nº" mostra o Nº do lançamento, não o "Nº anterior" da nota', () => {
+    const linhas = blocosDoRelatorio([
+      lanc({ number: 130, empenho: { numero: '3120', cnpjCpf: '1' } }),
+    ]).find(b => b.grupo === 'fisica')!.linhas
+    expect(linhas.map(l => l.numero)).toEqual(['130'])
   })
 
-  it('despesa sem nota mostra travessão no lugar do número', () => {
-    const semNota = blocosDoRelatorio([lanc({ description: 'SEM NOTA' })])
-    expect(semNota.find(b => b.grupo === 'fisica')!.linhas[0].numero).toBe('—')
+  it('ordena por data e, no mesmo dia, pelo Nº do lançamento', () => {
+    const mesmoDia = [
+      lanc({ date: '2026-09-04', number: 12 }),
+      lanc({ date: '2026-09-01', number: 41 }),
+      lanc({ date: '2026-09-01', number: 20 }),
+    ]
+    const fisica = blocosDoRelatorio(mesmoDia).find(b => b.grupo === 'fisica')!
+    expect(fisica.linhas.map(l => l.numero)).toEqual(['20', '41', '12'])
+  })
+
+  it('no mesmo dia a ordem é numérica, não de texto (9 vem antes de 10)', () => {
+    const mesmoDia = [lanc({ number: 100 }), lanc({ number: 9 }), lanc({ number: 10 })]
+    const fisica = blocosDoRelatorio(mesmoDia).find(b => b.grupo === 'fisica')!
+    expect(fisica.linhas.map(l => l.numero)).toEqual(['9', '10', '100'])
+  })
+
+  it('a data compara o dia: horas diferentes no mesmo dia não desfazem a ordem do Nº', () => {
+    const fisica = blocosDoRelatorio([
+      lanc({ date: '2026-09-01T12:00:00.000Z', number: 8 }),
+      lanc({ date: '2026-09-01T00:00:00.000Z', number: 7 }),
+    ]).find(b => b.grupo === 'fisica')!
+    expect(fisica.linhas.map(l => l.numero)).toEqual(['7', '8'])
+  })
+
+  it('sem Nº vem depois dos que têm, no mesmo dia, e mostra travessão', () => {
+    const fisica = blocosDoRelatorio([
+      lanc({ description: 'SEM NÚMERO', number: null }),
+      lanc({ number: 5 }),
+    ]).find(b => b.grupo === 'fisica')!
+    expect(fisica.linhas.map(l => l.numero)).toEqual(['5', '—'])
+  })
+
+  it('não mexe na lista que recebeu', () => {
+    const lista = [lanc({ number: 2 }), lanc({ number: 1 })]
+    blocosDoRelatorio(lista)
+    expect(lista.map(l => l.number)).toEqual([2, 1])
+  })
+})
+
+describe('numeroDaLinha', () => {
+  it('o Nº do lançamento, ou travessão', () => {
+    expect(numeroDaLinha({ number: 130 })).toBe('130')
+    expect(numeroDaLinha({ number: null })).toBe('—')
   })
 })

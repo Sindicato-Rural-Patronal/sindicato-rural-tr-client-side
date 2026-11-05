@@ -42,6 +42,21 @@ describe('auditoria: valores de antes/depois', () => {
   })
 })
 
+describe('auditoria: correção do Nº do lançamento', () => {
+  // PATCH /admin/finance/transactions/:id com `number` guarda { field: "number", before, after } (decisão 005).
+  it('o campo "number" aparece como "Nº"', () => {
+    expect(auditFieldLabel('number')).toBe('Nº')
+  })
+
+  it('o valor sai sem separador de milhar: é um número de identificação ("Nº: 1234 → 5000")', () => {
+    expect(formatAuditValue('number', 1234)).toBe('1234')
+    expect(formatAuditValue('number', 5000)).toBe('5000')
+    expect(formatAuditValue('number', null)).toBe('—')
+    // Os outros números continuam com o separador.
+    expect(formatAuditValue('maxCapacity', 1234)).toBe('1.234')
+  })
+})
+
 describe('auditoria: reabrir o mês (Fechamento de caixa)', () => {
   // DELETE /admin/finance/closings/:id apaga o fechamento; a trilha guarda o que
   // estava fechado em `changes` (back: audit-snapshot.ts + removedSnapshot).

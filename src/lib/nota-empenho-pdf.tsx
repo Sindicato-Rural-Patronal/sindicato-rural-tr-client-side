@@ -4,6 +4,7 @@ import { formatDateFromString } from '@/utils/format-data-from-string'
 import { centsToBRL } from '@/utils/masks'
 import { valorPorExtensoLegado } from '@/lib/extenso-legado'
 import { saveBlob } from '@/utils/download'
+import { nomeDoArquivoNotaEmpenho, numeroValido, textoNumeroAnterior } from '@/lib/finance-number'
 import type { Empenho } from '@/hooks/useFinance'
 import {
   NE_FUNDO_PNG, NE_TITULO_PF_PNG, NE_NOTA_FISCAL_PNG, NE_BANCO_PNG, NE_CONTA_PNG,
@@ -20,6 +21,8 @@ Font.registerHyphenationCallback(word => [word])
 
 // A nota precisa só destes campos do lançamento.
 export type NotaData = {
+  /** Nº do lançamento (SR-066): vai no quadro de identificação e no nome do arquivo. Sem ele, o quadro fica vazio. */
+  number?: number | null
   amountCents: number
   date: string
   description: string
@@ -112,9 +115,13 @@ export function NotaEmpenhoDocument({ tx }: { tx: NotaData }) {
   // Descrição longa: corpo menor pra caber em até 3 linhas antes da faixa do RECIBO.
   const discSize = fit(descricao, 8.78, 3 * 480)
   const nfSize = e.notaFiscal ? fit(e.notaFiscal, 10.97, 450) : 10.97
+  // Quadro de identificação: o Nº do lançamento e, em letra menor embaixo, o "Nº anterior" (sistema antigo
+  // ou nota em papel, `empenho.numero`) — a reimpressão continua batendo com a cópia que saiu com o número antigo.
+  const numero = numeroValido(tx.number) ? String(tx.number) : ''
+  const anterior = textoNumeroAnterior(e.numero)
 
   return (
-    <Document title={`Nota de Empenho${e.numero ? ` ${e.numero}` : ''}`}>
+    <Document title={`Nota de Empenho${numero ? ` ${numero}` : ''}`}>
       <Page size="A4" style={styles.page}>
         <Img src={NE_FUNDO_PNG} {...BG} />
         {pessoaFisica && (
@@ -123,7 +130,8 @@ export function NotaEmpenhoDocument({ tx }: { tx: NotaData }) {
 
         {/* Cabeçalho: data de emissão e identificação */}
         <Line x={369.3} width={120} align="center" baseline={114.6} size={10.97} bold color={BLACK} text={dataFmt} />
-        <Line x={501.2} width={120} align="center" baseline={114.6} size={10.97} bold color={BLACK} text={e.numero} />
+        <Line x={501.2} width={120} align="center" baseline={114.6} size={10.97} bold color={BLACK} text={numero} />
+        <Line x={501.2} width={120} align="center" baseline={123.3} size={6.1} text={anterior} />
 
         {/* Fornecedor — coluna da esquerda */}
         <Label x={50} baseline={157.4} text="NOME FANTASIA" />
@@ -225,6 +233,5 @@ export function NotaEmpenhoDocument({ tx }: { tx: NotaData }) {
 
 export async function downloadNotaEmpenho(tx: NotaData) {
   const blob = await pdf(<NotaEmpenhoDocument tx={tx} />).toBlob()
-  const num = tx.empenho?.numero ? `-${tx.empenho.numero}` : ''
-  saveBlob(blob, `nota-empenho${num}.pdf`)
+  saveBlob(blob, nomeDoArquivoNotaEmpenho(tx.number))
 }

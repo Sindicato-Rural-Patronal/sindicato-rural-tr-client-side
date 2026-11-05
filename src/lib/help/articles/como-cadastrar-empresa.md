@@ -39,4 +39,5 @@ e defina a ordem.
 
 No Financeiro, ao abrir a **Nota de empenho** do lançamento, escolha a aba
 **Empresa** e busque por ela. Razão social, CNPJ, inscrição estadual, telefone e
-endereço são preenchidos sozinhos.
+endereço são preenchidos sozinhos. São esses mesmos dados que saem no
+[recibo](?topico=como-emitir-recibo) de uma entrada.
