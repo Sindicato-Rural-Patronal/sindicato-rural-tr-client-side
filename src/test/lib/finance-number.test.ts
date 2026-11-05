@@ -3,7 +3,7 @@ import { ApiError } from '@/lib/api'
 import {
   NUMERO_MAXIMO, ehNumeroEmUso, escolherNumero, lerNumeroDigitado, nomeDoArquivoNotaEmpenho, numeroValido,
   rotuloDoNumero, saltoDaSequencia, soDigitosDoNumero, textoAutomatico, textoDaTransferencia, textoDoRegistro,
-  textoDoSalto, textoNumeroAnterior,
+  textoDoSalto, textoNumeroAnterior, prefixoDaExclusao,
 } from '@/lib/finance-number'
 
 describe('numeroValido', () => {
@@ -201,5 +201,16 @@ describe('Nota de Empenho: Nº anterior e nome do arquivo', () => {
   it('sem Nº, nota-empenho.pdf (o Nº anterior não entra no nome)', () => {
     expect(nomeDoArquivoNotaEmpenho(null)).toBe('nota-empenho.pdf')
     expect(nomeDoArquivoNotaEmpenho(undefined)).toBe('nota-empenho.pdf')
+  })
+})
+
+describe('prefixoDaExclusao', () => {
+  it('com Nº cita o número na confirmação', () => {
+    expect(`${prefixoDaExclusao(215)}SR067 API PATCH NULL (R$ 12,34)?`).toBe('Excluir o lançamento Nº 215 — SR067 API PATCH NULL (R$ 12,34)?')
+  })
+  it('sem Nº (null, undefined ou inválido) mantém o texto de antes', () => {
+    expect(prefixoDaExclusao(null)).toBe('Excluir ')
+    expect(prefixoDaExclusao(undefined)).toBe('Excluir ')
+    expect(prefixoDaExclusao(0)).toBe('Excluir ')
   })
 })
