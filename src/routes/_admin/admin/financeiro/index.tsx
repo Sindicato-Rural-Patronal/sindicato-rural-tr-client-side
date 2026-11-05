@@ -64,7 +64,7 @@ import {
   type ClosedMonth, type LockTarget,
 } from '@/lib/finance-closed-month'
 import {
-  ehNumeroEmUso, escolherNumero, lerNumeroDigitado, numeroValido, rotuloDoNumero, saltoDaSequencia,
+  ehNumeroEmUso, escolherNumero, lerNumeroDigitado, numeroValido, prefixoDaExclusao, rotuloDoNumero, saltoDaSequencia,
   textoDaTransferencia, textoDoRegistro, type Salto,
 } from '@/lib/finance-number'
 import type { MemberFields } from '@/lib/membership'
@@ -1882,7 +1882,7 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
         title="Excluir lançamento"
         description={
           <>
-            Excluir <strong>{deleteTarget?.description}</strong> ({deleteTarget ? centsToBRL(deleteTarget.amountCents) : ''})? Esta ação não pode ser desfeita.
+            {prefixoDaExclusao(deleteTarget?.number)}<strong>{deleteTarget?.description}</strong> ({deleteTarget ? centsToBRL(deleteTarget.amountCents) : ''})? Esta ação não pode ser desfeita.
             {deleteTarget?.transferId && ' Os dois lados da transferência (saída e entrada) serão removidos.'}
           </>
         }

@@ -126,3 +126,8 @@ export function textoNumeroAnterior(anterior: string | null | undefined): string
   const t = (anterior ?? '').trim()
   return t ? `Nº anterior: ${t}` : null
 }
+
+/** Começo da confirmação de excluir: "Excluir o lançamento Nº 215 — " (o número excluído nunca volta); sem Nº (excluído antigo), "Excluir ". */
+export function prefixoDaExclusao(numero: number | null | undefined): string {
+  return numeroValido(numero) ? `Excluir o lançamento ${rotuloDoNumero(numero)} — ` : 'Excluir '
+}
