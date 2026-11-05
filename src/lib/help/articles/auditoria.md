@@ -41,8 +41,16 @@ A frase de um lançamento traz o número dele, o **Nº**:
 
 Assim dá para reconhecer um lançamento pelo número que aparece na lista do
 Financeiro: escolha **Lançamento** no filtro **Tipo** e procure o número na
-frase. Quando alguém **corrige o número**, abra a linha: em **O que mudou**
-aparece o campo **Nº**, com o número de **Antes** (12) e o de **Depois** (15).
+frase. Numa edição, a frase mostra o número e a descrição como ficaram
+**depois** da edição.
+
+Quando alguém **corrige o número**, a frase cita também o número antigo:
+
+- *Editou o lançamento "nº 250 (antes nº 301) — Compra de adubo"*
+
+Por isso você encontra a correção procurando pelo número novo ou pelo antigo.
+Abra a linha: em **O que mudou** aparece o campo **Nº**, com o número de
+**Antes** (301) e o de **Depois** (250).
 Registros de antes da numeração seguem sem número na frase (*Criou um
 lançamento*).
 
