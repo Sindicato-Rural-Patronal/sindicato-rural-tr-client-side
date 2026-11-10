@@ -73,7 +73,7 @@ function BannerSlide({ banner, index }: { banner: PublicBanner; index: number })
       )}
       {/* lg:pb-14 guarda o lugar das setas, que ficam no pé desta coluna. */}
       <div className={cn('flex flex-col items-start lg:pb-14', !banner.imageUrl && 'lg:col-span-2')}>
-        <Heading className="text-3xl font-semibold leading-tight tracking-tight text-foreground text-balance wrap-break-word md:text-4xl lg:text-[2.75rem]">
+        <Heading className="text-3xl font-semibold leading-tight tracking-tight text-foreground text-balance wrap-break-word md:text-4xl xl:text-[2.75rem]">
           {banner.title}
         </Heading>
         {banner.subtitle && (

@@ -55,9 +55,12 @@ export function CoursesSection() {
                 </CarouselItem>
               ))}
             </CarouselContent>
-            {/* Setas maiores no celular (alvo de toque de 44px). */}
-            <CarouselPrevious className="left-2 size-11 md:-left-4 md:size-7" />
-            <CarouselNext className="right-2 size-11 md:-right-4 md:size-7" />
+            {/* Celular: as setas (44 px) ficam embaixo do cartão, não por cima dele.
+                Do tablet para cima elas voltam para as bordas (md:contents). */}
+            <div className="mt-4 flex justify-end gap-2 md:contents">
+              <CarouselPrevious className="max-md:static max-md:size-11 max-md:translate-y-0 md:-left-4 md:size-8" />
+              <CarouselNext className="max-md:static max-md:size-11 max-md:translate-y-0 md:-right-4 md:size-8" />
+            </div>
           </Carousel>
         ) : (
           <p className="text-center text-muted-foreground">{t('home.noCourses')}</p>
