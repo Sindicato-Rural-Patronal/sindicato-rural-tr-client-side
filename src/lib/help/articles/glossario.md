@@ -111,12 +111,12 @@ relatórios.
 
 **Nota de Empenho** — o documento em PDF de um lançamento, no formato que o
 Sindicato usa em papel, com os dados do fornecedor. Os campos dela ficam numa
-seção do formulário do lançamento, e o PDF sai pelo botão **Gerar Nota de
-Empenho**, na linha ou dentro do formulário.
+seção do formulário do lançamento, e o PDF sai por **Gerar Nota de Empenho**:
+no menu **Mais** (o **⋯**) da linha ou no botão dentro do formulário.
 
 **Recibo** — o PDF que o Sindicato entrega a quem pagou. Só os lançamentos de
-**entrada** têm o botão **Gerar recibo em PDF**. Leva o **Nº** do lançamento, o
-valor por extenso e os dados de quem pagou. Veja
+**entrada** têm **Gerar recibo em PDF**, no menu **Mais** da linha. Leva o
+**Nº** do lançamento, o valor por extenso e os dados de quem pagou. Veja
 [Como emitir um recibo](?topico=como-emitir-recibo).
 
 **Recorrente** — o molde de um lançamento que se repete todo mês. O sistema cria

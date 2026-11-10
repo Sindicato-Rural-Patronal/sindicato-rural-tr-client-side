@@ -15,8 +15,8 @@ extenso e o espaço para assinar.
 ## Antes de começar
 
 - **O recibo é só de entrada**, isto é, de dinheiro que o Sindicato recebeu.
-  Lançamento de **Saída**, **Só nota** e transferência entre caixas não têm o
-  botão do recibo.
+  Lançamento de **Saída**, **Só nota** e transferência entre caixas não têm
+  **Gerar recibo em PDF** no menu.
 - **O lançamento precisa estar registrado.** O recibo é montado a partir dele.
   Se ainda não está, veja
   [Como registrar um lançamento no caixa](?topico=como-registrar-lancamento).
@@ -40,15 +40,14 @@ extenso e o espaço para assinar.
    social** ou, em tela menor, embaixo da descrição). Se faltar o nome, o
    CNPJ/CPF ou o endereço, clique em **Editar** (o lápis), preencha e clique em
    **Salvar**.
-4. Na linha da entrada, clique no botão do recibo: o ícone de uma **mão com
-   moedas**, ao lado do botão da Nota de Empenho. Ao passar o mouse, a dica diz
-   **Gerar recibo em PDF**.
+4. Na linha da entrada, abra o menu **Mais** (o **⋯**, no fim da linha) e
+   clique em **Gerar recibo em PDF**, logo abaixo de **Gerar Nota de Empenho**.
 5. O PDF baixa na hora, com um nome como `recibo-128-fazenda-sao-jose.pdf` (o
    número é o **Nº** do lançamento). Abra e confira.
 6. Imprima, assine em **Assinatura do responsável** e entregue a quem pagou.
 
 > O jeito mais rápido de preencher os dados de quem pagou: no formulário, abra
-> **Nota de Empenho**, escolha a aba **Pessoa** ou **Empresa** e busque o
+> **Nota de Empenho**, escolha **Pessoa** ou **Empresa** e busque o
 > cadastro. Nome, documento e endereço vêm sozinhos.
 
 ## O que sai no recibo
@@ -73,11 +72,11 @@ Se o documento tem 11 números, o recibo diz **CPF**; se tem 14, diz **CNPJ**.
 
 | O que aparece | O que fazer |
 |---|---|
-| Não vejo o botão do recibo na linha | Só a **entrada** tem. Confira o tipo do lançamento: saída, **Só nota** e transferência não têm |
+| Não vejo **Gerar recibo em PDF** | Ele fica no menu **Mais** (o **⋯**) da linha, não à vista. E só a **entrada** tem: confira o tipo do lançamento, porque saída, **Só nota** e transferência não têm |
 | O recibo sai com *Recebemos a importância de…*, sem dizer de quem | O lançamento está sem **Nome / Razão social** e sem **CNPJ / CPF**. Edite, preencha e gere o recibo de novo |
 | Sai o nome, mas falta o CNPJ/CPF ou o endereço | Esses dados ficam na seção **Nota de Empenho** do formulário. Preencha lá e gere de novo. O endereço só aparece quando há nome ou documento |
 | O quadro **Nº** não aparece no recibo | O lançamento não tem número. Avise o suporte (veja [Problemas comuns](?topico=problemas-comuns)) |
 | A data do recibo está errada | O recibo mostra a **Data** do lançamento. Corrija a data no **Editar** e gere de novo |
 | Preciso mudar o valor ou a descrição | O sistema não guarda o PDF: cada clique monta um recibo novo com o que o lançamento tem **agora**. Edite o lançamento e gere de novo. O recibo que já foi impresso não muda sozinho |
-| Aparece *Erro ao gerar o recibo.* | Clique no botão outra vez. Se continuar, avise o suporte |
+| Aparece *Erro ao gerar o recibo.* | Clique em **Gerar recibo em PDF** outra vez. Se continuar, avise o suporte |
 | Não acho o arquivo depois de clicar | Ele foi para a pasta de downloads do navegador |

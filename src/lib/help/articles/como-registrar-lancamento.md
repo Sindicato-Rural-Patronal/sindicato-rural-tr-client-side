@@ -76,8 +76,8 @@ anterior**, nota fiscal e cheque), e com o próximo **Nº**.
 
 ## Nota de empenho
 
-No mesmo formulário, abra **Nota de Empenho** e vincule o fornecedor — pela aba
-**Pessoa** ou pela aba **Empresa**. Escolhendo, os dados (nome, CNPJ ou CPF,
+No mesmo formulário, abra **Nota de Empenho** e vincule o fornecedor: escolha
+**Pessoa** ou **Empresa** e busque o cadastro. Escolhendo, os dados (nome, CNPJ ou CPF,
 endereço) são preenchidos sozinhos, inclusive o **Nome / Razão social** que fica
 lá em cima.
 
@@ -90,13 +90,13 @@ antigo ou o de uma nota em papel. Se você está digitando agora um lançamento
 antigo, deixe o **Nº** automático e escreva o número de lá no **Nº anterior**.
 Ele é diferente do **Nº** do topo do formulário, que é o número deste sistema.
 
-Na busca da aba **Pessoa**, quem é associado em dia aparece com o selo
+Na busca de **Pessoa**, quem é associado em dia aparece com o selo
 **Associado** junto do nome.
 
 ## Se o lançamento for uma entrada
 
-Depois de registrar uma **entrada**, a linha dela ganha o botão do recibo (a mão
-com moedas). Para o recibo sair com o nome, o CNPJ ou CPF e o endereço de quem
+Depois de registrar uma **entrada**, o menu **Mais** (o **⋯**) da linha dela
+ganha **Gerar recibo em PDF**. Para o recibo sair com o nome, o CNPJ ou CPF e o endereço de quem
 pagou, preencha esses dados antes: **Nome / Razão social** no formulário e o
 resto na seção **Nota de Empenho**. Veja
 [Como emitir um recibo](?topico=como-emitir-recibo).
@@ -116,4 +116,4 @@ cria sozinho os lançamentos que faltam até o mês atual, um por mês.
 | *O Nº precisa ser maior que zero.* ou *O Nº pode ir até 2147483647.* | O **Nº** é um número inteiro, de 1 para cima, até esse limite. Corrija ou deixe vazio |
 | Janela **Número fora da sequência** | Não é erro: é uma pergunta. Você digitou um número maior que o próximo, e os automáticos passarão a continuar dele. Se foi engano, clique em **Corrigir o número** |
 | *Não dá para apagar o Nº do lançamento. Digite um número (o atual é 128).* | Na edição, o **Nº** não pode ficar vazio. Digite o número que ele deve ter (o atual aparece na mensagem) |
-| Faixa amarela embaixo da **Data**: *Mês 10/2026 fechado no caixa BANCO. Para mudar, reabra o mês na aba Fechamento.* | O caixa e a data escolhidos caem num mês fechado. Os botões **Registrar**, **Registrar e novo** e **Salvar** ficam desligados. Troque a data ou o caixa, ou reabra o mês em **Financeiro › Fechamento** (precisa da permissão de excluir no Financeiro). Veja [Financeiro](?topico=financeiro) |
+| Faixa âmbar embaixo da **Data**: *Mês 10/2026 fechado no caixa BANCO. Para mudar, reabra o mês na aba Fechamento.* | O caixa e a data escolhidos caem num mês fechado. Os botões **Registrar**, **Registrar e novo** e **Salvar** ficam desligados. Troque a data ou o caixa, ou reabra o mês em **Financeiro › Fechamento** (precisa da permissão de excluir no Financeiro). Veja [Financeiro](?topico=financeiro) |

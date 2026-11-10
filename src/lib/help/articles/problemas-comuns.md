@@ -76,9 +76,11 @@ o campo citado e salve de novo.
 O nome do campo às vezes aparece como o sistema o chama por dentro (por exemplo,
 em inglês). Quase sempre dá para saber qual é pelo que você acabou de preencher.
 
-Se for uma **lista** que não abre (como os Lançamentos com uma data de ano
-absurdo no filtro), a própria tela mostra o motivo no lugar de "Não foi possível
-carregar". Aí **Tentar de novo** não resolve: corrija o filtro.
+Se for uma **lista** que não abre (como os Lançamentos abertos por um link com
+uma data de ano absurdo), a própria tela mostra o motivo no lugar de "Não foi
+possível carregar". Aí **Tentar de novo** não resolve: corrija o filtro. Digitando
+nos campos **De** e **Até**, isso não acontece: o próprio campo recusa a data
+errada e avisa *Data inválida.*
 
 A mensagem *Ocorreu um erro inesperado. Tente novamente.* é diferente: é falha de
 verdade do sistema. Tente uma vez mais e, se continuar, avise o suporte com as
@@ -87,8 +89,9 @@ quatro informações do fim desta página.
 ### "Não consigo editar nem excluir um lançamento do Financeiro"
 
 Olhe se a linha tem o selo **Mês fechado**. Quando o mês de um caixa está
-fechado, os lançamentos desse caixa naquele mês ficam trancados: **Editar** e
-**Excluir** desligados, e o formulário mostra uma faixa amarela. Quem tem
+fechado, os lançamentos desse caixa naquele mês ficam trancados: **Editar**
+desligado, **Excluir** apagado no menu **Mais**, e o formulário mostra uma faixa
+âmbar. Quem tem
 permissão de excluir no Financeiro reabre o mês em **Financeiro › Fechamento**
 (**Reabrir mês**). Veja [Financeiro](?topico=financeiro).
 
