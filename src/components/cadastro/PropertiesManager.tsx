@@ -8,6 +8,9 @@ import {
   type UserProperty,
 } from '@/hooks/useAdmin'
 import { DeleteConfirmDialog } from '@/components/DeleteConfirmDialog'
+import { EmptyState } from '@/components/EmptyState'
+import { RowActions } from '@/components/RowActions'
+import { SegmentedControl } from '@/components/SegmentedControl'
 import { Button } from '@/components/ui/button'
 import { LoadErrorRetry } from '@/components/LoadErrorRetry'
 import { Input } from '@/components/ui/input'
@@ -218,7 +221,7 @@ export function PropertiesManager({
         })
       }
       closeForm()
-      toast.success(editing ? 'Propriedade atualizada!' : 'Propriedade adicionada!')
+      toast.success(editing ? 'Propriedade atualizada.' : 'Propriedade adicionada.')
     } catch (e) {
       toast.error(apiErrorMessage(e, editing ? 'Erro ao salvar propriedade.' : 'Erro ao adicionar propriedade.'))
     }
@@ -241,7 +244,7 @@ export function PropertiesManager({
   if (loadError) {
     return (
       <LoadErrorRetry
-        className="rounded-lg border bg-card"
+        className="rounded-xl border border-border bg-card"
         message="Não foi possível carregar as propriedades."
         onRetry={loadError.onRetry}
         retrying={loadError.retrying}
@@ -251,8 +254,8 @@ export function PropertiesManager({
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between">
-        <p className="text-sm text-muted-foreground">{total} propriedade(s) cadastrada(s)</p>
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-sm text-muted-foreground"><span className="tabular-nums">{total}</span> propriedade(s) cadastrada(s)</p>
         {!readOnly && (
           <Button size="sm" onClick={startCreate} disabled={formOpen}>
             <Plus className="size-4" /> Adicionar
@@ -261,10 +264,7 @@ export function PropertiesManager({
       </div>
 
       {!loading && total === 0 && !formOpen && (
-        <div className="flex flex-col items-center justify-center py-12 border-2 border-dashed rounded-lg text-center">
-          <TreePine className="size-10 text-muted-foreground/30 mb-3" />
-          <p className="text-sm font-medium">Nenhuma propriedade cadastrada</p>
-        </div>
+        <EmptyState framed icon={TreePine} title="Nenhuma propriedade cadastrada" />
       )}
 
       {formOpen && (
@@ -272,7 +272,7 @@ export function PropertiesManager({
           <CardContent className="pt-4">
             <form onSubmit={handleSubmit} className="flex flex-col gap-4">
               {editingId && (
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Editando propriedade</p>
+                <p className="text-sm font-medium text-foreground">Editando propriedade</p>
               )}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <FieldRow label={nameLabel} htmlFor={nameId}>
@@ -299,15 +299,17 @@ export function PropertiesManager({
 
               <Separator />
 
-              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Endereço da propriedade</p>
-              <div className="flex gap-2">
-                <Button type="button" variant={isUrban ? 'default' : 'outline'} size="sm" onClick={() => setAddr('type', 'URBAN')}>
-                  <Building2 className="size-3.5 mr-1.5" /> Urbano
-                </Button>
-                <Button type="button" variant={!isUrban ? 'default' : 'outline'} size="sm" onClick={() => setAddr('type', 'RURAL')}>
-                  <TreePine className="size-3.5 mr-1.5" /> Rural
-                </Button>
-              </div>
+              <p className="text-sm font-medium text-foreground">Endereço da propriedade</p>
+              <SegmentedControl
+                label="Tipo de endereço"
+                className="w-fit"
+                value={isUrban ? 'URBAN' : 'RURAL'}
+                onChange={v => setAddr('type', v)}
+                options={[
+                  { value: 'URBAN', label: 'Urbano', icon: Building2 },
+                  { value: 'RURAL', label: 'Rural', icon: TreePine },
+                ]}
+              />
 
               {isUrban ? (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -362,12 +364,12 @@ export function PropertiesManager({
         {properties.map(prop => {
           const isPrimary = prop.id === primaryId
           return (
-            <div key={prop.id} className={`flex items-center justify-between rounded-lg border p-3 bg-card ${isPrimary ? 'border-primary/50 ring-1 ring-primary/20' : ''}`}>
-              <div>
-                <div className="flex items-center gap-2">
-                  <p className="font-medium text-sm">{prop.name}</p>
+            <div key={prop.id} className={`flex items-start justify-between gap-3 rounded-xl border bg-card p-3 ${isPrimary ? 'border-primary/40' : 'border-border'}`}>
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  <p className="break-words font-medium text-sm">{prop.name}</p>
                   {isPrimary && (
-                    <Badge variant="secondary" className="gap-1 text-[10px]"><Star className="size-2.5 fill-current" /> Principal</Badge>
+                    <Badge variant="neutral"><Star className="fill-current text-primary" /> Principal</Badge>
                   )}
                 </div>
                 {prop.registration && <p className="text-xs text-muted-foreground">Matrícula: {prop.registration}</p>}
@@ -379,37 +381,16 @@ export function PropertiesManager({
                   </p>
                 )}
               </div>
-              <div className="flex items-center gap-1">
-                {!isPrimary && !readOnly && (
-                  <Button
-                    variant="ghost" size="sm"
-                    className="h-7 gap-1 px-2 text-xs text-muted-foreground"
-                    disabled={settingPrimary}
-                    onClick={() => setPrimary(prop.id)}
-                  >
-                    <Star className="size-3.5" />
-                    <span className="hidden sm:inline">Definir principal</span>
-                  </Button>
-                )}
-                <Button variant="ghost" size="icon" className="size-7" onClick={() => setDetailProp(prop)} aria-label="Ver detalhes">
-                  <Eye className="size-3.5" />
-                </Button>
-                {!readOnly && onUpdate && (
-                  <Button
-                    variant="ghost" size="icon" className="size-7"
-                    onClick={() => startEdit(prop)}
-                    aria-label={`Editar ${prop.name}`}
-                    title="Editar"
-                  >
-                    <Pencil className="size-3.5" />
-                  </Button>
-                )}
-                {!readOnly && (
-                  <Button variant="ghost" size="icon" className="size-7 text-destructive/60 hover:text-destructive" onClick={() => setDeleteTarget(prop)} aria-label="Remover">
-                    <Trash2 className="size-3.5" />
-                  </Button>
-                )}
-              </div>
+              <RowActions
+                label={`Ações da propriedade ${prop.name}`}
+                className="-my-1.5 -mr-1.5 shrink-0"
+                actions={[
+                  { label: 'Ver detalhes', icon: Eye, onClick: () => setDetailProp(prop) },
+                  { label: 'Editar', icon: Pencil, onClick: () => startEdit(prop), hidden: readOnly || !onUpdate },
+                  { label: 'Definir principal', icon: Star, onClick: () => setPrimary(prop.id), hidden: isPrimary || readOnly, disabled: settingPrimary },
+                  { label: 'Remover', icon: Trash2, onClick: () => setDeleteTarget(prop), destructive: true, hidden: readOnly },
+                ]}
+              />
             </div>
           )
         })}
@@ -432,8 +413,8 @@ export function PropertiesManager({
             <div className="flex flex-col gap-3">
               <div className="flex items-center gap-2">
                 {detailProp.address.type === 'URBAN'
-                  ? <Badge variant="secondary" className="gap-1"><Building2 className="size-3" /> Urbano</Badge>
-                  : <Badge variant="secondary" className="gap-1"><TreePine className="size-3" /> Rural</Badge>}
+                  ? <Badge variant="neutral"><Building2 /> Urbano</Badge>
+                  : <Badge variant="neutral"><TreePine /> Rural</Badge>}
               </div>
               <Separator />
               <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">

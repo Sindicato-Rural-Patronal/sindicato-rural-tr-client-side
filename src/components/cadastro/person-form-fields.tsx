@@ -86,12 +86,12 @@ export function FieldRow({ label, children, required, highlight, htmlFor, error 
   return (
     <div className={cn(
       'flex flex-col gap-1.5',
-      highlight && 'rounded-lg p-2.5 -mx-2.5 bg-amber-50 dark:bg-amber-950/20 ring-1 ring-amber-300 dark:ring-amber-700',
+      highlight && 'rounded-lg p-2.5 -mx-2.5 bg-warning-soft ring-1 ring-warning/30',
     )}>
-      <Label htmlFor={id} className={cn('text-xs font-medium', highlight ? 'text-amber-700 dark:text-amber-400' : 'text-muted-foreground')}>
+      <Label htmlFor={id} className={cn('text-xs font-medium', highlight ? 'text-warning' : 'text-muted-foreground')}>
         {label}
         {required && <span className="ml-1 text-destructive">*</span>}
-        {highlight && !required && <span className="ml-1 text-amber-500">*</span>}
+        {highlight && !required && <span className="ml-1 text-warning">*</span>}
       </Label>
       {control}
       {error && <p id={`${id}-erro`} className="text-xs text-destructive" role="alert">{error}</p>}
@@ -327,7 +327,7 @@ const CAMPOS: Record<
         onChange={e => ctx.set('memberNotes', upperNoAccents(e.target.value))}
         rows={3}
         className={cn(
-          'w-full resize-none rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring',
+          'w-full resize-none rounded-lg border border-input bg-card px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring',
           ctx.disabled && READ_MODE_FIELD,
         )}
       />

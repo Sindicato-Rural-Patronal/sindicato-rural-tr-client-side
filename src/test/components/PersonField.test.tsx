@@ -169,7 +169,8 @@ describe('modos da tela', () => {
 
   it('destaque do "Completar cadastro" aparece só no campo apontado', () => {
     render(<PersonField campo="gender" ctx={ctx({ highlight: c => c === 'gender' })} />)
-    expect(screen.getByText(PERSON_LABELS.gender).className).toContain('amber')
+    // O destaque usa o tom de aviso do tema (âmbar), não cor fixa.
+    expect(screen.getByText(PERSON_LABELS.gender).className).toContain('text-warning')
   })
 
   it('erro de validação aparece e é ligado ao campo pelo aria', () => {
