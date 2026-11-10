@@ -53,7 +53,7 @@ cima. Isso significa que:
   (por exemplo, os lançamentos do mês de um caixa só);
 - dá para **mandar o link para um colega** e ele abre exatamente a mesma lista,
   com os mesmos filtros;
-- o **voltar do navegador** desfaz o último filtro, em vez de sair da tela.
+- **recarregar a página** (F5) não perde os filtros.
 
 Funciona nos lançamentos do Financeiro (inclusive o **Ordenar por**), na
 Auditoria, nas abas de Usuários, nas abas de Cursos (**Próximos** e

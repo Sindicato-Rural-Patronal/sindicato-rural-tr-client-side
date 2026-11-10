@@ -8,8 +8,9 @@ busca: exportar csv excel planilha baixar relatorio lista selecionados download 
 ---
 
 Toda lista do painel exporta em planilha. O botão **Exportar** fica no topo da
-lista, e cada linha também tem um ícone de download para levar só aquele
-registro.
+lista. Em Associados, Administradores, Empresas e Mensagens, cada linha também
+tem um ícone de download para levar só aquele registro. No celular, e na
+Unimed, ele fica no menu **Mais** (o **⋯**) da linha.
 
 ## As três formas de exportar
 
@@ -17,7 +18,7 @@ registro.
 |---|---|
 | **Selecionados (N)** | Só as linhas que você marcou na caixinha |
 | **Todos com os filtros atuais** | Tudo o que o filtro de agora mostra — não só a página na tela |
-| Ícone na linha | Aquele registro sozinho |
+| Ícone na linha (ou no menu **Mais**) | Aquele registro sozinho |
 
 A diferença entre a primeira e a segunda é a que mais confunde: **"Todos" não é
 "o banco inteiro"**, é tudo o que casa com os filtros que você deixou ligados.
@@ -29,7 +30,7 @@ cursos, marque-os na lista e use **Selecionados**.
 
 A seleção **continua valendo quando você troca de página** — dá para marcar
 cinco pessoas na página 1, ir à página 3, marcar mais três e exportar as oito.
-O contador no topo mostra "8 selecionados · Limpar".
+O contador no topo mostra "8 selecionados", com um **×** para limpar a seleção.
 
 ## O arquivo
 
