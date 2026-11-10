@@ -148,17 +148,21 @@ src/
 │   ├── RouteErrorPage.tsx           # defaultErrorComponent: "Tentar de novo" (router.invalidate) + "Ir para o início"
 │   ├── NotFoundPage.tsx             # 404 em português (lazy): com cabeçalho/rodapé quando fora do layout; em /admin leva ao painel
 │   ├── PageLoader.tsx               # defaultPendingComponent (rota demorando a carregar)
-│   ├── PublicHeader.tsx             # Nav pública (sticky; logo-icon.png; convênios como itens próprios; menu mobile abaixo de lg;
-│   │                                #   ThemeToggle)
+│   ├── PublicHeader.tsx             # Nav pública (sticky; só a logo-icon.png, sem o lema; convênios num item só, "Convênios",
+│   │                                #   link direto para /convenios, sem submenu; menu mobile abaixo de lg; ThemeToggle)
 │   ├── public-footer.tsx            # Footer: 4 colunas (logo-full.png, links, contato via useOrgInfo, chamada);
 │   │                                #   "Acesso ao painel" é link discreto na linha de baixo
-│   ├── WhatsAppFloatingButton.tsx   # Botão flutuante do WhatsApp (só com WhatsApp nas Configurações; some abaixo de lg em /cursos/$id)
-│   ├── home-hero-section.tsx        # Banner hero (some sem banner; falha = linha com "Tentar de novo")
-│   ├── home-cotacoes-section.tsx    # Faixa de cotações (preço, unidade, dia/período, fonte, link histórico)
-│   ├── home-courses-section.tsx     # Carrossel de cursos (CoursesSection)
-│   ├── home-events-section.tsx      # "Próximos eventos" (só quando há evento publicado)
+│   ├── WhatsAppFloatingButton.tsx   # Botão flutuante do WhatsApp, 48 px no verde do Sindicato (só com WhatsApp nas
+│   │                                #   Configurações; some abaixo de lg em /cursos/$id)
+│   ├── PublicPageHeader.tsx         # Faixa de topo das páginas internas do site (ver "Design" › Site público)
+│   ├── home-hero-section.tsx        # Banner: o cartaz inteiro (1440 × 600) ao lado do título e do botão; troca a cada 9 s,
+│   │                                #   para no hover/foco/clique, parado com "reduzir movimento"; some sem banner
+│   ├── home-cotacoes-section.tsx    # Cotações da home: título, atualização, links e o quadro (cotacoes/QuoteBoard)
+│   ├── home-courses-section.tsx     # Carrossel de cursos (CoursesSection; só anda quando a pessoa pede)
+│   ├── home-events-section.tsx      # "Próximos eventos" (só quando há evento publicado); EventDateBlock e EventMeta,
+│   │                                #   usados também em /eventos
 │   ├── home-news-section.tsx        # Notícias na home
-│   ├── course-card.tsx              # CourseCard + CourseCardSimple (carousel-aware)
+│   ├── course-card.tsx              # CourseCard: uma etiqueta só (a situação), preço como texto, instrutor só se houver
 │   ├── StatusBadge.tsx              # Selo do status do curso (tons do Badge)
 │   ├── GalleryLightbox.tsx          # Fotos de uma galeria em tela cheia (página Sobre)
 │   ├── adminSideBar.tsx             # Sidebar admin (favicon.ico como marca); sino ao lado do logo; itens por permissão
@@ -196,7 +200,9 @@ src/
 │   │                                #   `loadError` mostra a falha em vez de "Nenhuma propriedade")
 │   ├── conta/PerfilTab.tsx          # Aba Perfil de Minha conta: foto, nome, usuário; trocar a senha pede a senha atual
 │   ├── convenio/                    # ConvenioEditor (admin) e ConvenioPageView (página pública e pré-visualização)
-│   ├── cotacoes/                    # QuoteHistoryChart (gráfico SVG), QuoteDayCard e CotacaoSimples (tela /cotacao)
+│   ├── cotacoes/                    # QuoteBoard (o quadro da home e de /cotacoes), quote-variation.ts ("vs manhã"/"vs
+│   │                                #   anterior", dia do quadro), QuoteHistoryChart (gráfico SVG), QuoteDayCard e CotacaoSimples
+│   │                                #   (tela /cotacao)
 │   ├── courses/                     # CoursesList (lista do painel com as abas Próximos/Armazenados, filtros, cartões e paginação),
 │   │                                #   AdminCourseCard + CourseCardSkeleton, RegistrationsTab (aba "Inscrições" da janela do
 │   │                                #   curso: ordem de chegada, "Inscrito em dd/mm/aaaa hh:mm", presença, fichas) — os três fora
@@ -402,6 +408,13 @@ Direção aprovada pelo usuário em 10/11/2026 (`orquestracao/PLANO-DESIGN.md`, 
 | Gráfico: série de entradas / saídas | `var(--chart-1)` / `var(--chart-2)` (os outros com `--chart-4`/`--chart-5`, neutros) |
 
 Cor que vem do cadastro (cor da categoria e do caixa no Financeiro) continua como está.
+
+**Site público** (SR-082)
+- **Faixa de topo única** (`PublicPageHeader`) em Cursos, Notícias, Eventos, Sobre, Contato, Cotações, Convênios e cada convênio: título à esquerda sobre o papel, a frase da página e uma linha de contexto com dado de verdade ("4 cursos com inscrições abertas", "Preços de 10/11/2026 · Fonte: Cvale"). `width` alinha a faixa com o conteúdo (`max-w-5xl`…); `context={null}` reserva a altura enquanto carrega. Nada de faixa verde ou preta com título centralizado.
+- **Imagem que é cartaz não se corta nem leva texto por cima**: banner e imagem de notícia são recortados no painel em 1440 × 600 e aparecem inteiros (`aspect-[12/5]`); a capa do curso (16:9) aparece inteira ao lado do título.
+- **O quadro de cotações** (`cotacoes/QuoteBoard`) é o momento do site: superfície `bg-brand`, tudo em mono (é o único lugar com rótulo em mono), parado. Alta e baixa sobre o verde usam `text-brand-positive`/`text-brand-negative` (tokens fixos nos dois temas, 5,2:1 e 5,0:1 sobre o `--brand`); o texto sobre o verde fica a 80% ou mais (`text-brand-foreground/80` = 5,2:1). A variação diz com o que compara (`variationBasis`).
+- **Nada se move sozinho** além do banner (9 s, para no hover). Parceiros em grade, cursos só com as setas.
+- Rodapé: `bg-brand` (`#15632f`); texto a 80% no mínimo (o pé estava a 60%, 3,6:1).
 
 ## Padrões do código
 

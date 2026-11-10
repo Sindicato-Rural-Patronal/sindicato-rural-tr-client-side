@@ -2,14 +2,15 @@ import { Link } from '@tanstack/react-router'
 import { Button } from './ui/button'
 import { ArrowRight } from 'lucide-react'
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from './ui/carousel'
-import type { AutoplayType } from 'embla-carousel-autoplay'
 import { useTranslation } from 'react-i18next'
 import { useCourses } from '@/hooks/useCourse'
 import { CourseCard } from '@/components/course-card'
 import { LoadErrorRetry } from '@/components/LoadErrorRetry'
 import { Skeleton } from '@/components/ui/skeleton'
 
-export function CoursesSection({ autoplayPlugin }: { autoplayPlugin: React.RefObject<AutoplayType> }) {
+// Carrossel de cursos da home. Só anda quando a pessoa pede (setas ou arrastar):
+// antes trocava sozinho a cada 4 s.
+export function CoursesSection() {
   const { data: result, isLoading, isError, isFetching, refetch } = useCourses({ limit: 9, ended: 'exclude' })
   const courses = result?.data ?? []
   const { t } = useTranslation()
@@ -19,10 +20,10 @@ export function CoursesSection({ autoplayPlugin }: { autoplayPlugin: React.RefOb
       <div className="container mx-auto px-4">
         <div className="mb-8 flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
           <div>
-            <h2 className="text-2xl font-bold text-foreground md:text-3xl">{t('home.coursesTitle')}</h2>
+            <h2 className="text-2xl font-semibold tracking-tight text-foreground md:text-3xl">{t('home.coursesTitle')}</h2>
             <p className="mt-1 text-sm text-muted-foreground">{t('home.coursesSubtitle')}</p>
           </div>
-          <Button asChild variant="link" className="h-11 px-0 font-semibold text-primary sm:px-2">
+          <Button asChild variant="link" className="h-11 px-0 text-primary sm:px-2">
             <Link to="/cursos">
               {t('home.seeMore')} <ArrowRight className="ml-1 size-4" />
             </Link>
@@ -46,11 +47,7 @@ export function CoursesSection({ autoplayPlugin }: { autoplayPlugin: React.RefOb
           // Falha da API não é "nenhum curso": avisa e deixa tentar de novo.
           <LoadErrorRetry onRetry={() => void refetch()} retrying={isFetching} className="rounded-xl border bg-card" />
         ) : courses.length > 0 ? (
-          <Carousel
-            opts={{ align: 'start', loop: true }}
-            plugins={[autoplayPlugin.current]}
-            className="w-full"
-          >
+          <Carousel opts={{ align: 'start', loop: true }} className="w-full" aria-label={t('home.coursesTitle')}>
             <CarouselContent>
               {courses.map((course) => (
                 <CarouselItem key={course.id} className="md:basis-1/2 lg:basis-1/3">
@@ -58,9 +55,12 @@ export function CoursesSection({ autoplayPlugin }: { autoplayPlugin: React.RefOb
                 </CarouselItem>
               ))}
             </CarouselContent>
-            {/* Setas maiores no celular (alvo de toque de 44px). */}
-            <CarouselPrevious className="left-2 size-11 md:-left-4 md:size-7" />
-            <CarouselNext className="right-2 size-11 md:-right-4 md:size-7" />
+            {/* Celular: as setas (44 px) ficam embaixo do cartão, não por cima dele.
+                Do tablet para cima elas voltam para as bordas (md:contents). */}
+            <div className="mt-4 flex justify-end gap-2 md:contents">
+              <CarouselPrevious className="max-md:static max-md:size-11 max-md:translate-y-0 md:-left-4 md:size-8" />
+              <CarouselNext className="max-md:static max-md:size-11 max-md:translate-y-0 md:-right-4 md:size-8" />
+            </div>
           </Carousel>
         ) : (
           <p className="text-center text-muted-foreground">{t('home.noCourses')}</p>

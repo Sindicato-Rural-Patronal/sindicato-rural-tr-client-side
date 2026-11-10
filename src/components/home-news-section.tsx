@@ -1,7 +1,6 @@
 import { Link } from '@tanstack/react-router'
 import { ArrowRight, Calendar, Newspaper } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { LoadErrorRetry } from '@/components/LoadErrorRetry'
 import { useTranslation } from 'react-i18next'
@@ -13,14 +12,14 @@ export function HomeNewsSection() {
   const { data: news = [], isLoading, isError, isFetching, refetch } = useNews()
 
   return (
-    <section className="border-t bg-muted/40 py-12 md:py-16">
+    <section className="border-t border-border py-12 md:py-16">
       <div className="container mx-auto px-4">
         <div className="mb-8 flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
           <div>
-            <h2 className="text-2xl font-bold text-foreground md:text-3xl">{t('home.newsTitle')}</h2>
+            <h2 className="text-2xl font-semibold tracking-tight text-foreground md:text-3xl">{t('home.newsTitle')}</h2>
             <p className="mt-1 text-sm text-muted-foreground">{t('home.newsSubtitle')}</p>
           </div>
-          <Button asChild variant="link" className="h-11 px-0 font-semibold text-primary sm:px-2">
+          <Button asChild variant="link" className="h-11 px-0 text-primary sm:px-2">
             <Link to="/noticias">
               {t('home.seeMore')} <ArrowRight className="ml-1 size-4" />
             </Link>
@@ -31,7 +30,7 @@ export function HomeNewsSection() {
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {Array.from({ length: 3 }).map((_, i) => (
               <div key={i} className="flex flex-col gap-3 rounded-xl border overflow-hidden bg-card">
-                <Skeleton className="h-44 w-full rounded-none" />
+                <Skeleton className="aspect-[12/5] w-full rounded-none" />
                 <div className="flex flex-col gap-2 p-3">
                   <Skeleton className="h-3 w-32" />
                   <Skeleton className="h-4 w-full" />
@@ -49,7 +48,7 @@ export function HomeNewsSection() {
 
         {!isLoading && !isError && news.length === 0 && (
           <div className="flex flex-col items-center justify-center py-12 text-center">
-            <Newspaper className="size-12 text-muted-foreground/40" />
+            <Newspaper className="size-12 text-faint-foreground" aria-hidden />
             <p className="mt-3 text-sm text-muted-foreground">{t('newsPage.notFound')}</p>
           </div>
         )}
@@ -59,40 +58,37 @@ export function HomeNewsSection() {
             {news.slice(0, 3).map((item) => (
               // O cartão inteiro é o link (não só o "Saiba mais"): mais fácil de tocar no celular.
               <Link key={item.id} to="/noticias/$id" params={{ id: item.id }} className="group block h-full rounded-xl">
-                <Card className="flex h-full flex-col overflow-hidden transition-all group-hover:shadow-lg">
-                  <div className="p-3 pb-0">
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                      {item.publishedAt && (
-                        <>
-                          <Calendar className="size-3" />
-                          <span>{formatDateFromString(item.publishedAt)}</span>
-                        </>
-                      )}
-                    </div>
-                  </div>
-                  <div className="relative mx-3 mt-2 flex aspect-4/3 items-center justify-center overflow-hidden rounded-lg bg-muted">
+                <article className="flex h-full flex-col overflow-hidden rounded-xl border border-border bg-card transition-colors group-hover:border-foreground/20">
+                  {/* A imagem da notícia é recortada no painel em 1440 × 600: aparece inteira. */}
+                  <div className="flex aspect-[12/5] items-center justify-center overflow-hidden border-b border-border bg-muted">
                     {item.bannerUrl ? (
                       <img
                         src={item.bannerUrl}
                         alt={item.title}
                         loading="lazy"
                         decoding="async"
-                        className="h-full w-full object-cover transition-transform group-hover:scale-105"
+                        className="h-full w-full object-cover"
                       />
                     ) : (
-                      <Newspaper className="size-10 text-muted-foreground/30" />
+                      <Newspaper className="size-10 text-faint-foreground" aria-hidden />
                     )}
                   </div>
-                  <CardContent className="flex grow flex-col p-3">
-                    <h3 className="line-clamp-2 text-sm font-semibold text-foreground">{item.title}</h3>
-                    {item.summary && (
-                      <p className="mt-1 line-clamp-2 grow text-xs text-muted-foreground">{item.summary}</p>
+                  <div className="flex grow flex-col gap-2 p-4">
+                    {item.publishedAt && (
+                      <p className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <Calendar className="size-4 text-faint-foreground" aria-hidden />
+                        <span className="num">{formatDateFromString(item.publishedAt)}</span>
+                      </p>
                     )}
-                    <span className="mt-2 text-xs font-semibold text-primary group-hover:underline">
+                    <h3 className="line-clamp-2 text-base font-semibold leading-snug text-foreground">{item.title}</h3>
+                    {item.summary && (
+                      <p className="line-clamp-2 grow text-sm text-muted-foreground">{item.summary}</p>
+                    )}
+                    <span className="mt-1 text-sm font-medium text-primary group-hover:underline">
                       {t('home.learnMore')}
                     </span>
-                  </CardContent>
-                </Card>
+                  </div>
+                </article>
               </Link>
             ))}
           </div>

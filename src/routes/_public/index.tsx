@@ -1,8 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { safeUrl } from '@/utils/safe-url'
-import { useRef, useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
-import Autoplay from 'embla-carousel-autoplay'
 import { HeroSection } from '@/components/home-hero-section'
 import { CotacoesSection } from '@/components/home-cotacoes-section'
 import { CoursesSection } from '@/components/home-courses-section'
@@ -16,24 +14,26 @@ export const Route = createFileRoute('/_public/')({
   component: HomePage,
 })
 
-function PartnerItem({ partner }: { partner: { id: string; name: string; partnerLogoUrl: string | null; partnerUrl: string | null } }) {
+type Partner = { id: string; name: string; partnerLogoUrl: string | null; partnerUrl: string | null }
+
+// Cada parceiro numa célula da grade. Os logos chegam com fundo branco (não
+// transparente): a célula é branca para o logo não virar um retângulo dentro
+// dela; no tema escuro a célula é a do cartão e o logo fica numa placa branca.
+const CELL = 'flex h-20 items-center justify-center rounded-xl border border-border bg-white px-4 md:h-24 dark:bg-card'
+
+function PartnerItem({ partner }: { partner: Partner }) {
   const inner = partner.partnerLogoUrl ? (
-    // Chip branco atrás do logo — mantém logos coloridos legíveis em qualquer tema.
-    <div className="flex items-center rounded-md bg-white px-3 py-2">
-      <img
-        src={partner.partnerLogoUrl}
-        alt={partner.name}
-        width={300}
-        height={150}
-        loading="lazy"
-        decoding="async"
-        className="h-10 w-auto max-w-35 object-contain md:h-12 md:max-w-40"
-      />
-    </div>
+    <img
+      src={partner.partnerLogoUrl}
+      alt={partner.name}
+      width={300}
+      height={150}
+      loading="lazy"
+      decoding="async"
+      className="max-h-12 w-auto max-w-full object-contain md:max-h-14 dark:rounded-md dark:bg-white dark:px-2 dark:py-1"
+    />
   ) : (
-    <span className="text-sm font-semibold text-muted-foreground">
-      {partner.name}
-    </span>
+    <span className="text-center text-sm font-medium text-muted-foreground">{partner.name}</span>
   )
 
   if (partner.partnerUrl) {
@@ -43,7 +43,7 @@ function PartnerItem({ partner }: { partner: { id: string; name: string; partner
         target="_blank"
         rel="noopener noreferrer"
         title={partner.name}
-        className="flex shrink-0 items-center px-8"
+        className={`${CELL} transition-colors hover:border-foreground/25`}
       >
         {inner}
       </a>
@@ -51,34 +51,25 @@ function PartnerItem({ partner }: { partner: { id: string; name: string; partner
   }
 
   return (
-    <div title={partner.name} className="flex shrink-0 items-center px-8">
+    <div title={partner.name} className={CELL}>
       {inner}
     </div>
   )
 }
 
+// Parada, em grade: antes a faixa rolava sozinha.
 function PartnersSection() {
   const { t } = useTranslation()
   const { data: partners, isLoading, isError, isFetching, refetch } = usePartners()
-  const trackRef = useRef<HTMLDivElement>(null)
-  const wrapperRef = useRef<HTMLDivElement>(null)
-  const [shouldScroll, setShouldScroll] = useState(false)
-
-  useEffect(() => {
-    if (!trackRef.current || !wrapperRef.current) return
-    const trackW = trackRef.current.scrollWidth / 2
-    const wrapperW = wrapperRef.current.offsetWidth
-    setShouldScroll(trackW > wrapperW)
-  }, [partners])
 
   if (isLoading) {
     return (
-      <section className="py-14 md:py-20 bg-background">
+      <section className="border-t border-border py-12 md:py-16">
         <div className="container mx-auto px-4">
-          <Skeleton className="h-5 w-44 mx-auto mb-10" />
-          <div className="flex items-center justify-center gap-12">
-            {Array.from({ length: 5 }).map((_, i) => (
-              <Skeleton key={i} className="h-10 w-28 rounded" />
+          <Skeleton className="mb-6 h-6 w-32" />
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <Skeleton key={i} className="h-20 rounded-xl md:h-24" />
             ))}
           </div>
         </div>
@@ -97,52 +88,22 @@ function PartnersSection() {
   if (!partners || partners.length === 0) return null
 
   return (
-    <section className="py-14 md:py-20 bg-background overflow-hidden">
-      <style>{`
-        @keyframes partners-marquee {
-          from { transform: translateX(0); }
-          to { transform: translateX(-50%); }
-        }
-        .partners-track-scroll {
-          animation: partners-marquee 28s linear infinite;
-        }
-        .partners-track-scroll:hover {
-          animation-play-state: paused;
-        }
-        @media (prefers-reduced-motion: reduce) {
-          .partners-track-scroll { animation: none; }
-        }
-      `}</style>
-
-      <div className="container mx-auto px-4 mb-10">
-        <p className="text-center text-xs font-semibold uppercase tracking-widest text-muted-foreground">
-          {t('home.partnersTitle')}
-        </p>
-      </div>
-
-      <div ref={wrapperRef} className="relative w-full overflow-hidden">
-        {shouldScroll ? (
-          <div ref={trackRef} className={`flex w-max partners-track-scroll`}>
-            {partners.map(p => <PartnerItem key={p.id} partner={p} />)}
-            {partners.map(p => <PartnerItem key={`dup-${p.id}`} partner={p} />)}
-          </div>
-        ) : (
-          <div ref={trackRef} className="flex items-center justify-center flex-wrap gap-10 md:gap-16 w-full">
-            {partners.map(p => <PartnerItem key={p.id} partner={p} />)}
-          </div>
-        )}
+    <section className="border-t border-border py-12 md:py-16">
+      <div className="container mx-auto px-4">
+        <h2 className="mb-6 text-xl font-semibold text-foreground md:text-2xl">{t('home.partnersTitle')}</h2>
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+          {partners.map(p => <PartnerItem key={p.id} partner={p} />)}
+        </div>
       </div>
     </section>
   )
 }
 
 function HomePage() {
-  const autoplayPlugin = useRef(Autoplay({ delay: 4000, stopOnInteraction: true }))
-
   return (
     <div className="bg-background">
       <HeroSection />
-      <CoursesSection autoplayPlugin={autoplayPlugin} />
+      <CoursesSection />
       <HomeEventsSection />
       <CotacoesSection />
       <HomeNewsSection />

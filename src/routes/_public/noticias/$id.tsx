@@ -31,10 +31,10 @@ function ImageBlock({ url, caption }: { url: string; caption?: string }) {
         alt={caption ?? ''}
         loading="lazy"
         decoding="async"
-        className="w-full rounded-xl object-cover max-h-[480px]"
+        className="mx-auto block h-auto max-h-[480px] w-auto max-w-full rounded-xl border border-border"
       />
       {caption && (
-        <figcaption className="mt-2 text-center text-sm text-muted-foreground italic">
+        <figcaption className="mt-2 text-center text-sm text-muted-foreground">
           {caption}
         </figcaption>
       )}
@@ -64,7 +64,7 @@ function ImageTextBlock({
         alt={text.trim() || newsTitle}
         loading="lazy"
         decoding="async"
-        className="w-full md:w-2/5 rounded-xl object-cover max-h-64"
+        className="max-h-64 w-full rounded-xl border border-border object-cover md:w-2/5"
       />
       <p className="flex-1 min-w-0 text-base leading-relaxed text-foreground/90 whitespace-pre-line wrap-break-word">
         {text}
@@ -137,7 +137,7 @@ function RouteComponent() {
   if (isError || !news) {
     return (
       <main className="container mx-auto max-w-3xl px-4 py-16 text-center">
-        <Newspaper className="mx-auto size-16 text-muted-foreground/40" />
+        <Newspaper className="mx-auto size-12 text-faint-foreground" aria-hidden />
         <h2 className="mt-4 text-xl font-semibold">{t('newsPage.detailNotFound')}</h2>
         <p className="mt-2 text-sm text-muted-foreground">{t('newsPage.detailNotFoundDesc')}</p>
         <Button asChild className="mt-6 h-11">
@@ -161,25 +161,28 @@ function RouteComponent() {
         {t('newsPage.backToNews')}
       </Link>
 
+      {/* A imagem é recortada no painel em 1440 × 600: aparece inteira, sem corte. */}
       {news.bannerUrl && (
-        <div className="mb-6 overflow-hidden rounded-xl">
+        <div className="mb-6 aspect-[12/5] overflow-hidden rounded-xl border border-border bg-muted">
           <img
             src={news.bannerUrl}
             alt={news.title}
-            className="w-full max-h-80 object-cover"
+            width={1440}
+            height={600}
+            className="h-full w-full object-cover"
           />
         </div>
       )}
 
       <header className="mb-8">
-        <h1 className="text-2xl font-bold leading-tight md:text-3xl wrap-break-word">{news.title}</h1>
         {date && (
-          <p className="mt-2 text-sm text-muted-foreground">
-            {t('newsPage.publishedAt')}{date}
+          <p className="mb-2 text-sm text-muted-foreground">
+            {t('newsPage.publishedAt')}<span className="num">{date}</span>
           </p>
         )}
+        <h1 className="text-2xl font-semibold leading-tight tracking-tight text-foreground wrap-break-word md:text-3xl">{news.title}</h1>
         {news.summary && (
-          <p className="mt-4 text-base text-muted-foreground leading-relaxed border-l-4 border-primary pl-4 italic wrap-break-word">
+          <p className="mt-4 border-l-2 border-primary pl-4 text-lg leading-relaxed text-muted-foreground wrap-break-word">
             {news.summary}
           </p>
         )}

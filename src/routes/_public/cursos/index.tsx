@@ -14,6 +14,8 @@ import { CourseCard } from '@/components/course-card'
 import { getCourseSituation } from '@/utils/course-status'
 import { Skeleton } from '@/components/ui/skeleton'
 import { LoadErrorRetry } from '@/components/LoadErrorRetry'
+import { EmptyState } from '@/components/EmptyState'
+import { ContextFigure, PublicPageHeader } from '@/components/PublicPageHeader'
 import { useSeo } from '@/hooks/useSeo'
 
 const PAGE_SIZE = 12
@@ -121,6 +123,9 @@ function RouteComponent() {
     return filtered.map((x) => x.course)
   }, [courses, search, priceFilter, statusFilter, sortBy])
 
+  // Linha de contexto da faixa de topo: quantos cursos aceitam inscrição agora.
+  const openCount = useMemo(() => courses.filter(c => getCourseSituation(c) === 'open').length, [courses])
+
   const totalPages = Math.max(1, Math.ceil(processed.length / PAGE_SIZE))
   const safePage = Math.min(page, totalPages)
   const pageItems = processed.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE)
@@ -128,30 +133,31 @@ function RouteComponent() {
   return (
     <main>
       <div className="bg-background">
-        {/* Hero */}
-        <section className="bg-brand py-14">
-          <div className="container mx-auto px-4">
-            <h1 className="text-3xl font-bold text-white md:text-4xl">{t('courses.pageTitle')}</h1>
-            <p className="mt-2 max-w-2xl text-white/90 text-sm md:text-base">{t('courses.pageSubtitle')}</p>
-          </div>
-        </section>
+        <PublicPageHeader
+          title={t('courses.pageTitle')}
+          description={t('courses.pageSubtitle')}
+          context={isLoading || isError ? null : openCount > 0
+            ? <><ContextFigure>{openCount}</ContextFigure> {t('courses.openCount', { count: openCount })}</>
+            : t('courses.openNone')}
+        />
 
-        {/* Filters */}
-        <section className="border-b bg-card py-4 sticky top-16 z-40">
+        {/* Filtros: presos sob o menu ao rolar */}
+        <section className="sticky top-16 z-40 border-b border-border bg-background py-3">
           <div className="container mx-auto px-4">
             <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
               <div className="relative flex-1 lg:max-w-md">
-                <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-faint-foreground" aria-hidden />
                 <Input
+                  aria-label={t('courses.searchPlaceholder')}
                   placeholder={t('courses.searchPlaceholder')}
                   value={search}
                   onChange={(e) => patchSearch({ q: e.target.value })}
-                  className="pl-10 text-sm"
+                  className="pl-9"
                 />
               </div>
               <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
                 <Select value={priceFilter} onValueChange={(v) => patchSearch({ price: v as PriceKey })}>
-                  <SelectTrigger className="w-full text-sm"><SelectValue /></SelectTrigger>
+                  <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">{t('courses.filterAll')}</SelectItem>
                     <SelectItem value="free">{t('courses.filterFree')}</SelectItem>
@@ -159,7 +165,7 @@ function RouteComponent() {
                   </SelectContent>
                 </Select>
                 <Select value={statusFilter} onValueChange={(v) => patchSearch({ status: v as StatusKey })}>
-                  <SelectTrigger className="w-full text-sm"><SelectValue /></SelectTrigger>
+                  <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">{t('courses.filterStatusAll')}</SelectItem>
                     <SelectItem value="open">{t('courses.filterOpen')}</SelectItem>
@@ -167,7 +173,7 @@ function RouteComponent() {
                   </SelectContent>
                 </Select>
                 <Select value={sortBy} onValueChange={(v) => patchSearch({ sort: v as SortKey })}>
-                  <SelectTrigger className="w-full text-sm"><SelectValue /></SelectTrigger>
+                  <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="soon">{t('courses.sortSoon')}</SelectItem>
                     <SelectItem value="recent">{t('courses.sortRecent')}</SelectItem>
@@ -208,16 +214,17 @@ function RouteComponent() {
             )}
             {!isLoading && !isError && (
               processed.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-16 text-center">
-                  <GraduationCap className="size-16 text-muted-foreground/50" />
-                  <h3 className="mt-4 text-lg font-semibold">{t('courses.notFound')}</h3>
-                  <p className="mt-2 text-sm text-muted-foreground">{t('courses.notFoundHint')}</p>
-                  {hasFilters && (
-                    <Button variant="outline" className="mt-4 h-11" onClick={clearFilters}>
+                <EmptyState
+                  framed
+                  icon={GraduationCap}
+                  title={t('courses.notFound')}
+                  description={t('courses.notFoundHint')}
+                  action={hasFilters ? (
+                    <Button variant="outline" className="h-11 sm:h-9" onClick={clearFilters}>
                       {t('courses.clearFilters')}
                     </Button>
-                  )}
-                </div>
+                  ) : undefined}
+                />
               ) : (
                 <>
                   <div className="mb-4 flex items-center justify-between gap-3">
@@ -225,7 +232,7 @@ function RouteComponent() {
                       {t('courses.resultsCount', { count: processed.length })}
                     </p>
                     {hasFilters && (
-                      <Button variant="ghost" size="sm" className="h-11 text-xs sm:h-auto" onClick={clearFilters}>
+                      <Button variant="ghost" size="sm" className="h-11 sm:h-8" onClick={clearFilters}>
                         {t('courses.clearFilters')}
                       </Button>
                     )}
