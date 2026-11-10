@@ -38,15 +38,15 @@ function LinkedUser({ user, onClear, fallback = 'Usuário vinculado' }: {
   fallback?: string
 }) {
   return (
-    <div className="flex items-center justify-between rounded-md border border-border bg-muted/40 px-3 py-2 text-sm">
+    <div className="flex items-center justify-between rounded-lg border border-border bg-muted px-3 py-2 text-sm">
       <span className="inline-flex items-center gap-2 text-muted-foreground min-w-0">
         <User className="size-4 shrink-0" />
         <strong className="text-foreground truncate">{user.name || fallback}</strong>
-        {user.cpf && <span className="shrink-0 text-xs text-muted-foreground">{maskCPF(user.cpf)}</span>}
+        {user.cpf && <span className="shrink-0 text-xs tabular-nums text-muted-foreground">{maskCPF(user.cpf)}</span>}
       </span>
       {onClear && (
-        <Button type="button" size="sm" variant="ghost" className="h-7 gap-1 px-2 shrink-0" onClick={onClear}>
-          <X className="size-3.5" /> Remover
+        <Button type="button" size="xs" variant="ghost" className="shrink-0" onClick={onClear}>
+          <X /> Remover
         </Button>
       )}
     </div>
@@ -211,10 +211,10 @@ export function UnimedFormDialog({ open, editId, onClose }: {
     try {
       if (isEdit) {
         await updateM.mutateAsync(fields)
-        toast.success('Beneficiário atualizado!')
+        toast.success('Beneficiário atualizado.')
       } else {
         await createM.mutateAsync({ userDataId: beneficiary!.id, ...fields })
-        toast.success('Beneficiário cadastrado!')
+        toast.success('Beneficiário cadastrado.')
       }
       onClose()
     } catch (e) {
@@ -261,13 +261,13 @@ export function UnimedFormDialog({ open, editId, onClose }: {
                   <PersonPicker id="unimed-beneficiary" onPick={setBeneficiary} limit={6} placeholder="Buscar o beneficiário (nome, e-mail ou CPF)…" />
                 )}
                 {isEdit && (
-                  <p className="text-[11px] text-muted-foreground">O usuário vinculado não pode ser alterado.</p>
+                  <p className="text-xs text-muted-foreground">O usuário vinculado não pode ser alterado.</p>
                 )}
               </div>
 
               {/* Contratante / plano */}
               <div className="flex flex-col gap-3">
-                <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Contratante e plano</h4>
+                <h4 className="text-sm font-medium text-foreground">Contratante e plano</h4>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="flex flex-col gap-1.5">
                     <Label>Contratante</Label>
@@ -290,7 +290,7 @@ export function UnimedFormDialog({ open, editId, onClose }: {
 
               {/* Dependência */}
               <div className="flex flex-col gap-3">
-                <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Dependência e movimento</h4>
+                <h4 className="text-sm font-medium text-foreground">Dependência e movimento</h4>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="flex flex-col gap-1.5">
                     <Label htmlFor="unimed-tipo-movimento">Tipo de movimento</Label>
@@ -341,7 +341,7 @@ export function UnimedFormDialog({ open, editId, onClose }: {
 
               {/* Dados */}
               <div className="flex flex-col gap-3">
-                <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Dados</h4>
+                <h4 className="text-sm font-medium text-foreground">Dados</h4>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="flex flex-col gap-1.5">
                     <Label htmlFor="unimed-cns">CNS</Label>
@@ -352,7 +352,7 @@ export function UnimedFormDialog({ open, editId, onClose }: {
                       value={form.cns}
                       onChange={e => setF('cns', maskCNS(e.target.value))}
                     />
-                    <p className="text-[11px] text-muted-foreground">Cartão Nacional de Saúde — 15 dígitos.</p>
+                    <p className="text-xs text-muted-foreground">Cartão Nacional de Saúde — 15 dígitos.</p>
                   </div>
                   <div className="flex flex-col gap-1.5">
                     <Label>Profissão</Label>
