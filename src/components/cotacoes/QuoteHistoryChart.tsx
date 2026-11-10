@@ -12,7 +12,8 @@ const MONTHS = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', '
 
 const HEIGHT = 200
 const AXIS_BAND = 24
-const MARGIN = { top: 12, right: 12, left: 56 }
+// left: o rótulo do eixo em mono de 12 px ("1.234,56") cabe sem encostar na borda.
+const MARGIN = { top: 12, right: 12, left: 64 }
 
 function pointLabel(p: QuoteHistoryPoint): string {
   const [, m, d] = p.date.split('-')
@@ -114,7 +115,7 @@ export function QuoteHistoryChart({ points, domain, label }: {
   return (
     <div
       ref={wrapRef}
-      className="relative rounded-md outline-none [--quote-line:#287c42] focus-visible:ring-2 focus-visible:ring-ring dark:[--quote-line:#429c5a]"
+      className="relative rounded-md outline-none [--quote-line:var(--chart-1)] focus-visible:ring-2 focus-visible:ring-ring"
       tabIndex={0}
       role="group"
       aria-roledescription="gráfico"
@@ -133,7 +134,7 @@ export function QuoteHistoryChart({ points, domain, label }: {
           {geo.ticks.map(t => (
             <g key={t}>
               <line x1={MARGIN.left} x2={width - MARGIN.right} y1={geo.sy(t)} y2={geo.sy(t)} className="stroke-border" strokeWidth={1} />
-              <text x={MARGIN.left - 8} y={geo.sy(t)} dy="0.32em" textAnchor="end" className="fill-muted-foreground text-[11px] tabular-nums">
+              <text x={MARGIN.left - 8} y={geo.sy(t)} dy="0.32em" textAnchor="end" className="num fill-muted-foreground text-xs">
                 {number(t)}
               </text>
             </g>
@@ -144,7 +145,7 @@ export function QuoteHistoryChart({ points, domain, label }: {
               x={geo.sx(t)}
               y={HEIGHT + 16}
               textAnchor={i === 0 ? 'start' : i === geo.xTicks.length - 1 ? 'end' : 'middle'}
-              className="fill-muted-foreground text-[11px] tabular-nums"
+              className="num fill-muted-foreground text-xs"
             >
               {dayTick(t, geo.longTicks)}
             </text>
@@ -178,13 +179,13 @@ export function QuoteHistoryChart({ points, domain, label }: {
 
       {current && (
         <div
-          className="pointer-events-none absolute z-10 min-w-28 rounded-md border bg-popover px-2.5 py-1.5 text-popover-foreground shadow-md"
+          className="pointer-events-none absolute z-10 min-w-28 rounded-md border border-border bg-popover px-2.5 py-1.5 text-popover-foreground shadow-float"
           style={{
             left: Math.min(Math.max(ax - 56, 0), Math.max(width - 128, 0)),
             top: ay < 72 ? ay + 12 : ay - 64,
           }}
         >
-          <p className="text-sm font-semibold tabular-nums">{centsToBRL(current.priceCents)}</p>
+          <p className="num text-sm font-semibold">{centsToBRL(current.priceCents)}</p>
           <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
             <span className="inline-block h-0.5 w-3 rounded-full bg-(--quote-line)" />
             {pointLabel(current)}

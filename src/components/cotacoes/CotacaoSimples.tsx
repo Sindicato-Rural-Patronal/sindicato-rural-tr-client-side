@@ -43,8 +43,8 @@ export function CotacaoSimples() {
     <main className="mx-auto flex min-h-screen w-full max-w-lg flex-col px-4 py-6">
       <header className="text-center">
         <img src="/logo-full.png" alt="Sindicato Rural de Terra Roxa" className="mx-auto h-14 object-contain" />
-        <h1 className="mt-4 text-xl font-bold text-foreground">Cotações do dia</h1>
-        {dia && <p className="text-sm text-muted-foreground">{dia}</p>}
+        <h1 className="mt-4 text-xl font-semibold text-foreground">Cotações do dia</h1>
+        {dia && <p className="num text-sm text-muted-foreground">{dia}</p>}
       </header>
 
       <div className="mt-6 flex flex-col gap-3">
@@ -63,7 +63,7 @@ export function CotacaoSimples() {
 
         {!isLoading && !isError && quotes.length === 0 && (
           <p className="rounded-xl border border-border bg-card px-4 py-8 text-center text-sm text-muted-foreground">
-            Nenhuma cotação lançada ainda.
+            Nenhuma cotação lançada ainda
           </p>
         )}
 
@@ -71,9 +71,7 @@ export function CotacaoSimples() {
 
         {dolar.length > 0 && (
           <section className="mt-3 border-t border-border pt-4">
-            <h2 className="mb-3 text-center text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              Moeda
-            </h2>
+            <h2 className="mb-3 text-center text-sm font-medium text-muted-foreground">Moeda</h2>
             <div className="flex flex-col gap-3">
               {dolar.map(q => <QuoteDayCard key={q.id} quote={q} />)}
             </div>
