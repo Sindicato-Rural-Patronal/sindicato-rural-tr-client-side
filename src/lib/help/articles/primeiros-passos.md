@@ -22,7 +22,8 @@ Por isso vale a regra de ouro: **na dúvida, não apague — pergunte.**
 
 ## Entrando e saindo
 
-- Você entra em **/login**, com o usuário e a senha que receberam por convite.
+- Você entra em **/login**, na tela **Entrar no painel**: digite o **Usuário** e
+  a **Senha** que você escolheu pelo convite e clique em **Entrar**.
 - A sessão dura **8 horas**. Enquanto você estiver clicando, ela se renova
   sozinha. Se você ficar parado(a) muito tempo, o sistema pede login de novo —
   isso é normal e não é erro.

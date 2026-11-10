@@ -9,7 +9,8 @@ busca: lancar cotacao preco do dia soja milho manha tarde digitar
 ---
 
 1. Abra **Gestão › Cotações**.
-2. Escolha o período: **manhã** ou **tarde**.
+2. No alto do cartão **Lançamento de hoje**, confira o período: **Manhã** ou
+   **Tarde**. Ele já vem escolhido pela hora do dia.
 3. Digite o **preço** de cada produto. A lista de produtos é fixa — você não
    cadastra nem remove nenhum.
 4. Aperte **Enter** para pular ao próximo produto. *(Enter não envia o

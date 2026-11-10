@@ -14,20 +14,22 @@ formato é o motivo mais comum de "ficou feio no site".
 
 | Lugar | Onde aparece | Formato que funciona |
 |---|---|---|
-| **Banner** | Destaque da página inicial | Deitada (paisagem), bem larga |
+| **Banner** | Destaque da página inicial | Deitada (paisagem), bem larga. O painel recorta em 1440 × 600 |
 | **Capa do curso** | Card do curso e página dele | Deitada |
 | **Galeria do curso** | Página do curso | Qualquer uma |
-| **Capa da notícia** | Lista de notícias e a prévia no WhatsApp | Deitada |
+| **Banner da notícia** | Topo da notícia, lista de notícias e a prévia no WhatsApp | Deitada. O painel recorta em 1440 × 600 |
 | **Galerias** | Página *Sobre* | Qualquer uma |
 | **Logo do parceiro** | Página inicial | Deitada, fundo transparente se possível |
-| **Logo do convênio** | Página do convênio e menu | Deitada |
-| **Foto de pessoa** | Ficha (grande; um clique amplia) e *Nossa Equipe* | Quadrada (o sistema recorta e reduz) |
+| **Logo do convênio** | Página do convênio e a lista de *Convênios* do site | Deitada |
+| **Foto de pessoa** | Ficha (grande; um clique amplia) e *Nossa equipe* | Quadrada (o sistema recorta e reduz) |
 
 ## Regras que valem para todas
 
-- **O que importa fica no meio.** O site corta as bordas conforme a tela — num
-  celular a imagem aparece mais estreita que no computador. Texto colado na
-  beirada some.
+- **Banner e notícia aparecem inteiros**, do jeito que você recortou no painel,
+  no celular e no computador. Confira no recorte se nenhum texto ficou fora do
+  quadro.
+- **A capa do curso** aparece sempre deitada (16:9), e o site corta as bordas
+  que sobram. O que importa fica no meio: texto colado na beirada some.
 - **Foto de celular na horizontal** costuma funcionar bem. Vertical, quase
   nunca — vira uma faixa cortada.
 - **Não mande print de convite com texto miúdo.** No card ele fica ilegível. Se
@@ -39,8 +41,8 @@ formato é o motivo mais comum de "ficou feio no site".
 
 Quando você copia o link de uma notícia ou de um curso e cola no WhatsApp,
 aparece aquela caixinha com imagem e título. **A imagem dessa caixinha é a capa**
-que você subiu. Vale conferir a capa antes de divulgar, porque é ela que a
-cidade vai ver primeiro.
+do curso, ou o banner da notícia, que você subiu. Vale conferir antes de
+divulgar, porque é ela que a cidade vai ver primeiro.
 
 ## Se o envio falhar
 
