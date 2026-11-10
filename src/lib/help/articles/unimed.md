@@ -23,11 +23,15 @@ apoio: a pessoa já precisa existir em [Usuários](?topico=usuarios).
 
 ## Documentos
 
-Cada linha tem o menu **Ações**, com os rótulos escritos, que baixa em PDF:
+No fim de cada linha ficam dois ícones à vista: o lápis, **Editar**, e o da
+ficha, **Gerar Ficha**. Passe o mouse sobre o ícone para ver o nome. O resto
+fica no menu **Mais**, o botão **⋯** ao lado deles, com os nomes escritos:
 
-- **Ficha**
-- **Termo**
-- **Contrato**
+- **Gerar Termo de adesão**;
+- **Gerar Contrato (Ciência e Consentimento)**;
+- **Exportar planilha**, só daquele beneficiário;
+- **Excluir**, por último e em vermelho, separado por uma linha.
 
-Os mesmos documentos estão na aba **Unimed** da ficha da pessoa — é o mesmo
-lugar, visto de dois caminhos.
+Os três documentos baixam em PDF. Eles também estão na aba **Unimed** da ficha
+da pessoa, nos botões **Ficha**, **Termo** e **Contrato** — é o mesmo
+documento, visto de dois caminhos.

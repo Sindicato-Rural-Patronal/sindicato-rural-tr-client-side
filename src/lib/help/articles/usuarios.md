@@ -20,7 +20,7 @@ abas:
 
 ## O selo "Associado"
 
-**Associado** é a pessoa que faz parte do Sindicato. O selo amarelo
+**Associado** é a pessoa que faz parte do Sindicato. O selo âmbar
 **Associado** aparece para quem está com a **Situação** *Ativo* e a **Validade da
 associação** em dia — em branco, ou de hoje em diante. Quem está *Inativo* ou com
 a validade vencida não ganha o selo.
@@ -38,6 +38,21 @@ Para mudar quem tem o selo, abra a ficha, clique em **Editar** e acerte a
 **Dados**. O selo não aparece sozinho em quem se inscreveu pelo site: essa
 pessoa nasce sem situação, até alguém marcar *Ativo*.
 
+## A lista
+
+No computador, cada pessoa é uma linha. No fim dela ficam três ícones: a seta
+para fora, **Ver associado** (abre a ficha), o download, **Exportar associado**,
+e a lixeira, **Excluir associado**. Passe o mouse sobre o ícone para ver o
+nome.
+
+No celular, a lista vira **cartões**, um por pessoa, com o nome inteiro. Toque
+no nome para abrir a ficha. Os outros botões ficam no menu **Mais**, o **⋯** do
+cartão. A aba **Administradores** e a **Pessoa jurídica** funcionam do mesmo
+jeito.
+
+Embaixo da lista ficam as páginas e o **Por página:**, que escolhe quantas
+pessoas aparecem de cada vez.
+
 ## Cadastrando uma pessoa
 
 Botão **Novo associado**. O que você precisa saber:
@@ -46,25 +61,30 @@ Botão **Novo associado**. O que você precisa saber:
   para outra pessoa"*. Digite só os números — o sistema formata sozinho.
 - **Telefone é obrigatório. E-mail não.** Duas pessoas podem ter o mesmo
   telefone e o mesmo e-mail (casal, família) — isso é permitido de propósito.
-- **Tipo de membro** é uma lista fechada: *Aluno*, *Produtor rural* e
-  *Trabalhador rural assalariado/autônomo*. O sistema recusa qualquer outro
-  valor.
-- No **endereço**, digite o CEP e o sistema busca o resto.
+- **Tipo de membro** é uma lista fechada: *Aluno*, *Produtor rural*,
+  *Trabalhador rural assalariado* e *Trabalhador rural autônomo*. O sistema
+  recusa qualquer outro valor.
+- No **endereço**, digite o CEP e clique em **Buscar**: o sistema preenche o
+  resto.
 
 ## A ficha da pessoa
 
-Clicar no nome abre a ficha completa, com:
+**Ver associado** na lista (ou o nome, no celular) abre a ficha completa. Em
+cima dela fica **← Usuários**, que volta para a lista. As abas são:
 
 - **Dados** — cadastro, escolaridade, gênero, etnia, necessidades especiais,
   cargo na diretoria
+- **Propriedades** — as propriedades rurais, com endereço. A principal tem o
+  selo **Principal**. Para trocar, abra o menu **Mais** (o **⋯**) da outra
+  propriedade e clique em **Definir principal**
 - **Empresas** — os vínculos com empresas (cada um com um título livre:
-  sócio, contador, responsável…)
-- **Propriedades** — as propriedades rurais, com endereço
+  sócio, contador, responsável…). Para desfazer um vínculo, clique na lixeira
+  dele, **Desvincular**
+- **Unimed** — o plano de saúde da pessoa; veja [Unimed](?topico=unimed)
 - **Relações** — dependentes e cônjuge
-- **Unimed** — quando a pessoa é beneficiária; veja [Unimed](?topico=unimed)
 
 Dá para trocar a **foto** e **Exportar** a ficha completa ou as propriedades em
-planilha CSV.
+planilha CSV. No celular, o botão **Exportar** mostra só o ícone de download.
 
 ### A foto do cadastro
 

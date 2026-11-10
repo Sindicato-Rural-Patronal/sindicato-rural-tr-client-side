@@ -77,7 +77,7 @@ financeiro…) em quatro níveis: **visualizar, criar, editar e excluir**.
 | **Convite inválido** ao abrir o link | O link passou dos 7 dias, já foi usado ou foi revogado. Gere um convite novo. |
 | *Você não pode conceder uma regra com permissões além das suas* | Escolha uma regra menor, ou peça para alguém com mais acesso fazer o convite. |
 | *Nome de usuário já existe* | Outro administrador já usa esse login. A pessoa escolhe outro — acrescentar o sobrenome costuma resolver. |
-| *Este usuário já possui conta de administrador* | A pessoa já tem acesso. Para mudar o que ela pode fazer, abra o administrador pelo **lápis** e troque a regra. |
+| *Este usuário já possui conta de administrador* | A pessoa já tem acesso. Para mudar o que ela pode fazer, abra o administrador pelo **lápis** (**Editar administrador**; no celular, no menu **Mais** do cartão) e troque a regra. |
 | A pessoa não aparece na busca | Ela ainda não está no cadastro. Cadastre e busque de novo. |
 | A pessoa esqueceu a senha | Abra o administrador pelo **lápis** e defina uma **nova senha** provisória. Peça para ela trocar em [Minha conta](?topico=minha-conta) logo no primeiro acesso. |
 
@@ -91,5 +91,7 @@ outro pelo mesmo caminho.
 ## Quando alguém sai do Sindicato
 
 Tire o acesso **no mesmo dia**: na aba **Administradores**, clique na
-**lixeira** ao lado do nome. A pessoa continua no cadastro — só perde o login.
+**lixeira** (**Excluir administrador**), no fim da linha. No celular, ela fica
+no menu **Mais**, o **⋯** do cartão. A pessoa continua no cadastro — só perde o
+login.
 Se um dia ela voltar, basta um convite novo.

@@ -17,14 +17,15 @@ busca: cadastrar associado pessoa nova ficha balcao criar novo cin identidade na
    prática, ficar sem foto.
 4. Preencha **nome** e **telefone**. O telefone é obrigatório; o **e-mail
    não**.
-5. Escolha o **tipo de membro**: Aluno, Produtor rural ou Trabalhador rural
-   assalariado/autônomo.
+5. Escolha o **tipo de membro**: Aluno, Produtor rural, Trabalhador rural
+   assalariado ou Trabalhador rural autônomo.
 6. No cartão **Associação**, marque a **Situação** como *Ativo* se a pessoa é
    associada e preencha a **Validade da associação**. É isso que faz aparecer o
    selo **Associado** (veja abaixo).
 7. Complete o que tiver: data de nascimento, RG, escolaridade, gênero.
-8. No **endereço**, digite o CEP e deixe o sistema buscar o resto. Esse
-   endereço vira a **propriedade principal** da pessoa.
+8. No cartão **Propriedade principal**, digite o CEP e clique em **Buscar**: o
+   sistema preenche o resto. Esse endereço vira a **propriedade principal** da
+   pessoa.
 9. Salve. A ficha abre em seguida, para você completar o que faltar.
 
 ## O selo "Associado"
