@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { PasswordStrengthHint } from '@/components/PasswordStrengthHint'
-import { Leaf, ShieldCheck, XCircle, Loader2 } from 'lucide-react'
+import { ShieldCheck, XCircle, Loader2 } from 'lucide-react'
 
 export const Route = createFileRoute('/convite/$token')({
   component: Convite,
@@ -28,7 +28,7 @@ function Convite() {
     if (form.password !== form.confirm) { setErr('As senhas não coincidem.'); return }
     try {
       await accept.mutateAsync({ username: form.username.trim(), password: form.password })
-      toast.success('Acesso criado! Faça login para começar.')
+      toast.success('Acesso criado. Entre para começar.')
       // Quem aceita um convite nunca usou o painel — é o único momento em que
       // dá para ter certeza disso. Em vez de largar a pessoa no painel sem
       // contexto, o login a leva para a Central de Ajuda.
@@ -43,12 +43,13 @@ function Convite() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4 py-12">
       <div className="w-full max-w-sm">
-        <div className="mb-6 flex items-center justify-center gap-2">
-          <div className="flex size-9 items-center justify-center rounded-full bg-brand">
-            <Leaf className="size-4 text-white" />
-          </div>
-          <span className="font-bold text-foreground">Sindicato Rural de Terra Roxa</span>
-        </div>
+        <img
+          src="/logo-icon.png"
+          alt="Sindicato Rural de Terra Roxa – Paraná"
+          width={130}
+          height={48}
+          className="mx-auto mb-8 h-12 w-auto object-contain dark:brightness-0 dark:invert"
+        />
 
         {isLoading && (
           <div className="flex flex-col items-center gap-2 py-10 text-muted-foreground">
@@ -58,13 +59,13 @@ function Convite() {
         )}
 
         {isError && (
-          <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-6 text-center">
-            <XCircle className="mx-auto mb-3 size-8 text-destructive" />
+          <div className="rounded-xl border border-destructive/30 bg-destructive-soft p-6 text-center">
+            <XCircle className="mx-auto mb-3 size-8 text-destructive" aria-hidden />
             <p className="text-sm font-medium text-foreground">Convite inválido</p>
             <p className="mt-1 text-xs text-muted-foreground">
               {error instanceof Error ? error.message : 'Este convite não é válido, expirou ou já foi usado.'}
             </p>
-            <Link to="/login" className="mt-4 inline-block text-xs text-primary hover:underline">
+            <Link to="/login" className="mt-4 inline-flex min-h-11 items-center text-sm text-primary hover:underline">
               Ir para o login
             </Link>
           </div>
@@ -73,7 +74,7 @@ function Convite() {
         {invite && (
           <div className="rounded-xl border border-border bg-card p-6">
             <div className="mb-4 flex items-center gap-2">
-              <ShieldCheck className="size-5 text-emerald-600 dark:text-emerald-400" />
+              <ShieldCheck className="size-5 text-success" aria-hidden />
               <div>
                 <p className="text-sm font-semibold text-foreground">Ativar seu acesso</p>
                 <p className="text-xs text-muted-foreground">
@@ -120,7 +121,7 @@ function Convite() {
                 />
               </div>
               {err && <p className="text-sm text-destructive">{err}</p>}
-              <Button type="submit" disabled={accept.isPending}>
+              <Button type="submit" className="h-11 sm:h-9" disabled={accept.isPending}>
                 {accept.isPending ? 'Ativando…' : 'Criar meu acesso'}
               </Button>
             </form>
