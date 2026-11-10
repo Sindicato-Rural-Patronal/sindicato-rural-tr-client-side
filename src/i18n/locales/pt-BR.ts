@@ -34,7 +34,7 @@ const ptBR = {
   },
   aboutPage: {
     title: 'Sobre o Sindicato',
-    subtitle: 'Sindicato Rural de Terra Roxa',
+    subtitle: 'Quem somos, onde fica a sede e o Sindicato em imagens.',
     seo: 'Conheça o Sindicato Rural de Terra Roxa: história, atuação e fotos.',
     whoWeAre: 'Quem somos',
     fallback: 'O Sindicato Rural de Terra Roxa representa os produtores e trabalhadores rurais de Terra Roxa e região, com cursos, convênios e atendimento na sede.',
