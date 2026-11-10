@@ -10,6 +10,7 @@ import {
   Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog'
 import { DeleteConfirmDialog } from '@/components/DeleteConfirmDialog'
+import { RowActions } from '@/components/RowActions'
 import { EmptyState } from '@/components/EmptyState'
 import { LoadErrorRetry } from '@/components/LoadErrorRetry'
 import { usePermissions } from '@/hooks/usePermissions'
@@ -49,17 +50,17 @@ function AddPartnerDialog({ open, onClose, onPick, pending }: {
           <DialogDescription>Escolha uma empresa já cadastrada.</DialogDescription>
         </DialogHeader>
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-          <Input aria-label="Buscar empresa" className="h-9 pl-9" placeholder="Razão social, nome fantasia ou CNPJ"
+          <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
+          <Input aria-label="Buscar empresa" className="pl-9" placeholder="Razão social, nome fantasia ou CNPJ"
             value={search} onChange={e => setSearch(e.target.value)} autoFocus />
         </div>
         <div className="flex max-h-72 flex-col gap-1 overflow-y-auto">
           {results.map(c => (
             <button key={c.id} type="button" disabled={pending} onClick={() => onPick(c)}
-              className="flex items-center gap-3 rounded-md px-3 py-2 text-left transition-colors hover:bg-muted disabled:opacity-50">
+              className="flex items-center gap-3 rounded-md px-3 py-2 text-left transition-colors hover:bg-accent disabled:opacity-50">
               <Building2 className="size-4 shrink-0 text-muted-foreground" />
               <span className="min-w-0 flex-1">
-                <span className="block truncate text-sm font-medium">{companyDisplayName(c)}</span>
+                <span className="block truncate text-sm font-medium text-foreground">{companyDisplayName(c)}</span>
                 <span className="block truncate text-xs text-muted-foreground">
                   {[c.tradeName ? c.name : null, c.cnpj ? maskCNPJ(c.cnpj) : null].filter(Boolean).join(' · ') || 'Sem CNPJ'}
                 </span>
@@ -145,14 +146,14 @@ export function PartnersPanel({ canEdit }: { canEdit: boolean }) {
 
       {isError && !data && (
         <LoadErrorRetry
-          className="rounded-lg border bg-card"
+          className="rounded-xl border border-border bg-card"
           message="Não foi possível carregar os parceiros."
           onRetry={() => void refetch()}
           retrying={isFetching}
         />
       )}
 
-      <div className="overflow-hidden rounded-lg border border-border bg-card">
+      <div className="overflow-hidden rounded-xl border border-border bg-card">
         {isLoading && Array.from({ length: 3 }).map((_, i) => (
           <div key={i} className="flex items-center gap-4 border-b border-border p-4 last:border-b-0">
             <Skeleton className="h-12 w-24" /><Skeleton className="h-4 w-48" />
@@ -168,11 +169,12 @@ export function PartnersPanel({ canEdit }: { canEdit: boolean }) {
           return (
             <div key={p.id} className="flex flex-col gap-3 border-b border-border p-4 last:border-b-0 sm:flex-row sm:items-center">
               <div className="flex min-w-0 flex-1 items-center gap-4">
-                <span className="w-5 shrink-0 text-center text-sm tabular-nums text-muted-foreground">{i + 1}</span>
-                <div className="flex h-12 w-24 shrink-0 items-center justify-center rounded-md border bg-white px-2">
+                <span className="w-5 shrink-0 text-center text-sm tabular-nums text-faint-foreground">{i + 1}</span>
+                {/* Fundo branco de propósito: os logos das empresas são feitos para fundo branco (como na home). */}
+                <div className="flex h-12 w-24 shrink-0 items-center justify-center rounded-md border border-border bg-white px-2">
                   {p.partnerLogo
                     ? <img src={p.partnerLogo} alt={`Logo ${name}`} className="max-h-full max-w-full object-contain" />
-                    : <Handshake className="size-5 text-muted-foreground/40" />}
+                    : <Handshake className="size-5 text-faint-foreground" aria-hidden />}
                 </div>
                 <div className="min-w-0">
                   <Link to="/admin/empresas/$id" params={{ id: p.id }} className="block truncate font-medium text-foreground hover:underline">
@@ -184,14 +186,18 @@ export function PartnersPanel({ canEdit }: { canEdit: boolean }) {
               </div>
               {canEdit && (
                 <div className="flex shrink-0 items-center gap-1 self-end sm:self-auto">
-                  <Button size="sm" variant="ghost" className="h-8 px-2" disabled={i === 0 || reorder.isPending}
-                    onClick={() => move(i, -1)} aria-label={`Subir ${name}`} title="Subir"><ArrowUp className="size-4" /></Button>
-                  <Button size="sm" variant="ghost" className="h-8 px-2" disabled={i === partners.length - 1 || reorder.isPending}
-                    onClick={() => move(i, 1)} aria-label={`Descer ${name}`} title="Descer"><ArrowDown className="size-4" /></Button>
-                  <Button size="sm" variant="ghost" className="h-8 px-2" onClick={() => setEditing(p)}
-                    aria-label={`Editar logo e link de ${name}`} title="Logo e link"><Pencil className="size-4" /></Button>
-                  <Button size="sm" variant="ghost" className="h-8 px-2 text-muted-foreground hover:text-destructive"
-                    onClick={() => setRemoving(p)} aria-label={`Tirar ${name} da home`} title="Tirar da home"><Trash2 className="size-4" /></Button>
+                  {/* Ordem (subir e descer) à parte das ações da linha. */}
+                  <Button size="icon-sm" variant="ghost" className="text-muted-foreground" disabled={i === 0 || reorder.isPending}
+                    onClick={() => move(i, -1)} aria-label={`Subir ${name}`} title="Subir"><ArrowUp /></Button>
+                  <Button size="icon-sm" variant="ghost" className="text-muted-foreground" disabled={i === partners.length - 1 || reorder.isPending}
+                    onClick={() => move(i, 1)} aria-label={`Descer ${name}`} title="Descer"><ArrowDown /></Button>
+                  <RowActions
+                    label={`Ações do parceiro ${name}`}
+                    actions={[
+                      { label: 'Logo e link', icon: Pencil, onClick: () => setEditing(p) },
+                      { label: 'Tirar da home', icon: Trash2, destructive: true, onClick: () => setRemoving(p) },
+                    ]}
+                  />
                 </div>
               )}
             </div>

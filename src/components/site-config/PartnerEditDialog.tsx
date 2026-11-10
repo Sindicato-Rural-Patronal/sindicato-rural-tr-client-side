@@ -63,12 +63,13 @@ export function PartnerEditDialog({ company, onClose }: { company: Company; onCl
           </DialogHeader>
 
           <div className="flex flex-col gap-1.5">
-            <span className="text-sm font-medium">Logo</span>
+            <span className="text-sm font-medium text-foreground">Logo</span>
             <div className="flex flex-wrap items-center gap-3">
-              <div className="flex h-14 w-28 items-center justify-center rounded-md border bg-white px-2">
+              {/* Fundo branco de propósito: os logos das empresas são feitos para fundo branco (como na home). */}
+              <div className="flex h-14 w-28 items-center justify-center rounded-md border border-border bg-white px-2">
                 {company.partnerLogo
                   ? <img src={company.partnerLogo} alt={`Logo ${name}`} className="max-h-full max-w-full object-contain" />
-                  : <Handshake className="size-5 text-muted-foreground/50" />}
+                  : <Handshake className="size-5 text-faint-foreground" aria-hidden />}
               </div>
               <input ref={fileRef} type="file" accept="image/png,image/jpeg,image/webp" className="hidden"
                 aria-label={`Enviar logo de ${name}`} onChange={handleLogo} />
@@ -87,7 +88,7 @@ export function PartnerEditDialog({ company, onClose }: { company: Company; onCl
 
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="partner-url">Link do parceiro</Label>
-            <Input id="partner-url" className="h-9" placeholder="https://site-da-empresa.com.br" inputMode="url"
+            <Input id="partner-url" placeholder="https://site-da-empresa.com.br" inputMode="url"
               value={url} onChange={e => setUrl(e.target.value)} />
           </div>
 

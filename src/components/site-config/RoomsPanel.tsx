@@ -15,6 +15,8 @@ import {
 } from '@/components/ui/dialog'
 import { DeleteConfirmDialog } from '@/components/DeleteConfirmDialog'
 import { LoadErrorRetry } from '@/components/LoadErrorRetry'
+import { EmptyState } from '@/components/EmptyState'
+import { RowActions } from '@/components/RowActions'
 import { NativeSelect } from '@/components/ui/native-select'
 import { useCrudDialog } from '@/hooks/useCrudDialog'
 import { upperNoAccents } from '@/utils/text-format'
@@ -99,8 +101,8 @@ export function RoomsPanel({ canCreate, canEdit, canDelete }: {
         )}
       </div>
 
-      <div className="relative max-w-sm">
-        <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
+      <div className="relative sm:max-w-sm">
+        <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
         <Input
           id="salas-busca"
           placeholder="Buscar por nome ou descrição..."
@@ -112,10 +114,10 @@ export function RoomsPanel({ canCreate, canEdit, canDelete }: {
       </div>
 
       {isError && !salas && (
-        <LoadErrorRetry className="rounded-lg border bg-card" message="Não foi possível carregar as salas." onRetry={() => void refetch()} retrying={isFetching} />
+        <LoadErrorRetry className="rounded-xl border border-border bg-card" message="Não foi possível carregar as salas." onRetry={() => void refetch()} retrying={isFetching} />
       )}
 
-      <div className="overflow-hidden rounded-lg border border-border bg-card">
+      <div className="overflow-hidden rounded-xl border border-border bg-card">
         <div className="overflow-x-auto">
           <Table>
             <TableHeader>
@@ -139,19 +141,17 @@ export function RoomsPanel({ canCreate, canEdit, canDelete }: {
               ))}
               {!isLoading && !isError && salasFiltradas.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={4} className="py-16 text-center">
-                    <DoorOpen className="mx-auto mb-3 size-10 text-muted-foreground/30" aria-hidden />
-                    <p className="text-sm font-medium text-foreground">
-                      {busca ? 'Nenhuma sala encontrada' : 'Nenhuma sala cadastrada'}
-                    </p>
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      {busca ? 'Tente outro termo de busca.' : 'Clique em "Nova sala" para começar.'}
-                    </p>
-                    {!busca && canCreate && (
-                      <Button className="mt-4" onClick={crud.openCreate}>
-                        <Plus className="size-4" /> Nova sala
-                      </Button>
-                    )}
+                  <TableCell colSpan={4} className="p-0 whitespace-normal">
+                    <EmptyState
+                      icon={DoorOpen}
+                      title={busca ? 'Nenhuma sala encontrada' : 'Nenhuma sala cadastrada'}
+                      description={busca ? 'Tente outro termo de busca.' : 'Clique em "Nova sala" para começar.'}
+                      action={!busca && canCreate ? (
+                        <Button onClick={crud.openCreate}>
+                          <Plus className="size-4" /> Nova sala
+                        </Button>
+                      ) : undefined}
+                    />
                   </TableCell>
                 </TableRow>
               )}
@@ -162,36 +162,17 @@ export function RoomsPanel({ canCreate, canEdit, canDelete }: {
                     {sala.description || '—'}
                   </TableCell>
                   <TableCell>
-                    <Badge variant="secondary">{sala.maxCapacity} lugares</Badge>
+                    <Badge variant="neutral" className="tabular-nums">{sala.maxCapacity} lugares</Badge>
                   </TableCell>
                   {(canEdit || canDelete) && (
                     <TableCell className={`text-right ${STICKY_ACTIONS_CELL}`}>
-                      <div className="flex items-center justify-end gap-1">
-                        {canEdit && (
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            className="h-8 px-2"
-                            onClick={() => crud.openEdit(sala)}
-                            aria-label={`Editar a sala ${sala.name}`}
-                            title="Editar sala"
-                          >
-                            <Pencil className="size-4" />
-                          </Button>
-                        )}
-                        {canDelete && (
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            className="h-8 px-2 text-muted-foreground hover:text-destructive"
-                            onClick={() => crud.setDeleteTarget(sala)}
-                            aria-label={`Excluir a sala ${sala.name}`}
-                            title="Excluir sala"
-                          >
-                            <Trash2 className="size-4" />
-                          </Button>
-                        )}
-                      </div>
+                      <RowActions
+                        label={`Ações da sala ${sala.name}`}
+                        actions={[
+                          { label: 'Editar sala', icon: Pencil, hidden: !canEdit, onClick: () => crud.openEdit(sala) },
+                          { label: 'Excluir sala', icon: Trash2, destructive: true, hidden: !canDelete, onClick: () => crud.setDeleteTarget(sala) },
+                        ]}
+                      />
                     </TableCell>
                   )}
                 </TableRow>
@@ -214,7 +195,6 @@ export function RoomsPanel({ canCreate, canEdit, canDelete }: {
               <Label htmlFor="sala-nome">Sala *</Label>
               <NativeSelect
                 id="sala-nome"
-                className="h-9"
                 value={crud.form.name}
                 onChange={e => crud.setForm(p => ({ ...p, name: e.target.value }))}
               >
