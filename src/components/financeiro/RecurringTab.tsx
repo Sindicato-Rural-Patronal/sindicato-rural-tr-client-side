@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { toast } from 'sonner'
-import { Repeat, Plus, Pencil, Trash2, Pause, Play } from 'lucide-react'
+import { Repeat, Plus, Pencil, Trash2, Pause, Play, Check } from 'lucide-react'
 import { apiErrorMessage } from '@/lib/api-error-message'
 import { centsToBRL, maskMoney, moneyToCents } from '@/utils/masks'
 import { upperNoAccents } from '@/utils/text-format'
@@ -26,6 +26,9 @@ import { NativeSelect } from '@/components/ui/native-select'
 import { ConfirmCloseDialog } from '@/components/confirm-close-dialog'
 import { DeleteConfirmDialog } from '@/components/DeleteConfirmDialog'
 import { LoadErrorRetry } from '@/components/LoadErrorRetry'
+import { EmptyState } from '@/components/EmptyState'
+import { RowActions } from '@/components/RowActions'
+import { cn } from '@/lib/utils'
 import { useCrudDialog } from '@/hooks/useCrudDialog'
 import { currentMonth, monthLabel, nextMonthToGenerate } from '@/lib/finance-month'
 import { PaymentMethodSelect } from './PaymentMethodSelect'
@@ -120,10 +123,10 @@ export function RecurringTab({ enabled, canCreate, canUpdate, canDelete }: {
     try {
       if (crud.editing) {
         await updateRec.mutateAsync({ id: crud.editing.id, body })
-        toast.success('Recorrência atualizada!')
+        toast.success('Recorrência atualizada.')
       } else {
         await createRec.mutateAsync(body)
-        toast.success('Recorrência criada! Os lançamentos aparecem ao abrir o Financeiro.')
+        toast.success('Recorrência criada. Os lançamentos aparecem ao abrir o Financeiro.')
       }
       crud.forceClose()
     } catch (e) {
@@ -176,7 +179,7 @@ export function RecurringTab({ enabled, canCreate, canUpdate, canDelete }: {
           até ser reaberto.
         </p>
         {canCreate && (
-          <Button onClick={crud.openCreate} className="shrink-0">
+          <Button onClick={crud.openCreate} className="w-fit shrink-0">
             <Plus className="size-4" /> Nova recorrência
           </Button>
         )}
@@ -200,7 +203,7 @@ export function RecurringTab({ enabled, canCreate, canUpdate, canDelete }: {
         />
       )}
 
-      <div className="rounded-lg border border-border bg-card overflow-hidden">
+      <div className="overflow-hidden rounded-xl border border-border bg-card">
         {/* Sem rolagem lateral: tabela fixa, texto quebra linha (o TableCell do shadcn é
             nowrap, por isso o whitespace-normal). Valor e Ações têm largura própria; o
             resto entra como coluna conforme a tela e, abaixo disso, vira linha miúda
@@ -216,7 +219,7 @@ export function RecurringTab({ enabled, canCreate, canUpdate, canDelete }: {
                 <TableHead className="hidden xl:table-cell xl:w-[130px]">Caixa</TableHead>
                 <TableHead className="hidden lg:table-cell lg:w-[96px]">Situação</TableHead>
                 <TableHead className="hidden 2xl:table-cell 2xl:w-[120px]">Próximo mês</TableHead>
-                <TableHead className="w-[88px] lg:w-[128px] text-right">Ações</TableHead>
+                <TableHead className="w-[148px] text-right md:w-[120px]">Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -226,13 +229,13 @@ export function RecurringTab({ enabled, canCreate, canUpdate, canDelete }: {
                 </TableRow>
               ))}
               {!isLoading && !isError && rows.length === 0 && (
-                <TableRow>
-                  <TableCell colSpan={8} className="py-16 text-center whitespace-normal">
-                    <Repeat className="size-10 text-muted-foreground/30 mx-auto mb-3" />
-                    <p className="text-sm font-medium text-foreground">Nenhuma recorrência</p>
-                    <p className="text-xs text-muted-foreground">
-                      Cadastre o que se repete todo mês e o sistema lança sozinho.
-                    </p>
+                <TableRow className="hover:bg-transparent">
+                  <TableCell colSpan={8} className="p-0 whitespace-normal">
+                    <EmptyState
+                      icon={Repeat}
+                      title="Nenhuma recorrência"
+                      description="Cadastre o que se repete todo mês e o sistema lança sozinho."
+                    />
                   </TableCell>
                 </TableRow>
               )}
@@ -242,13 +245,13 @@ export function RecurringTab({ enabled, canCreate, canUpdate, canDelete }: {
                   <TableRow key={r.id} className={r.active ? '' : 'opacity-60'}>
                     <TableCell className="font-medium text-foreground whitespace-normal align-top pt-3">
                       <div className="flex items-start gap-2 min-w-0">
-                        <Repeat className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+                        <Repeat className="mt-0.5 size-4 shrink-0 text-faint-foreground" aria-hidden />
                         <div className="min-w-0 flex-1">
                           <p className="line-clamp-2 break-words" title={r.description}>{r.description}</p>
                           {/* O que ainda não virou coluna aparece aqui, miúdo. */}
                           <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs font-normal text-muted-foreground">
                             <span className="lg:hidden">Dia {r.dayOfMonth}</span>
-                            <Badge variant={r.active ? 'default' : 'secondary'} className="lg:hidden">
+                            <Badge variant={r.active ? 'success' : 'neutral'} className="lg:hidden">
                               {r.active ? 'Ativa' : 'Pausada'}
                             </Badge>
                             {r.category && <span className="max-w-full truncate xl:hidden" title={r.category.name}>{r.category.name}</span>}
@@ -257,10 +260,10 @@ export function RecurringTab({ enabled, canCreate, canUpdate, canDelete }: {
                         </div>
                       </div>
                     </TableCell>
-                    <TableCell className={`text-right tabular-nums font-medium whitespace-nowrap align-top pt-3 ${r.type === 'IN' ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
+                    <TableCell className={cn('num text-right font-medium whitespace-nowrap align-top pt-3', r.type === 'IN' ? 'text-success' : 'text-destructive')}>
                       {r.type === 'IN' ? '+' : '−'} {centsToBRL(r.amountCents)}
                     </TableCell>
-                    <TableCell className="hidden lg:table-cell text-center tabular-nums align-top pt-3">{r.dayOfMonth}</TableCell>
+                    <TableCell className="num hidden lg:table-cell text-center align-top pt-3">{r.dayOfMonth}</TableCell>
                     <TableCell className="hidden xl:table-cell text-sm text-muted-foreground whitespace-normal align-top pt-3">
                       <span className="line-clamp-2 break-words" title={r.category?.name}>{r.category?.name ?? '—'}</span>
                     </TableCell>
@@ -268,39 +271,27 @@ export function RecurringTab({ enabled, canCreate, canUpdate, canDelete }: {
                       <span className="line-clamp-2 break-words" title={r.account?.name}>{r.account?.name ?? '—'}</span>
                     </TableCell>
                     <TableCell className="hidden lg:table-cell align-top pt-3">
-                      <Badge variant={r.active ? 'default' : 'secondary'}>
+                      <Badge variant={r.active ? 'success' : 'neutral'}>
                         {r.active ? 'Ativa' : 'Pausada'}
                       </Badge>
                     </TableCell>
-                    <TableCell className="hidden 2xl:table-cell text-sm text-muted-foreground whitespace-normal align-top pt-3">
+                    <TableCell className={cn('hidden 2xl:table-cell text-sm text-muted-foreground whitespace-normal align-top pt-3', next && 'num')}>
                       {next ? monthLabel(next) : (r.active ? 'Encerrada' : '—')}
                     </TableCell>
-                    <TableCell className="text-right align-top">
-                      {/* Abaixo de lg os botões ficam em 2×2 para a coluna caber. */}
-                      <div className="ml-auto grid w-fit grid-cols-2 justify-items-center gap-0.5 lg:flex lg:items-center lg:justify-end lg:gap-1">
-                        {canUpdate && (
-                          <Button
-                            size="sm" variant="ghost" className="h-8 px-2"
-                            onClick={() => (r.active ? void toggleActive(r) : setReactivateTarget(r))}
-                            disabled={updateRec.isPending}
-                            aria-label={r.active ? 'Pausar' : 'Reativar'}
-                            title={r.active ? 'Pausar' : 'Reativar'}
-                          >
-                            {r.active ? <Pause className="size-4" /> : <Play className="size-4" />}
-                          </Button>
-                        )}
-                        {canUpdate && (
-                          <Button size="sm" variant="ghost" className="h-8 px-2" onClick={() => crud.openEdit(r)} aria-label="Editar" title="Editar">
-                            <Pencil className="size-4" />
-                          </Button>
-                        )}
-                        {canDelete && (
-                          <Button size="sm" variant="ghost" className="h-8 px-2 text-muted-foreground hover:text-destructive" onClick={() => crud.setDeleteTarget(r)} aria-label="Excluir" title="Excluir">
-                            <Trash2 className="size-4" />
-                          </Button>
-                        )}
-                        {!canUpdate && !canDelete && <span className="text-xs text-muted-foreground">—</span>}
-                      </div>
+                    <TableCell className="text-right align-top pt-1.5">
+                      {!canUpdate && !canDelete ? <span className="text-xs text-faint-foreground">—</span> : (
+                        <RowActions label={`Ações da recorrência ${r.description}`} actions={[
+                          {
+                            label: r.active ? 'Pausar' : 'Reativar',
+                            icon: r.active ? Pause : Play,
+                            onClick: () => (r.active ? void toggleActive(r) : setReactivateTarget(r)),
+                            hidden: !canUpdate,
+                            disabled: updateRec.isPending,
+                          },
+                          { label: 'Editar', icon: Pencil, onClick: () => crud.openEdit(r), hidden: !canUpdate },
+                          { label: 'Excluir', icon: Trash2, onClick: () => crud.setDeleteTarget(r), destructive: true, hidden: !canDelete },
+                        ]} />
+                      )}
                     </TableCell>
                   </TableRow>
                 )
@@ -325,13 +316,14 @@ export function RecurringTab({ enabled, canCreate, canUpdate, canDelete }: {
                   key={t}
                   type="button"
                   onClick={() => crud.setForm(p => ({ ...p, type: t, categoryId: '' }))}
-                  className={`rounded-lg border-2 px-3 py-2 text-sm font-medium ${
+                  className={cn(
+                    'rounded-lg border px-3 py-2 text-sm font-medium transition-colors',
                     crud.form.type === t
                       ? t === 'IN'
-                        ? 'border-emerald-500 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400'
-                        : 'border-red-500 bg-red-500/10 text-red-700 dark:text-red-400'
-                      : 'border-border text-muted-foreground'
-                  }`}
+                        ? 'border-success/40 bg-success-soft text-success'
+                        : 'border-destructive/40 bg-destructive-soft text-destructive'
+                      : 'border-input text-muted-foreground hover:bg-accent hover:text-foreground',
+                  )}
                 >
                   {t === 'IN' ? 'Entrada' : 'Saída'}
                 </button>
@@ -364,7 +356,7 @@ export function RecurringTab({ enabled, canCreate, canUpdate, canDelete }: {
                   value={crud.form.dayOfMonth}
                   onChange={e => crud.setForm(p => ({ ...p, dayOfMonth: e.target.value }))}
                 />
-                <span className="text-[11px] text-muted-foreground">
+                <span className="text-xs text-faint-foreground">
                   Mês mais curto usa o último dia (ex.: 31 em fevereiro → 28).
                 </span>
               </div>
@@ -386,7 +378,7 @@ export function RecurringTab({ enabled, canCreate, canUpdate, canDelete }: {
                   value={crud.form.endMonth}
                   onChange={e => crud.setForm(p => ({ ...p, endMonth: e.target.value }))}
                 />
-                <span className="text-[11px] text-muted-foreground">Em branco = sem fim.</span>
+                <span className="text-xs text-faint-foreground">Em branco = sem fim.</span>
               </div>
             </div>
 
@@ -443,7 +435,9 @@ export function RecurringTab({ enabled, canCreate, canUpdate, canDelete }: {
               onClick={() => crud.setForm(p => ({ ...p, active: !p.active }))}
               className="flex items-center gap-2 text-sm text-foreground w-fit"
             >
-              <span className={`inline-block size-4 rounded-sm border ${crud.form.active ? 'bg-emerald-500 border-emerald-500' : 'border-input'}`} />
+              <span className={cn('inline-flex size-4 items-center justify-center rounded-sm border', crud.form.active ? 'border-primary bg-primary text-primary-foreground' : 'border-input bg-card')} aria-hidden>
+                {crud.form.active && <Check className="size-3" />}
+              </span>
               {crud.form.active ? 'Ativa (gera todo mês)' : 'Pausada (não gera)'}
             </button>
             {/* Ligar "Ativa" numa recorrência pausada é reativar: o mesmo aviso do botão da lista. */}

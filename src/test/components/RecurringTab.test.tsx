@@ -1,6 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent, waitFor, within } from '@testing-library/react'
+import { render as rtlRender, screen, fireEvent, waitFor, within } from '@testing-library/react'
 import type { FinanceRecurrence } from '@/hooks/useFinance'
+import type { ReactElement } from 'react'
+import { TooltipProvider } from '@/components/ui/tooltip'
+
+// As ações por linha (RowActions) usam dica, que pede o provedor como no app.
+const render = (ui: ReactElement) => rtlRender(ui, { wrapper: TooltipProvider })
 
 // Reativar uma recorrência pausada não lança os meses da pausa (SR-054): a tela
 // pede confirmação e explica antes de mandar o PATCH.

@@ -49,7 +49,7 @@ export function PaymentMethodSelect({
     try {
       const created = await createMethod.mutateAsync(trimmed)
       onChange(created.name)
-      toast.success('Forma de pagamento criada!')
+      toast.success('Forma de pagamento criada.')
       setDialogOpen(false)
       setName('')
     } catch (e) {
@@ -99,7 +99,7 @@ export function PaymentMethodSelect({
               placeholder="Ex: DEPÓSITO"
               autoFocus
             />
-            <span className="text-[11px] text-muted-foreground">
+            <span className="text-xs text-faint-foreground">
               Gravada em letras maiúsculas.
             </span>
             {error && <p className="text-sm text-destructive">{error}</p>}

@@ -1,6 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { render as rtlRender, screen, fireEvent, waitFor } from '@testing-library/react'
 import type { FinancePaymentMethod } from '@/hooks/useFinance'
+import type { ReactElement } from 'react'
+import { TooltipProvider } from '@/components/ui/tooltip'
+
+// As ações por linha (RowActions) usam dica, que pede o provedor como no app.
+const render = (ui: ReactElement) => rtlRender(ui, { wrapper: TooltipProvider })
 
 // Hooks simulados: o teste cobre só a aba, sem rede.
 let lista: { data?: FinancePaymentMethod[]; isLoading: boolean; isError: boolean }
