@@ -30,11 +30,11 @@ const DOCS: { kind: DocKind; label: string; icon: typeof Receipt; run: (id: stri
   { kind: 'contrato', label: 'Contrato', icon: FileSignature, run: baixarContratoUnimed },
 ]
 
-function Field({ label, value }: { label: string; value: string | null | undefined }) {
+function Field({ label, value, num = false }: { label: string; value: string | null | undefined; num?: boolean }) {
   return (
     <div className="flex min-w-0 flex-col gap-0.5">
-      <span className="text-[11px] uppercase tracking-wide text-muted-foreground">{label}</span>
-      <span className="break-words text-sm text-foreground">{value?.trim() ? value : '—'}</span>
+      <span className="text-xs text-muted-foreground">{label}</span>
+      <span className={`break-words text-sm text-foreground${num ? ' num' : ''}`}>{value?.trim() ? value : '—'}</span>
     </div>
   )
 }
@@ -54,7 +54,7 @@ function UnimedCard({ row, isOwner }: { row: UnimedRow; isOwner: boolean }) {
   }
 
   return (
-    <div className="rounded-lg border border-border bg-card p-4 flex flex-col gap-4">
+    <div className="rounded-xl border border-border bg-card p-4 flex flex-col gap-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2 min-w-0">
           <HeartPulse className="size-4 shrink-0 text-muted-foreground" />
@@ -63,7 +63,7 @@ function UnimedCard({ row, isOwner }: { row: UnimedRow; isOwner: boolean }) {
             <span className="text-xs tabular-nums text-muted-foreground">{maskCPF(row.userData.cpf)}</span>
           )}
         </div>
-        <Badge variant={isOwner ? 'default' : 'secondary'}>
+        <Badge variant={isOwner ? 'neutral' : 'outline'}>
           {isOwner ? 'Cadastro desta pessoa' : 'Dependente (ela é a titular)'}
         </Badge>
       </div>
@@ -75,7 +75,7 @@ function UnimedCard({ row, isOwner }: { row: UnimedRow; isOwner: boolean }) {
           label="Grau de dependência"
           value={unimedOptionLabel(UNIMED_DEPENDENCY_DEGREES, row.grauDependencia)}
         />
-        <Field label="Data de adesão" value={row.dataAdesao ? formatDateFromString(row.dataAdesao) : null} />
+        <Field label="Data de adesão" num value={row.dataAdesao ? formatDateFromString(row.dataAdesao) : null} />
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
@@ -102,8 +102,8 @@ export function PersonUnimedTab({ userDataId }: { userDataId: string }) {
   if (isLoading) {
     return (
       <div className="flex flex-col gap-3">
-        <Skeleton className="h-36 w-full" />
-        <Skeleton className="h-36 w-full" />
+        <Skeleton className="h-36 w-full rounded-xl" />
+        <Skeleton className="h-36 w-full rounded-xl" />
       </div>
     )
   }
@@ -111,7 +111,7 @@ export function PersonUnimedTab({ userDataId }: { userDataId: string }) {
   if (isError && !data) {
     return (
       <LoadErrorRetry
-        className="rounded-lg border bg-card"
+        className="rounded-xl border border-border bg-card"
         message="Não foi possível carregar os dados da Unimed."
         onRetry={() => void refetch()}
         retrying={isFetching}
@@ -122,6 +122,7 @@ export function PersonUnimedTab({ userDataId }: { userDataId: string }) {
   if (rows.length === 0) {
     return (
       <EmptyState
+        framed
         icon={HeartPulse}
         title="Esta pessoa não tem cadastro na Unimed."
         description="Cadastre o beneficiário na tela da Unimed para emitir a Ficha, o Termo e o Contrato."

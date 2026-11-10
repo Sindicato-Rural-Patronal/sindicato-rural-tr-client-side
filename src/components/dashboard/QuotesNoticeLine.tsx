@@ -19,16 +19,17 @@ export function QuotesNoticeLine({ quotes, now }: { quotes: DashboardStats['quot
     <div
       className={cn(
         'flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border px-3 py-2 text-sm',
+        // Fundo opaco nos dois casos: nos temas Cinza e Verde-claro o translúcido ficava da cor do tema.
         alerta
-          ? 'border-amber-300 bg-amber-50 text-amber-800 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-300'
-          : 'border-border bg-muted/40 text-muted-foreground',
+          ? 'border-warning/30 bg-warning-soft text-warning'
+          : 'border-border bg-card text-muted-foreground',
       )}
     >
       <Icon className="size-4 shrink-0" aria-hidden />
       <span>{aviso.text}</span>
       <Link
         to="/admin/cotacoes"
-        className="font-medium underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        className={cn('font-medium underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring', !alerta && 'text-primary')}
       >
         {alerta ? 'Lançar agora' : 'Ver cotações'}
       </Link>

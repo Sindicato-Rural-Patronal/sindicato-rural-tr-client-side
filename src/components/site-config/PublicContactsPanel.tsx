@@ -10,6 +10,7 @@ import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog'
 import { DeleteConfirmDialog } from '@/components/DeleteConfirmDialog'
+import { RowActions } from '@/components/RowActions'
 import { EmptyState } from '@/components/EmptyState'
 import { InitialsAvatar } from '@/components/InitialsAvatar'
 import { LoadErrorRetry } from '@/components/LoadErrorRetry'
@@ -51,10 +52,10 @@ function AddContactDialog({ existingIds, pending, onClose, onSubmit }: {
           </DialogHeader>
 
           {picked ? (
-            <div className="flex items-center gap-3 rounded-lg border bg-muted/30 p-3">
+            <div className="flex items-center gap-3 rounded-lg bg-muted p-3">
               <InitialsAvatar name={picked.name} avatar={picked.avatar} />
               <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-medium">{picked.name}</p>
+                <p className="truncate text-sm font-medium text-foreground">{picked.name}</p>
                 <p className="truncate text-xs text-muted-foreground">{[picked.email, maskPhone(picked.phone)].filter(Boolean).join(' · ')}</p>
               </div>
               <Button type="button" size="sm" variant="ghost" onClick={() => setPicked(null)}>Trocar</Button>
@@ -62,8 +63,8 @@ function AddContactDialog({ existingIds, pending, onClose, onSubmit }: {
           ) : (
             <div className="flex flex-col gap-2">
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-                <Input aria-label="Buscar pessoa" className="h-9 pl-9" placeholder="Nome, CPF ou e-mail"
+                <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
+                <Input aria-label="Buscar pessoa" className="pl-9" placeholder="Nome, CPF ou e-mail"
                   value={search} onChange={e => setSearch(e.target.value)} autoFocus />
               </div>
               <div className="flex max-h-64 flex-col gap-1 overflow-y-auto">
@@ -71,11 +72,11 @@ function AddContactDialog({ existingIds, pending, onClose, onSubmit }: {
                   const already = existingIds.has(p.id)
                   return (
                     <button key={p.id} type="button" disabled={already} onClick={() => setPicked(p)}
-                      className="flex items-center gap-3 rounded-md px-3 py-2 text-left transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50">
+                      className="flex items-center gap-3 rounded-md px-3 py-2 text-left transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50">
                       <InitialsAvatar name={p.name} avatar={p.avatar} size="sm" />
                       <span className="min-w-0 flex-1">
                         <span className="flex min-w-0 items-center gap-1.5">
-                          <span className="truncate text-sm font-medium">{p.name}</span>
+                          <span className="truncate text-sm font-medium text-foreground">{p.name}</span>
                           <MemberBadge person={p} />
                         </span>
                         <span className="block truncate text-xs text-muted-foreground">
@@ -101,7 +102,7 @@ function AddContactDialog({ existingIds, pending, onClose, onSubmit }: {
 
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="new-contact-title">Cargo exibido</Label>
-            <Input id="new-contact-title" className="h-9" maxLength={80} placeholder="Ex.: Presidente, Secretária"
+            <Input id="new-contact-title" maxLength={80} placeholder="Ex.: Presidente, Secretária"
               value={title} onChange={e => setTitle(e.target.value)} />
           </div>
 
@@ -134,7 +135,7 @@ function EditTitleDialog({ contact, pending, onClose, onSubmit }: {
           </DialogHeader>
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="contact-title">Cargo exibido</Label>
-            <Input id="contact-title" className="h-9" maxLength={80} placeholder="Ex.: Presidente, Secretária"
+            <Input id="contact-title" maxLength={80} placeholder="Ex.: Presidente, Secretária"
               value={title} onChange={e => setTitle(e.target.value)} autoFocus />
           </div>
           <DialogFooter>
@@ -218,14 +219,14 @@ export function PublicContactsPanel({ canEdit }: { canEdit: boolean }) {
 
       {isError && !data && (
         <LoadErrorRetry
-          className="rounded-lg border bg-card"
+          className="rounded-xl border border-border bg-card"
           message="Não foi possível carregar os contatos."
           onRetry={() => void refetch()}
           retrying={isFetching}
         />
       )}
 
-      <div className="overflow-hidden rounded-lg border border-border bg-card">
+      <div className="overflow-hidden rounded-xl border border-border bg-card">
         {isLoading && Array.from({ length: 2 }).map((_, i) => (
           <div key={i} className="flex items-center gap-3 border-b border-border p-4 last:border-b-0">
             <Skeleton className="size-10 rounded-full" /><Skeleton className="h-4 w-48" />
@@ -239,30 +240,32 @@ export function PublicContactsPanel({ canEdit }: { canEdit: boolean }) {
         {contacts.map((c, i) => (
           <div key={c.id} className="flex flex-col gap-3 border-b border-border p-4 last:border-b-0 sm:flex-row sm:items-center">
             <div className="flex min-w-0 flex-1 items-center gap-3">
-              <span className="w-5 shrink-0 text-center text-sm tabular-nums text-muted-foreground">{i + 1}</span>
+              <span className="w-5 shrink-0 text-center text-sm tabular-nums text-faint-foreground">{i + 1}</span>
               <InitialsAvatar name={c.userData.name} avatar={c.userData.avatar} />
               <div className="min-w-0">
                 <Link to="/admin/usuarios/$id" params={{ id: c.userData.id }} className="block truncate font-medium text-foreground hover:underline">
                   {c.userData.name}
                 </Link>
                 <p className="truncate text-xs text-muted-foreground">
-                  <span className="font-medium text-primary">{c.title || 'Sem cargo'}</span>
+                  <span className="font-medium text-foreground">{c.title || 'Sem cargo'}</span>
                   {c.userData.email && <> · {c.userData.email}</>}{c.userData.phone && <> · {maskPhone(c.userData.phone)}</>}
                 </p>
               </div>
             </div>
             {canEdit && (
               <div className="flex shrink-0 items-center gap-1 self-end sm:self-auto">
-                <Button size="sm" variant="ghost" className="h-8 px-2" disabled={i === 0 || reorder.isPending}
-                  onClick={() => move(i, -1)} aria-label={`Subir ${c.userData.name}`} title="Subir"><ArrowUp className="size-4" /></Button>
-                <Button size="sm" variant="ghost" className="h-8 px-2" disabled={i === contacts.length - 1 || reorder.isPending}
-                  onClick={() => move(i, 1)} aria-label={`Descer ${c.userData.name}`} title="Descer"><ArrowDown className="size-4" /></Button>
-                <Button size="sm" variant="ghost" className="h-8 px-2" onClick={() => setEditing(c)}
-                  aria-label={`Editar cargo de ${c.userData.name}`} title="Editar cargo"><Pencil className="size-4" /></Button>
-                <Button size="sm" variant="ghost" className="h-8 px-2 text-muted-foreground hover:text-destructive"
-                  onClick={() => setRemoving(c)} aria-label={`Tirar ${c.userData.name} do site`} title="Tirar do site">
-                  <Trash2 className="size-4" />
-                </Button>
+                {/* Ordem (subir e descer) à parte das ações da linha. */}
+                <Button size="icon-sm" variant="ghost" className="text-muted-foreground" disabled={i === 0 || reorder.isPending}
+                  onClick={() => move(i, -1)} aria-label={`Subir ${c.userData.name}`} title="Subir"><ArrowUp /></Button>
+                <Button size="icon-sm" variant="ghost" className="text-muted-foreground" disabled={i === contacts.length - 1 || reorder.isPending}
+                  onClick={() => move(i, 1)} aria-label={`Descer ${c.userData.name}`} title="Descer"><ArrowDown /></Button>
+                <RowActions
+                  label={`Ações do contato ${c.userData.name}`}
+                  actions={[
+                    { label: 'Editar cargo', icon: Pencil, onClick: () => setEditing(c) },
+                    { label: 'Tirar do site', icon: Trash2, destructive: true, onClick: () => setRemoving(c) },
+                  ]}
+                />
               </div>
             )}
           </div>

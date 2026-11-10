@@ -41,6 +41,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { NativeSelect } from '@/components/ui/native-select'
 import { AjudaLink } from '@/components/ajuda/AjudaLink'
+import { PAGE_CONTAINER_CLASS, PageHeader } from '@/components/PageHeader'
+import { SegmentedControl } from '@/components/SegmentedControl'
 import { cn } from '@/lib/utils'
 import { ChevronLeft, ChevronRight, Plus, SlidersHorizontal } from 'lucide-react'
 
@@ -126,30 +128,6 @@ const AVISOS_LEITOR: Announcements = {
       ? `${nomeDoBloco(active.id)} ficou no lugar de ${nomeDoBloco(over.id)}.`
       : `${nomeDoBloco(active.id)} voltou para o lugar.`,
   onDragCancel: ({ active }) => `Desistiu de mover. ${nomeDoBloco(active.id)} voltou para o lugar.`,
-}
-
-/** Botão redondo dos filtros por tipo. */
-function Chip({ active, onClick, children, kind }: {
-  active: boolean
-  onClick: () => void
-  children: React.ReactNode
-  kind?: ScheduleKind
-}) {
-  return (
-    <button
-      type="button"
-      aria-pressed={active}
-      onClick={onClick}
-      className={cn(
-        'inline-flex h-9 items-center gap-2 rounded-full border px-3.5 text-sm font-medium transition-colors',
-        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-        active ? 'border-primary bg-primary text-primary-foreground' : 'bg-background hover:bg-muted',
-      )}
-    >
-      {kind && <span className={cn('size-2.5 rounded-full ring-2 ring-background', KIND_DOT_CLASS[kind])} aria-hidden />}
-      {children}
-    </button>
-  )
 }
 
 // ─── tela ─────────────────────────────────────────────────────────────────────
@@ -334,32 +312,38 @@ export function DashboardPage({ search, onSearch, onOpenCourse }: {
   }
 
   const calendario = (
-    <div id="agenda-painel" className="flex flex-col gap-4">
-      {/* Filtros da agenda */}
+    <section id="agenda-painel" aria-labelledby="agenda-painel-titulo" className="flex flex-col gap-4">
+      {/* O bloco principal do painel: título próprio e os filtros da agenda à direita. */}
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-        <div role="group" aria-label="Filtrar por tipo" className="flex flex-wrap gap-2">
-          <Chip active={tipo === 'all'} onClick={() => setSearch({ tipo: undefined }, true)}>Todos</Chip>
-          {(['COURSE', 'EVENT', 'MEETING'] as ScheduleKind[]).map(kind => (
-            <Chip key={kind} kind={kind} active={tipo === kind} onClick={() => setSearch({ tipo: kind }, true)}>
-              {KIND_LABEL[kind]}
-            </Chip>
-          ))}
-        </div>
-        <div>
-          <label htmlFor="agenda-sala" className="sr-only">Sala</label>
-          <NativeSelect
-            id="agenda-sala"
-            className="h-9 w-full sm:min-w-48"
-            value={sala ?? ''}
-            onChange={e => setSearch({ sala: e.target.value || undefined }, true)}
-          >
-            <option value="">Todas as salas</option>
-            {salas?.map(room => <option key={room.id} value={room.id}>{room.name}</option>)}
-          </NativeSelect>
+        <h2 id="agenda-painel-titulo" className="text-lg leading-7 font-semibold text-foreground">Agenda das salas</h2>
+        <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+          <SegmentedControl<DashboardTypeFilter>
+            label="Filtrar por tipo"
+            value={tipo}
+            onChange={v => setSearch({ tipo: v === 'all' ? undefined : v }, true)}
+            options={[
+              { value: 'all', label: 'Todos' },
+              ...(['COURSE', 'EVENT', 'MEETING'] as ScheduleKind[]).map(kind => ({
+                value: kind, label: KIND_LABEL[kind], dot: KIND_DOT_CLASS[kind],
+              })),
+            ]}
+          />
+          <div>
+            <label htmlFor="agenda-sala" className="sr-only">Sala</label>
+            <NativeSelect
+              id="agenda-sala"
+              className="w-full sm:min-w-48"
+              value={sala ?? ''}
+              onChange={e => setSearch({ sala: e.target.value || undefined }, true)}
+            >
+              <option value="">Todas as salas</option>
+              {salas?.map(room => <option key={room.id} value={room.id}>{room.name}</option>)}
+            </NativeSelect>
+          </div>
         </div>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-[380px_1fr]">
+      <div className="grid gap-4 lg:grid-cols-[360px_1fr]">
         <Card>
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
@@ -367,18 +351,17 @@ export function DashboardPage({ search, onSearch, onOpenCourse }: {
                 {MESES[mes.month]} {mes.year}
               </CardTitle>
               <div className="flex items-center gap-1">
-                <Button variant="ghost" size="icon" className="size-8" onClick={() => irParaMes(-1)} aria-label="Mês anterior">
+                <Button variant="ghost" size="icon-sm" onClick={() => irParaMes(-1)} aria-label="Mês anterior">
                   <ChevronLeft className="size-4" aria-hidden />
                 </Button>
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="h-8 text-xs"
                   onClick={() => { setMes(mesDe(hoje)); setSearch({ dia: undefined }) }}
                 >
                   Hoje
                 </Button>
-                <Button variant="ghost" size="icon" className="size-8" onClick={() => irParaMes(1)} aria-label="Próximo mês">
+                <Button variant="ghost" size="icon-sm" onClick={() => irParaMes(1)} aria-label="Próximo mês">
                   <ChevronRight className="size-4" aria-hidden />
                 </Button>
               </div>
@@ -394,9 +377,9 @@ export function DashboardPage({ search, onSearch, onOpenCourse }: {
                 retrying={agenda.isFetching}
               />
             )}
-            <div className="mb-2 grid grid-cols-7 gap-1">
+            <div className="mb-1 grid grid-cols-7 gap-1">
               {['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'].map(d => (
-                <div key={d} className="py-2 text-center text-xs font-medium text-muted-foreground">{d}</div>
+                <div key={d} className="py-2 text-center text-xs font-medium text-faint-foreground">{d}</div>
               ))}
             </div>
             <div className="grid grid-cols-7 gap-1">
@@ -419,14 +402,14 @@ export function DashboardPage({ search, onSearch, onOpenCourse }: {
                     aria-current={ehHoje ? 'date' : undefined}
                     onClick={() => setSearch({ dia: date })}
                     className={cn(
-                      'relative flex h-11 flex-col items-center justify-center rounded-lg text-sm transition-all',
+                      'relative flex h-11 flex-col items-center justify-center rounded-lg text-sm transition-colors',
                       'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-                      current ? 'text-foreground hover:bg-muted' : 'text-muted-foreground/40',
+                      current ? 'text-foreground hover:bg-muted' : 'text-faint-foreground/60 hover:bg-muted/60',
                       selecionado && 'bg-primary text-primary-foreground hover:bg-primary',
                       ehHoje && !selecionado && 'ring-1 ring-primary/50',
                     )}
                   >
-                    <span className="font-medium">{Number(date.slice(8, 10))}</span>
+                    <span className="font-medium tabular-nums">{Number(date.slice(8, 10))}</span>
                     {tipos.length > 0 && (
                       <span className="mt-0.5 flex items-center gap-0.5" aria-hidden>
                         {tipos.map(k => (
@@ -441,7 +424,7 @@ export function DashboardPage({ search, onSearch, onOpenCourse }: {
                 )
               })}
             </div>
-            <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 border-t pt-4 text-xs text-muted-foreground">
+            <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-border pt-4 text-xs text-muted-foreground">
               {(['COURSE', 'EVENT', 'MEETING'] as ScheduleKind[])
                 .filter(k => tipo === 'all' || tipo === k)
                 .map(k => (
@@ -450,7 +433,7 @@ export function DashboardPage({ search, onSearch, onOpenCourse }: {
                   </span>
                 ))}
               <span className="flex items-center gap-1.5">
-                <span className="size-4 rounded ring-1 ring-primary/50" aria-hidden /> Hoje
+                <span className="size-4 rounded-sm ring-1 ring-primary/50" aria-hidden /> Hoje
               </span>
             </div>
           </CardContent>
@@ -467,7 +450,7 @@ export function DashboardPage({ search, onSearch, onOpenCourse }: {
           onNovaReservaAberta={() => setSearch({ nova: undefined }, true)}
         />
       </div>
-    </div>
+    </section>
   )
 
   function bloco(id: DashboardBlockId) {
@@ -520,7 +503,8 @@ export function DashboardPage({ search, onSearch, onOpenCourse }: {
     // da ALTURA MEDIDA dela (ela quebra em duas ou três linhas conforme o
     // aparelho): com um valor fixo o último bloco ficava escondido atrás.
     <div
-      className={cn('flex flex-col gap-6 p-4 sm:p-6', editando && 'pb-[calc(var(--barra-organizar)+1.5rem)] md:pb-6')}
+      data-slot="page"
+      className={cn(PAGE_CONTAINER_CLASS, editando && 'pb-[calc(var(--barra-organizar)+1.5rem)] md:pb-6')}
       style={editando ? ({ '--barra-organizar': `${alturaBarra}px` } as React.CSSProperties) : undefined}
     >
       {editando && (
@@ -539,33 +523,23 @@ export function DashboardPage({ search, onSearch, onOpenCourse }: {
       {permissoesFalharam && (
         <LoadErrorRetry
           variant="inline"
-          className="rounded-lg border border-border bg-card px-4 py-3"
+          className="rounded-xl border border-border bg-card px-4 py-3"
           message="Não foi possível conferir suas permissões; alguns blocos do painel podem não aparecer."
           onRetry={tentarPermissoes}
           retrying={tentandoPermissoes}
         />
       )}
 
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <div className="flex items-center gap-1">
-            <h1 className="text-2xl font-bold tracking-tight text-foreground">Painel Geral</h1>
-            <AjudaLink topico="painel-geral" titulo="Painel Geral" />
-          </div>
-          <p className="text-sm text-muted-foreground">
-            O que precisa de atenção hoje, a agenda das salas e os números do sistema.
-          </p>
-        </div>
-        {!editando && (
-          <Button
-            variant="outline"
-            className="h-11 gap-2 px-3"
-            onClick={() => setRascunho(prefsDraft(me?.dashboardPrefs))}
-          >
+      <PageHeader
+        title="Painel Geral"
+        description="O que precisa de atenção hoje, a agenda das salas e os números do sistema"
+        help={<AjudaLink topico="painel-geral" titulo="Painel Geral" />}
+        actions={!editando && (
+          <Button variant="outline" onClick={() => setRascunho(prefsDraft(me?.dashboardPrefs))}>
             <SlidersHorizontal className="size-4" aria-hidden /> Personalizar
           </Button>
         )}
-      </div>
+      />
 
       {rascunho ? (
         <DndContext
@@ -593,7 +567,7 @@ export function DashboardPage({ search, onSearch, onOpenCourse }: {
       {foraDoPainel.length > 0 && (
         <section
           aria-label="Blocos que não estão no painel"
-          className="rounded-xl border border-dashed border-border bg-muted/30 p-4"
+          className="rounded-xl border border-border bg-card p-4"
         >
           <h2 className="text-sm font-semibold text-foreground">Blocos que não estão no painel</h2>
           <div className="mt-3 flex flex-wrap gap-2">
@@ -602,7 +576,6 @@ export function DashboardPage({ search, onSearch, onOpenCourse }: {
                 key={id}
                 type="button"
                 variant="outline"
-                className="h-11 gap-2 px-3"
                 onClick={() => removerOuAdicionar(id)}
               >
                 <Plus className="size-4" aria-hidden /> Adicionar {nomeDoBloco(id)}

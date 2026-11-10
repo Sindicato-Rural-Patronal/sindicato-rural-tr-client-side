@@ -7,7 +7,7 @@ import type { MemberFields } from '@/lib/membership'
 export function PersonHeading({ person }: { person: MemberFields & { name: string } }) {
   return (
     <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-      <h1 className="min-w-0 max-w-full line-clamp-3 break-words text-2xl font-bold tracking-tight text-foreground" title={person.name}>{person.name}</h1>
+      <h1 className="min-w-0 max-w-full line-clamp-3 break-words text-2xl leading-8 font-semibold text-foreground" title={person.name}>{person.name}</h1>
       <MemberBadge person={person} />
     </div>
   )

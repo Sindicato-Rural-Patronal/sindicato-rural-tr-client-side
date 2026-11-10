@@ -22,6 +22,9 @@ import { apiErrorMessage } from '@/lib/api-error-message'
 import { maskCNPJ } from '@/utils/masks'
 import { upperNoAccents } from '@/utils/text-format'
 import { LoadErrorRetry } from '@/components/LoadErrorRetry'
+import { EmptyState } from '@/components/EmptyState'
+import { RowActions } from '@/components/RowActions'
+import { SegmentedControl } from '@/components/SegmentedControl'
 
 // Empresas às quais a pessoa está vinculada. Dá para vincular e desvincular
 // daqui mesmo (mesma permissão de vincular pessoas na empresa: UPDATE_USER);
@@ -79,23 +82,23 @@ function LinkCompanyForm({ userId, personName, linkedCompanyIds, onDone }: {
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="link-company-search" className="text-xs font-medium text-muted-foreground">Empresa *</Label>
         {company ? (
-          <div className="flex min-h-9 items-center justify-between gap-2 rounded-md border bg-muted/40 px-3 py-1.5 text-sm">
+          <div className="flex min-h-9 items-center justify-between gap-2 rounded-lg border border-border bg-muted px-3 py-1.5 text-sm">
             <div className="min-w-0">
               <p className="truncate font-medium">{companyDisplayName(company)}</p>
-              <p className="text-xs text-muted-foreground">{companySubtitle(company)}</p>
+              <p className="text-xs tabular-nums text-muted-foreground">{companySubtitle(company)}</p>
             </div>
-            <Button type="button" variant="ghost" size="sm" className="h-7 shrink-0 px-2"
+            <Button type="button" variant="ghost" size="xs" className="shrink-0"
               onClick={() => setCompany(null)}>
-              <X className="size-3.5" /> Trocar
+              <X /> Trocar
             </Button>
           </div>
         ) : (
           <>
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+              <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
               <Input
                 id="link-company-search"
-                className="h-9 pl-9"
+                className="pl-9"
                 autoFocus
                 autoComplete="off"
                 placeholder="Buscar por nome, CNPJ ou e-mail…"
@@ -104,7 +107,7 @@ function LinkCompanyForm({ userId, personName, linkedCompanyIds, onDone }: {
                 onChange={e => { setQ(e.target.value); setErrors(p => ({ ...p, company: undefined })) }}
               />
             </div>
-            <div className="max-h-56 overflow-y-auto rounded-md border" aria-label="Empresas encontradas">
+            <div className="max-h-56 overflow-y-auto rounded-lg border border-border" aria-label="Empresas encontradas">
               {isFetching && results.length === 0 && (
                 <p className="px-3 py-2 text-xs text-muted-foreground">Buscando…</p>
               )}
@@ -141,7 +144,7 @@ function LinkCompanyForm({ userId, personName, linkedCompanyIds, onDone }: {
                   >
                     <span className="min-w-0">
                       <span className="block truncate font-medium">{companyDisplayName(c)}</span>
-                      <span className="block text-xs text-muted-foreground">{companySubtitle(c)}</span>
+                      <span className="block text-xs tabular-nums text-muted-foreground">{companySubtitle(c)}</span>
                     </span>
                     {already && <span className="shrink-0 text-xs text-muted-foreground">já vinculada</span>}
                   </button>
@@ -157,7 +160,6 @@ function LinkCompanyForm({ userId, personName, linkedCompanyIds, onDone }: {
         <Label htmlFor="link-company-title" className="text-xs font-medium text-muted-foreground">Título na empresa *</Label>
         <Input
           id="link-company-title"
-          className="h-9"
           list="person-company-title-suggestions"
           maxLength={80}
           placeholder="Ex.: SOCIO, GERENTE, CONTADOR"
@@ -165,14 +167,13 @@ function LinkCompanyForm({ userId, personName, linkedCompanyIds, onDone }: {
           aria-invalid={!!errors.title || undefined}
           onChange={e => { setTitle(upperNoAccents(e.target.value)); setErrors(p => ({ ...p, title: undefined })) }}
         />
-        <div className="flex flex-wrap gap-1.5">
-          {COMMON_MEMBER_TITLES.map(t => (
-            <Button key={t} type="button" size="sm" variant={title === t ? 'default' : 'outline'} className="h-7 px-2 text-xs"
-              onClick={() => { setTitle(t); setErrors(p => ({ ...p, title: undefined })) }}>
-              {t}
-            </Button>
-          ))}
-        </div>
+        <SegmentedControl
+          label="Títulos comuns"
+          className="w-fit"
+          value={title}
+          onChange={t => { setTitle(t); setErrors(p => ({ ...p, title: undefined })) }}
+          options={COMMON_MEMBER_TITLES.map(t => ({ value: t, label: t }))}
+        />
         {errors.title && <p className="text-xs text-destructive" role="alert">{errors.title}</p>}
       </div>
 
@@ -212,7 +213,7 @@ export function PersonCompanies({ userId, personName, memberships }: {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="text-sm text-muted-foreground">{memberships.length} empresa(s) vinculada(s)</p>
+        <p className="text-sm text-muted-foreground"><span className="tabular-nums">{memberships.length}</span> empresa(s) vinculada(s)</p>
         {canEdit && (
           <Button size="sm" onClick={() => setLinkOpen(true)}>
             <Plus className="size-4" /> Vincular a empresa
@@ -221,41 +222,36 @@ export function PersonCompanies({ userId, personName, memberships }: {
       </div>
 
       {memberships.length === 0 ? (
-        <div className="flex flex-col items-center justify-center rounded-lg border-2 border-dashed py-12 text-center">
-          <Building2 className="mb-3 size-10 text-muted-foreground/30" />
-          <p className="text-sm font-medium">Não vinculada a nenhuma empresa</p>
-        </div>
+        <EmptyState framed icon={Building2} title="Não vinculada a nenhuma empresa" />
       ) : (
         <div className="flex flex-col gap-2">
           {memberships.map(m => (
-            <div key={m.id} className="flex flex-col gap-2 rounded-lg border bg-card p-3 sm:flex-row sm:items-center sm:justify-between">
+            <div key={m.id} className="flex flex-col gap-2 rounded-xl border border-border bg-card p-3 sm:flex-row sm:items-center sm:justify-between">
               <Link
                 to="/admin/empresas/$id"
                 params={{ id: m.company.id }}
                 className="group flex min-w-0 items-center gap-3"
                 title="Abrir empresa"
               >
-                <div className="flex size-9 shrink-0 items-center justify-center rounded-md bg-muted">
+                <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-muted">
                   <Building2 className="size-4 text-muted-foreground" />
                 </div>
                 <div className="min-w-0">
                   <p className="flex items-center gap-1 truncate text-sm font-medium group-hover:underline">
                     {companyDisplayName(m.company)}
-                    <ChevronRight className="size-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
+                    <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
                   </p>
-                  <p className="text-xs text-muted-foreground">{companySubtitle(m.company)}</p>
+                  <p className="text-xs tabular-nums text-muted-foreground">{companySubtitle(m.company)}</p>
                 </div>
               </Link>
               <div className="flex min-w-0 max-w-full flex-wrap items-center gap-2 sm:max-w-[55%] sm:justify-end">
-                {m.company.isPartner && <Badge variant="outline" className="gap-1"><Handshake className="size-3" /> Parceira</Badge>}
+                {m.company.isPartner && <Badge variant="outline"><Handshake /> Parceira</Badge>}
                 {/* Cargo comprido quebra de linha em vez de alargar a tela. */}
-                <Badge variant="secondary" className="h-auto max-w-full whitespace-normal break-words text-left" title={m.title}>{m.title}</Badge>
-                {canEdit && (
-                  <Button size="sm" variant="ghost" className="h-8 gap-1 px-2 text-muted-foreground hover:text-destructive"
-                    onClick={() => setRemoveTarget(m)} aria-label={`Desvincular de ${companyDisplayName(m.company)}`}>
-                    <Trash2 className="size-3.5" /> Desvincular
-                  </Button>
-                )}
+                <Badge variant="neutral" className="h-auto max-w-full whitespace-normal break-words text-left" title={m.title}>{m.title}</Badge>
+                <RowActions
+                  label={`Ações do vínculo com ${companyDisplayName(m.company)}`}
+                  actions={[{ label: 'Desvincular', icon: Trash2, onClick: () => setRemoveTarget(m), destructive: true, hidden: !canEdit }]}
+                />
               </div>
             </div>
           ))}

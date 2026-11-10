@@ -1,5 +1,5 @@
 import { toast } from 'sonner'
-import { CreditCard, Pencil, Plus, Trash2 } from 'lucide-react'
+import { Check, CreditCard, Pencil, Plus, Trash2 } from 'lucide-react'
 import { apiErrorMessage } from '@/lib/api-error-message'
 import {
   useFinancePaymentMethods, useCreateFinancePaymentMethod,
@@ -19,6 +19,9 @@ import {
 import { ConfirmCloseDialog } from '@/components/confirm-close-dialog'
 import { DeleteConfirmDialog } from '@/components/DeleteConfirmDialog'
 import { LoadErrorRetry } from '@/components/LoadErrorRetry'
+import { EmptyState } from '@/components/EmptyState'
+import { RowActions } from '@/components/RowActions'
+import { cn } from '@/lib/utils'
 
 // Formas de pagamento (PIX, DINHEIRO, BOLETO...). Antes elas só nasciam pelo
 // "+ Nova forma de pagamento" de dentro do select do lançamento, e não havia
@@ -57,10 +60,10 @@ export function PaymentMethodsTab({ enabled, canCreate, canUpdate, canDelete }: 
     try {
       if (crud.editing) {
         await atualizar.mutateAsync({ id: crud.editing.id, body: { name, active: crud.form.active } })
-        toast.success('Forma de pagamento atualizada!')
+        toast.success('Forma de pagamento atualizada.')
       } else {
         await criar.mutateAsync(name)
-        toast.success('Forma de pagamento criada!')
+        toast.success('Forma de pagamento criada.')
       }
       crud.forceClose()
     } catch (e) {
@@ -83,13 +86,13 @@ export function PaymentMethodsTab({ enabled, canCreate, canUpdate, canDelete }: 
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-start justify-between gap-4">
-        <p className="text-sm text-muted-foreground">
-          As opções que aparecem em <strong>Forma</strong> ao registrar um lançamento. O lançamento
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+        <p className="max-w-2xl text-sm text-muted-foreground">
+          As opções que aparecem em <strong className="font-medium text-foreground">Forma</strong> ao registrar um lançamento. O lançamento
           já feito guarda o nome que foi escolhido, então mexer aqui não altera o que passou.
         </p>
         {canCreate && (
-          <Button onClick={crud.openCreate} className="shrink-0">
+          <Button onClick={crud.openCreate} className="w-fit shrink-0">
             <Plus className="size-4" /> Nova forma
           </Button>
         )}
@@ -104,7 +107,7 @@ export function PaymentMethodsTab({ enabled, canCreate, canUpdate, canDelete }: 
         />
       )}
 
-      <div className="rounded-lg border border-border bg-card overflow-hidden">
+      <div className="overflow-hidden rounded-xl border border-border bg-card">
         {/* Sem rolagem lateral: tabela fixa; o nome quebra linha (TableCell do shadcn é nowrap). */}
         <div>
           <Table className="table-fixed">
@@ -112,7 +115,7 @@ export function PaymentMethodsTab({ enabled, canCreate, canUpdate, canDelete }: 
               <TableRow>
                 <TableHead>Forma de pagamento</TableHead>
                 <TableHead className="hidden sm:table-cell sm:w-[96px]">Status</TableHead>
-                <TableHead className="w-[104px] text-right">Ações</TableHead>
+                <TableHead className="w-[104px] text-right md:w-[88px]">Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -124,13 +127,13 @@ export function PaymentMethodsTab({ enabled, canCreate, canUpdate, canDelete }: 
                 </TableRow>
               ))}
               {!isLoading && !isError && formas.length === 0 && (
-                <TableRow>
-                  <TableCell colSpan={3} className="py-16 text-center whitespace-normal">
-                    <CreditCard className="size-10 text-muted-foreground/30 mx-auto mb-3" />
-                    <p className="text-sm font-medium text-foreground">Nenhuma forma de pagamento</p>
-                    <p className="mt-1 text-sm text-muted-foreground">
-                      Cadastre as que o sindicato usa: PIX, dinheiro, boleto…
-                    </p>
+                <TableRow className="hover:bg-transparent">
+                  <TableCell colSpan={3} className="p-0 whitespace-normal">
+                    <EmptyState
+                      icon={CreditCard}
+                      title="Nenhuma forma de pagamento"
+                      description="Cadastre as que o sindicato usa: PIX, dinheiro, boleto…"
+                    />
                   </TableCell>
                 </TableRow>
               )}
@@ -138,43 +141,22 @@ export function PaymentMethodsTab({ enabled, canCreate, canUpdate, canDelete }: 
                 <TableRow key={m.id} className={m.active ? '' : 'opacity-60'}>
                   <TableCell className="font-medium text-foreground whitespace-normal">
                     <span className="block break-words" title={m.name}>{m.name}</span>
-                    <Badge variant={m.active ? 'default' : 'secondary'} className="mt-1 sm:hidden">
+                    <Badge variant={m.active ? 'success' : 'neutral'} className="mt-1 sm:hidden">
                       {m.active ? 'Ativa' : 'Inativa'}
                     </Badge>
                   </TableCell>
                   <TableCell className="hidden sm:table-cell">
-                    <Badge variant={m.active ? 'default' : 'secondary'}>
+                    <Badge variant={m.active ? 'success' : 'neutral'}>
                       {m.active ? 'Ativa' : 'Inativa'}
                     </Badge>
                   </TableCell>
                   <TableCell className="text-right">
-                    <div className="flex items-center justify-end gap-1">
-                      {canUpdate && (
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="h-8 px-2"
-                          onClick={() => crud.openEdit(m)}
-                          aria-label={'Editar ' + m.name}
-                          title="Editar"
-                        >
-                          <Pencil className="size-4" />
-                        </Button>
-                      )}
-                      {canDelete && (
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="h-8 px-2 text-muted-foreground hover:text-destructive"
-                          onClick={() => crud.setDeleteTarget(m)}
-                          aria-label={'Excluir ' + m.name}
-                          title="Excluir"
-                        >
-                          <Trash2 className="size-4" />
-                        </Button>
-                      )}
-                      {!canUpdate && !canDelete && <span className="text-xs text-muted-foreground">—</span>}
-                    </div>
+                    {!canUpdate && !canDelete ? <span className="text-xs text-faint-foreground">—</span> : (
+                      <RowActions label={`Ações da forma ${m.name}`} actions={[
+                        { label: 'Editar ' + m.name, icon: Pencil, onClick: () => crud.openEdit(m), hidden: !canUpdate },
+                        { label: 'Excluir ' + m.name, icon: Trash2, onClick: () => crud.setDeleteTarget(m), destructive: true, hidden: !canDelete },
+                      ]} />
+                    )}
                   </TableCell>
                 </TableRow>
               ))}
@@ -210,7 +192,9 @@ export function PaymentMethodsTab({ enabled, canCreate, canUpdate, canDelete }: 
                 onClick={() => crud.setField('active', !crud.form.active)}
                 className="flex w-fit items-center gap-2 text-sm text-foreground"
               >
-                <span className={`inline-block size-4 rounded-sm border ${crud.form.active ? 'border-emerald-500 bg-emerald-500' : 'border-input'}`} />
+                <span className={cn('inline-flex size-4 items-center justify-center rounded-sm border', crud.form.active ? 'border-primary bg-primary text-primary-foreground' : 'border-input bg-card')} aria-hidden>
+                  {crud.form.active && <Check className="size-3" />}
+                </span>
                 {crud.form.active ? 'Ativa (aparece nos lançamentos)' : 'Inativa'}
               </button>
             )}

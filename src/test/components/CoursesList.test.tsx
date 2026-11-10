@@ -6,6 +6,7 @@ import { useState } from 'react'
 import type { ReactNode } from 'react'
 import type { CourseCardItem } from '@/hooks/useCourse'
 import type { CourseView } from '@/lib/course-views'
+import { TooltipProvider } from '@/components/ui/tooltip'
 import '@/i18n'
 
 // Lista de cursos do painel com as abas "Próximos" (o dia do início ainda não
@@ -99,7 +100,10 @@ function abrir(inicial: CourseView = 'upcoming') {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
   return render(
     <QueryClientProvider client={qc}>
-      <Tela inicial={inicial} />
+      {/* O menu de ações do cartão (RowActions) usa dica, que pede o provedor como no app. */}
+      <TooltipProvider>
+        <Tela inicial={inicial} />
+      </TooltipProvider>
     </QueryClientProvider>,
   )
 }

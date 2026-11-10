@@ -44,7 +44,7 @@ export function NumeroField({ value, onChange, proximo, editando, erro, inputRef
       />
       {erro
         ? <p id="lanc-numero-erro" role="alert" className="break-words text-xs text-destructive">{erro}</p>
-        : <p id="lanc-numero-ajuda" className="text-[11px] text-muted-foreground">{ajuda}</p>}
+        : <p id="lanc-numero-ajuda" className="text-xs text-faint-foreground">{ajuda}</p>}
     </div>
   )
 }

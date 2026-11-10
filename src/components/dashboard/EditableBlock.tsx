@@ -129,16 +129,18 @@ export function EditableBlock({
       aria-roledescription="Bloco do painel"
       aria-label={`${label}. Segure e arraste para mudar de lugar, ou aperte a barra de espaço.`}
       className={cn(
-        'relative cursor-grab rounded-xl border-2 border-dashed border-border bg-card/40 p-2',
+        // Moldura do modo de organizar: linha um pouco mais forte que a do cartão e o
+        // fundo um tom acima (sem tracejado, que o sistema não usa mais).
+        'relative cursor-grab rounded-2xl border border-foreground/15 bg-muted/60 p-2 transition-colors',
         'active:cursor-grabbing focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
         // Uma coluna no celular; no computador, metade ou as duas colunas.
         CLASSE_SPAN[size],
         // touch-none só enquanto arrasta: se valesse sempre, o dedo não rolaria
         // mais a página (o cartão ocupa a tela toda no celular).
-        isDragging && 'z-10 touch-none border-primary opacity-80 shadow-lg',
+        isDragging && 'z-10 touch-none border-primary opacity-80 shadow-float',
         // Nada se mexe durante o arrasto: quem diz onde o bloco vai cair é este
         // destaque no cartão de baixo do cursor.
-        alvo && 'border-primary bg-primary/10 ring-2 ring-primary/40',
+        alvo && 'border-primary bg-primary/10 ring-2 ring-primary/30',
         puxando && 'border-primary bg-primary/5',
       )}
     >
@@ -148,7 +150,7 @@ export function EditableBlock({
           aria-hidden
           className={cn(
             'pointer-events-none absolute -top-3 left-3 z-10 rounded-md bg-primary px-2 py-0.5',
-            'text-xs font-medium text-primary-foreground shadow-md',
+            'text-xs font-medium text-primary-foreground shadow-float',
           )}
         >
           Solte aqui
@@ -166,8 +168,8 @@ export function EditableBlock({
           onClick={onRemover}
           aria-label={`Remover ${label} do painel`}
           className={cn(
-            'inline-flex h-11 items-center gap-1.5 rounded-lg border border-border bg-background px-3',
-            'text-sm font-medium shadow-md hover:bg-muted',
+            'inline-flex h-11 items-center gap-1.5 rounded-lg border border-border bg-card px-3',
+            'text-sm font-medium shadow-float transition-colors hover:bg-accent',
             'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
           )}
         >
@@ -214,7 +216,7 @@ export function EditableBlock({
           aria-hidden
           className={cn(
             'pointer-events-none absolute right-0 bottom-12 hidden rounded-md bg-foreground px-2 py-1',
-            'text-xs font-medium whitespace-nowrap text-background shadow-md',
+            'text-xs font-medium whitespace-nowrap text-background shadow-float',
             'group-focus-visible/alca:block',
             puxando && 'block',
           )}
@@ -224,7 +226,7 @@ export function EditableBlock({
         <span
           aria-hidden
           className={cn(
-            'flex size-7 items-center justify-center rounded-md border border-border bg-background shadow-md',
+            'flex size-7 items-center justify-center rounded-md border border-border bg-card shadow-float',
             // Com foco pelo teclado fica igual a quando está sendo puxada: quem
             // navega por Tab precisa ver onde está antes de apertar as setas.
             'group-focus-visible/alca:border-primary group-focus-visible/alca:bg-primary',

@@ -1,5 +1,4 @@
-import { useState } from 'react'
-import type { ComponentProps } from 'react'
+import { useRef, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { FaWhatsapp } from 'react-icons/fa'
@@ -19,17 +18,21 @@ import { whatsappUrl, telHref, uniqueContactLines, phoneKey } from '@/lib/contac
 import { copyText } from '@/lib/copy-text'
 import { cn } from '@/lib/utils'
 import { downloadExport } from '@/lib/export'
-import { CheckCheck, CheckCircle2, CircleCheckBig, Circle, ClipboardList, Eye, FileDown, FileSpreadsheet, Loader2, Mail, Paperclip, Phone, PlayCircle, UserCheck, UserPlus, UserRoundCheck, UserRoundX, UserX, X } from 'lucide-react'
+import { CheckCheck, CircleCheckBig, Circle, CircleOff, ClipboardList, Eye, FileDown, FileSignature, FileSpreadsheet, Loader2, Mail, Paperclip, Phone, PlayCircle, UserCheck, UserPlus, UserRoundCheck, UserRoundX, UserX, X } from 'lucide-react'
+import type { LucideIcon } from 'lucide-react'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import type { Course } from '@/@types/course'
 import { LoadErrorRetry } from '@/components/LoadErrorRetry'
 import { Pagination } from '@/components/ui/pagination'
 import { DeleteConfirmDialog } from '@/components/DeleteConfirmDialog'
 import { MemberBadge } from '@/components/MemberBadge'
+import { EmptyState } from '@/components/EmptyState'
+import { InitialsAvatar } from '@/components/InitialsAvatar'
+import { RowActions } from '@/components/RowActions'
 import { PersonPicker } from '@/components/PersonPicker'
 import type { PickedPerson } from '@/components/PersonPicker'
 
@@ -37,24 +40,9 @@ import type { PickedPerson } from '@/components/PersonPicker'
 // rota para poder ser testada. A API entrega da mais antiga para a mais nova
 // (ordem de chegada): a tela mostra na ordem recebida, sem reordenar.
 
-// Botão pequeno de ação com dica e nome para leitor de tela; o texto ao lado do
-// ícone só aparece em telas largas (no celular fica só o ícone).
-function RowAction({ label, className, ...props }: { label: string } & ComponentProps<typeof Button>) {
-  return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <Button
-          size="sm"
-          variant="ghost"
-          aria-label={label}
-          className={cn('h-9 min-w-9 gap-1 px-2 text-xs lg:h-7 lg:min-w-7', className)}
-          {...props}
-        />
-      </TooltipTrigger>
-      <TooltipContent>{label}</TooltipContent>
-    </Tooltip>
-  )
-}
+// O ícone do WhatsApp vem do react-icons; o RowActions só precisa de um componente que
+// aceite `className` e `aria-hidden`, como os do lucide.
+const WhatsAppIcon = FaWhatsapp as unknown as LucideIcon
 
 // Mapeia com concorrência limitada para não inundar a API (preserva a ordem).
 async function mapWithConcurrency<T, R>(
@@ -173,6 +161,9 @@ export function RegistrationsTab({
   const uploadFicha = useUploadRegistrationFicha(courseId)
   const deleteFicha = useDeleteRegistrationFicha(courseId)
   const [fichaBusyId, setFichaBusyId] = useState<string | null>(null)
+  // Um seletor de arquivo só, para "Anexar ficha preenchida (PDF)": a ação fica no menu da linha.
+  const fichaInputRef = useRef<HTMLInputElement>(null)
+  const fichaTargetRef = useRef<string | null>(null)
   const [cancelTarget, setCancelTarget] = useState<Registration | null>(null)
   const [addOpen, setAddOpen] = useState(false)
   const [confirmAllOpen, setConfirmAllOpen] = useState(false)
@@ -209,7 +200,7 @@ export function RegistrationsTab({
   async function handleStart() {
     try {
       await startCourse.mutateAsync(courseId)
-      toast.success('Curso iniciado! Status: Em andamento.')
+      toast.success('Curso iniciado. Status: Em andamento.')
     } catch (e) {
       toast.error(apiErrorMessage(e, 'Não foi possível iniciar o curso.'))
     } finally {
@@ -368,7 +359,7 @@ export function RegistrationsTab({
     setFichaBusyId(regId)
     try {
       await uploadFicha.mutateAsync({ id: regId, file })
-      toast.success('Ficha anexada!')
+      toast.success('Ficha anexada.')
     } catch (e) {
       toast.error(apiErrorMessage(e, 'Erro ao anexar a ficha.'))
     } finally {
@@ -440,48 +431,48 @@ export function RegistrationsTab({
     <div className="flex flex-col gap-4">
       <div className="flex flex-col gap-2">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm text-muted-foreground tabular-nums">
             {resp ? `${total} ${t('admin.courses.registrations').toLowerCase()}` : t('common.loading')}
           </p>
           <div className="flex flex-wrap items-center gap-2">
-            {canManage && can('READ_USER') && (
-              <Button size="sm" className="h-8 gap-1.5" onClick={() => setAddOpen(true)}>
-                <UserPlus className="size-3.5" /> Inscrever pessoa
-              </Button>
+            {inProgress && (
+              <Badge variant="outline">
+                <PlayCircle aria-hidden /> {t('admin.courses.form.statusInProgress')}
+              </Badge>
+            )}
+            {completed && (
+              <Badge variant="neutral">
+                <CircleCheckBig aria-hidden /> Concluído
+              </Badge>
             )}
             {canManage && pendingCount > 0 && (
-              <Button size="sm" variant="outline" className="h-8 gap-1.5" onClick={() => setConfirmAllOpen(true)}>
-                <CheckCheck className="size-3.5" /> Confirmar todas ({pendingCount})
+              <Button size="sm" variant="outline" onClick={() => setConfirmAllOpen(true)}>
+                <CheckCheck /> Confirmar todas <span className="tabular-nums">({pendingCount})</span>
               </Button>
             )}
             {canManage && total > 0 && !inProgress && !completed && (
-              <Button size="sm" className="h-8 gap-1.5" disabled={startCourse.isPending} onClick={() => setStartOpen(true)}>
-                {startCourse.isPending ? <Loader2 className="size-3.5 animate-spin" /> : <PlayCircle className="size-3.5" />}
+              <Button size="sm" variant="outline" disabled={startCourse.isPending} onClick={() => setStartOpen(true)}>
+                {startCourse.isPending ? <Loader2 className="animate-spin" /> : <PlayCircle />}
                 {t('admin.courses.startCourse')}
               </Button>
             )}
-            {inProgress && (
-              <span className="inline-flex items-center gap-1 rounded-full border border-blue-200 bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700 dark:border-blue-900 dark:bg-blue-950/40 dark:text-blue-400">
-                <PlayCircle className="size-3" /> {t('admin.courses.form.statusInProgress')}
-              </span>
-            )}
-            {completed && (
-              <span className="inline-flex items-center gap-1 rounded-full border border-violet-200 bg-violet-100 px-2 py-0.5 text-xs font-medium text-violet-700 dark:border-violet-900 dark:bg-violet-950/40 dark:text-violet-400">
-                <CircleCheckBig className="size-3" /> Concluído
-              </span>
+            {canManage && can('READ_USER') && (
+              <Button size="sm" onClick={() => setAddOpen(true)}>
+                <UserPlus /> Inscrever pessoa
+              </Button>
             )}
           </div>
         </div>
 
         {started && total > 0 && (
-          <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border bg-muted/30 px-3 py-2">
-            <p className="text-sm text-foreground">
+          <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-muted px-3 py-2">
+            <p className="text-sm text-foreground tabular-nums">
               <span className="font-medium">Presença:</span>{' '}
               {counts ? attendanceSummary(counts) : t('common.loading')}
             </p>
             {canManage && unmarkedConfirmed > 0 && (
-              <Button size="sm" variant="outline" className="h-8 gap-1.5" onClick={() => setMarkAllOpen(true)}>
-                <UserRoundCheck className="size-3.5" /> Todos presentes ({unmarkedConfirmed})
+              <Button size="sm" variant="outline" onClick={() => setMarkAllOpen(true)}>
+                <UserRoundCheck /> Todos presentes <span className="tabular-nums">({unmarkedConfirmed})</span>
               </Button>
             )}
           </div>
@@ -489,24 +480,24 @@ export function RegistrationsTab({
 
         {total > 0 && (
           <div className="flex flex-wrap items-center gap-2">
-            <Button size="sm" variant="outline" className="h-8 gap-1.5" disabled={copying === 'phones'} onClick={() => copyContacts('phones')}>
-              {copying === 'phones' ? <Loader2 className="size-3.5 animate-spin" /> : <Phone className="size-3.5" />}
+            <Button size="sm" variant="outline" disabled={copying === 'phones'} onClick={() => copyContacts('phones')}>
+              {copying === 'phones' ? <Loader2 className="animate-spin" /> : <Phone />}
               Copiar telefones
             </Button>
-            <Button size="sm" variant="outline" className="h-8 gap-1.5" disabled={copying === 'emails'} onClick={() => copyContacts('emails')}>
-              {copying === 'emails' ? <Loader2 className="size-3.5 animate-spin" /> : <Mail className="size-3.5" />}
+            <Button size="sm" variant="outline" disabled={copying === 'emails'} onClick={() => copyContacts('emails')}>
+              {copying === 'emails' ? <Loader2 className="animate-spin" /> : <Mail />}
               Copiar e-mails
             </Button>
-            <Button size="sm" variant="outline" className="h-8 gap-1.5" disabled={exportingAll} onClick={exportAll}>
-              {exportingAll ? <Loader2 className="size-3.5 animate-spin" /> : <FileDown className="size-3.5" />}
+            <Button size="sm" variant="outline" disabled={exportingAll} onClick={exportAll}>
+              {exportingAll ? <Loader2 className="animate-spin" /> : <FileDown />}
               {t('admin.courses.exportAllFichas')}
             </Button>
-            <Button size="sm" variant="outline" className="h-8 gap-1.5" disabled={exportingCsv} onClick={exportCsv} title="Exportar inscrições (CSV)">
-              {exportingCsv ? <Loader2 className="size-3.5 animate-spin" /> : <FileSpreadsheet className="size-3.5" />}
+            <Button size="sm" variant="outline" disabled={exportingCsv} onClick={exportCsv} title="Exportar inscrições (CSV)">
+              {exportingCsv ? <Loader2 className="animate-spin" /> : <FileSpreadsheet />}
               Planilha
             </Button>
-            <Button size="sm" variant="outline" className="h-8 gap-1.5" disabled={exportingLista} onClick={downloadListaPresenca} title="Lista de presença para imprimir (inscrições confirmadas)">
-              {exportingLista ? <Loader2 className="size-3.5 animate-spin" /> : <ClipboardList className="size-3.5" />}
+            <Button size="sm" variant="outline" disabled={exportingLista} onClick={downloadListaPresenca} title="Lista de presença para imprimir (inscrições confirmadas)">
+              {exportingLista ? <Loader2 className="animate-spin" /> : <ClipboardList />}
               Lista de presença
             </Button>
           </div>
@@ -516,9 +507,9 @@ export function RegistrationsTab({
       {isLoading && (
         <div className="flex flex-col gap-2">
           {Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className="flex items-center gap-3 rounded-lg border p-3">
+            <div key={i} className="flex items-center gap-3 rounded-lg border border-border bg-card p-3">
               <Skeleton className="size-8 rounded-full" />
-              <div className="flex-1"><Skeleton className="h-4 w-36 mb-1" /><Skeleton className="h-3 w-48" /></div>
+              <div className="flex-1"><Skeleton className="mb-1 h-4 w-36" /><Skeleton className="h-3 w-48" /></div>
             </div>
           ))}
         </div>
@@ -526,7 +517,7 @@ export function RegistrationsTab({
 
       {regsError && !resp && (
         <LoadErrorRetry
-          className="rounded-xl border bg-card"
+          className="rounded-xl border border-border bg-card"
           message="Não foi possível carregar as inscrições deste curso."
           onRetry={() => void refetchRegs()}
           retrying={regsFetching}
@@ -534,11 +525,26 @@ export function RegistrationsTab({
       )}
 
       {!isLoading && !regsError && registrations.length === 0 && (
-        <div className="flex flex-col items-center justify-center py-10 text-center border-2 border-dashed rounded-xl">
-          <UserCheck className="size-10 text-muted-foreground/30 mb-3" />
-          <p className="text-sm font-medium text-foreground">{t('admin.courses.noRegistrations')}</p>
-        </div>
+        <EmptyState framed icon={UserCheck} title={t('admin.courses.noRegistrations')} className="py-10" />
       )}
+
+      {/* "Anexar ficha preenchida (PDF)": o seletor de arquivo da linha escolhida no menu. */}
+      <input
+        ref={fichaInputRef}
+        type="file"
+        accept="application/pdf"
+        className="hidden"
+        aria-hidden
+        tabIndex={-1}
+        onChange={e => {
+          const input = e.currentTarget
+          const f = input.files?.[0]
+          input.value = ''
+          const regId = fichaTargetRef.current
+          fichaTargetRef.current = null
+          if (regId) void anexarFicha(regId, f)
+        }}
+      />
 
       {registrations.map(reg => {
         const age = calcAge(reg.userData.birthDate)
@@ -549,184 +555,113 @@ export function RegistrationsTab({
           // Dados da pessoa em cima e botões embaixo, em qualquer largura: a janela do
           // curso é estreita e, com presença + ações na mesma linha, o nome sumia.
           <div key={reg.id} className="flex flex-col gap-2 rounded-lg border border-border bg-card p-3">
-            <div className="flex min-w-0 flex-1 items-center gap-3">
-              <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary font-semibold text-sm">
-                {reg.userData.name.charAt(0).toUpperCase()}
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-1.5 flex-wrap">
-                  <p className="text-sm font-medium text-foreground wrap-break-word">{reg.userData.name}</p>
+            <div className="flex min-w-0 flex-1 items-start gap-3">
+              <InitialsAvatar name={reg.userData.name} avatar={reg.userData.avatar} size="sm" className="mt-0.5" />
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <p className="text-sm font-medium wrap-break-word text-foreground">{reg.userData.name}</p>
+                  {/* Situação da inscrição: confirmada (verde) ou a confirmar (âmbar). */}
+                  {reg.confirmed
+                    ? <Badge variant="success">{t('admin.courses.confirmed')}</Badge>
+                    : <Badge variant="warning">A confirmar</Badge>}
                   {/* A idade aparece para TODO mundo: quem organiza o curso precisa
                       saber a faixa da turma, não só quem é menor. Vermelho só para
                       o menor, que exige assinatura do responsável. */}
                   {age === null ? (
-                    <span
-                      className="inline-flex items-center rounded-full border border-border bg-muted px-1.5 text-[10px] font-medium text-muted-foreground"
-                      title="Sem data de nascimento no cadastro"
-                    >
-                      Idade não informada
-                    </span>
+                    <Badge variant="neutral" title="Sem data de nascimento no cadastro">Idade não informada</Badge>
                   ) : minor ? (
-                    <span
-                      className="inline-flex items-center rounded-full border border-red-300 bg-red-100 px-1.5 text-[10px] font-semibold text-red-700 dark:border-red-900 dark:bg-red-950/40 dark:text-red-400"
-                      title="Menor de idade — precisa da assinatura do responsável na ficha"
-                    >
+                    <Badge variant="danger" title="Menor de idade — precisa da assinatura do responsável na ficha">
                       Menor · {age} anos
-                    </span>
+                    </Badge>
                   ) : (
-                    <span
-                      className="inline-flex items-center rounded-full border border-sky-200 bg-sky-100 px-1.5 text-[10px] font-medium text-sky-700 dark:border-sky-900 dark:bg-sky-950/40 dark:text-sky-400"
-                      title="Maior de idade"
-                    >
-                      {age} anos
-                    </span>
+                    <Badge variant="neutral" title="Maior de idade">{age} anos</Badge>
                   )}
                   <MemberBadge person={reg.userData} />
                   {reg.userData.companyMemberships.length > 0 && (
-                    <span
-                      className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-100 px-1.5 text-[10px] font-medium text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-400"
+                    <Badge
+                      variant="outline"
                       title={`Vinculado a empresa parceira: ${reg.userData.companyMemberships.map(m => m.company.tradeName || m.company.name).join(', ')}`}
                     >
                       Parceira
-                    </span>
+                    </Badge>
                   )}
-                  {reg.userData.boardPosition && (
-                    <span className="inline-flex items-center rounded-full border border-blue-200 bg-blue-100 px-1.5 text-[10px] font-medium text-blue-700 dark:border-blue-900 dark:bg-blue-950/40 dark:text-blue-400">{reg.userData.boardPosition}</span>
-                  )}
-                  {reg.userData.publicContact?.title && (
-                    <span className="inline-flex items-center rounded-full border border-purple-200 bg-purple-100 px-1.5 text-[10px] font-medium text-purple-700 dark:border-purple-900 dark:bg-purple-950/40 dark:text-purple-400">{reg.userData.publicContact.title}</span>
-                  )}
+                  {reg.userData.boardPosition && <Badge variant="outline">{reg.userData.boardPosition}</Badge>}
+                  {reg.userData.publicContact?.title && <Badge variant="outline">{reg.userData.publicContact.title}</Badge>}
                 </div>
-                <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
+                <div className="mt-0.5 flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
                   {reg.userData.email && <span className="break-all">{reg.userData.email}</span>}
-                  {reg.userData.phone && <span>{maskPhone(reg.userData.phone)}</span>}
-                  {reg.userData.cpf && <span className="font-mono">{maskCPF(reg.userData.cpf)}</span>}
+                  {reg.userData.phone && <span className="tabular-nums">{maskPhone(reg.userData.phone)}</span>}
+                  {reg.userData.cpf && <span className="tabular-nums">{maskCPF(reg.userData.cpf)}</span>}
                 </div>
                 {/* Data e hora da inscrição (Brasília) em qualquer largura: a lista vem na
                     ordem de chegada e o horário desempata quem se inscreveu no mesmo dia. */}
-                <p className="mt-0.5 text-xs text-muted-foreground">
+                <p className="mt-0.5 text-xs text-faint-foreground">
                   Inscrito em{' '}
-                  <time dateTime={reg.createdAt} className="tabular-nums">{formatDateTimeBrasilia(reg.createdAt)}</time>
+                  <time dateTime={reg.createdAt} className="num">{formatDateTimeBrasilia(reg.createdAt)}</time>
                 </p>
               </div>
             </div>
 
-            <div className="flex flex-wrap items-center gap-1 border-t border-border/60 pt-2">
+            <div className="flex flex-wrap items-center gap-2 border-t border-border pt-2">
               {/* Presença só nas confirmadas; clicar de novo no botão marcado desmarca. */}
               {started && reg.confirmed && (
-                <div role="group" aria-label={`Presença de ${reg.userData.name}`} className="mr-1 flex items-center gap-1">
+                <div role="group" aria-label={`Presença de ${reg.userData.name}`} className="flex items-center gap-1">
                   <Button
                     size="sm"
-                    variant={reg.attended === true ? 'default' : 'outline'}
+                    variant="outline"
                     aria-pressed={reg.attended === true}
                     title={reg.attended === true ? 'Marcado como presente. Clique para desmarcar.' : 'Marcar como presente'}
                     disabled={!canManage}
-                    className={cn('h-9 gap-1 px-2.5 text-xs lg:h-7', reg.attended === true && 'bg-emerald-600 text-white hover:bg-emerald-700')}
+                    className={cn('h-9 lg:h-8', reg.attended === true && 'border-success/30 bg-success-soft text-success hover:bg-success-soft hover:text-success')}
                     onClick={() => markAttendance(reg, true)}
                   >
-                    <UserRoundCheck className="size-3.5" /> Presente
+                    <UserRoundCheck /> Presente
                   </Button>
                   <Button
                     size="sm"
-                    variant={reg.attended === false ? 'default' : 'outline'}
+                    variant="outline"
                     aria-pressed={reg.attended === false}
                     title={reg.attended === false ? 'Marcado como falta. Clique para desmarcar.' : 'Marcar falta'}
                     disabled={!canManage}
-                    className={cn('h-9 gap-1 px-2.5 text-xs lg:h-7', reg.attended === false && 'bg-red-600 text-white hover:bg-red-700')}
+                    className={cn('h-9 lg:h-8', reg.attended === false && 'border-destructive/30 bg-destructive-soft text-destructive hover:bg-destructive-soft hover:text-destructive')}
                     onClick={() => markAttendance(reg, false)}
                   >
-                    <UserRoundX className="size-3.5" /> Faltou
+                    <UserRoundX /> Faltou
                   </Button>
                 </div>
               )}
-              {whatsapp && (
-                <RowAction label="Conversar no WhatsApp" asChild className="text-emerald-600 hover:text-emerald-700">
-                  <a href={whatsapp} target="_blank" rel="noopener noreferrer">
-                    <FaWhatsapp className="size-4" />
-                  </a>
-                </RowAction>
-              )}
-              {tel && (
-                <RowAction label="Ligar" asChild>
-                  <a href={tel}>
-                    <Phone className="size-3.5" />
-                  </a>
-                </RowAction>
-              )}
-              <RowAction
-                label={reg.confirmed ? 'Desmarcar confirmação' : 'Confirmar inscrição'}
-                variant={reg.confirmed ? 'ghost' : 'outline'}
-                className={reg.confirmed ? 'text-emerald-600 hover:text-emerald-700' : ''}
-                disabled={confirmReg.isPending}
-                onClick={() => toggleConfirmed(reg)}
-              >
-                {reg.confirmed ? <CheckCircle2 className="size-3.5" /> : <Circle className="size-3.5" />}
-                <span>{reg.confirmed ? t('admin.courses.confirmed') : t('admin.courses.confirm')}</span>
-              </RowAction>
-              <RowAction
-                label="Baixar ficha de inscrição"
-                disabled={fichaId === reg.userDataId}
-                onClick={() => exportOne(reg.userDataId)}
-              >
-                {fichaId === reg.userDataId ? <Loader2 className="size-3.5 animate-spin" /> : <FileDown className="size-3.5" />}
-                <span className="hidden lg:inline">{t('admin.courses.ficha')}</span>
-              </RowAction>
-              {minor && (
-                <RowAction
-                  label="Baixar termo de autorização do responsável (menor de idade)"
-                  className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/30"
-                  onClick={baixarAutorizacao}
+              {/* A confirmação pendente é a ação da linha: fica à vista, com o nome escrito. */}
+              {!reg.confirmed && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-9 lg:h-8"
+                  aria-label="Confirmar inscrição"
+                  disabled={confirmReg.isPending}
+                  onClick={() => toggleConfirmed(reg)}
                 >
-                  <FileDown className="size-3.5" />
-                  <span className="hidden lg:inline">Autorização</span>
-                </RowAction>
+                  <Circle /> {t('admin.courses.confirm')}
+                </Button>
               )}
-              {reg.ficha ? (
-                <>
-                  <RowAction
-                    label={`Ver ficha anexada (${reg.ficha.filename})`}
-                    className="text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-950/30"
-                    disabled={fichaBusyId === reg.id}
-                    onClick={() => verFicha(reg.id)}
-                  >
-                    {fichaBusyId === reg.id ? <Loader2 className="size-3.5 animate-spin" /> : <Eye className="size-3.5" />}
-                    <span className="hidden lg:inline">Ver ficha</span>
-                  </RowAction>
-                  <RowAction
-                    label="Remover ficha anexada"
-                    className="text-muted-foreground hover:text-destructive"
-                    disabled={fichaBusyId === reg.id}
-                    onClick={() => removerFicha(reg.id)}
-                  >
-                    <X className="size-3.5" />
-                  </RowAction>
-                </>
-              ) : (
-                <RowAction label="Anexar ficha preenchida (PDF)" asChild>
-                  <label className={fichaBusyId === reg.id ? 'pointer-events-none opacity-60' : 'cursor-pointer'}>
-                    {fichaBusyId === reg.id ? <Loader2 className="size-3.5 animate-spin" /> : <Paperclip className="size-3.5" />}
-                    <span className="hidden lg:inline">Anexar ficha</span>
-                    <input
-                      type="file"
-                      accept="application/pdf"
-                      className="hidden"
-                      onChange={e => {
-                        const input = e.currentTarget
-                        const f = input.files?.[0]
-                        input.value = ''
-                        anexarFicha(reg.id, f)
-                      }}
-                    />
-                  </label>
-                </RowAction>
-              )}
-              <RowAction
-                label="Cancelar inscrição"
-                className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                onClick={() => setCancelTarget(reg)}
-              >
-                <UserX className="size-3.5" />
-              </RowAction>
+              <RowActions
+                className="ml-auto"
+                label={`Ações da inscrição de ${reg.userData.name}`}
+                actions={[
+                  { label: 'Conversar no WhatsApp', icon: WhatsAppIcon, hidden: !whatsapp, onClick: () => { if (whatsapp) window.open(whatsapp, '_blank', 'noopener,noreferrer') } },
+                  { label: 'Ligar', icon: Phone, hidden: !tel, onClick: () => { if (tel) window.location.href = tel } },
+                  { label: 'Baixar ficha de inscrição', icon: FileDown, busy: fichaId === reg.userDataId, onClick: () => void exportOne(reg.userDataId) },
+                  { label: 'Baixar termo de autorização do responsável (menor de idade)', icon: FileSignature, hidden: !minor, onClick: baixarAutorizacao },
+                  reg.ficha
+                    ? { label: `Ver ficha anexada (${reg.ficha.filename})`, key: 'ver-ficha', icon: Eye, busy: fichaBusyId === reg.id, onClick: () => void verFicha(reg.id) }
+                    : {
+                      label: 'Anexar ficha preenchida (PDF)', icon: Paperclip, busy: fichaBusyId === reg.id,
+                      onClick: () => { fichaTargetRef.current = reg.id; fichaInputRef.current?.click() },
+                    },
+                  { label: 'Desmarcar confirmação', icon: CircleOff, hidden: !reg.confirmed, disabled: confirmReg.isPending, onClick: () => toggleConfirmed(reg) },
+                  { label: 'Remover ficha anexada', icon: X, hidden: !reg.ficha, destructive: true, disabled: fichaBusyId === reg.id, onClick: () => void removerFicha(reg.id) },
+                  { label: 'Cancelar inscrição', icon: UserX, destructive: true, onClick: () => setCancelTarget(reg) },
+                ]}
+              />
             </div>
           </div>
         )
@@ -785,7 +720,7 @@ export function RegistrationsTab({
               <div className="flex flex-col gap-2">
                 <p>O curso passa para "Em andamento": sai da lista do site e não aceita novas inscrições.</p>
                 {allRegs.data && (
-                  <p className={pendingCount > 0 ? 'font-medium text-amber-700 dark:text-amber-400' : undefined}>
+                  <p className={pendingCount > 0 ? 'font-medium text-warning' : undefined}>
                     {pendingCount === 0
                       ? 'Todas as inscrições estão confirmadas.'
                       : pendingCount === 1

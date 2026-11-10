@@ -19,10 +19,10 @@ import { upperNoAccents } from '@/utils/text-format'
 import { formatDateFromString } from '@/utils/format-data-from-string'
 import { todayYmd, toYmd } from '@/utils/dates'
 import {
-  Wallet, TrendingUp, TrendingDown, Scale, Plus, Pencil, Trash2, Search,
+  Wallet, Plus, Pencil, Trash2, Search,
   Tag, ArrowUpCircle, ArrowDownCircle, Paperclip, FileText, X,
   Download, Landmark, ArrowLeftRight, FileDown, Receipt, ChevronDown, User, Repeat,
-  Building2,
+  Building2, HandCoins, Check,
 } from 'lucide-react'
 import { apiFetch, ApiError } from '@/lib/api'
 import { useAdminUsers, type UserDataDetail } from '@/hooks/useAdmin'
@@ -53,12 +53,20 @@ import { RecurringTab } from '@/components/financeiro/RecurringTab'
 import { ClosingTab } from '@/components/financeiro/ClosingTab'
 import { PaymentMethodSelect } from '@/components/financeiro/PaymentMethodSelect'
 import { PaymentMethodsTab } from '@/components/financeiro/PaymentMethodsTab'
-import { ReciboButton } from '@/components/financeiro/ReciboButton'
+import { useGerarRecibo } from '@/components/financeiro/use-gerar-recibo'
 import { NumeroField } from '@/components/financeiro/NumeroField'
 import { NumeroSaltoDialog } from '@/components/financeiro/NumeroSaltoDialog'
-import { ClosedMonthBadge, ClosedMonthNotice, LockedReason } from '@/components/financeiro/ClosedMonth'
+import { ClosedMonthBadge, ClosedMonthNotice } from '@/components/financeiro/ClosedMonth'
+import { MonthlyChart } from '@/components/financeiro/MonthlyChart'
 import { MemberBadge } from '@/components/MemberBadge'
 import { AjudaLink } from '@/components/ajuda/AjudaLink'
+import { PageContainer, PageHeader } from '@/components/PageHeader'
+import { FilterBar, FilterField } from '@/components/FilterBar'
+import { RowActions, type RowAction } from '@/components/RowActions'
+import { EmptyState } from '@/components/EmptyState'
+import { SegmentedControl } from '@/components/SegmentedControl'
+import { DatePicker } from '@/components/ui/date-picker'
+import { RECIBO_TEXTOS, podeGerarRecibo } from '@/lib/recibo'
 import {
   closedMonthForRow, closedMonthForTransaction, closedMonthForTransfer, closedMonthMessage,
   type ClosedMonth, type LockTarget,
@@ -116,19 +124,14 @@ export const Route = createFileRoute('/_admin/admin/financeiro/')({
 
 function EmpInput({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
   return (
-    <div className="flex flex-col gap-1">
-      <Label className="text-[10px] text-muted-foreground">{label}</Label>
-      <Input className="h-8 text-sm" value={value} onChange={e => onChange(e.target.value)} />
+    <div className="flex flex-col gap-1.5">
+      <Label className="text-xs text-muted-foreground">{label}</Label>
+      <Input value={value} onChange={e => onChange(e.target.value)} />
     </div>
   )
 }
 
 // ── Helpers de data ──────────────────────────────────────────────────────────
-const MONTHS_ABBR = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez']
-function monthLabel(ym: string): string {
-  const [y, m] = ym.split('-').map(Number)
-  return `${MONTHS_ABBR[(m ?? 1) - 1]}/${String(y).slice(2)}`
-}
 type Preset = 'month' | 'year' | 'last12'
 function presetRange(p: Preset): { from: string; to: string } {
   const now = new Date()
@@ -179,17 +182,14 @@ function RouteComponent() {
   }
 
   return (
-    <div className="p-6 flex flex-col gap-6">
-      <div>
-        <div className="flex items-center gap-1">
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">Financeiro</h1>
-          <AjudaLink topico="financeiro" titulo="Financeiro" />
-        </div>
-        <p className="text-sm text-muted-foreground">
-          Controle de entradas e saídas de caixa, com visão geral e categorização.
-        </p>
-      </div>
+    <PageContainer>
+      <PageHeader
+        title="Financeiro"
+        description="Controle de entradas e saídas de caixa, com visão geral e categorização"
+        help={<AjudaLink topico="financeiro" titulo="Financeiro" />}
+      />
 
+      {/* Entre a barra de abas e o conteúdo, só o gap do próprio Tabs (16 px). */}
       <Tabs value={search.tab} onValueChange={v => setSearch({ tab: v as FinanceTab })}>
         <TabsList className={tabsWrapClass}>
           <TabsTrigger value="dashboard">Visão geral</TabsTrigger>
@@ -201,29 +201,29 @@ function RouteComponent() {
           <TabsTrigger value="fechamento">Fechamento</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="dashboard" className="mt-6">
+        <TabsContent value="dashboard">
           <DashboardTab enabled={enabled} onDrill={patch => setSearch({ tab: 'lancamentos', page: undefined, cat: undefined, acc: undefined, pm: undefined, q: undefined, ...patch })} />
         </TabsContent>
-        <TabsContent value="lancamentos" className="mt-6">
+        <TabsContent value="lancamentos">
           <TransactionsTab enabled={enabled} search={search} setSearch={setSearch} canCreate={can('CREATE_FINANCE')} canUpdate={can('UPDATE_FINANCE')} canDelete={can('DELETE_FINANCE')} />
         </TabsContent>
-        <TabsContent value="recorrentes" className="mt-6">
+        <TabsContent value="recorrentes">
           <RecurringTab enabled={enabled} canCreate={can('CREATE_FINANCE')} canUpdate={can('UPDATE_FINANCE')} canDelete={can('DELETE_FINANCE')} />
         </TabsContent>
-        <TabsContent value="categorias" className="mt-6">
+        <TabsContent value="categorias">
           <CategoriesTab enabled={enabled} canCreate={can('CREATE_FINANCE')} canUpdate={can('UPDATE_FINANCE')} canDelete={can('DELETE_FINANCE')} />
         </TabsContent>
-        <TabsContent value="caixas" className="mt-6">
+        <TabsContent value="caixas">
           <AccountsTab enabled={enabled} canCreate={can('CREATE_FINANCE')} canUpdate={can('UPDATE_FINANCE')} canDelete={can('DELETE_FINANCE')} />
         </TabsContent>
-        <TabsContent value="formas" className="mt-6">
+        <TabsContent value="formas">
           <PaymentMethodsTab enabled={enabled} canCreate={can('CREATE_FINANCE')} canUpdate={can('UPDATE_FINANCE')} canDelete={can('DELETE_FINANCE')} />
         </TabsContent>
-        <TabsContent value="fechamento" className="mt-6">
+        <TabsContent value="fechamento">
           <ClosingTab enabled={enabled} canCreate={can('CREATE_FINANCE')} canDelete={can('DELETE_FINANCE')} />
         </TabsContent>
       </Tabs>
-    </div>
+    </PageContainer>
   )
 }
 
@@ -286,37 +286,58 @@ function DashboardTab({ enabled, onDrill }: {
   }
 
   const kpis = [
-    { label: 'Saldo em caixa', value: data?.balanceAllTimeCents ?? 0, icon: Scale, tone: 'neutral' as const, hint: 'Acumulado (todas as datas)', drill: undefined as Partial<FinanceSearch> | undefined },
-    { label: 'Entradas', value: data?.periodInCents ?? 0, icon: TrendingUp, tone: 'in' as const, hint: 'No período', drill: { fType: 'IN' as FinanceType, from: range.from, to: range.to } },
-    { label: 'Saídas', value: data?.periodOutCents ?? 0, icon: TrendingDown, tone: 'out' as const, hint: 'No período', drill: { fType: 'OUT' as FinanceType, from: range.from, to: range.to } },
-    { label: 'Resultado', value: data?.periodResultCents ?? 0, icon: Wallet, tone: 'result' as const, hint: 'Entradas − Saídas', drill: undefined as Partial<FinanceSearch> | undefined },
+    { label: 'Saldo em caixa', value: data?.balanceAllTimeCents ?? 0, tone: 'neutral' as const, hint: 'Acumulado (todas as datas)', drill: undefined as Partial<FinanceSearch> | undefined },
+    { label: 'Entradas', value: data?.periodInCents ?? 0, tone: 'in' as const, hint: 'No período', drill: { fType: 'IN' as FinanceType, from: range.from, to: range.to } },
+    { label: 'Saídas', value: data?.periodOutCents ?? 0, tone: 'out' as const, hint: 'No período', drill: { fType: 'OUT' as FinanceType, from: range.from, to: range.to } },
+    { label: 'Resultado', value: data?.periodResultCents ?? 0, tone: 'result' as const, hint: 'Entradas − saídas', drill: undefined as Partial<FinanceSearch> | undefined },
   ]
+
+  // Data digitada fora de ordem: a outra ponta acompanha (o campo do sistema não tem min/max).
+  function setCustomFrom(v: string) {
+    if (!v) return
+    setCustom(c => ({ from: v, to: v > c.to ? v : c.to }))
+  }
+  function setCustomTo(v: string) {
+    if (!v) return
+    setCustom(c => ({ from: v < c.from ? v : c.from, to: v }))
+  }
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-wrap items-center gap-2">
-        <span className="text-sm text-muted-foreground">Período:</span>
-        {([['month', 'Este mês'], ['year', 'Este ano'], ['last12', 'Últimos 12 meses'], ['custom', 'Personalizado']] as const).map(([p, lbl]) => (
-          <Button key={p} size="sm" variant={preset === p ? 'default' : 'outline'} className="h-8" onClick={() => setPreset(p)}>
-            {lbl}
-          </Button>
-        ))}
-        {preset === 'custom' && (
-          <span className="inline-flex items-center gap-2">
-            <Input type="date" className="h-8 w-[150px]" value={custom.from} max={custom.to} onChange={e => setCustom(c => ({ ...c, from: e.target.value }))} aria-label="Data inicial" />
-            <span className="text-muted-foreground text-sm">até</span>
-            <Input type="date" className="h-8 w-[150px]" value={custom.to} min={custom.from} onChange={e => setCustom(c => ({ ...c, to: e.target.value }))} aria-label="Data final" />
-          </span>
-        )}
-        <div className="ml-auto flex items-center gap-2">
-          <Button size="sm" variant="outline" className="h-8" disabled={empenhoBusy} onClick={() => void handleEmpenhoPdf()}>
+      <FilterBar
+        actions={<>
+          <Button variant="outline" disabled={empenhoBusy} onClick={() => void handleEmpenhoPdf()}>
             <Receipt className="size-4" /> {empenhoBusy ? 'Gerando...' : 'Relatório de despesas'}
           </Button>
-          <Button size="sm" variant="outline" className="h-8" disabled={pdfBusy || isLoading || !data} onClick={handlePdf}>
+          <Button variant="outline" disabled={pdfBusy || isLoading || !data} onClick={handlePdf}>
             <FileDown className="size-4" /> {pdfBusy ? 'Gerando...' : 'Baixar PDF'}
           </Button>
-        </div>
-      </div>
+        </>}
+      >
+        <FilterField label="Período">
+          <SegmentedControl
+            label="Período"
+            value={preset}
+            onChange={setPreset}
+            options={[
+              { value: 'month', label: 'Este mês' },
+              { value: 'year', label: 'Este ano' },
+              { value: 'last12', label: 'Últimos 12 meses' },
+              { value: 'custom', label: 'Personalizado' },
+            ]}
+          />
+        </FilterField>
+        {preset === 'custom' && (
+          <>
+            <FilterField label="De" htmlFor="fin-periodo-de">
+              <DatePicker id="fin-periodo-de" className="sm:w-40" value={custom.from} onChange={setCustomFrom} />
+            </FilterField>
+            <FilterField label="Até" htmlFor="fin-periodo-ate">
+              <DatePicker id="fin-periodo-ate" className="sm:w-40" value={custom.to} onChange={setCustomTo} />
+            </FilterField>
+          </>
+        )}
+      </FilterBar>
 
       {summaryFailed ? (
         <LoadErrorRetry
@@ -326,34 +347,28 @@ function DashboardTab({ enabled, onDrill }: {
           retrying={isFetching}
         />
       ) : (<>
+      {/* Cartões de número: rótulo, valor e o que ele significa. Sem ícone: o número é o dado. */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {kpis.map(k => {
-          const cls = `rounded-xl border border-border bg-card p-4 flex flex-col gap-2 text-left ${
-            k.drill ? 'transition-colors hover:bg-muted/50 cursor-pointer' : ''
-          }`
+          const cls = cn(
+            'flex flex-col gap-1 rounded-xl border border-border bg-card p-4 text-left',
+            k.drill && 'transition-colors hover:bg-muted/50 focus-visible:bg-muted/50',
+          )
           const inner = (
             <>
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{k.label}</span>
-                <k.icon className={`size-4 ${
-                  k.tone === 'in' ? 'text-emerald-600 dark:text-emerald-400'
-                    : k.tone === 'out' ? 'text-red-600 dark:text-red-400'
-                    : 'text-muted-foreground'
-                }`} />
-              </div>
+              <span className="text-sm text-muted-foreground">{k.label}</span>
               {isLoading ? (
-                <Skeleton className="h-7 w-28" />
+                <Skeleton className="my-0.5 h-7 w-32" />
               ) : (
                 // Quatro colunas só de xl em diante, com fonte menor até 2xl: valores de R$ 10 milhões não cabiam.
-                <span className={`text-2xl font-bold tabular-nums xl:text-lg 2xl:text-2xl ${
-                  k.tone === 'result' && k.value < 0 ? 'text-red-600 dark:text-red-400'
-                    : k.tone === 'result' ? 'text-emerald-600 dark:text-emerald-400'
-                    : 'text-foreground'
-                }`}>
+                <span className={cn(
+                  'num text-2xl leading-8 font-semibold xl:text-xl 2xl:text-2xl',
+                  k.tone === 'result' ? (k.value < 0 ? 'text-destructive' : 'text-success') : 'text-foreground',
+                )}>
                   {centsToBRL(k.value)}
                 </span>
               )}
-              <span className="text-[11px] text-muted-foreground">{k.drill ? 'Ver lançamentos →' : k.hint}</span>
+              <span className="text-xs text-faint-foreground">{k.drill ? 'Ver lançamentos →' : k.hint}</span>
             </>
           )
           return k.drill ? (
@@ -364,106 +379,84 @@ function DashboardTab({ enabled, onDrill }: {
         })}
       </div>
 
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-5">
-        <div className="lg:col-span-3 rounded-xl border border-border bg-card p-4">
-          <h3 className="text-sm font-semibold text-foreground mb-4">Entradas × Saídas por mês</h3>
-          {isLoading ? <Skeleton className="h-56 w-full" /> : <MonthlyChart data={data?.byMonth ?? []} />}
-        </div>
-        <div className="lg:col-span-2 rounded-xl border border-border bg-card p-4">
-          <h3 className="text-sm font-semibold text-foreground mb-4">Saídas por categoria</h3>
-          {isLoading ? <Skeleton className="h-56 w-full" /> : (
+      {/* O gráfico é o bloco principal (2/3); ao lado, a lista das saídas, menor e de outro tipo. */}
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
+        <section aria-labelledby="fin-grafico-titulo" className="rounded-xl border border-border bg-card p-4 sm:p-5 xl:col-span-2">
+          {isLoading ? (
+            <>
+              <h3 id="fin-grafico-titulo" className="text-sm font-semibold text-foreground">Entradas × Saídas por mês</h3>
+              <Skeleton className="mt-4 h-64 w-full" />
+            </>
+          ) : (
+            <MonthlyChart titleId="fin-grafico-titulo" title="Entradas × Saídas por mês" data={data?.byMonth ?? []} />
+          )}
+        </section>
+        <section className="rounded-xl border border-border bg-card p-4 sm:p-5">
+          <h3 className="text-sm font-semibold text-foreground">Saídas por categoria</h3>
+          {isLoading ? <Skeleton className="mt-4 h-56 w-full" /> : (
             <CategoryBreakdown items={(data?.byCategory ?? []).filter(c => c.type === 'OUT')} />
           )}
-        </div>
+        </section>
       </div>
 
-      <div className="rounded-xl border border-border bg-card p-4">
-        <h3 className="text-sm font-semibold text-foreground mb-4">Saldo por caixa</h3>
+      <section className="rounded-xl border border-border bg-card p-4 sm:p-5">
+        <h3 className="text-sm font-semibold text-foreground">Saldo por caixa</h3>
         {isLoading ? (
-          <Skeleton className="h-16 w-full" />
+          <Skeleton className="mt-4 h-11 w-full" />
         ) : (data?.byAccount ?? []).length === 0 ? (
-          <p className="text-sm text-muted-foreground">Nenhum caixa com movimento.</p>
+          <p className="mt-2 text-sm text-muted-foreground">Nenhum caixa com movimento.</p>
         ) : (
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <ul className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {(data?.byAccount ?? []).map(a => (
-              <div key={a.accountId ?? 'none'} className="flex items-center justify-between rounded-lg border border-border px-3 py-2.5">
-                <span className="inline-flex items-center gap-2 text-sm text-foreground">
-                  <Landmark className="size-4" style={{ color: a.color }} />
-                  {a.name}
+              <li key={a.accountId ?? 'none'} className="flex items-center justify-between gap-3 rounded-lg border border-border px-3 py-2.5">
+                <span className="inline-flex min-w-0 items-center gap-2 text-sm text-foreground">
+                  <Landmark className="size-4 shrink-0" style={{ color: a.color }} aria-hidden />
+                  <span className="truncate">{a.name}</span>
                 </span>
-                <span className={`tabular-nums font-semibold ${a.balanceCents < 0 ? 'text-red-600 dark:text-red-400' : 'text-foreground'}`}>
+                <span className={cn('num shrink-0 text-sm font-medium', a.balanceCents < 0 ? 'text-destructive' : 'text-foreground')}>
                   {centsToBRL(a.balanceCents)}
                 </span>
-              </div>
+              </li>
             ))}
-          </div>
+          </ul>
         )}
-      </div>
+      </section>
       </>)}
     </div>
   )
 }
 
-function MonthlyChart({ data }: { data: { month: string; inCents: number; outCents: number }[] }) {
-  if (data.length === 0) {
-    return <p className="py-16 text-center text-sm text-muted-foreground">Sem lançamentos no período.</p>
-  }
-  const max = Math.max(1, ...data.flatMap(d => [d.inCents, d.outCents]))
-  const chartH = 180
-  return (
-    <div className="overflow-x-auto">
-      <div className="flex items-end gap-4" style={{ minWidth: data.length * 56 }}>
-        {data.map(d => (
-          <div key={d.month} className="flex flex-1 flex-col items-center gap-2" style={{ minWidth: 40 }}>
-            <div className="flex items-end gap-1" style={{ height: chartH }}>
-              <div
-                className="w-4 rounded-t bg-emerald-500 dark:bg-emerald-400"
-                style={{ height: Math.max(2, (d.inCents / max) * chartH) }}
-                title={`Entradas: ${centsToBRL(d.inCents)}`}
-              />
-              <div
-                className="w-4 rounded-t bg-red-500 dark:bg-red-400"
-                style={{ height: Math.max(2, (d.outCents / max) * chartH) }}
-                title={`Saídas: ${centsToBRL(d.outCents)}`}
-              />
-            </div>
-            <span className="text-[10px] text-muted-foreground">{monthLabel(d.month)}</span>
-          </div>
-        ))}
-      </div>
-      <div className="mt-4 flex items-center gap-4 text-xs text-muted-foreground">
-        <span className="inline-flex items-center gap-1.5"><span className="size-2.5 rounded-sm bg-emerald-500 dark:bg-emerald-400" /> Entradas</span>
-        <span className="inline-flex items-center gap-1.5"><span className="size-2.5 rounded-sm bg-red-500 dark:bg-red-400" /> Saídas</span>
-      </div>
-    </div>
-  )
-}
-
+/**
+ * Saídas por categoria: lista ordenada com barras finas de um tom só (o das saídas). A cor
+ * de cada categoria, que vem do cadastro, fica só no ponto ao lado do nome.
+ */
 function CategoryBreakdown({ items }: { items: { categoryId: string | null; name: string; color: string; totalCents: number }[] }) {
   if (items.length === 0) {
     return <p className="py-16 text-center text-sm text-muted-foreground">Sem saídas no período.</p>
   }
   const total = items.reduce((s, c) => s + c.totalCents, 0)
   return (
-    <div className="flex flex-col gap-3">
+    <ul className="mt-4 flex flex-col gap-3.5">
       {items.map(c => {
         const pct = total > 0 ? (c.totalCents / total) * 100 : 0
         return (
-          <div key={c.categoryId ?? c.name} className="flex flex-col gap-1">
-            <div className="flex items-center justify-between text-xs">
-              <span className="inline-flex items-center gap-1.5 text-foreground">
-                <span className="size-2.5 rounded-sm" style={{ backgroundColor: c.color }} />
-                {c.name}
+          <li key={c.categoryId ?? c.name} className="flex flex-col gap-1.5">
+            <div className="flex items-baseline justify-between gap-3 text-sm">
+              <span className="inline-flex min-w-0 items-center gap-2 text-foreground">
+                <span className="size-2 shrink-0 rounded-full" style={{ backgroundColor: c.color }} aria-hidden />
+                <span className="truncate" title={c.name}>{c.name}</span>
               </span>
-              <span className="tabular-nums text-muted-foreground">{centsToBRL(c.totalCents)} · {pct.toFixed(0)}%</span>
+              <span className="num shrink-0 text-xs text-muted-foreground">
+                {centsToBRL(c.totalCents)}<span className="text-faint-foreground"> · {pct.toFixed(0)}%</span>
+              </span>
             </div>
-            <div className="h-2 rounded-full bg-muted overflow-hidden">
-              <div className="h-full rounded-full" style={{ width: `${pct}%`, backgroundColor: c.color }} />
+            <div className="h-1 overflow-hidden rounded-full bg-muted">
+              <div className="h-full rounded-full bg-chart-2" style={{ width: `${pct}%` }} />
             </div>
-          </div>
+          </li>
         )
       })}
-    </div>
+    </ul>
   )
 }
 
@@ -615,7 +608,7 @@ function VincularCadastro({ current, onPickUser, onPickCompany, onClear }: {
   if (current?.id) {
     const Icone = current.tipo === 'empresa' ? Building2 : User
     return (
-      <div className="flex items-center justify-between rounded-md border border-border bg-muted/40 px-3 py-2 text-sm">
+      <div className="flex items-center justify-between rounded-lg border border-border bg-muted px-3 py-2 text-sm">
         <span className="inline-flex items-center gap-2 text-muted-foreground">
           <Icone className="size-4" /> Vinculado a{' '}
           <strong className="text-foreground">
@@ -631,22 +624,16 @@ function VincularCadastro({ current, onPickUser, onPickCompany, onClear }: {
 
   return (
     <div className="relative">
-      <div className="mb-2 flex gap-1">
-        {([['pessoa', 'Pessoa', User], ['empresa', 'Empresa', Building2]] as const).map(([valor, rotulo, Icone]) => (
-          <button
-            key={valor}
-            type="button"
-            onClick={() => { setAba(valor); setQ(''); setOpen(false) }}
-            className={`inline-flex h-9 items-center gap-1.5 rounded-md border px-3 text-xs font-medium transition-colors ${
-              aba === valor
-                ? 'border-primary bg-primary/10 text-primary'
-                : 'border-border text-muted-foreground hover:bg-accent'
-            }`}
-          >
-            <Icone className="size-3.5" aria-hidden /> {rotulo}
-          </button>
-        ))}
-      </div>
+      <SegmentedControl
+        label="Vincular a"
+        className="mb-2"
+        value={aba}
+        onChange={valor => { setAba(valor); setQ(''); setOpen(false) }}
+        options={[
+          { value: 'pessoa', label: 'Pessoa', icon: User },
+          { value: 'empresa', label: 'Empresa', icon: Building2 },
+        ]}
+      />
       <div className="relative">
         <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
         <Input
@@ -659,7 +646,7 @@ function VincularCadastro({ current, onPickUser, onPickCompany, onClear }: {
         />
       </div>
       {open && buscando && (
-        <div className="absolute z-50 mt-1 w-full overflow-hidden rounded-md border border-border bg-popover shadow-md">
+        <div className="absolute z-50 mt-1 w-full overflow-hidden rounded-lg border border-border bg-popover shadow-float">
           {isFetching && <div className="px-3 py-2 text-xs text-muted-foreground">Buscando…</div>}
           {!isFetching && buscaFalhou && (
             // mousedown não tira o foco do campo: a lista não fecha antes do clique.
@@ -706,32 +693,38 @@ function FilteredTotals({ totals, loading }: {
   const expense = totals?.expenseCents ?? 0
   const balance = income - expense
   const items = [
-    { label: 'Entradas', value: income, cls: 'text-emerald-600 dark:text-emerald-400' },
-    { label: 'Saídas', value: expense, cls: 'text-red-600 dark:text-red-400' },
-    { label: 'Saldo', value: balance, cls: balance < 0 ? 'text-red-600 dark:text-red-400' : 'text-foreground' },
+    { label: 'Entradas', value: income, cls: 'text-success' },
+    { label: 'Saídas', value: expense, cls: 'text-destructive' },
+    { label: 'Saldo', value: balance, cls: balance < 0 ? 'text-destructive' : 'text-foreground' },
   ]
   return (
     <div className="flex flex-col gap-1.5">
-      {/* No celular os três cartões ficam em coluna (label à esquerda, valor inteiro à direita):
-          em três colunas o valor ficava cortado com "…". */}
-      <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+      {/* Uma faixa só, dividida em três. No celular as três linhas ficam uma embaixo da outra
+          (rótulo à esquerda, valor inteiro à direita): em três colunas o valor era cortado com "…". */}
+      <dl className="grid grid-cols-1 divide-y divide-border overflow-hidden rounded-xl border border-border bg-card sm:grid-cols-3 sm:divide-x sm:divide-y-0">
         {items.map(i => (
-          <div key={i.label} className="flex min-w-0 flex-row items-baseline justify-between gap-3 rounded-lg border border-border bg-card px-3 py-2 sm:flex-col sm:items-stretch sm:justify-start sm:gap-0">
-            <span className="text-xs text-muted-foreground">{i.label}</span>
-            {loading ? (
-              <Skeleton className="mt-1 h-6 w-24 max-w-full" />
-            ) : (
-              <span className={`text-base font-semibold tabular-nums sm:truncate sm:text-lg ${i.cls}`}>{centsToBRL(i.value)}</span>
-            )}
+          <div key={i.label} className="flex min-w-0 flex-row items-baseline justify-between gap-3 px-4 py-2.5 sm:flex-col sm:items-stretch sm:justify-start sm:gap-0.5 sm:py-3">
+            <dt className="text-xs text-muted-foreground">{i.label}</dt>
+            <dd className="min-w-0">
+              {loading ? (
+                <Skeleton className="h-6 w-24 max-w-full" />
+              ) : (
+                <span className={cn('num block text-base font-semibold sm:truncate sm:text-lg', i.cls)}>{centsToBRL(i.value)}</span>
+              )}
+            </dd>
           </div>
         ))}
-      </div>
-      <p className="text-[11px] text-muted-foreground">
+      </dl>
+      <p className="text-xs text-faint-foreground">
         Soma de todos os lançamentos com os filtros acima, em todas as páginas. Saldo = entradas − saídas. Transferências entre caixas e "Só nota" não entram.
       </p>
     </div>
   )
 }
+
+// Botões Entrada / Saída / Só nota do formulário: o escolhido no tom do tipo, os outros neutros.
+const TIPO_BOTAO = 'flex items-center justify-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium transition-colors'
+const TIPO_BOTAO_INATIVO = 'border-input text-muted-foreground hover:bg-accent hover:text-foreground'
 
 type TxForm = {
   /** Nº digitado (só dígitos). Vazio = automático (o POST não manda `number`). */
@@ -758,8 +751,8 @@ const emptyTxForm = (): TxForm => ({
 const COL_NUMERO = 'w-[64px]'
 const COL_DATA = 'hidden lg:table-cell lg:w-[92px]'
 const COL_VALOR = 'w-[144px]'
-// Cinco botões em lançamento de entrada (Nota, Recibo, Repetir, Editar, Excluir): 5 x 32 px + 4 x 4 px + o respiro da célula.
-const COL_ACOES = 'w-[88px] lg:w-[196px]'
+// RowActions: Editar e Repetir à vista e o resto (Nota, Recibo, Excluir) no "Mais": 3 x 32 px + o respiro da célula.
+const COL_ACOES = 'w-[120px]'
 const COL_NOME = 'hidden xl:table-cell'
 const COL_CATEGORIA = 'hidden xl:table-cell xl:w-[150px]'
 const COL_CAIXA = 'hidden 2xl:table-cell 2xl:w-[130px]'
@@ -769,6 +762,16 @@ const SO_ABAIXO_DE_NOME = 'xl:hidden'
 const SO_ABAIXO_DE_CATEGORIA = 'xl:hidden'
 const SO_ABAIXO_DE_CAIXA = '2xl:hidden'
 const SO_ABAIXO_DE_METODO = '2xl:hidden'
+
+/** Ícone do tipo (entrada, saída, transferência, só nota): neutro, quem tem a cor é o valor. */
+function TipoIcone({ t }: { t: Pick<FinanceTransaction, 'type' | 'transferId'> }) {
+  const Icone = t.transferId ? ArrowLeftRight : t.type === 'IN' ? ArrowUpCircle : t.type === 'OUT' ? ArrowDownCircle : Receipt
+  const nome = t.transferId ? 'Transferência' : t.type === 'IN' ? 'Entrada' : t.type === 'OUT' ? 'Saída' : 'Só nota'
+  return <Icone className="mt-0.5 size-4 shrink-0 text-faint-foreground" aria-label={nome} />
+}
+const valorClasse = (t: Pick<FinanceTransaction, 'type'>) =>
+  t.type === 'IN' ? 'text-success' : t.type === 'OUT' ? 'text-destructive' : 'text-muted-foreground'
+const sinal = (t: Pick<FinanceTransaction, 'type'>) => (t.type === 'IN' ? '+ ' : t.type === 'OUT' ? '− ' : '')
 
 function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, canDelete }: {
   enabled: boolean
@@ -889,6 +892,23 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
   }
   const [empenhoOpen, setEmpenhoOpen] = useState(false)
   const [notaBusy, setNotaBusy] = useState<string | null>(null)
+  const { gerar: gerarRecibo, busyKey: reciboBusy } = useGerarRecibo(org)
+
+  const acoesLabel = (t: FinanceTransaction) =>
+    numeroValido(t.number) ? `Ações do lançamento Nº ${t.number}` : `Ações do lançamento ${t.description}`
+  // Editar e Repetir à vista; Nota, Recibo e Excluir no "Mais". Mês fechado: editar e excluir
+  // desligados, com o motivo na dica. "Repetir" continua: cria outro lançamento, e o
+  // formulário confere a data nova. Recibo só em entrada e funciona com o mês fechado.
+  function rowActions(t: FinanceTransaction): RowAction[] {
+    const lock = rowLockReason(t) ?? undefined
+    return [
+      { label: 'Editar', icon: Pencil, onClick: () => abrirEditar(t), hidden: !canUpdate || !!t.transferId, disabled: !!lock, reason: lock },
+      { label: 'Repetir', icon: Repeat, onClick: () => abrirRepetir(t), hidden: !canCreate || !!t.transferId },
+      { label: 'Gerar Nota de Empenho', icon: Receipt, onClick: () => void gerarNota(t), hidden: !!t.transferId, busy: notaBusy === t.id },
+      { label: RECIBO_TEXTOS.botao, icon: HandCoins, onClick: () => void gerarRecibo(t, t.id), hidden: !podeGerarRecibo(t), busy: reciboBusy === t.id },
+      { label: 'Excluir', icon: Trash2, onClick: () => setDeleteTarget(t), destructive: true, hidden: !canDelete, disabled: !!lock, reason: lock },
+    ]
+  }
   async function gerarNota(t: { id?: string; number?: number | null; amountCents: number; date: string; description: string; empenho: Empenho | null }) {
     setNotaBusy(t.id ?? 'preview')
     try {
@@ -1022,7 +1042,7 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
     try {
       if (editId) {
         await updateTx.mutateAsync({ id: editId, body })
-        toast.success('Lançamento atualizado!')
+        toast.success('Lançamento atualizado.')
       } else {
         const created = await createTx.mutateAsync(body)
         // Sobe os comprovantes escolhidos no fluxo "Novo" para o lançamento recém-criado.
@@ -1084,7 +1104,7 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
     if (!file || !editId) return
     try {
       await uploadAtt.mutateAsync({ transactionId: editId, file })
-      toast.success('Comprovante anexado!')
+      toast.success('Comprovante anexado.')
     } catch (err) {
       toast.error(apiErrorMessage(err, 'Erro ao anexar o comprovante.'))
     }
@@ -1166,92 +1186,89 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-        <div className="flex min-w-0 flex-wrap items-end gap-2">
-          <div className="flex min-w-0 max-w-full flex-col gap-1">
-            <Label className="text-[11px] text-muted-foreground">De</Label>
-            <Input type="date" className="h-9 w-[150px]" value={search.from ?? ''} onChange={e => setSearch({ from: e.target.value || undefined, page: undefined })} />
-          </div>
-          <div className="flex min-w-0 max-w-full flex-col gap-1">
-            <Label className="text-[11px] text-muted-foreground">Até</Label>
-            <Input type="date" className="h-9 w-[150px]" value={search.to ?? ''} onChange={e => setSearch({ to: e.target.value || undefined, page: undefined })} />
-          </div>
-          <div className="flex min-w-0 max-w-full flex-col gap-1">
-            <Label className="text-[11px] text-muted-foreground">Tipo</Label>
-            <NativeSelect className="h-9" value={search.fType ?? ''} onChange={e => setSearch({ fType: (e.target.value || undefined) as FinanceType | undefined, page: undefined })}>
-              <option value="">Todos</option>
-              <option value="IN">Entradas</option>
-              <option value="OUT">Saídas</option>
-            </NativeSelect>
-          </div>
-          <div className="flex min-w-0 max-w-full flex-col gap-1">
-            <Label className="text-[11px] text-muted-foreground">Categoria</Label>
-            <NativeSelect className="h-9" value={search.cat ?? ''} onChange={e => setSearch({ cat: e.target.value || undefined, page: undefined })}>
-              <option value="">Todas</option>
-              {cats.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-            </NativeSelect>
-          </div>
-          <div className="flex min-w-0 max-w-full flex-col gap-1">
-            <Label className="text-[11px] text-muted-foreground">Caixa</Label>
-            <NativeSelect className="h-9" value={search.acc ?? ''} onChange={e => setSearch({ acc: e.target.value || undefined, page: undefined })}>
-              <option value="">Todos</option>
-              {accs.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
-            </NativeSelect>
-          </div>
-          <div className="flex min-w-0 max-w-full flex-col gap-1">
-            <Label className="text-[11px] text-muted-foreground">Forma</Label>
-            <PaymentMethodSelect
-              className="h-9"
-              value={search.pm ?? ''}
-              onChange={v => setSearch({ pm: v || undefined, page: undefined })}
-              enabled={enabled}
-              emptyLabel="Todas"
-            />
-          </div>
-          <div className="flex min-w-0 max-w-full flex-col gap-1">
-            <Label className="text-[11px] text-muted-foreground" htmlFor="lanc-ordem">Ordenar por</Label>
-            {/* Os dois vão do maior para o menor: a data mais nova e o maior Nº primeiro. */}
-            <NativeSelect
-              id="lanc-ordem"
-              className="h-9"
-              title="Data: da mais nova para a mais antiga. Nº: do maior para o menor."
-              value={search.ord ?? ''}
-              onChange={e => setSearch({ ord: e.target.value === 'number' ? 'number' : undefined, page: undefined })}
-            >
-              <option value="">Data</option>
-              <option value="number">Nº</option>
-            </NativeSelect>
-          </div>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <Button variant="outline" className="shrink-0" disabled={exporting || rows.length === 0} onClick={handleExport}>
+      <FilterBar
+        actions={<>
+          <Button variant="outline" disabled={exporting || rows.length === 0} onClick={handleExport}>
             <Download className="size-4" /> {exporting ? 'Exportando...' : 'Exportar CSV'}
           </Button>
           {canCreate && accs.length >= 2 && (
-            <Button variant="outline" onClick={abrirTransferencia} className="shrink-0">
+            <Button variant="outline" onClick={abrirTransferencia}>
               <ArrowLeftRight className="size-4" /> Transferir
             </Button>
           )}
           {canCreate && (
-            <Button onClick={abrirNovo} className="shrink-0">
+            <Button onClick={abrirNovo}>
               <Plus className="size-4" /> Novo lançamento
             </Button>
           )}
-        </div>
-      </div>
-
-      <div className="relative max-w-sm">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+        </>}
+      >
         {/* A API acha pelo Nº (e pelo "Nº anterior"), pela descrição, pelo nome / razão social e pelo CNPJ/CPF da Nota de Empenho (com ou sem pontuação).
             Sem "Buscar na" no começo: com ele o texto não cabia no celular (360 px) e o "CPF" sumia. A lupa já diz que é busca. */}
-        <Input
-          placeholder="Nº, descrição, nome ou CNPJ/CPF..."
-          aria-label="Buscar lançamentos no Nº, na descrição, no nome ou no CNPJ/CPF"
-          title="Acha pelo Nº, pelo Nº anterior, pela descrição, pelo nome / razão social ou pelo CNPJ/CPF"
-          className="pl-9"
-          value={searchInput}
-          onChange={e => setSearchInput(e.target.value)}
-        />
+        <FilterField label="Buscar" htmlFor="lanc-busca" className="sm:w-80">
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
+            <Input
+              id="lanc-busca"
+              placeholder="Nº, descrição, nome ou CNPJ/CPF..."
+              aria-label="Buscar lançamentos no Nº, na descrição, no nome ou no CNPJ/CPF"
+              title="Acha pelo Nº, pelo Nº anterior, pela descrição, pelo nome / razão social ou pelo CNPJ/CPF"
+              className="pl-9"
+              value={searchInput}
+              onChange={e => setSearchInput(e.target.value)}
+            />
+          </div>
+        </FilterField>
+      </FilterBar>
+
+      {/* Os filtros da lista: numa linha só no computador (a busca e as ações ficam na de cima)
+          e dois por linha no celular, para a lista não começar lá embaixo. */}
+      <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-end [&>*]:min-w-0">
+        <FilterField label="De" htmlFor="lanc-de">
+          <DatePicker id="lanc-de" className="sm:w-40" value={search.from ?? ''} onChange={v => setSearch({ from: v || undefined, page: undefined })} />
+        </FilterField>
+        <FilterField label="Até" htmlFor="lanc-ate">
+          <DatePicker id="lanc-ate" className="sm:w-40" value={search.to ?? ''} onChange={v => setSearch({ to: v || undefined, page: undefined })} />
+        </FilterField>
+        <FilterField label="Tipo" htmlFor="lanc-tipo">
+          <NativeSelect id="lanc-tipo" value={search.fType ?? ''} onChange={e => setSearch({ fType: (e.target.value || undefined) as FinanceType | undefined, page: undefined })}>
+            <option value="">Todos</option>
+            <option value="IN">Entradas</option>
+            <option value="OUT">Saídas</option>
+          </NativeSelect>
+        </FilterField>
+        <FilterField label="Categoria" htmlFor="lanc-categoria">
+          <NativeSelect id="lanc-categoria" value={search.cat ?? ''} onChange={e => setSearch({ cat: e.target.value || undefined, page: undefined })}>
+            <option value="">Todas</option>
+            {cats.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+          </NativeSelect>
+        </FilterField>
+        <FilterField label="Caixa" htmlFor="lanc-caixa">
+          <NativeSelect id="lanc-caixa" value={search.acc ?? ''} onChange={e => setSearch({ acc: e.target.value || undefined, page: undefined })}>
+            <option value="">Todos</option>
+            {accs.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+          </NativeSelect>
+        </FilterField>
+        <FilterField label="Forma">
+          <PaymentMethodSelect
+            value={search.pm ?? ''}
+            onChange={v => setSearch({ pm: v || undefined, page: undefined })}
+            enabled={enabled}
+            emptyLabel="Todas"
+          />
+        </FilterField>
+        <FilterField label="Ordenar por" htmlFor="lanc-ordem">
+          {/* Os dois vão do maior para o menor: a data mais nova e o maior Nº primeiro. */}
+          <NativeSelect
+            id="lanc-ordem"
+            title="Data: da mais nova para a mais antiga. Nº: do maior para o menor."
+            value={search.ord ?? ''}
+            onChange={e => setSearch({ ord: e.target.value === 'number' ? 'number' : undefined, page: undefined })}
+          >
+            <option value="">Data</option>
+            <option value="number">Nº</option>
+          </NativeSelect>
+        </FilterField>
       </div>
 
       {listasFalharam && (
@@ -1278,78 +1295,62 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
       {/* Mobile: cada lançamento como cartão (tabela só rola de lado, ruim no celular). */}
       <div className="flex flex-col gap-2 md:hidden">
         {isLoading && Array.from({ length: 5 }).map((_, i) => (
-          <div key={i} className="rounded-lg border border-border bg-card p-3"><Skeleton className="h-4 w-40 mb-2" /><Skeleton className="h-4 w-24" /></div>
+          <div key={i} className="rounded-xl border border-border bg-card p-3"><Skeleton className="mb-2 h-4 w-40" /><Skeleton className="h-4 w-24" /></div>
         ))}
         {!isLoading && !isError && rows.length === 0 && (
-          <div className="rounded-lg border border-border bg-card py-12 text-center">
-            <Wallet className="size-8 text-muted-foreground/30 mx-auto mb-2" />
-            <p className="text-sm font-medium text-foreground">Nenhum lançamento</p>
-            <p className="text-xs text-muted-foreground mt-1">{canCreate ? 'Toque em "Novo lançamento".' : 'Nada com esses filtros.'}</p>
-          </div>
+          <EmptyState
+            framed
+            icon={Wallet}
+            title="Nenhum lançamento"
+            description={canCreate ? 'Toque em "Novo lançamento".' : 'Nada com esses filtros.'}
+          />
         )}
         {rows.map(t => {
           const lockReason = rowLockReason(t)
           return (
-          <div key={t.id} className="rounded-lg border border-border bg-card p-3 flex flex-col gap-2">
+          <div key={t.id} className="flex flex-col gap-2 rounded-xl border border-border bg-card p-3">
             <div className="flex items-start justify-between gap-3">
-              <span className="inline-flex items-start gap-2 font-medium text-foreground min-w-0">
-                {t.transferId
-                  ? <ArrowLeftRight className="size-4 shrink-0 mt-0.5 text-sky-600 dark:text-sky-400" />
-                  : t.type === 'IN'
-                    ? <ArrowUpCircle className="size-4 shrink-0 mt-0.5 text-emerald-600 dark:text-emerald-400" />
-                    : t.type === 'OUT'
-                      ? <ArrowDownCircle className="size-4 shrink-0 mt-0.5 text-red-600 dark:text-red-400" />
-                      : <Receipt className="size-4 shrink-0 mt-0.5 text-muted-foreground" />}
+              <span className="inline-flex min-w-0 items-start gap-2 font-medium text-foreground">
+                <TipoIcone t={t} />
                 <span className="min-w-0 break-words">{t.description}</span>
               </span>
-              <span className={`tabular-nums font-semibold whitespace-nowrap ${t.type === 'IN' ? 'text-emerald-600 dark:text-emerald-400' : t.type === 'OUT' ? 'text-red-600 dark:text-red-400' : 'text-muted-foreground'}`}>
-                {t.type === 'IN' ? '+ ' : t.type === 'OUT' ? '− ' : ''}{centsToBRL(t.amountCents)}
+              <span className={cn('num whitespace-nowrap font-semibold', valorClasse(t))}>
+                {sinal(t)}{centsToBRL(t.amountCents)}
               </span>
             </div>
             {fornecedorDoLancamento(t) && (
-              <p className="text-xs text-muted-foreground break-words">{fornecedorDoLancamento(t)}</p>
+              <p className="break-words text-xs text-muted-foreground">{fornecedorDoLancamento(t)}</p>
             )}
             <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
-              {!t.type && !t.transferId && <Badge variant="outline" className="text-muted-foreground">Nota</Badge>}
+              {!t.type && !t.transferId && <Badge variant="outline">Nota</Badge>}
               {t.recurringId && (
-                <Badge variant="outline" className="gap-1 text-muted-foreground" title="Criado por uma recorrência">
-                  <Repeat className="size-3" /> Recorrente
+                <Badge variant="outline" title="Criado por uma recorrência">
+                  <Repeat aria-hidden /> Recorrente
                 </Badge>
               )}
               {lockReason && <ClosedMonthBadge reason={lockReason} />}
-              {numeroValido(t.number) && <span className="font-medium tabular-nums text-foreground">{rotuloDoNumero(t.number)}</span>}
-              <span className="tabular-nums">{formatDateFromString(t.date.slice(0, 10))}</span>
-              {t.category && <span className="inline-flex items-center gap-1"><span className="size-2 rounded-sm" style={{ backgroundColor: t.category.color }} />{t.category.name}</span>}
-              {t.account && <span className="inline-flex items-center gap-1"><Landmark className="size-3" style={{ color: t.account.color }} />{t.account.name}</span>}
+              {numeroValido(t.number) && <span className="num font-medium text-foreground">{rotuloDoNumero(t.number)}</span>}
+              <span className="num">{formatDateFromString(t.date.slice(0, 10))}</span>
+              {t.category && <span className="inline-flex items-center gap-1"><span className="size-2 rounded-full" style={{ backgroundColor: t.category.color }} aria-hidden />{t.category.name}</span>}
+              {t.account && <span className="inline-flex items-center gap-1"><Landmark className="size-3" style={{ color: t.account.color }} aria-hidden />{t.account.name}</span>}
               {t.attachments.length > 0 && (
-                <button type="button" onClick={() => handleOpenAttachment(t.attachments[0].id)} className="inline-flex items-center gap-0.5 text-foreground"><Paperclip className="size-3" />{t.attachments.length}</button>
+                <button
+                  type="button"
+                  onClick={() => handleOpenAttachment(t.attachments[0].id)}
+                  className="inline-flex min-h-11 items-center gap-0.5 text-foreground"
+                  aria-label={`${t.attachments.length} comprovante(s) — abrir`}
+                >
+                  <Paperclip className="size-3" aria-hidden />{t.attachments.length}
+                </button>
               )}
-              <span className="ml-auto flex items-center gap-1">
-                {!t.transferId && (
-                  <Button size="sm" variant="ghost" className="h-7 px-2 text-muted-foreground" disabled={notaBusy === t.id} onClick={() => gerarNota(t)} aria-label="Gerar Nota de Empenho"><Receipt className="size-4" /></Button>
-                )}
-                <ReciboButton tx={t} org={org} className="h-7 px-2" />
-                {canCreate && !t.transferId && (
-                  <Button size="sm" variant="ghost" className="h-7 px-2" onClick={() => abrirRepetir(t)} aria-label="Repetir (novo lançamento igual, com a data de hoje)"><Repeat className="size-4" /></Button>
-                )}
-                {canUpdate && !t.transferId && (
-                  <LockedReason reason={lockReason}>
-                    <Button size="sm" variant="ghost" className="h-7 px-2" disabled={!!lockReason} onClick={() => abrirEditar(t)} aria-label="Editar"><Pencil className="size-4" /></Button>
-                  </LockedReason>
-                )}
-                {canDelete && (
-                  <LockedReason reason={lockReason}>
-                    <Button size="sm" variant="ghost" className="h-7 px-2 text-muted-foreground hover:text-destructive" disabled={!!lockReason} onClick={() => setDeleteTarget(t)} aria-label="Excluir"><Trash2 className="size-4" /></Button>
-                  </LockedReason>
-                )}
-              </span>
+              <RowActions className="ml-auto -mr-2" label={acoesLabel(t)} actions={rowActions(t)} />
             </div>
           </div>
           )
         })}
       </div>
 
-      <div className="rounded-lg border border-border bg-card overflow-hidden hidden md:block">
+      <div className="hidden overflow-hidden rounded-xl border border-border bg-card md:block">
         {/* Sem rolagem lateral: a tabela é fixa e as células de texto quebram linha
             (o TableCell do shadcn é nowrap, por isso o whitespace-normal). Data, Valor
             e Ações têm largura própria e nunca quebram; o que não cabe vira linha
@@ -1384,13 +1385,13 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
                 </TableRow>
               ))}
               {!isLoading && !isError && rows.length === 0 && (
-                <TableRow>
-                  <TableCell colSpan={9} className="py-16 text-center whitespace-normal">
-                    <Wallet className="size-10 text-muted-foreground/30 mx-auto mb-3" />
-                    <p className="text-sm font-medium text-foreground">Nenhum lançamento</p>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      {canCreate ? 'Clique em "Novo lançamento" para registrar.' : 'Nada encontrado com esses filtros.'}
-                    </p>
+                <TableRow className="hover:bg-transparent">
+                  <TableCell colSpan={9} className="p-0 whitespace-normal">
+                    <EmptyState
+                      icon={Wallet}
+                      title="Nenhum lançamento"
+                      description={canCreate ? 'Clique em "Novo lançamento" para registrar.' : 'Nada encontrado com esses filtros.'}
+                    />
                   </TableCell>
                 </TableRow>
               )}
@@ -1400,23 +1401,17 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
                 return (
                 <TableRow key={t.id}>
                   {/* Número comprido quebra em duas linhas em vez de passar por cima da data. */}
-                  <TableCell className={cn('break-all whitespace-normal font-medium tabular-nums text-xs text-foreground align-top pt-3', COL_NUMERO)}>
-                    {numeroValido(t.number) ? t.number : <span className="font-normal text-muted-foreground">—</span>}
+                  <TableCell className={cn('num break-all whitespace-normal font-medium text-xs text-foreground align-top pt-3', COL_NUMERO)}>
+                    {numeroValido(t.number) ? t.number : <span className="font-normal text-faint-foreground">—</span>}
                   </TableCell>
-                  <TableCell className={cn('whitespace-nowrap text-muted-foreground tabular-nums text-xs align-top pt-3', COL_DATA)}>
+                  <TableCell className={cn('num whitespace-nowrap text-muted-foreground text-xs align-top pt-3', COL_DATA)}>
                     {formatDateFromString(t.date.slice(0, 10))}
                   </TableCell>
                   <TableCell className="font-medium text-foreground whitespace-normal align-top pt-3">
                     <div className="flex items-start gap-2 min-w-0">
-                      {t.transferId
-                        ? <ArrowLeftRight className="size-4 shrink-0 mt-0.5 text-sky-600 dark:text-sky-400" />
-                        : t.type === 'IN'
-                          ? <ArrowUpCircle className="size-4 shrink-0 mt-0.5 text-emerald-600 dark:text-emerald-400" />
-                          : t.type === 'OUT'
-                            ? <ArrowDownCircle className="size-4 shrink-0 mt-0.5 text-red-600 dark:text-red-400" />
-                            : <Receipt className="size-4 shrink-0 mt-0.5 text-muted-foreground" />}
+                      <TipoIcone t={t} />
                       <div className="min-w-0 flex-1">
-                        <p className="whitespace-nowrap text-xs font-normal tabular-nums text-muted-foreground lg:hidden">{formatDateFromString(t.date.slice(0, 10))}</p>
+                        <p className="num whitespace-nowrap text-xs font-normal text-muted-foreground lg:hidden">{formatDateFromString(t.date.slice(0, 10))}</p>
                         <p className="line-clamp-2 break-words" title={t.description}>{t.description}</p>
                         {/* Abaixo da largura de cada coluna, o dado vira linha miúda aqui. */}
                         {fornecedor && (
@@ -1425,7 +1420,7 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
                         <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs font-normal text-muted-foreground empty:hidden">
                           {t.category && (
                             <span className={cn('inline-flex min-w-0 max-w-full items-center gap-1', SO_ABAIXO_DE_CATEGORIA)} title={t.category.name}>
-                              <span className="size-2 shrink-0 rounded-sm" style={{ backgroundColor: t.category.color }} />
+                              <span className="size-2 shrink-0 rounded-full" style={{ backgroundColor: t.category.color }} aria-hidden />
                               <span className="truncate">{t.category.name}</span>
                             </span>
                           )}
@@ -1439,10 +1434,10 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
                         </div>
                         {((!t.type && !t.transferId) || t.recurringId || lockReason || t.attachments.length > 0) && (
                           <div className="mt-1 flex flex-wrap items-center gap-1">
-                            {!t.type && !t.transferId && <Badge variant="outline" className="text-muted-foreground">Nota</Badge>}
+                            {!t.type && !t.transferId && <Badge variant="outline">Nota</Badge>}
                             {t.recurringId && (
-                              <Badge variant="outline" className="gap-1 text-muted-foreground" title="Criado por uma recorrência">
-                                <Repeat className="size-3" /> Recorrente
+                              <Badge variant="outline" title="Criado por uma recorrência">
+                                <Repeat aria-hidden /> Recorrente
                               </Badge>
                             )}
                             {lockReason && <ClosedMonthBadge reason={lockReason} />}
@@ -1451,9 +1446,9 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
                                 type="button"
                                 onClick={() => handleOpenAttachment(t.attachments[0].id)}
                                 title={`${t.attachments.length} comprovante(s) — abrir`}
-                                className="inline-flex items-center gap-0.5 rounded bg-muted px-1.5 py-0.5 text-[11px] font-normal text-muted-foreground hover:text-foreground"
+                                className="inline-flex h-5 items-center gap-0.5 rounded-sm bg-muted px-1.5 text-xs font-normal text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
                               >
-                                <Paperclip className="size-3" />{t.attachments.length}
+                                <Paperclip className="size-3" aria-hidden />{t.attachments.length}
                               </button>
                             )}
                           </div>
@@ -1468,11 +1463,11 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
                   </TableCell>
                   <TableCell className={cn('whitespace-normal align-top pt-3', COL_CATEGORIA)}>
                     {t.category ? (
-                      <span className="inline-flex items-start gap-1.5 text-sm text-foreground" title={t.category.name}>
-                        <span className="mt-1.5 size-2.5 shrink-0 rounded-sm" style={{ backgroundColor: t.category.color }} />
+                      <span className="inline-flex items-start gap-2 text-sm text-foreground" title={t.category.name}>
+                        <span className="mt-1.5 size-2 shrink-0 rounded-full" style={{ backgroundColor: t.category.color }} aria-hidden />
                         <span className="line-clamp-2 break-words">{t.category.name}</span>
                       </span>
-                    ) : <span className="text-muted-foreground text-sm">—</span>}
+                    ) : <span className="text-faint-foreground text-sm">—</span>}
                   </TableCell>
                   <TableCell className={cn('text-muted-foreground text-sm whitespace-normal align-top pt-3', COL_CAIXA)}>
                     {t.account ? (
@@ -1485,45 +1480,14 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
                   <TableCell className={cn('text-muted-foreground text-sm whitespace-normal align-top pt-3', COL_METODO)}>
                     <span className="line-clamp-2 break-words" title={t.method || undefined}>{t.method || '—'}</span>
                   </TableCell>
-                  <TableCell className={cn('text-right tabular-nums font-medium whitespace-nowrap align-top pt-3', COL_VALOR,
-                    t.type === 'IN' ? 'text-emerald-600 dark:text-emerald-400' : t.type === 'OUT' ? 'text-red-600 dark:text-red-400' : 'text-muted-foreground',
-                  )}>
-                    {t.type === 'IN' ? '+ ' : t.type === 'OUT' ? '− ' : ''}{centsToBRL(t.amountCents)}
+                  <TableCell className={cn('num text-right font-medium whitespace-nowrap align-top pt-3', COL_VALOR, valorClasse(t))}>
+                    {sinal(t)}{centsToBRL(t.amountCents)}
                   </TableCell>
-                  <TableCell className={cn('text-right align-top', COL_ACOES)}>
-                    {/* Abaixo de lg os botões ficam em 2×2 para a coluna caber; de lg em diante, numa linha. */}
-                    <div className="ml-auto grid w-fit grid-cols-2 justify-items-center gap-0.5 lg:flex lg:items-center lg:justify-end lg:gap-1">
-                      {!t.transferId && (
-                        <Button size="sm" variant="ghost" className="h-8 px-2 text-muted-foreground" disabled={notaBusy === t.id} onClick={() => gerarNota(t)} aria-label="Gerar Nota de Empenho" title="Gerar Nota de Empenho">
-                          <Receipt className="size-4" />
-                        </Button>
-                      )}
-                      {/* Recibo só em entrada; funciona com o mês fechado (só lê o lançamento). */}
-                      <ReciboButton tx={t} org={org} className="h-8 px-2" />
-                      {canCreate && !t.transferId && (
-                        <Button size="sm" variant="ghost" className="h-8 px-2" onClick={() => abrirRepetir(t)} aria-label="Repetir" title="Repetir (novo lançamento igual, com a data de hoje)">
-                          <Repeat className="size-4" />
-                        </Button>
-                      )}
-                      {/* Mês fechado: editar e excluir desligados, com o motivo ao passar o mouse.
-                          "Repetir" continua: cria outro lançamento, e o formulário confere a data nova. */}
-                      {canUpdate && !t.transferId && (
-                        <LockedReason reason={lockReason}>
-                          <Button size="sm" variant="ghost" className="h-8 px-2" disabled={!!lockReason} onClick={() => abrirEditar(t)} aria-label="Editar" title="Editar">
-                            <Pencil className="size-4" />
-                          </Button>
-                        </LockedReason>
-                      )}
-                      {canDelete && (
-                        <LockedReason reason={lockReason}>
-                          <Button size="sm" variant="ghost" className="h-8 px-2 text-muted-foreground hover:text-destructive" disabled={!!lockReason} onClick={() => setDeleteTarget(t)} aria-label="Excluir" title="Excluir">
-                            <Trash2 className="size-4" />
-                          </Button>
-                        </LockedReason>
-                      )}
-                      {/* Fora de transferência sempre há o botão da nota; o traço é só para transferência sem ação. */}
-                      {t.transferId && !canDelete && <span className="text-xs text-muted-foreground">—</span>}
-                    </div>
+                  <TableCell className={cn('text-right align-top pt-1.5', COL_ACOES)}>
+                    {/* Fora de transferência sempre há a nota; o traço é só para transferência sem ação. */}
+                    {t.transferId && !canDelete
+                      ? <span className="text-xs text-faint-foreground">—</span>
+                      : <RowActions label={acoesLabel(t)} actions={rowActions(t)} />}
                   </TableCell>
                 </TableRow>
                 )
@@ -1624,18 +1588,14 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
               <button
                 type="button"
                 onClick={() => setForm(p => ({ ...p, type: 'IN', categoryId: '' }))}
-                className={`flex items-center justify-center gap-2 rounded-md border px-3 py-2 text-sm font-medium ${
-                  form.type === 'IN' ? 'border-emerald-500 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400' : 'border-input text-muted-foreground'
-                }`}
+                className={cn(TIPO_BOTAO, form.type === 'IN' ? 'border-success/40 bg-success-soft text-success' : TIPO_BOTAO_INATIVO)}
               >
                 <ArrowUpCircle className="size-4" /> Entrada
               </button>
               <button
                 type="button"
                 onClick={() => setForm(p => ({ ...p, type: 'OUT', categoryId: '' }))}
-                className={`flex items-center justify-center gap-2 rounded-md border px-3 py-2 text-sm font-medium ${
-                  form.type === 'OUT' ? 'border-red-500 bg-red-500/10 text-red-700 dark:text-red-400' : 'border-input text-muted-foreground'
-                }`}
+                className={cn(TIPO_BOTAO, form.type === 'OUT' ? 'border-destructive/40 bg-destructive-soft text-destructive' : TIPO_BOTAO_INATIVO)}
               >
                 <ArrowDownCircle className="size-4" /> Saída
               </button>
@@ -1643,9 +1603,7 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
                 type="button"
                 onClick={() => setForm(p => ({ ...p, type: null, categoryId: '' }))}
                 title="Não lança no caixa — só gera a Nota de Empenho"
-                className={`flex items-center justify-center gap-2 rounded-md border px-3 py-2 text-sm font-medium ${
-                  form.type === null ? 'border-slate-500 bg-slate-500/10 text-slate-700 dark:text-slate-300' : 'border-input text-muted-foreground'
-                }`}
+                className={cn(TIPO_BOTAO, form.type === null ? 'border-foreground/25 bg-muted text-foreground' : TIPO_BOTAO_INATIVO)}
               >
                 <Receipt className="size-4" /> Só nota
               </button>
@@ -1731,7 +1689,7 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
               <Input value={form.notes} onChange={e => setF('notes', upperNoAccents(e.target.value))} placeholder="Opcional" />
             </div>
 
-            <div className="flex flex-col gap-2 rounded-lg border border-border bg-muted/20 p-3">
+            <div className="flex flex-col gap-2 rounded-lg border border-border bg-muted/40 p-3">
               <Label className="text-xs">Comprovantes</Label>
               {editId ? (
                 <>
@@ -1739,7 +1697,7 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
                     <p className="text-xs text-muted-foreground">Nenhum comprovante anexado.</p>
                   )}
                   {(editingTx?.attachments ?? []).map(a => (
-                    <div key={a.id} className="flex items-center gap-2 rounded-md border border-border bg-background px-2 py-1.5">
+                    <div key={a.id} className="flex items-center gap-2 rounded-md border border-border bg-card px-2 py-1.5">
                       <FileText className="size-4 shrink-0 text-muted-foreground" />
                       <button type="button" onClick={() => handleOpenAttachment(a.id)} className="flex-1 truncate text-left text-xs text-foreground hover:underline" title={a.filename}>
                         {a.filename}
@@ -1753,7 +1711,7 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
                   <Button type="button" variant="outline" size="sm" className="w-fit" disabled={uploadAtt.isPending} onClick={() => fileInputRef.current?.click()}>
                     <Paperclip className="size-4" /> {uploadAtt.isPending ? 'Enviando...' : 'Anexar comprovante'}
                   </Button>
-                  <span className="text-[11px] text-muted-foreground">PDF, JPG, PNG ou WEBP — até 15MB.</span>
+                  <span className="text-xs text-faint-foreground">PDF, JPG, PNG ou WEBP — até 15MB.</span>
                 </>
               ) : (
                 <>
@@ -1761,7 +1719,7 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
                     <p className="text-xs text-muted-foreground">Anexe agora — sobem automaticamente ao registrar.</p>
                   )}
                   {pendingFiles.map((f, i) => (
-                    <div key={`${f.name}-${f.size}-${i}`} className="flex items-center gap-2 rounded-md border border-border bg-background px-2 py-1.5">
+                    <div key={`${f.name}-${f.size}-${i}`} className="flex items-center gap-2 rounded-md border border-border bg-card px-2 py-1.5">
                       <FileText className="size-4 shrink-0 text-muted-foreground" />
                       <span className="flex-1 truncate text-xs text-foreground" title={f.name}>{f.name}</span>
                       <button type="button" onClick={() => setPendingFiles(prev => prev.filter((_, idx) => idx !== i))} className="text-muted-foreground hover:text-destructive" aria-label="Remover" title="Remover">
@@ -1773,16 +1731,16 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
                   <Button type="button" variant="outline" size="sm" className="w-fit" onClick={() => pendingInputRef.current?.click()}>
                     <Paperclip className="size-4" /> Anexar comprovante
                   </Button>
-                  <span className="text-[11px] text-muted-foreground">PDF, JPG, PNG ou WEBP — até 15MB.</span>
+                  <span className="text-xs text-faint-foreground">PDF, JPG, PNG ou WEBP — até 15MB.</span>
                 </>
               )}
             </div>
 
             {/* Nota de Empenho (fornecedor / NF / banco) — colapsável */}
-            <div className="rounded-lg border border-border bg-muted/20">
+            <div className="rounded-lg border border-border bg-muted/40">
               <button type="button" onClick={() => setEmpenhoOpen(o => !o)} className="flex w-full items-center justify-between px-3 py-2 text-sm font-medium text-foreground">
                 <span className="inline-flex items-center gap-2"><Receipt className="size-4" /> Nota de Empenho</span>
-                <ChevronDown className={`size-4 transition-transform ${empenhoOpen ? 'rotate-180' : ''}`} />
+                <ChevronDown className={cn('size-4 text-muted-foreground transition-transform', empenhoOpen && 'rotate-180')} aria-hidden />
               </button>
               {empenhoOpen && (
                 <div className="flex flex-col gap-3 border-t border-border p-3">
@@ -1935,10 +1893,10 @@ function CategoriesTab({ enabled, canCreate, canUpdate, canDelete }: {
     try {
       if (crud.editing) {
         await updateCat.mutateAsync({ id: crud.editing.id, body })
-        toast.success('Categoria atualizada!')
+        toast.success('Categoria atualizada.')
       } else {
         await createCat.mutateAsync(body)
-        toast.success('Categoria criada!')
+        toast.success('Categoria criada.')
       }
       crud.forceClose()
     } catch (e) {
@@ -1963,10 +1921,10 @@ function CategoriesTab({ enabled, canCreate, canUpdate, canDelete }: {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-sm text-muted-foreground">Categorias usadas para classificar os lançamentos.</p>
         {canCreate && (
-          <Button onClick={crud.openCreate} className="shrink-0">
+          <Button onClick={crud.openCreate} className="w-fit shrink-0">
             <Plus className="size-4" /> Nova categoria
           </Button>
         )}
@@ -1981,7 +1939,7 @@ function CategoriesTab({ enabled, canCreate, canUpdate, canDelete }: {
         />
       )}
 
-      <div className="rounded-lg border border-border bg-card overflow-hidden">
+      <div className="overflow-hidden rounded-xl border border-border bg-card">
         {/* Sem rolagem lateral: tabela fixa; o nome quebra linha (TableCell do shadcn é nowrap). */}
         <div>
           <Table className="table-fixed">
@@ -2003,10 +1961,9 @@ function CategoriesTab({ enabled, canCreate, canUpdate, canDelete }: {
                 </TableRow>
               ))}
               {!isLoading && !isError && cats.length === 0 && (
-                <TableRow>
-                  <TableCell colSpan={4} className="py-16 text-center">
-                    <Tag className="size-10 text-muted-foreground/30 mx-auto mb-3" />
-                    <p className="text-sm font-medium text-foreground">Nenhuma categoria</p>
+                <TableRow className="hover:bg-transparent">
+                  <TableCell colSpan={4} className="p-0 whitespace-normal">
+                    <EmptyState icon={Tag} title="Nenhuma categoria" />
                   </TableCell>
                 </TableRow>
               )}
@@ -2014,39 +1971,28 @@ function CategoriesTab({ enabled, canCreate, canUpdate, canDelete }: {
                 <TableRow key={c.id} className={c.active ? '' : 'opacity-60'}>
                   <TableCell className="font-medium text-foreground whitespace-normal">
                     <span className="flex items-start gap-2">
-                      <span className="mt-1 size-3 shrink-0 rounded-sm" style={{ backgroundColor: c.color }} />
+                      <span className="mt-1.5 size-2 shrink-0 rounded-full" style={{ backgroundColor: c.color }} aria-hidden />
                       <span className="min-w-0 break-words" title={c.name}>{c.name}</span>
                     </span>
                     {/* No celular Tipo e Status saem das colunas (o nome ficava com uma letra por linha) e viram selos aqui. */}
-                    <div className="mt-1 flex flex-wrap gap-1 pl-5 sm:hidden">
-                      <Badge variant="outline" className={c.type === 'IN' ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}>
-                        {c.type === 'IN' ? 'Entrada' : 'Saída'}
-                      </Badge>
-                      <Badge variant={c.active ? 'default' : 'secondary'}>{c.active ? 'Ativa' : 'Inativa'}</Badge>
+                    <div className="mt-1 flex flex-wrap items-center gap-2 pl-4 text-xs font-normal text-muted-foreground sm:hidden">
+                      {c.type === 'IN' ? 'Entrada' : 'Saída'}
+                      <Badge variant={c.active ? 'success' : 'neutral'}>{c.active ? 'Ativa' : 'Inativa'}</Badge>
                     </div>
                   </TableCell>
-                  <TableCell className="hidden sm:table-cell">
-                    <Badge variant="outline" className={c.type === 'IN' ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}>
-                      {c.type === 'IN' ? 'Entrada' : 'Saída'}
-                    </Badge>
+                  <TableCell className="hidden text-muted-foreground sm:table-cell">
+                    {c.type === 'IN' ? 'Entrada' : 'Saída'}
                   </TableCell>
                   <TableCell className="hidden sm:table-cell">
-                    <Badge variant={c.active ? 'default' : 'secondary'}>{c.active ? 'Ativa' : 'Inativa'}</Badge>
+                    <Badge variant={c.active ? 'success' : 'neutral'}>{c.active ? 'Ativa' : 'Inativa'}</Badge>
                   </TableCell>
                   <TableCell className="text-right">
-                    <div className="flex items-center justify-end gap-1">
-                      {canUpdate && (
-                        <Button size="sm" variant="ghost" className="h-8 px-2" onClick={() => crud.openEdit(c)} aria-label="Editar" title="Editar">
-                          <Pencil className="size-4" />
-                        </Button>
-                      )}
-                      {canDelete && (
-                        <Button size="sm" variant="ghost" className="h-8 px-2 text-muted-foreground hover:text-destructive" onClick={() => crud.setDeleteTarget(c)} aria-label="Excluir" title="Excluir">
-                          <Trash2 className="size-4" />
-                        </Button>
-                      )}
-                      {!canUpdate && !canDelete && <span className="text-xs text-muted-foreground">—</span>}
-                    </div>
+                    {!canUpdate && !canDelete ? <span className="text-xs text-faint-foreground">—</span> : (
+                      <RowActions label={`Ações da categoria ${c.name}`} actions={[
+                        { label: 'Editar', icon: Pencil, onClick: () => crud.openEdit(c), hidden: !canUpdate },
+                        { label: 'Excluir', icon: Trash2, onClick: () => crud.setDeleteTarget(c), destructive: true, hidden: !canDelete },
+                      ]} />
+                    )}
                   </TableCell>
                 </TableRow>
               ))}
@@ -2080,7 +2026,7 @@ function CategoriesTab({ enabled, canCreate, canUpdate, canDelete }: {
                     key={color}
                     type="button"
                     onClick={() => crud.setForm(p => ({ ...p, color }))}
-                    className={`size-7 rounded-md border-2 ${crud.form.color === color ? 'border-foreground' : 'border-transparent'}`}
+                    className={cn('size-7 rounded-md ring-offset-2 ring-offset-background transition-shadow', crud.form.color === color && 'ring-2 ring-foreground')}
                     style={{ backgroundColor: color }}
                     aria-label={color}
                   />
@@ -2092,7 +2038,9 @@ function CategoriesTab({ enabled, canCreate, canUpdate, canDelete }: {
               onClick={() => crud.setForm(p => ({ ...p, active: !p.active }))}
               className="flex items-center gap-2 text-sm text-foreground w-fit"
             >
-              <span className={`inline-block size-4 rounded-sm border ${crud.form.active ? 'bg-emerald-500 border-emerald-500' : 'border-input'}`} />
+              <span className={cn('inline-flex size-4 items-center justify-center rounded-sm border', crud.form.active ? 'border-primary bg-primary text-primary-foreground' : 'border-input bg-card')} aria-hidden>
+                {crud.form.active && <Check className="size-3" />}
+              </span>
               {crud.form.active ? 'Ativa (aparece nos lançamentos)' : 'Inativa'}
             </button>
             {crud.error && <p className="text-sm text-destructive">{crud.error}</p>}
@@ -2150,10 +2098,10 @@ function AccountsTab({ enabled, canCreate, canUpdate, canDelete }: {
     try {
       if (crud.editing) {
         await updateAcc.mutateAsync({ id: crud.editing.id, body })
-        toast.success('Caixa atualizado!')
+        toast.success('Caixa atualizado.')
       } else {
         await createAcc.mutateAsync(body)
-        toast.success('Caixa criado!')
+        toast.success('Caixa criado.')
       }
       crud.forceClose()
     } catch (e) {
@@ -2178,10 +2126,10 @@ function AccountsTab({ enabled, canCreate, canUpdate, canDelete }: {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-sm text-muted-foreground">Contas/caixas onde o dinheiro fica (Caixa geral, Banco, Poupança…).</p>
         {canCreate && (
-          <Button onClick={crud.openCreate} className="shrink-0">
+          <Button onClick={crud.openCreate} className="w-fit shrink-0">
             <Plus className="size-4" /> Novo caixa
           </Button>
         )}
@@ -2196,7 +2144,7 @@ function AccountsTab({ enabled, canCreate, canUpdate, canDelete }: {
         />
       )}
 
-      <div className="rounded-lg border border-border bg-card overflow-hidden">
+      <div className="overflow-hidden rounded-xl border border-border bg-card">
         {/* Sem rolagem lateral: tabela fixa; o nome quebra linha (TableCell do shadcn é nowrap). */}
         <div>
           <Table className="table-fixed">
@@ -2216,10 +2164,9 @@ function AccountsTab({ enabled, canCreate, canUpdate, canDelete }: {
                 </TableRow>
               ))}
               {!isLoading && !isError && accs.length === 0 && (
-                <TableRow>
-                  <TableCell colSpan={3} className="py-16 text-center">
-                    <Landmark className="size-10 text-muted-foreground/30 mx-auto mb-3" />
-                    <p className="text-sm font-medium text-foreground">Nenhum caixa</p>
+                <TableRow className="hover:bg-transparent">
+                  <TableCell colSpan={3} className="p-0 whitespace-normal">
+                    <EmptyState icon={Landmark} title="Nenhum caixa" />
                   </TableCell>
                 </TableRow>
               )}
@@ -2227,30 +2174,23 @@ function AccountsTab({ enabled, canCreate, canUpdate, canDelete }: {
                 <TableRow key={a.id} className={a.active ? '' : 'opacity-60'}>
                   <TableCell className="font-medium text-foreground whitespace-normal">
                     <span className="flex items-start gap-2">
-                      <Landmark className="mt-0.5 size-4 shrink-0" style={{ color: a.color }} />
+                      <Landmark className="mt-0.5 size-4 shrink-0" style={{ color: a.color }} aria-hidden />
                       <span className="min-w-0 break-words" title={a.name}>{a.name}</span>
                     </span>
                     <div className="mt-1 pl-6 sm:hidden">
-                      <Badge variant={a.active ? 'default' : 'secondary'}>{a.active ? 'Ativo' : 'Inativo'}</Badge>
+                      <Badge variant={a.active ? 'success' : 'neutral'}>{a.active ? 'Ativo' : 'Inativo'}</Badge>
                     </div>
                   </TableCell>
                   <TableCell className="hidden sm:table-cell">
-                    <Badge variant={a.active ? 'default' : 'secondary'}>{a.active ? 'Ativo' : 'Inativo'}</Badge>
+                    <Badge variant={a.active ? 'success' : 'neutral'}>{a.active ? 'Ativo' : 'Inativo'}</Badge>
                   </TableCell>
                   <TableCell className="text-right">
-                    <div className="flex items-center justify-end gap-1">
-                      {canUpdate && (
-                        <Button size="sm" variant="ghost" className="h-8 px-2" onClick={() => crud.openEdit(a)} aria-label="Editar" title="Editar">
-                          <Pencil className="size-4" />
-                        </Button>
-                      )}
-                      {canDelete && (
-                        <Button size="sm" variant="ghost" className="h-8 px-2 text-muted-foreground hover:text-destructive" onClick={() => crud.setDeleteTarget(a)} aria-label="Excluir" title="Excluir">
-                          <Trash2 className="size-4" />
-                        </Button>
-                      )}
-                      {!canUpdate && !canDelete && <span className="text-xs text-muted-foreground">—</span>}
-                    </div>
+                    {!canUpdate && !canDelete ? <span className="text-xs text-faint-foreground">—</span> : (
+                      <RowActions label={`Ações do caixa ${a.name}`} actions={[
+                        { label: 'Editar', icon: Pencil, onClick: () => crud.openEdit(a), hidden: !canUpdate },
+                        { label: 'Excluir', icon: Trash2, onClick: () => crud.setDeleteTarget(a), destructive: true, hidden: !canDelete },
+                      ]} />
+                    )}
                   </TableCell>
                 </TableRow>
               ))}
@@ -2277,7 +2217,7 @@ function AccountsTab({ enabled, canCreate, canUpdate, canDelete }: {
                     key={color}
                     type="button"
                     onClick={() => crud.setForm(p => ({ ...p, color }))}
-                    className={`size-7 rounded-md border-2 ${crud.form.color === color ? 'border-foreground' : 'border-transparent'}`}
+                    className={cn('size-7 rounded-md ring-offset-2 ring-offset-background transition-shadow', crud.form.color === color && 'ring-2 ring-foreground')}
                     style={{ backgroundColor: color }}
                     aria-label={color}
                   />
@@ -2289,7 +2229,9 @@ function AccountsTab({ enabled, canCreate, canUpdate, canDelete }: {
               onClick={() => crud.setForm(p => ({ ...p, active: !p.active }))}
               className="flex items-center gap-2 text-sm text-foreground w-fit"
             >
-              <span className={`inline-block size-4 rounded-sm border ${crud.form.active ? 'bg-emerald-500 border-emerald-500' : 'border-input'}`} />
+              <span className={cn('inline-flex size-4 items-center justify-center rounded-sm border', crud.form.active ? 'border-primary bg-primary text-primary-foreground' : 'border-input bg-card')} aria-hidden>
+                {crud.form.active && <Check className="size-3" />}
+              </span>
               {crud.form.active ? 'Ativo (aparece nos lançamentos)' : 'Inativo'}
             </button>
             {crud.error && <p className="text-sm text-destructive">{crud.error}</p>}

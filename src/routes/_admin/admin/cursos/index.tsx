@@ -16,20 +16,24 @@ import { formatBRL } from '@/utils/format-currency'
 import { upperNoAccents } from '@/utils/text-format'
 import { copyText } from '@/lib/copy-text'
 import { courseViewFromSlug, courseViewToSlug, parseCourseViewSlug, type CourseViewSlug } from '@/lib/course-views'
-import { Plus, Building2, GraduationCap, Calendar, BookOpen, Images, ChevronLeft, ChevronRight, X, Pencil, Trash2, Clock, MapPin, User, ImageUp, ImagePlus, ExternalLink, Link2, CopyPlus, CircleCheckBig } from 'lucide-react'
+import { Plus, Building2, GraduationCap, BookOpen, Images, ChevronLeft, ChevronRight, X, Pencil, Trash2, ImageUp, ImagePlus, ExternalLink, Link2, CopyPlus, CircleCheckBig } from 'lucide-react'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog'
 import { Tabs, TabsList, TabsTrigger, TabsContent, tabsWrapClass } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Separator } from '@/components/ui/separator'
 import type { Course } from '@/@types/course'
+import { cn } from '@/lib/utils'
 import { StatusBadge } from '@/components/StatusBadge'
 import { ErrorAlert } from '@/components/ErrorAlert'
 import { LoadErrorRetry } from '@/components/LoadErrorRetry'
 import { DeleteConfirmDialog } from '@/components/DeleteConfirmDialog'
 import { NativeSelect } from '@/components/ui/native-select'
+import { EmptyState } from '@/components/EmptyState'
+import { InitialsAvatar } from '@/components/InitialsAvatar'
+import { PageContainer, PageHeader } from '@/components/PageHeader'
+import { RowActions } from '@/components/RowActions'
 import { useRowSelection } from '@/hooks/useRowSelection'
 import { ExportOneButton } from '@/components/export/ExportMenu'
 import { CourseFormDialog } from '@/components/courses/CourseFormDialog'
@@ -61,7 +65,7 @@ function GalleryManager({ course }: { course: Course }) {
     setUploadError(null)
     try {
       await uploadPhoto.mutateAsync(file)
-      toast.success('Foto adicionada!')
+      toast.success('Foto adicionada.')
     } catch (err: unknown) {
       const msg = apiErrorMessage(err, 'Upload error.')
       setUploadError(msg)
@@ -74,8 +78,8 @@ function GalleryManager({ course }: { course: Course }) {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between">
-        <p className="text-sm text-muted-foreground">{photoCountLabel(photos.length)}</p>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="text-sm text-muted-foreground tabular-nums">{photoCountLabel(photos.length)}</p>
         <Button
           size="sm"
           variant="outline"
@@ -91,10 +95,7 @@ function GalleryManager({ course }: { course: Course }) {
       <ErrorAlert message={uploadError} />
 
       {photos.length === 0 ? (
-        <div className="border-2 border-dashed rounded-xl p-8 text-center text-muted-foreground">
-          <Images className="size-10 mx-auto mb-2 opacity-40" />
-          <p className="text-sm">{t('admin.courses.galleryEmpty')}</p>
-        </div>
+        <EmptyState framed icon={Images} title={t('admin.courses.galleryEmpty')} className="py-10" />
       ) : (
         <PhotoGrid
           photos={photos.map(p => ({ key: p.id, url: p.url, caption: p.caption }))}
@@ -169,7 +170,7 @@ function ViewDialog({
       setSelInstrId('')
       setInstrTitle('')
       setInstrCategory('')
-      toast.success('Instrutor adicionado!')
+      toast.success('Instrutor adicionado.')
     } catch (e) {
       toast.error(apiErrorMessage(e, 'Erro ao adicionar instrutor.'))
     }
@@ -192,7 +193,7 @@ function ViewDialog({
   const detailFailed = !detail && detailError
   const detailErrorBox = (
     <LoadErrorRetry
-      className="rounded-xl border bg-card"
+      className="rounded-xl border border-border bg-card"
       message="Não foi possível carregar os dados deste curso."
       onRetry={() => void refetchDetail()}
       retrying={detailFetching}
@@ -243,14 +244,14 @@ function ViewDialog({
                   <button
                     aria-label="Imagem anterior"
                     onClick={e => { e.stopPropagation(); setGalleryIndex(i => (i - 1 + totalImages) % totalImages) }}
-                    className="absolute left-2 top-1/2 -translate-y-1/2 size-10 rounded-full bg-background/80 backdrop-blur-sm flex items-center justify-center hover:bg-background transition-colors"
+                    className="absolute left-2 top-1/2 flex size-10 -translate-y-1/2 items-center justify-center rounded-full bg-background/90 text-foreground shadow-float transition-colors hover:bg-background"
                   >
                     <ChevronLeft className="size-5" />
                   </button>
                   <button
                     aria-label="Próxima imagem"
                     onClick={e => { e.stopPropagation(); setGalleryIndex(i => (i + 1) % totalImages) }}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 size-10 rounded-full bg-background/80 backdrop-blur-sm flex items-center justify-center hover:bg-background transition-colors"
+                    className="absolute right-2 top-1/2 flex size-10 -translate-y-1/2 items-center justify-center rounded-full bg-background/90 text-foreground shadow-float transition-colors hover:bg-background"
                   >
                     <ChevronRight className="size-5" />
                   </button>
@@ -268,44 +269,47 @@ function ViewDialog({
               )}
               {allImages[galleryIndex]?.caption && (
                 <div className="absolute bottom-0 left-0 right-0 bg-linear-to-t from-black/70 to-transparent p-4">
-                  <p className="text-white text-sm">{allImages[galleryIndex].caption}</p>
+                  {/* Legenda sobre a foto: texto branco no véu escuro, nos dois temas. */}
+                  <p className="text-sm text-white">{allImages[galleryIndex].caption}</p>
                 </div>
               )}
             </>
           ) : (
-            <BookOpen className="size-16 text-muted-foreground/30" />
+            <BookOpen className="size-12 text-faint-foreground" aria-hidden />
           )}
           <button
             aria-label="Fechar"
             onClick={onClose}
-            className="absolute top-3 right-3 size-8 rounded-full bg-background/80 backdrop-blur-sm flex items-center justify-center hover:bg-background transition-colors"
+            className="absolute top-3 right-3 flex size-8 items-center justify-center rounded-full bg-background/90 text-foreground shadow-float transition-colors hover:bg-background"
           >
             <X className="size-4" />
           </button>
         </div>
 
         <Tabs defaultValue={initialTab}>
-          <div className="px-6 pt-4">
-            <div className="flex items-center gap-2 mb-1">
-              <StatusBadge status={status} />
-              {eventNumber && (
-                <span className="text-sm text-muted-foreground font-mono">#{eventNumber}</span>
-              )}
+          <div className="flex flex-col gap-3 px-6 pt-5">
+            <div className="flex flex-col gap-1">
+              <div className="flex items-center gap-2">
+                <StatusBadge status={status} />
+                {eventNumber && (
+                  <span className="num text-sm text-muted-foreground">#{eventNumber}</span>
+                )}
+              </div>
+              <DialogTitle className="text-xl leading-7 font-semibold text-balance text-foreground">{title}</DialogTitle>
             </div>
-            <DialogTitle className="text-2xl font-bold text-foreground mb-2">{title}</DialogTitle>
 
-            <div className="flex flex-wrap items-center gap-2 mb-3">
+            <div className="flex flex-wrap items-center gap-2">
               {status === 'UNPUBLISHED' ? (
                 <p className="text-xs text-muted-foreground">Rascunho: a página deste curso não abre no site.</p>
               ) : (
                 <>
-                  <Button asChild variant="outline" size="sm" className="h-8 gap-1.5">
+                  <Button asChild variant="outline" size="sm">
                     <a href={publicPath} target="_blank" rel="noopener noreferrer">
-                      <ExternalLink className="size-3.5" /> Ver no site
+                      <ExternalLink /> Ver no site
                     </a>
                   </Button>
-                  <Button variant="outline" size="sm" className="h-8 gap-1.5" onClick={copyPublicLink}>
-                    <Link2 className="size-3.5" /> Copiar link
+                  <Button variant="outline" size="sm" onClick={copyPublicLink}>
+                    <Link2 /> Copiar link
                   </Button>
                 </>
               )}
@@ -315,33 +319,22 @@ function ViewDialog({
               <TabsTrigger value="details">{t('admin.courses.tabs.info')}</TabsTrigger>
               <TabsTrigger value="registrations">
                 {t('admin.courses.registrations')}
-                {enrolled > 0 && (
-                  <span className="ml-1.5 rounded-full bg-muted px-1.5 py-0.5 text-[10px]">
-                    {enrolled}
-                  </span>
-                )}
+                {enrolled > 0 && <span className="text-xs tabular-nums text-faint-foreground">{enrolled}</span>}
               </TabsTrigger>
               <TabsTrigger value="gallery">
                 {t('admin.courses.tabs.images')}
-                {photoCount > 0 && (
-                  <span className="ml-1.5 rounded-full bg-muted px-1.5 py-0.5 text-[10px]">
-                    {photoCount}
-                  </span>
-                )}
+                {photoCount > 0 && <span className="text-xs tabular-nums text-faint-foreground">{photoCount}</span>}
               </TabsTrigger>
               <TabsTrigger value="instructors">
-                <GraduationCap className="size-3.5 mr-1" />
                 Instrutores
                 {(liveCourse?.instructors?.length ?? 0) > 0 && (
-                  <span className="ml-1.5 rounded-full bg-muted px-1.5 py-0.5 text-[10px]">
-                    {liveCourse!.instructors.length}
-                  </span>
+                  <span className="text-xs tabular-nums text-faint-foreground">{liveCourse!.instructors.length}</span>
                 )}
               </TabsTrigger>
             </TabsList>
           </div>
 
-          <TabsContent value="details" className="px-6 pb-2 mt-4">
+          <TabsContent value="details" className="px-6 pb-2">
             {detailLoading ? (
               <div className="flex flex-col gap-3">
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -354,69 +347,48 @@ function ViewDialog({
                 </div>
               </div>
             ) : liveCourse ? (
-              <>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+              <div className="flex flex-col gap-6">
+                {/* Os dados do curso numa lista de rótulo e valor; datas, horário e preço em mono. */}
+                <dl className="grid grid-cols-2 gap-x-6 gap-y-4 sm:grid-cols-4">
                   {[
-                    { icon: Calendar, label: t('admin.courses.form.startDate').replace(' *', ''), value: formatDateFromString(liveCourse.startDate) },
-                    { icon: Calendar, label: t('admin.courses.form.endDate').replace(' *', ''), value: formatDateFromString(liveCourse.endDate) },
-                    { icon: Clock, label: t('courseDetail.schedule'), value: liveCourse.startTime && liveCourse.endTime ? `${liveCourse.startTime} – ${liveCourse.endTime}` : '—' },
-                    { icon: BookOpen, label: t('admin.courses.form.workload'), value: liveCourse.workloadHours ? `${liveCourse.workloadHours}h` : '—' },
-                  ].map(({ icon: Icon, label, value }) => (
-                    <div key={label} className="bg-muted/50 rounded-xl p-3 text-center">
-                      <Icon className="size-5 mx-auto mb-1 text-primary" />
-                      <div className="text-xs text-muted-foreground mb-0.5">{label}</div>
-                      <div className="font-medium text-sm">{value}</div>
+                    { label: t('admin.courses.form.startDate').replace(' *', ''), value: formatDateFromString(liveCourse.startDate), num: true },
+                    { label: t('admin.courses.form.endDate').replace(' *', ''), value: formatDateFromString(liveCourse.endDate), num: true },
+                    { label: t('courseDetail.schedule'), value: liveCourse.startTime && liveCourse.endTime ? `${liveCourse.startTime} – ${liveCourse.endTime}` : '—', num: true },
+                    { label: t('admin.courses.form.workload'), value: liveCourse.workloadHours ? `${liveCourse.workloadHours}h` : '—', num: true },
+                    ...(liveCourse.location ? [{ label: t('courseDetail.location'), value: liveCourse.location, num: false }] : []),
+                    ...(liveCourse.instructorName ? [{ label: t('courseDetail.instructor'), value: liveCourse.instructorName, num: false }] : []),
+                    ...(liveCourse.registrationDeadline
+                      ? [{ label: t('admin.courses.form.regDeadlineDate'), value: formatDateFromString(liveCourse.registrationDeadline), num: true }]
+                      : []),
+                    { label: t('admin.courses.form.price'), value: liveCourse.price === 0 ? t('courseCard.free') : formatBRL(liveCourse.price), num: liveCourse.price !== 0 },
+                  ].map(({ label, value, num }) => (
+                    <div key={label} className="flex min-w-0 flex-col gap-0.5">
+                      <dt className="text-xs text-muted-foreground">{label}</dt>
+                      <dd className={cn('text-sm font-medium wrap-break-word text-foreground', num && 'num')}>{value}</dd>
                     </div>
                   ))}
-                </div>
+                </dl>
 
-                <div className="grid gap-2 text-sm mb-6">
-                  {liveCourse.location && (
-                    <div className="flex items-center gap-2">
-                      <MapPin className="size-4 text-muted-foreground" />
-                      <span className="text-muted-foreground">{t('courseDetail.location')}:</span>
-                      <span className="font-medium">{liveCourse.location}</span>
-                    </div>
-                  )}
-                  {liveCourse.instructorName && (
-                    <div className="flex items-center gap-2">
-                      <User className="size-4 text-muted-foreground" />
-                      <span className="text-muted-foreground">{t('courseDetail.instructor')}:</span>
-                      <span className="font-medium">{liveCourse.instructorName}</span>
-                    </div>
-                  )}
-                  {liveCourse.registrationDeadline && (
-                    <div className="flex items-center gap-2">
-                      <Calendar className="size-4 text-muted-foreground" />
-                      <span className="text-muted-foreground">{t('admin.courses.form.regDeadlineDate')}:</span>
-                      <span className="font-medium">{formatDateFromString(liveCourse.registrationDeadline)}</span>
-                    </div>
-                  )}
-                </div>
-
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-6">
+                {/* Vagas: quatro números lado a lado, separados por linha fina. */}
+                <div className="grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-border bg-border sm:grid-cols-4">
                   {[
-                    { label: t('admin.courses.registrations'), value: liveCourse.enrolled, cls: 'bg-primary/10 text-primary' },
-                    { label: t('admin.courses.form.minStudents'), value: liveCourse.minStudents ?? '—', cls: 'bg-muted text-foreground' },
-                    { label: 'Máx.', value: liveCourse.maxStudents, cls: 'bg-muted text-foreground' },
-                    { label: 'Dias', value: daysUntil, cls: `bg-muted ${daysUntil < 0 ? 'text-destructive' : 'text-foreground'}` },
+                    { label: t('admin.courses.registrations'), value: liveCourse.enrolled, cls: 'text-primary' },
+                    { label: t('admin.courses.form.minStudents'), value: liveCourse.minStudents ?? '—', cls: 'text-foreground' },
+                    { label: 'Máx.', value: liveCourse.maxStudents, cls: 'text-foreground' },
+                    { label: 'Dias', value: daysUntil, cls: daysUntil < 0 ? 'text-destructive' : 'text-foreground' },
                   ].map(({ label, value, cls }) => (
-                    <div key={label} className={`${cls} rounded-xl p-3 text-center`}>
-                      <div className="text-2xl font-bold">{value}</div>
-                      <div className="text-[10px] text-muted-foreground uppercase tracking-wide">{label}</div>
+                    <div key={label} className="flex flex-col gap-0.5 bg-card px-4 py-3">
+                      <div className="text-xs text-muted-foreground">{label}</div>
+                      <div className={cn('text-xl font-semibold tabular-nums', cls)}>{value}</div>
                     </div>
                   ))}
                 </div>
-
-                <Separator className="mb-6" />
 
                 {liveCourse.description && (
-                  <div className="mb-6">
-                    <h4 className="font-semibold mb-3 text-foreground flex items-center gap-2">
-                      <BookOpen className="size-4" /> {t('admin.courses.form.fullDescription')}
-                    </h4>
+                  <div className="flex flex-col gap-2">
+                    <h4 className="text-sm font-semibold text-foreground">{t('admin.courses.form.fullDescription')}</h4>
                     {/* Mesmo markdown da página pública do curso */}
-                    <div className="bg-muted/30 p-4 rounded-xl overflow-hidden wrap-anywhere prose prose-sm dark:prose-invert max-w-none text-muted-foreground prose-headings:text-foreground prose-headings:font-semibold prose-strong:text-foreground prose-a:text-primary">
+                    <div className="prose prose-sm max-w-none overflow-hidden rounded-xl border border-border p-4 wrap-anywhere text-muted-foreground dark:prose-invert prose-headings:font-semibold prose-headings:text-foreground prose-strong:text-foreground prose-a:text-primary">
                       <ReactMarkdown remarkPlugins={[remarkGfm]}>
                         {liveCourse.description}
                       </ReactMarkdown>
@@ -424,29 +396,21 @@ function ViewDialog({
                   </div>
                 )}
 
-                <div className="flex flex-wrap items-center gap-4 text-sm pb-2">
-                  <div>
-                    <span className="text-muted-foreground">{t('admin.courses.form.price')}: </span>
-                    <span className="font-semibold text-primary">
-                      {liveCourse.price === 0 ? t('courseCard.free') : formatBRL(liveCourse.price)}
-                    </span>
+                {liveCourse.observations && (
+                  <div className="flex flex-col gap-0.5 pb-2 text-sm">
+                    <span className="text-xs text-muted-foreground">{t('admin.courses.form.observations')}</span>
+                    <span className="text-foreground">{liveCourse.observations}</span>
                   </div>
-                  {liveCourse.observations && (
-                    <div>
-                      <span className="text-muted-foreground">{t('admin.courses.form.observations')}: </span>
-                      <span className="font-medium">{liveCourse.observations}</span>
-                    </div>
-                  )}
-                </div>
-              </>
+                )}
+              </div>
             ) : detailFailed ? detailErrorBox : null}
           </TabsContent>
 
-          <TabsContent value="registrations" className="px-6 pb-4 mt-4">
+          <TabsContent value="registrations" className="px-6 pb-4">
             <RegistrationsTab courseId={course.id} eventNumber={eventNumber} courseTitle={title} courseStatus={status} />
           </TabsContent>
 
-          <TabsContent value="gallery" className="px-6 pb-4 mt-4">
+          <TabsContent value="gallery" className="px-6 pb-4">
             {detailLoading ? (
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                 {Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="aspect-video rounded-xl" />)}
@@ -456,7 +420,7 @@ function ViewDialog({
             ) : detailFailed ? detailErrorBox : null}
           </TabsContent>
 
-          <TabsContent value="instructors" className="px-6 pb-4 mt-4">
+          <TabsContent value="instructors" className="px-6 pb-4">
             {detailLoading ? (
               <div className="flex flex-col gap-2">
                 {Array.from({ length: 2 }).map((_, i) => <Skeleton key={i} className="h-14 rounded-lg" />)}
@@ -464,49 +428,39 @@ function ViewDialog({
             ) : detailFailed ? detailErrorBox : (
               <div className="flex flex-col gap-4">
                 {(liveCourse?.instructors ?? []).length === 0 ? (
-                  <div className="flex flex-col items-center justify-center py-10 border-2 border-dashed rounded-xl text-center">
-                    <GraduationCap className="size-10 text-muted-foreground/30 mb-3" />
-                    <p className="text-sm font-medium text-foreground">Nenhum instrutor vinculado</p>
-                  </div>
+                  <EmptyState framed icon={GraduationCap} title="Nenhum instrutor vinculado" className="py-10" />
                 ) : (
                   <ul className="flex flex-col gap-2">
                     {(liveCourse?.instructors ?? []).map(a => (
-                      <li key={a.id} className="flex items-center justify-between rounded-lg border px-4 py-3 bg-card">
-                        <div className="flex items-center gap-3">
-                          {a.avatar
-                            ? <img src={a.avatar} alt={a.name} className="size-9 rounded-full object-cover border shrink-0" />
-                            : <div className="size-9 rounded-full bg-primary/10 flex items-center justify-center border shrink-0"><GraduationCap className="size-4 text-primary/60" /></div>
-                          }
-                          <div>
-                            <p className="text-sm font-medium">{a.name}</p>
+                      <li key={a.id} className="flex items-center justify-between gap-3 rounded-lg border border-border bg-card px-4 py-3">
+                        <div className="flex min-w-0 items-center gap-3">
+                          <InitialsAvatar name={a.name} avatar={a.avatar} size="sm" />
+                          <div className="min-w-0">
+                            <p className="text-sm font-medium wrap-break-word text-foreground">{a.name}</p>
                             {(a.title || a.category) && (
-                              <p className="text-xs text-muted-foreground mt-0.5">
+                              <p className="mt-0.5 text-xs text-muted-foreground">
                                 {[a.title, a.category].filter(Boolean).join(' · ')}
                               </p>
                             )}
                           </div>
                         </div>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="size-7 p-0 text-destructive/60 hover:text-destructive hover:bg-destructive/10"
-                          disabled={removeAssignment.isPending}
-                          onClick={() => setRemoveInstr({ id: a.id, name: a.name })}
-                        >
-                          <Trash2 className="size-3.5" />
-                        </Button>
+                        <RowActions
+                          label={`Ações do instrutor ${a.name}`}
+                          actions={[
+                            { label: 'Remover instrutor', icon: Trash2, destructive: true, disabled: removeAssignment.isPending, onClick: () => setRemoveInstr({ id: a.id, name: a.name }) },
+                          ]}
+                        />
                       </li>
                     ))}
                   </ul>
                 )}
 
                 {can('UPDATE_COURSE') && (
-                  <div className="border-t pt-4 flex flex-col gap-3">
-                    <p className="text-sm font-semibold">Adicionar instrutor</p>
+                  <div className="flex flex-col gap-3 border-t border-border pt-4">
+                    <p className="text-sm font-semibold text-foreground">Adicionar instrutor</p>
                     <NativeSelect
                       value={selInstrId}
                       onChange={e => setSelInstrId(e.target.value)}
-                      className="h-9 disabled:opacity-50"
                     >
                       <option value="">Selecione um instrutor...</option>
                       {(instructors ?? [])
@@ -520,13 +474,11 @@ function ViewDialog({
                       placeholder="Título (ex: Engenheiro Agrônomo)"
                       value={instrTitle}
                       onChange={e => setInstrTitle(upperNoAccents(e.target.value))}
-                      className="h-9"
                     />
                     <Input
                       placeholder="Categoria (ex: Palestrante)"
                       value={instrCategory}
                       onChange={e => setInstrCategory(upperNoAccents(e.target.value))}
-                      className="h-9"
                     />
                     <Button
                       size="sm"
@@ -543,8 +495,8 @@ function ViewDialog({
           </TabsContent>
         </Tabs>
 
-        <div className="border-t p-4 flex justify-between gap-2 bg-muted/30 flex-wrap">
-          <div className="flex gap-2 flex-wrap">
+        <div className="flex flex-wrap justify-between gap-2 border-t border-border bg-muted/50 p-4">
+          <div className="flex flex-wrap gap-2">
             <PermissionButton
               allowed={can('UPDATE_COURSE')}
               noPermissionMessage="Sem permissão para alterar banner"
@@ -575,15 +527,15 @@ function ViewDialog({
               </PermissionButton>
             )}
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <Button variant="outline" onClick={onClose}>{t('common.close')}</Button>
             <PermissionButton
               allowed={can('DELETE_COURSE')}
               noPermissionMessage="Sem permissão para excluir cursos"
-              variant="outline"
+              variant="destructive"
               onClick={() => onDelete(course.id, title)}
             >
-              <Trash2 className="size-4 text-destructive" /> {t('common.delete')}
+              <Trash2 className="size-4" /> {t('common.delete')}
             </PermissionButton>
             <PermissionButton
               allowed={can('UPDATE_COURSE')}
@@ -748,13 +700,11 @@ function RouteComponent() {
   }
 
   return (
-    <div className="p-6 flex flex-col gap-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div className="flex items-center gap-1">
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">{t('admin.courses.title')}</h1>
-          <AjudaLink topico="cursos" titulo="Cursos" />
-        </div>
-        <div className="flex gap-2 shrink-0">
+    <PageContainer>
+      <PageHeader
+        title={t('admin.courses.title')}
+        help={<AjudaLink topico="cursos" titulo="Cursos" />}
+        actions={<>
           {can('READ_COURSE') && (
             <Button asChild variant="outline">
               <Link to="/admin/configuracoes" search={{ tab: 'salas' as const }}>
@@ -769,8 +719,8 @@ function RouteComponent() {
           >
             <Plus className="size-4" /> {t('admin.courses.newCourse')}
           </PermissionButton>
-        </div>
-      </div>
+        </>}
+      />
 
       <CoursesList
         view={view}
@@ -814,6 +764,6 @@ function RouteComponent() {
         pendingLabel={t('admin.courses.deleting')}
         cancelLabel={t('admin.courses.deleteCancel')}
       />
-    </div>
+    </PageContainer>
   )
 }

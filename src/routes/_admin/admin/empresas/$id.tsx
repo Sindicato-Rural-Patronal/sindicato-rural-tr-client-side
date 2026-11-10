@@ -15,8 +15,8 @@ import { CompanyMembersPanel } from '@/components/cadastro/CompanyMembersPanel'
 import { PropertiesManager } from '@/components/cadastro/PropertiesManager'
 import { DeleteConfirmDialog } from '@/components/DeleteConfirmDialog'
 import { LoadErrorRetry } from '@/components/LoadErrorRetry'
+import { PageContainer } from '@/components/PageHeader'
 import { errorStatus } from '@/lib/query-retry'
-import { cn } from '@/lib/utils'
 import { Tabs, TabsList, TabsTrigger, TabsContent, tabsWrapClass } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
 import {
@@ -32,7 +32,7 @@ export const Route = createFileRoute('/_admin/admin/empresas/$id')({
 })
 
 function Count({ n }: { n: number }) {
-  return n > 0 ? <span className="ml-1 rounded-full bg-muted px-1.5 text-[10px]">{n}</span> : null
+  return n > 0 ? <span className="text-xs tabular-nums text-faint-foreground">{n}</span> : null
 }
 
 function EmpresaPage() {
@@ -54,30 +54,30 @@ function EmpresaPage() {
 
   if (isLoading) {
     return (
-      <div className="flex flex-col gap-4 p-6">
+      <PageContainer>
         <Skeleton className="h-8 w-72" />
-        <Skeleton className="h-10 w-96" />
-        <Skeleton className="h-64 w-full rounded-lg" />
-      </div>
+        <Skeleton className="h-10 w-96 max-w-full" />
+        <Skeleton className="h-64 w-full rounded-xl" />
+      </PageContainer>
     )
   }
   if (isError || !company) {
     return (
-      <div className="flex flex-col gap-4 p-6">
+      <PageContainer>
         {isError && errorStatus(error) !== 404 ? (
           <LoadErrorRetry
-            className="rounded-lg border bg-card"
+            className="rounded-xl border border-border bg-card"
             message="Não foi possível carregar a empresa."
             onRetry={() => void refetch()}
             retrying={isFetching}
           />
         ) : (
-          <p className="rounded-lg border bg-muted/30 px-4 py-3 text-sm text-muted-foreground">Empresa não encontrada.</p>
+          <p className="rounded-xl border border-border bg-card px-4 py-3 text-sm text-muted-foreground">Empresa não encontrada.</p>
         )}
         <Button asChild variant="outline" className="self-start">
-          <Link to="/admin/usuarios" search={{ tab: 'empresas' }}><ArrowLeft className="size-4" /> Voltar para empresas</Link>
+          <Link to="/admin/usuarios" search={{ tab: 'empresas' }}><ArrowLeft /> Voltar para empresas</Link>
         </Button>
-      </div>
+      </PageContainer>
     )
   }
 
@@ -105,32 +105,33 @@ function EmpresaPage() {
   }
 
   return (
-    <div className="flex flex-col gap-6 p-6">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+    <PageContainer>
+      {/* Cabeçalho como o PageHeader, com o "voltar" em cima e o selo de parceira ao lado do CNPJ. */}
+      <div className="flex flex-col gap-1">
+        <Link to="/admin/usuarios" search={{ tab: 'empresas' }} className="-ml-0.5 inline-flex min-h-9 w-fit items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground">
+          <ArrowLeft className="size-4" /> Empresas
+        </Link>
+        <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-6">
         <div className="min-w-0">
-          <Link to="/admin/usuarios" search={{ tab: 'empresas' }} className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
-            <ArrowLeft className="size-4" /> Empresas
-          </Link>
-          <h1 className="mt-1 flex items-center gap-2 text-2xl font-bold tracking-tight text-foreground">
-            <Building2 className="size-6 shrink-0 text-muted-foreground" />
-            <span className="truncate">{companyDisplayName(company)}</span>
+          <h1 className="text-2xl leading-8 font-semibold break-words text-foreground">
+            {companyDisplayName(company)}
           </h1>
           <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-            {company.tradeName && <span className="truncate">{company.name} ·</span>}
-            <span>{company.cnpj ? `CNPJ ${maskCNPJ(company.cnpj)}` : 'Sem CNPJ'}</span>
-            <Badge variant={company.type === 'PUBLIC' ? 'secondary' : 'outline'}>{COMPANY_TYPE_LABEL[company.type]}</Badge>
+            {company.tradeName && <span className="break-words">{company.name} ·</span>}
+            <span className="tabular-nums">{company.cnpj ? `CNPJ ${maskCNPJ(company.cnpj)}` : 'Sem CNPJ'}</span>
+            <Badge variant={company.type === 'PUBLIC' ? 'neutral' : 'outline'}>{COMPANY_TYPE_LABEL[company.type]}</Badge>
             {company.isPartner && (
               <Link to="/admin/configuracoes" search={{ tab: 'parceiros' }} title="Logo, link e ordem em Configurações do site › Parceiros">
-                <Badge variant="outline" className="gap-1 hover:bg-muted"><Handshake className="size-3" /> Parceira na home</Badge>
+                <Badge variant="outline" className="hover:bg-muted"><Handshake /> Parceira na home</Badge>
               </Link>
             )}
           </div>
         </div>
-        <div className="flex shrink-0 items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2 sm:shrink-0 sm:justify-end">
           <DropdownMenu modal={false}>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm" disabled={exporting}>
-                {exporting ? <Loader2 className="size-3.5 animate-spin" /> : <Download className="size-3.5" />} Exportar
+              <Button variant="outline" disabled={exporting}>
+                {exporting ? <Loader2 className="animate-spin" /> : <Download />} Exportar
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-56">
@@ -142,18 +143,19 @@ function EmpresaPage() {
             </DropdownMenuContent>
           </DropdownMenu>
           {can('DELETE_USER') && (
-            <Button variant="outline" size="sm" className="text-destructive hover:text-destructive" onClick={() => setConfirmDelete(true)}>
-              <Trash2 className="size-3.5" /> Excluir
+            <Button variant="destructive" onClick={() => setConfirmDelete(true)}>
+              <Trash2 /> Excluir
             </Button>
           )}
         </div>
+        </header>
       </div>
 
       <Tabs value={tab} onValueChange={setTab}>
-        <TabsList className={cn(tabsWrapClass, 'mb-4')}>
-          <TabsTrigger value="dados"><Building2 className="mr-1.5 size-3.5" /> Dados</TabsTrigger>
-          <TabsTrigger value="pessoas"><Users className="mr-1.5 size-3.5" /> Pessoas <Count n={company.members.length} /></TabsTrigger>
-          <TabsTrigger value="enderecos"><TreePine className="mr-1.5 size-3.5" /> Propriedades <Count n={company.properties.length} /></TabsTrigger>
+        <TabsList className={tabsWrapClass}>
+          <TabsTrigger value="dados"><Building2 /> Dados</TabsTrigger>
+          <TabsTrigger value="pessoas"><Users /> Pessoas <Count n={company.members.length} /></TabsTrigger>
+          <TabsTrigger value="enderecos"><TreePine /> Propriedades <Count n={company.properties.length} /></TabsTrigger>
         </TabsList>
 
         {/* Fica montada (só escondida) para não perder edições ao trocar de aba */}
@@ -213,6 +215,6 @@ function EmpresaPage() {
         onConfirm={handleDelete}
         pending={deleteM.isPending}
       />
-    </div>
+    </PageContainer>
   )
 }

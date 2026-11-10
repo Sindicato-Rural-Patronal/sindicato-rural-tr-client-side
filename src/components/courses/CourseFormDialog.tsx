@@ -26,6 +26,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from '@/components/ui/form'
 import type { Course } from '@/@types/course'
 import { ErrorAlert } from '@/components/ErrorAlert'
+import { EmptyState } from '@/components/EmptyState'
 import { LoadErrorRetry } from '@/components/LoadErrorRetry'
 import { ConfirmCloseDialog } from '@/components/confirm-close-dialog'
 import { PhotoGrid } from '@/components/courses/PhotoGrid'
@@ -84,7 +85,7 @@ function courseToForm(c: Course): CourseFormData {
 function BannerPickButton({ label, disabled }: { label: string; disabled?: boolean }) {
   return (
     <div className="absolute bottom-2 right-2">
-      <Button variant="secondary" size="sm" type="button" disabled={disabled} className="shadow-md">
+      <Button variant="secondary" size="sm" type="button" disabled={disabled} className="shadow-float">
         <ImageUp className="size-4" />
         {label}
       </Button>
@@ -118,11 +119,7 @@ function BannerTab({ courseId }: { courseId: string | null }) {
 
   if (!courseId || !editing) {
     return (
-      <div className="flex flex-col items-center justify-center py-12 text-center border-2 border-dashed rounded-xl">
-        <Upload className="size-10 text-muted-foreground/30 mb-3" />
-        <p className="text-sm font-medium text-foreground">{t('admin.courses.form.save')}</p>
-        <p className="text-xs text-muted-foreground mt-1">{t('common.loading')}</p>
-      </div>
+      <EmptyState framed icon={Upload} title={t('admin.courses.form.save')} description={t('common.loading')} />
     )
   }
 
@@ -133,7 +130,7 @@ function BannerTab({ courseId }: { courseId: string | null }) {
     try {
       await uploadBanner.mutateAsync(file)
       setBannerCacheBust(v => v + 1)
-      toast.success('Banner atualizado!')
+      toast.success('Banner atualizado.')
     } catch (err: unknown) {
       const msg = apiErrorMessage(err, 'Upload error.')
       setBannerError(msg)
@@ -148,7 +145,7 @@ function BannerTab({ courseId }: { courseId: string | null }) {
     setPhotoError(null)
     try {
       await uploadPhoto.mutateAsync(file)
-      toast.success('Foto adicionada!')
+      toast.success('Foto adicionada.')
     } catch (err: unknown) {
       const msg = apiErrorMessage(err, 'Upload error.')
       setPhotoError(msg)
@@ -170,9 +167,7 @@ function BannerTab({ courseId }: { courseId: string | null }) {
         >
           {editing.coverImage
             ? <img src={`${editing.coverImage}${bannerCacheBust ? `?v=${bannerCacheBust}` : ''}`} alt="Banner" className="h-full w-full object-cover" />
-            : <div className="flex flex-col items-center gap-2 text-muted-foreground/40">
-                <ImageUp className="size-10" />
-              </div>
+            : <ImageUp className="size-10 text-faint-foreground" aria-hidden />
           }
           <BannerPickButton label={t('admin.courses.bannerUpload')} disabled={uploadBanner.isPending} />
         </div>
@@ -184,8 +179,8 @@ function BannerTab({ courseId }: { courseId: string | null }) {
       <div className="flex flex-col gap-3 border-t pt-4">
         <div className="flex items-center justify-between">
           <div>
-            <Label className="flex items-center gap-2"><Images className="size-4" /> {t('admin.courses.tabs.images')}</Label>
-            <p className="text-xs text-muted-foreground mt-0.5">{photoCountLabel(photos.length)}</p>
+            <Label>{t('admin.courses.tabs.images')}</Label>
+            <p className="mt-0.5 text-xs text-muted-foreground tabular-nums">{photoCountLabel(photos.length)}</p>
           </div>
           <Button size="sm" variant="outline" type="button" onClick={() => photoRef.current?.click()} disabled={uploadPhoto.isPending}>
             <ImagePlus className="size-4" />
@@ -196,10 +191,7 @@ function BannerTab({ courseId }: { courseId: string | null }) {
         <ErrorAlert message={photoError} />
 
         {photos.length === 0
-          ? <div className="border-2 border-dashed rounded-xl p-8 text-center text-muted-foreground">
-              <Images className="size-10 mx-auto mb-2 opacity-40" />
-              <p className="text-sm">{t('admin.courses.galleryEmpty')}</p>
-            </div>
+          ? <EmptyState framed icon={Images} title={t('admin.courses.galleryEmpty')} className="py-8" />
           : <PhotoGrid
               photos={photos.map(p => ({ key: p.id, url: p.url, caption: p.caption }))}
               onRemove={removePhoto.ask}
@@ -255,7 +247,7 @@ function StagedImagesTab({
 
   return (
     <div className="flex flex-col gap-6">
-      <p className="text-xs text-muted-foreground bg-muted/50 rounded-lg px-3 py-2">
+      <p className="rounded-lg bg-muted px-3 py-2 text-xs text-muted-foreground">
         As imagens serão enviadas automaticamente assim que o curso for criado.
       </p>
 
@@ -270,9 +262,7 @@ function StagedImagesTab({
             ? <img src={stagedBanner.url} alt="Banner" className="h-full w-full object-cover" />
             : showCopiedCover
               ? <img src={copiedCover!} alt="Capa do curso original" className="h-full w-full object-cover" />
-              : <div className="flex flex-col items-center gap-2 text-muted-foreground/40">
-                  <ImageUp className="size-10" />
-                </div>
+              : <ImageUp className="size-10 text-faint-foreground" aria-hidden />
           }
           <BannerPickButton label={t('admin.courses.bannerUpload')} />
         </div>
@@ -293,8 +283,8 @@ function StagedImagesTab({
       <div className="flex flex-col gap-3 border-t pt-4">
         <div className="flex items-center justify-between">
           <div>
-            <Label className="flex items-center gap-2"><Images className="size-4" /> {t('admin.courses.tabs.images')}</Label>
-            <p className="text-xs text-muted-foreground mt-0.5">{photoCountLabel(stagedPhotos.length)}</p>
+            <Label>{t('admin.courses.tabs.images')}</Label>
+            <p className="mt-0.5 text-xs text-muted-foreground tabular-nums">{photoCountLabel(stagedPhotos.length)}</p>
           </div>
           <Button size="sm" variant="outline" type="button" onClick={() => photoRef.current?.click()}>
             <ImagePlus className="size-4" />
@@ -303,10 +293,7 @@ function StagedImagesTab({
         </div>
         <input ref={photoRef} type="file" accept="image/*" multiple className="hidden" onChange={pickPhotos} />
         {stagedPhotos.length === 0
-          ? <div className="border-2 border-dashed rounded-xl p-8 text-center text-muted-foreground">
-              <Images className="size-10 mx-auto mb-2 opacity-40" />
-              <p className="text-sm">{t('admin.courses.galleryEmpty')}</p>
-            </div>
+          ? <EmptyState framed icon={Images} title={t('admin.courses.galleryEmpty')} className="py-8" />
           : <PhotoGrid
               photos={stagedPhotos.map(p => ({ key: p.url, url: p.url }))}
               onRemove={removePhoto}
@@ -466,7 +453,7 @@ roomId })
           return
         }
       }
-      toast.success(editing ? 'Curso atualizado com sucesso!' : 'Curso criado com sucesso!')
+      toast.success(editing ? 'Curso atualizado com sucesso.' : 'Curso criado com sucesso.')
       onClose()
     } catch (e: unknown) {
       setUploadingStaged(false)
@@ -491,15 +478,15 @@ roomId })
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="flex-1 overflow-hidden flex flex-col">
             <Tabs defaultValue="info" className="flex-1 overflow-hidden flex flex-col">
-              <TabsList className="grid w-full grid-cols-3 mx-6 mt-4 max-w-[calc(100%-3rem)]">
+              <TabsList className="mx-6 mt-4 max-w-[calc(100%-3rem)]">
                 <TabsTrigger value="info">{t('admin.courses.tabs.info')}</TabsTrigger>
                 <TabsTrigger value="description">{t('admin.courses.tabs.description')}</TabsTrigger>
                 <TabsTrigger value="images">{t('admin.courses.tabs.images')}</TabsTrigger>
               </TabsList>
 
-              <TabsContent value="info" className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
+              <TabsContent value="info" className="flex-1 overflow-y-auto px-6 pb-4 space-y-4">
                 {source && (
-                  <p className="text-xs text-muted-foreground bg-muted/50 rounded-lg px-3 py-2">
+                  <p className="rounded-lg bg-muted px-3 py-2 text-xs text-muted-foreground">
                     Cópia de <strong className="text-foreground">{source.title}</strong>. Preencha as datas e o prazo de inscrição e confira os dados antes de criar. A galeria de fotos não é copiada.
                   </p>
                 )}
@@ -667,12 +654,12 @@ roomId })
                 )}
               </TabsContent>
 
-              <TabsContent value="description" className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
+              <TabsContent value="description" className="flex-1 overflow-y-auto px-6 pb-4 space-y-4">
                 <FormField control={form.control} name="description" render={({ field }) => (
                   <FormItem>
                     <FormLabel>{t('admin.courses.form.fullDescription')}</FormLabel>
                     <FormControl>
-                      <div data-color-mode="light" className="rounded-md overflow-hidden border border-input">
+                      <div data-color-mode="light" className="overflow-hidden rounded-lg border border-input">
                         <MDEditor
                           value={field.value ?? ''}
                           onChange={val => field.onChange(val ?? '')}
@@ -688,7 +675,7 @@ roomId })
                 )} />
               </TabsContent>
 
-              <TabsContent value="images" className="flex-1 overflow-y-auto px-6 py-4">
+              <TabsContent value="images" className="flex-1 overflow-y-auto px-6 pb-4">
                 {isCreating
                   ? <StagedImagesTab
                       stagedBanner={stagedBanner}

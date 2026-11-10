@@ -96,7 +96,7 @@ describe('personalização do painel', () => {
 describe('largura dos blocos', () => {
   it('de fábrica: os grandes ocupam as 4 colunas e os cartões pequenos 2', () => {
     expect(dashboardLayout(DEFAULT_ORDER, DEFAULT_SIZES).map(c => [c.id, c.span])).toEqual([
-      ['acoes', 4], ['numeros', 4], ['cotacoes', 4], ['financeiro', 4], ['agenda', 4],
+      ['acoes', 4], ['numeros', 4], ['cotacoes', 4], ['agenda', 4], ['financeiro', 4],
       ['cursos', 2], ['incompletos', 2], ['auditoria', 2],
     ])
   })

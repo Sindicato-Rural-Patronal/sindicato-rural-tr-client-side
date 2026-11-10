@@ -1,9 +1,8 @@
 import { useEffect, useState } from 'react'
-import { Link } from '@tanstack/react-router'
+import { Link, useNavigate } from '@tanstack/react-router'
 import { toast } from 'sonner'
-import { Building2, Download, Eye, Handshake, Loader2, Search, Trash2 } from 'lucide-react'
+import { Building2, Download, Eye, Handshake, Search, Trash2 } from 'lucide-react'
 import { Input } from '@/components/ui/input'
-import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { NativeSelect } from '@/components/ui/native-select'
@@ -14,6 +13,8 @@ import { LoadErrorRetry } from '@/components/LoadErrorRetry'
 import { DeleteConfirmDialog } from '@/components/DeleteConfirmDialog'
 import { ExportMenu, SelectCheckbox, SelectionInfo } from '@/components/export/ExportMenu'
 import { BulkDeleteButton } from '@/components/export/BulkDeleteButton'
+import { FilterBar } from '@/components/FilterBar'
+import { RowActions, type RowAction } from '@/components/RowActions'
 import { usePermissions } from '@/hooks/usePermissions'
 import { useDebouncedValue } from '@/hooks/useDebouncedValue'
 import { useRowSelection } from '@/hooks/useRowSelection'
@@ -31,6 +32,7 @@ const LIMIT = 20
 /** Lista de empresas (aba "Empresas" em Usuários). */
 export function CompaniesList() {
   const { can } = usePermissions()
+  const navigate = useNavigate()
   const [searchInput, setSearchInput] = useState('')
   const search = useDebouncedValue(searchInput, 300).trim()
   const [type, setType] = useState<'' | CompanyType>('')
@@ -79,30 +81,18 @@ export function CompaniesList() {
     }
   }
 
+  function actionsOf(c: CompanyListItem): RowAction[] {
+    return [
+      { label: 'Abrir empresa', icon: Eye, onClick: () => void navigate({ to: '/admin/empresas/$id', params: { id: c.id } }) },
+      { label: 'Exportar', icon: Download, onClick: () => void exportOne(c), busy: exportingId === c.id },
+      { label: 'Excluir empresa', icon: Trash2, onClick: () => setDeleteTarget(c), destructive: true, hidden: !can('DELETE_USER') },
+    ]
+  }
+
   return (
-    <div className="flex flex-col gap-3">
-      <div className="flex flex-col gap-2 sm:flex-row">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            aria-label="Buscar empresas"
-            placeholder="Buscar por razão social, nome fantasia, e-mail ou CNPJ..."
-            value={searchInput}
-            onChange={e => setSearchInput(e.target.value)}
-            className="h-9 pl-9"
-          />
-        </div>
-        <NativeSelect aria-label="Filtrar por tipo" className="h-9 py-1.5 sm:w-40" value={type} onChange={e => setType(e.target.value as '' | CompanyType)}>
-          <option value="">Todos os tipos</option>
-          <option value="PRIVATE">{COMPANY_TYPE_LABEL.PRIVATE}</option>
-          <option value="PUBLIC">{COMPANY_TYPE_LABEL.PUBLIC}</option>
-        </NativeSelect>
-        <NativeSelect aria-label="Filtrar por parceria" className="h-9 py-1.5 sm:w-44" value={partner} onChange={e => setPartner(e.target.value as '' | 'true' | 'false')}>
-          <option value="">Parceiras e não parceiras</option>
-          <option value="true">Só parceiras</option>
-          <option value="false">Só não parceiras</option>
-        </NativeSelect>
-        <div className="flex items-center justify-end gap-2">
+    <div className="flex flex-col gap-4">
+      <FilterBar
+        actions={<>
           <SelectionInfo count={selection.count} onClear={selection.clear} />
           <BulkDeleteButton
             ids={selection.ids}
@@ -111,30 +101,95 @@ export function CompaniesList() {
             allowed={can('DELETE_USER')}
             onDelete={id => deleteM.mutateAsync(id)}
             onDone={() => selection.clear()}
-            className="h-9"
           />
           <ExportMenu
             dataset="companies"
-            className="h-9"
             filters={{ search, type, isPartner }}
             selectedIds={selection.ids}
             total={data?.total}
             filtered={filtering}
             extra={[{ label: 'Propriedades das selecionadas', dataset: 'properties', params: { ownerIds: selection.ids }, disabled: selection.count === 0 }]}
           />
+        </>}
+      >
+        <div className="relative sm:w-80">
+          <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
+          <Input
+            aria-label="Buscar empresas"
+            placeholder="Buscar por razão social, nome fantasia, e-mail ou CNPJ..."
+            value={searchInput}
+            onChange={e => setSearchInput(e.target.value)}
+            className="pl-9"
+          />
         </div>
-      </div>
+        <NativeSelect aria-label="Filtrar por tipo" className="sm:w-40" value={type} onChange={e => setType(e.target.value as '' | CompanyType)}>
+          <option value="">Todos os tipos</option>
+          <option value="PRIVATE">{COMPANY_TYPE_LABEL.PRIVATE}</option>
+          <option value="PUBLIC">{COMPANY_TYPE_LABEL.PUBLIC}</option>
+        </NativeSelect>
+        <NativeSelect aria-label="Filtrar por parceria" className="sm:w-52" value={partner} onChange={e => setPartner(e.target.value as '' | 'true' | 'false')}>
+          <option value="">Parceiras e não parceiras</option>
+          <option value="true">Só parceiras</option>
+          <option value="false">Só não parceiras</option>
+        </NativeSelect>
+      </FilterBar>
 
       {isError && !data && (
         <LoadErrorRetry
-          className="rounded-lg border bg-card"
+          className="rounded-xl border border-border bg-card"
           message="Não foi possível carregar as empresas."
           onRetry={() => void refetch()}
           retrying={isFetching}
         />
       )}
 
-      <div className="overflow-hidden rounded-lg border border-border bg-card">
+      {/* Celular: um cartão por empresa, com o nome inteiro. */}
+      <div className="flex flex-col gap-2 md:hidden">
+        {isLoading && Array.from({ length: 3 }).map((_, i) => (
+          <div key={i} className="rounded-xl border border-border bg-card p-3">
+            <Skeleton className="mb-2 h-4 w-48" />
+            <Skeleton className="h-3 w-32" />
+          </div>
+        ))}
+        {!isLoading && !isError && rows.length === 0 && (
+          <EmptyState
+            framed
+            icon={Building2}
+            title={filtering ? 'Nenhuma empresa encontrada' : 'Nenhuma empresa cadastrada'}
+            description={filtering ? 'Ajuste a busca ou os filtros.' : 'Clique em "Nova empresa" para cadastrar.'}
+            topico={filtering ? undefined : 'empresas'}
+          />
+        )}
+        {rows.length > 0 && (
+          <ul className="flex flex-col gap-2" aria-label="Empresas">
+            {rows.map(c => (
+              <li key={c.id} className="flex items-start gap-3 rounded-xl border border-border bg-card p-3">
+                <span className="flex h-5 shrink-0 items-center">
+                  <SelectCheckbox checked={selection.isSelected(c.id)} onChange={() => selection.toggle(c.id)} label={`Selecionar ${companyDisplayName(c)}`} />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <Link to="/admin/empresas/$id" params={{ id: c.id }} className="block break-words text-sm font-medium text-foreground hover:underline">
+                    {companyDisplayName(c)}
+                  </Link>
+                  <div className="mt-1 flex flex-wrap items-center gap-1">
+                    <Badge variant={c.type === 'PUBLIC' ? 'neutral' : 'outline'}>{COMPANY_TYPE_LABEL[c.type]}</Badge>
+                    {c.isPartner && <Badge variant="outline"><Handshake /> Parceira</Badge>}
+                  </div>
+                  {c.cnpj && <p className="mt-1 text-xs tabular-nums text-muted-foreground">CNPJ {maskCNPJ(c.cnpj)}</p>}
+                  {(c.tradeName || c.email || c.address?.city) && (
+                    <p className="break-words text-xs text-muted-foreground">
+                      {[c.tradeName ? c.name : null, c.address?.city, c.email].filter(Boolean).join(' · ')}
+                    </p>
+                  )}
+                </div>
+                <RowActions visible={0} label={`Ações de ${companyDisplayName(c)}`} actions={actionsOf(c)} className="-my-1.5 -mr-1.5" />
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
+      <div className="hidden overflow-hidden rounded-xl border border-border bg-card md:block">
         <div className="overflow-x-auto">
           <Table>
             <TableHeader>
@@ -148,11 +203,11 @@ export function CompaniesList() {
                   />
                 </TableHead>
                 <TableHead>Empresa</TableHead>
-                <TableHead className="hidden md:table-cell">CNPJ</TableHead>
+                <TableHead>CNPJ</TableHead>
                 <TableHead className="hidden lg:table-cell">Tipo</TableHead>
                 <TableHead className="hidden xl:table-cell">Telefone</TableHead>
-                <TableHead className="hidden sm:table-cell">Pessoas</TableHead>
-                <TableHead className={`w-32 text-right ${STICKY_ACTIONS_CELL}`}>Ações</TableHead>
+                <TableHead>Pessoas</TableHead>
+                <TableHead className={`w-28 text-right ${STICKY_ACTIONS_CELL}`}>Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -160,17 +215,17 @@ export function CompaniesList() {
                 <TableRow key={i}>
                   <TableCell><Skeleton className="size-4" /></TableCell>
                   <TableCell><Skeleton className="h-4 w-48" /></TableCell>
-                  <TableCell className="hidden md:table-cell"><Skeleton className="h-4 w-32" /></TableCell>
+                  <TableCell><Skeleton className="h-4 w-32" /></TableCell>
                   <TableCell className="hidden lg:table-cell"><Skeleton className="h-4 w-16" /></TableCell>
                   <TableCell className="hidden xl:table-cell"><Skeleton className="h-4 w-24" /></TableCell>
-                  <TableCell className="hidden sm:table-cell"><Skeleton className="h-4 w-8" /></TableCell>
+                  <TableCell><Skeleton className="h-4 w-8" /></TableCell>
                   <TableCell className={STICKY_ACTIONS_CELL}><Skeleton className="ml-auto h-7 w-14" /></TableCell>
                 </TableRow>
               ))}
 
               {!isLoading && !isError && rows.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={7} className="p-0">
+                  <TableCell colSpan={7} className="p-0 whitespace-normal">
                     <EmptyState
                       icon={Building2}
                       title={filtering ? 'Nenhuma empresa encontrada' : 'Nenhuma empresa cadastrada'}
@@ -186,13 +241,13 @@ export function CompaniesList() {
                   <TableCell className="w-10">
                     <SelectCheckbox checked={selection.isSelected(c.id)} onChange={() => selection.toggle(c.id)} label={`Selecionar ${companyDisplayName(c)}`} />
                   </TableCell>
-                  <TableCell className="max-w-[7rem] sm:max-w-[16rem] md:max-w-[14rem] xl:max-w-[18rem]">
+                  <TableCell className="max-w-[14rem] xl:max-w-[18rem]">
                     <div className="flex min-w-0 items-center gap-2">
                       <Link to="/admin/empresas/$id" params={{ id: c.id }} className="truncate font-medium text-foreground hover:underline">
                         {companyDisplayName(c)}
                       </Link>
                       {c.isPartner && (
-                        <Badge variant="outline" className="shrink-0 gap-1 text-[10px]"><Handshake className="size-3" /> Parceira</Badge>
+                        <Badge variant="outline" className="shrink-0"><Handshake /> Parceira</Badge>
                       )}
                     </div>
                     {(c.tradeName || c.email || c.address?.city) && (
@@ -201,34 +256,18 @@ export function CompaniesList() {
                       </p>
                     )}
                   </TableCell>
-                  <TableCell className="hidden md:table-cell tabular-nums text-muted-foreground">
+                  <TableCell className="tabular-nums text-muted-foreground">
                     {c.cnpj ? maskCNPJ(c.cnpj) : '—'}
                   </TableCell>
                   <TableCell className="hidden lg:table-cell">
-                    <Badge variant={c.type === 'PUBLIC' ? 'secondary' : 'outline'}>{COMPANY_TYPE_LABEL[c.type]}</Badge>
+                    <Badge variant={c.type === 'PUBLIC' ? 'neutral' : 'outline'}>{COMPANY_TYPE_LABEL[c.type]}</Badge>
                   </TableCell>
                   <TableCell className="hidden xl:table-cell tabular-nums text-muted-foreground">
                     {c.phone ? maskPhone(c.phone) : '—'}
                   </TableCell>
-                  <TableCell className="hidden sm:table-cell tabular-nums text-muted-foreground">{c.membersCount}</TableCell>
+                  <TableCell className="tabular-nums text-muted-foreground">{c.membersCount}</TableCell>
                   <TableCell className={`text-right ${STICKY_ACTIONS_CELL}`}>
-                    <div className="flex items-center justify-end gap-1">
-                      <Button size="sm" variant="ghost" className="h-8 px-2" asChild>
-                        <Link to="/admin/empresas/$id" params={{ id: c.id }} aria-label={`Abrir ${companyDisplayName(c)}`} title="Abrir empresa">
-                          <Eye className="size-4" />
-                        </Link>
-                      </Button>
-                      <Button size="sm" variant="ghost" className="h-8 px-2" onClick={() => exportOne(c)} disabled={exportingId === c.id}
-                        aria-label={`Exportar ${companyDisplayName(c)}`} title="Exportar">
-                        {exportingId === c.id ? <Loader2 className="size-4 animate-spin" /> : <Download className="size-4" />}
-                      </Button>
-                      {can('DELETE_USER') && (
-                        <Button size="sm" variant="ghost" className="h-8 px-2 text-muted-foreground hover:text-destructive"
-                          onClick={() => setDeleteTarget(c)} aria-label={`Excluir ${companyDisplayName(c)}`} title="Excluir empresa">
-                          <Trash2 className="size-4" />
-                        </Button>
-                      )}
-                    </div>
+                    <RowActions label={`Ações de ${companyDisplayName(c)}`} actions={actionsOf(c)} />
                   </TableCell>
                 </TableRow>
               ))}
