@@ -1,6 +1,6 @@
 import { Link } from '@tanstack/react-router'
 import { LoadErrorRetry } from '@/components/LoadErrorRetry'
-import { ArrowRight, Wallet } from 'lucide-react'
+import { ArrowRight } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useFinanceSummary } from '@/hooks/useFinance'
@@ -15,7 +15,7 @@ function Valor({ label, cents, className }: { label: string; cents: number; clas
   return (
     <div className="min-w-0">
       <p className="text-xs text-muted-foreground">{label}</p>
-      <p className={cn('truncate text-lg font-semibold tabular-nums', className)}>{formatBRL(cents / 100)}</p>
+      <p className={cn('num truncate text-lg font-semibold', className)}>{formatBRL(cents / 100)}</p>
     </div>
   )
 }
@@ -30,10 +30,7 @@ export function FinanceMonthCard({ now }: { now?: Date }) {
     <Card>
       <CardHeader className="pb-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <CardTitle className="flex items-center gap-2 text-base">
-            <Wallet className="size-4 text-primary" aria-hidden />
-            Financeiro em {monthTitle(now)}
-          </CardTitle>
+          <CardTitle className="text-base">Financeiro em {monthTitle(now)}</CardTitle>
           <Link
             to="/admin/financeiro"
             search={{ tab: 'dashboard' as const }}
@@ -59,12 +56,12 @@ export function FinanceMonthCard({ now }: { now?: Date }) {
         )}
         {!isError && data && (
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-            <Valor label="Entradas" cents={data.periodInCents} className="text-emerald-600 dark:text-emerald-400" />
-            <Valor label="Saídas" cents={data.periodOutCents} className="text-rose-600 dark:text-rose-400" />
+            <Valor label="Entradas" cents={data.periodInCents} className="text-success" />
+            <Valor label="Saídas" cents={data.periodOutCents} className="text-destructive" />
             <Valor
               label="Saldo do mês"
               cents={saldo}
-              className={saldo < 0 ? 'text-rose-600 dark:text-rose-400' : 'text-foreground'}
+              className={saldo < 0 ? 'text-destructive' : 'text-foreground'}
             />
           </div>
         )}
