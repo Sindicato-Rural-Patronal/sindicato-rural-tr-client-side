@@ -3,7 +3,6 @@ import { apiErrorMessage } from '@/lib/api-error-message'
 import { useState, useEffect } from 'react'
 import { toast } from 'sonner'
 import { usePermissions } from '@/hooks/usePermissions'
-import { PermissionButton } from '@/components/PermissionButton'
 import {
   useAdminUsers, useAdminAdmins, useAdminRules,
   useCreateAdminInvite, useAdminInvites, useRevokeAdminInvite, useCreateRule, useUpdateRule, useDeleteRule,
@@ -31,7 +30,7 @@ import {
   Table, TableHeader, TableBody,
   TableRow, TableHead, TableCell,
 } from '@/components/ui/table'
-import { AlertCircle, BadgeCheck, FileSpreadsheet, FileText, Plus, Shield, Users, Pencil, Trash2, ExternalLink, Globe, ChevronDown, X, SlidersHorizontal, Building2, Download, Loader2, Copy } from 'lucide-react'
+import { AlertCircle, AlertTriangle, BadgeCheck, FileSpreadsheet, FileText, Plus, Search, Shield, Users, Pencil, Trash2, ExternalLink, Globe, ChevronDown, X, SlidersHorizontal, Building2, Download, Loader2, Copy } from 'lucide-react'
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
@@ -57,6 +56,10 @@ import { AjudaLink } from '@/components/ajuda/AjudaLink'
 import { useDebouncedValue } from '@/hooks/useDebouncedValue'
 import { BulkDeleteButton } from '@/components/export/BulkDeleteButton'
 import { maskCPF } from '@/utils/masks'
+import { PageContainer, PageHeader } from '@/components/PageHeader'
+import { RowActions, type RowAction } from '@/components/RowActions'
+import { FilterBar, FilterField } from '@/components/FilterBar'
+import { MemberBadge } from '@/components/MemberBadge'
 
 const USERS_TABS = ['pessoas', 'associados', 'empresas', 'admins'] as const
 type UsersTab = (typeof USERS_TABS)[number]
@@ -122,7 +125,7 @@ function PermCheckboxes({
             <label className="flex items-center gap-2.5 cursor-pointer px-3 py-2 hover:bg-muted/60 transition-colors">
               <input type="checkbox" checked={allSelected} onChange={() => toggleGroup(group.perms)} className="accent-primary" />
               <span className="text-xs font-semibold text-foreground flex-1">{group.label}</span>
-              <span className="text-[10px] text-muted-foreground tabular-nums">{count}/{group.perms.length}</span>
+              <span className="text-xs text-muted-foreground tabular-nums">{count}/{group.perms.length}</span>
             </label>
             <div className="grid grid-cols-2 gap-x-2 gap-y-1 px-3 pb-2.5 pt-0.5 border-t border-border/50">
               {group.perms.map(perm => {
@@ -131,7 +134,7 @@ function PermCheckboxes({
                 return (
                   <label key={perm} className="flex items-center gap-1.5 cursor-pointer py-0.5">
                     <input type="checkbox" checked={permissions.includes(perm)} onChange={() => toggle(perm)} className="accent-primary" />
-                    <span className="text-[11px] text-muted-foreground">{verbLabel[verb] ?? verb}</span>
+                    <span className="text-xs text-muted-foreground">{verbLabel[verb] ?? verb}</span>
                   </label>
                 )
               })}
@@ -151,17 +154,11 @@ function PermSummary({ permissions }: { permissions: string[] }) {
         if (count === 0) return null
         const full = count === group.perms.length
         return (
-          <span
-            key={group.label}
-            className={`inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-medium ${
-              full
-                ? 'bg-primary/10 text-primary'
-                : 'bg-muted text-muted-foreground'
-            }`}
-          >
+          // Grupo inteiro: etiqueta neutra; grupo em parte: só a linha, com a conta.
+          <Badge key={group.label} variant={full ? 'neutral' : 'outline'}>
             {group.label}
-            {!full && <span className="opacity-60 tabular-nums">{count}/{group.perms.length}</span>}
-          </span>
+            {!full && <span className="tabular-nums text-muted-foreground">{count}/{group.perms.length}</span>}
+          </Badge>
         )
       })}
     </div>
@@ -200,10 +197,10 @@ function RegraDialog({
     try {
       if (isEdit) {
         await updateRule.mutateAsync(form)
-        toast.success('Regra atualizada!')
+        toast.success('Regra atualizada.')
       } else {
         await createRule.mutateAsync(form)
-        toast.success('Regra criada!')
+        toast.success('Regra criada.')
       }
       onClose()
     } catch (e) {
@@ -252,32 +249,32 @@ function RegraDialog({
                 <button
                   type="button"
                   onClick={() => setConfirmTotal(true)}
-                  className="text-[11px] text-amber-600 hover:text-amber-700 font-medium underline underline-offset-2 transition-colors"
+                  className="text-xs font-medium text-warning underline underline-offset-2 transition-colors hover:text-warning/80"
                 >
                   Conceder acesso total
                 </button>
               )}
               {hasAllPerms && (
-                <span className="text-[11px] text-primary font-medium">✓ Acesso total concedido</span>
+                <span className="text-xs font-medium text-success">✓ Acesso total concedido</span>
               )}
             </div>
 
             {confirmTotal && (
-              <div className="rounded-lg border border-amber-200 bg-amber-50 dark:border-amber-900/50 dark:bg-amber-950/30 p-3 flex flex-col gap-2.5">
+              <div className="rounded-lg border border-warning/30 bg-warning-soft p-3 flex flex-col gap-2.5">
                 <div className="flex items-start gap-2">
-                  <span className="text-amber-500 text-base leading-none mt-0.5">⚠</span>
+                  <AlertTriangle className="mt-0.5 size-4 shrink-0 text-warning" aria-hidden />
                   <div>
-                    <p className="text-xs font-semibold text-amber-800 dark:text-amber-300">Conceder acesso total</p>
-                    <p className="text-xs text-amber-700 dark:text-amber-400 mt-0.5">
+                    <p className="text-xs font-semibold text-foreground">Conceder acesso total</p>
+                    <p className="text-xs text-warning mt-0.5">
                       Isso marcará todas as <span className="font-semibold">{ALL_PERMS.length} permissões</span> disponíveis no sistema. O administrador com esta regra terá acesso irrestrito a usuários, cursos, regras, notícias, contatos e banners.
                     </p>
                   </div>
                 </div>
-                <div className="flex gap-2 pl-5">
+                <div className="flex gap-2 pl-6">
                   <Button
                     type="button"
-                    size="sm"
-                    className="h-7 bg-amber-600 hover:bg-amber-700 text-white text-xs"
+                    size="xs"
+                    className="bg-warning text-warning-foreground hover:bg-warning/90"
                     onClick={() => {
                       setForm(p => ({ ...p, permissions: [...ALL_PERMS] }))
                       setConfirmTotal(false)
@@ -287,9 +284,8 @@ function RegraDialog({
                   </Button>
                   <Button
                     type="button"
-                    size="sm"
+                    size="xs"
                     variant="outline"
-                    className="h-7 text-xs"
                     onClick={() => setConfirmTotal(false)}
                   >
                     Cancelar
@@ -356,7 +352,7 @@ function RegrasSheet() {
             <div className="flex items-center justify-between">
               <SheetTitle>Regras de permissão</SheetTitle>
               <Button size="sm" onClick={() => openDialog({ mode: 'create' })}>
-                <Plus className="size-3.5" /> Nova regra
+                <Plus className="size-4" /> Nova regra
               </Button>
             </div>
             {!isLoading && regras.length > 0 && (
@@ -375,7 +371,7 @@ function RegrasSheet() {
 
             {regrasFalharam && (
               <LoadErrorRetry
-                className="rounded-lg border bg-card"
+                className="rounded-xl border border-border bg-card"
                 message="Não foi possível carregar as regras de permissão."
                 onRetry={() => void refetch()}
                 retrying={isFetching}
@@ -383,29 +379,28 @@ function RegrasSheet() {
             )}
 
             {!isLoading && !regrasFalharam && regras.length === 0 && (
-              <div className="flex flex-col items-center justify-center py-16 text-center">
-                <Shield className="size-8 text-muted-foreground/30 mb-3" />
-                <p className="text-sm font-medium text-foreground">Nenhuma regra cadastrada</p>
-                <p className="text-xs text-muted-foreground mt-1">Crie uma regra para definir permissões de acesso.</p>
-                <Button size="sm" className="mt-4" onClick={() => openDialog({ mode: 'create' })}>
-                  <Plus className="size-3.5" /> Nova regra
-                </Button>
-              </div>
+              <EmptyState
+                icon={Shield}
+                title="Nenhuma regra cadastrada"
+                description="Crie uma regra para definir permissões de acesso."
+                action={(
+                  <Button size="sm" onClick={() => openDialog({ mode: 'create' })}>
+                    <Plus className="size-4" /> Nova regra
+                  </Button>
+                )}
+              />
             )}
 
             {regras.map(r => (
-              <div
-                key={r.id}
-                className="group rounded-xl border border-border bg-card p-4 hover:border-primary/30 transition-colors"
-              >
+              <div key={r.id} className="rounded-xl border border-border bg-card p-4">
                 <div className="flex items-start gap-3">
-                  <div className="size-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">
-                    <Shield className="size-4 text-primary" />
+                  <div className="size-8 rounded-lg bg-muted flex items-center justify-center shrink-0">
+                    <Shield className="size-4 text-muted-foreground" />
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                       <p className="font-semibold text-sm text-foreground truncate">{r.name}</p>
-                      <span className="text-[10px] tabular-nums text-muted-foreground shrink-0">
+                      <span className="text-xs tabular-nums text-faint-foreground shrink-0">
                         {r.permissions.length} perm{r.permissions.length !== 1 ? 's' : ''}
                       </span>
                     </div>
@@ -417,27 +412,17 @@ function RegrasSheet() {
                     </div>
                   </div>
                   {/* Sempre visíveis: no celular/tablet não existe "passar o mouse". */}
-                  <div className="flex shrink-0 items-center gap-0.5">
-                    <Button
-                      variant="ghost" size="icon"
-                      className="size-7"
-                      onClick={() => openDialog({ mode: 'edit', rule: r })}
-                      aria-label="Editar regra" title="Editar regra"
-                    >
-                      <Pencil className="size-3.5" />
-                    </Button>
-                    {can('DELETE_RULE') && (
-                      <Button
-                        variant="ghost" size="icon"
-                        className="size-7 text-muted-foreground hover:text-destructive"
-                        disabled={deleteRule.isPending}
-                        onClick={() => setDeleteRuleTarget(r)}
-                        aria-label="Excluir regra" title="Excluir regra"
-                      >
-                        <Trash2 className="size-3.5" />
-                      </Button>
-                    )}
-                  </div>
+                  <RowActions
+                    label={`Ações da regra ${r.name}`}
+                    className="-my-1.5 -mr-1.5 shrink-0"
+                    actions={[
+                      { label: 'Editar regra', icon: Pencil, onClick: () => openDialog({ mode: 'edit', rule: r }) },
+                      {
+                        label: 'Excluir regra', icon: Trash2, onClick: () => setDeleteRuleTarget(r), destructive: true,
+                        hidden: !can('DELETE_RULE'), disabled: deleteRule.isPending,
+                      },
+                    ]}
+                  />
                 </div>
               </div>
             ))}
@@ -511,7 +496,7 @@ function NovoAdminSheet() {
       await navigator.clipboard.writeText(link)
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
-      toast.success('Link copiado!')
+      toast.success('Link copiado.')
     } catch {
       toast.error('Não foi possível copiar — selecione e copie manualmente.')
     }
@@ -533,13 +518,13 @@ function NovoAdminSheet() {
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="admin-user">Pessoa (associado) *</Label>
               {person ? (
-                <div className="flex min-h-9 items-center justify-between gap-2 rounded-md border bg-muted/40 px-3 py-1 text-sm">
+                <div className="flex min-h-9 items-center justify-between gap-2 rounded-lg border border-border bg-muted px-3 py-1 text-sm">
                   <span className="min-w-0">
                     <span className="block truncate font-medium">{person.name}</span>
-                    {person.cpf && <span className="block text-xs text-muted-foreground">CPF {maskCPF(person.cpf)}</span>}
+                    {person.cpf && <span className="block text-xs tabular-nums text-muted-foreground">CPF {maskCPF(person.cpf)}</span>}
                   </span>
-                  <Button type="button" variant="ghost" size="sm" className="h-7 shrink-0 px-2" onClick={() => pickPerson(null)}>
-                    <X className="size-3.5" /> Trocar
+                  <Button type="button" variant="ghost" size="xs" className="shrink-0" onClick={() => pickPerson(null)}>
+                    <X /> Trocar
                   </Button>
                 </div>
               ) : (
@@ -570,9 +555,9 @@ function NovoAdminSheet() {
           </form>
 
           {link && (
-            <div className="mt-5 rounded-lg border border-border bg-muted/30 p-3 flex flex-col gap-2">
+            <div className="mt-5 rounded-xl border border-border bg-muted p-3 flex flex-col gap-2">
               <p className="text-xs font-medium text-foreground">Link de convite (válido por 7 dias)</p>
-              <p className="text-[11px] text-muted-foreground">Envie para a pessoa. Ela abre e define usuário + senha.</p>
+              <p className="text-xs text-muted-foreground">Envie para a pessoa. Ela abre e define usuário + senha.</p>
               <div className="flex gap-2">
                 <Input readOnly value={link} onFocus={e => e.currentTarget.select()} className="text-xs" />
                 <Button type="button" variant="outline" onClick={copy} className="shrink-0">
@@ -615,32 +600,27 @@ function ConvitesPendentes({ canRevoke }: { canRevoke: boolean }) {
   }
 
   return (
-    <div className="mb-4 rounded-lg border border-border bg-muted/30 p-3">
-      <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-        Convites pendentes ({invites.length})
+    <div className="rounded-xl border border-border bg-card p-3">
+      <p className="mb-2 text-sm font-medium text-foreground">
+        Convites pendentes <span className="tabular-nums text-muted-foreground">({invites.length})</span>
       </p>
       <div className="flex flex-col gap-2">
         {invites.map(inv => (
-          <div key={inv.id} className="flex items-center justify-between gap-3 rounded-md border border-border bg-card px-3 py-2 text-sm">
+          <div key={inv.id} className="flex items-center justify-between gap-3 rounded-lg border border-border bg-card px-3 py-2 text-sm">
             <div className="min-w-0">
               <span className="font-medium text-foreground">{inv.userName}</span>
               <span className="text-muted-foreground"> · {inv.ruleName}</span>
               <div className="text-xs">
                 {inv.expired
                   ? <span className="text-destructive">Expirado</span>
-                  : <span className="text-muted-foreground">Expira em {formatDateFromString(inv.expiresAt.slice(0, 10))}</span>}
+                  : <span className="text-muted-foreground">Expira em <span className="num">{formatDateFromString(inv.expiresAt.slice(0, 10))}</span></span>}
               </div>
             </div>
-            {canRevoke && (
-              <Button
-                size="sm" variant="ghost"
-                className="h-8 px-2 text-muted-foreground hover:text-destructive shrink-0"
-                onClick={() => setTarget(inv)}
-                aria-label="Revogar convite" title="Revogar convite"
-              >
-                <Trash2 className="size-4" />
-              </Button>
-            )}
+            <RowActions
+              label={`Ações do convite de ${inv.userName}`}
+              className="shrink-0"
+              actions={[{ label: 'Revogar convite', icon: Trash2, onClick: () => setTarget(inv), destructive: true, hidden: !canRevoke }]}
+            />
           </div>
         ))}
       </div>
@@ -688,7 +668,7 @@ function EditarAdminDialog({ admin, onClose }: { admin: UserAdmin | null; onClos
     if (Object.keys(body).length === 0) { onClose(); return }
     try {
       await updateAdmin.mutateAsync(body)
-      toast.success('Administrador atualizado com sucesso!')
+      toast.success('Administrador atualizado com sucesso.')
       onClose()
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'Erro ao atualizar administrador.'
@@ -727,7 +707,7 @@ function EditarAdminDialog({ admin, onClose }: { admin: UserAdmin | null; onClos
               />
               {passwordMismatch
                 ? <p className="text-xs text-destructive">As senhas não coincidem.</p>
-                : form.confirm.trim() !== '' && <p className="text-xs text-emerald-600 dark:text-emerald-400">As senhas coincidem.</p>}
+                : form.confirm.trim() !== '' && <p className="text-xs text-success">As senhas coincidem.</p>}
             </div>
           )}
           <div className="flex flex-col gap-1.5">
@@ -951,286 +931,110 @@ function RouteComponent() {
     }
   }
 
-  return (
-    <div className="p-6">
-      <Tabs value={activeTab} onValueChange={handleTabChange}>
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-6">
-          <div>
-            <div className="flex items-center gap-1">
-              <h1 className="text-2xl font-bold tracking-tight text-foreground">Usuários</h1>
-              <AjudaLink topico="usuarios" titulo="Usuários" />
-            </div>
-            <p className="text-sm text-muted-foreground">Pessoas, empresas e administradores do sistema</p>
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            {ehAbaDePessoa && (
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <span className="hidden sm:inline">Itens por página:</span>
-                <Select
-                  value={String(limit)}
-                  onValueChange={v => { setLimit(Number(v) as typeof USERS_LIMIT_OPTIONS[number]); setUsersPage(1); setAdminsPage(1) }}
-                >
-                  <SelectTrigger className="h-9 w-18">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {USERS_LIMIT_OPTIONS.map(n => <SelectItem key={n} value={String(n)}>{n}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
-            {ehAbaDePessoa && can('CREATE_USER') && (
-              <Button asChild>
-                <Link to="/admin/usuarios/novo"><Plus className="size-4" /> Novo associado</Link>
-              </Button>
-            )}
-            {activeTab === 'empresas' && can('CREATE_USER') && (
-              <Button asChild>
-                <Link to="/admin/empresas/novo"><Plus className="size-4" /> Nova empresa</Link>
-              </Button>
-            )}
-            {activeTab === 'admins' && (
-              <>
-                {can('READ_RULE') && <RegrasSheet />}
-                {can('CREATE_USER_ADMIN') && <NovoAdminSheet />}
-              </>
-            )}
-            {/* Os quatro tipos num arquivo só. Pede READ_USER_ADMIN porque
-                traz os administradores junto. */}
-            {can('READ_USER_ADMIN') && (
-              <DropdownMenu modal={false}>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" className="gap-2" disabled={baixandoRelatorio}>
-                    {baixandoRelatorio
-                      ? <Loader2 className="size-4 animate-spin" />
-                      : <Download className="size-4" />}
-                    Relatório de cadastros
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-60">
-                  <DropdownMenuItem onSelect={() => void baixarRelatorio('csv')}>
-                    <FileSpreadsheet className="size-4" /> Planilha CSV (abre no Excel)
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onSelect={() => void baixarRelatorio('pdf')}>
-                    <FileText className="size-4" /> Relatório em PDF (para imprimir)
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            )}
-          </div>
-        </div>
+  // Ações da linha (tabela e cartão do celular): as mesmas, na mesma ordem.
+  function personActions(u: UserData): RowAction[] {
+    return [
+      { label: 'Ver associado', icon: ExternalLink, onClick: () => void navigate({ to: '/admin/usuarios/$id', params: { id: u.id } }) },
+      { label: 'Exportar associado', icon: Download, onClick: () => void handleExportRow('people', u.id), busy: exportingRow === u.id },
+      {
+        label: 'Excluir associado', icon: Trash2, onClick: () => setDeleteAssociadoTarget(u), destructive: true,
+        disabled: !can('DELETE_USER'), reason: 'Sem permissão para excluir usuários',
+      },
+    ]
+  }
 
-        <TabsList className={cn(tabsWrapClass, 'mb-6')}>
-          <TabsTrigger value="pessoas" className="flex items-center gap-1.5">
-            <Users className="size-3.5" />
+  function adminActions(a: UserAdmin): RowAction[] {
+    return [
+      {
+        label: 'Editar administrador', icon: Pencil, onClick: () => { setEditAdmin(a); setEditAdminKey(k => k + 1) },
+        disabled: !can('UPDATE_USER_ADMIN'), reason: 'Sem permissão para editar administradores',
+      },
+      { label: 'Exportar administrador', icon: Download, onClick: () => void handleExportRow('admins', a.id), busy: exportingRow === a.id, hidden: !canExportAdmins },
+      {
+        label: 'Excluir administrador', icon: Trash2, onClick: () => setDeleteAdminTarget(a), destructive: true,
+        disabled: !can('DELETE_USER_ADMIN'), reason: 'Sem permissão para excluir administradores',
+      },
+    ]
+  }
+
+  const filtroAtivo = 'border-primary/40 bg-primary/5 text-primary hover:bg-primary/10 hover:text-primary'
+
+  return (
+    <PageContainer>
+      <PageHeader
+        title="Usuários"
+        description="Pessoas, empresas e administradores do sistema"
+        help={<AjudaLink topico="usuarios" titulo="Usuários" />}
+        actions={<>
+          {/* Os quatro tipos num arquivo só. Pede READ_USER_ADMIN porque
+              traz os administradores junto. */}
+          {can('READ_USER_ADMIN') && (
+            <DropdownMenu modal={false}>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" disabled={baixandoRelatorio}>
+                  {baixandoRelatorio
+                    ? <Loader2 className="size-4 animate-spin" />
+                    : <Download className="size-4" />}
+                  Relatório de cadastros
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-60">
+                <DropdownMenuItem onSelect={() => void baixarRelatorio('csv')}>
+                  <FileSpreadsheet className="size-4" /> Planilha CSV (abre no Excel)
+                </DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => void baixarRelatorio('pdf')}>
+                  <FileText className="size-4" /> Relatório em PDF (para imprimir)
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+          {activeTab === 'admins' && can('READ_RULE') && <RegrasSheet />}
+          {ehAbaDePessoa && can('CREATE_USER') && (
+            <Button asChild>
+              <Link to="/admin/usuarios/novo"><Plus className="size-4" /> Novo associado</Link>
+            </Button>
+          )}
+          {activeTab === 'empresas' && can('CREATE_USER') && (
+            <Button asChild>
+              <Link to="/admin/empresas/novo"><Plus className="size-4" /> Nova empresa</Link>
+            </Button>
+          )}
+          {activeTab === 'admins' && can('CREATE_USER_ADMIN') && <NovoAdminSheet />}
+        </>}
+      />
+
+      <Tabs value={activeTab} onValueChange={handleTabChange}>
+        <TabsList className={tabsWrapClass}>
+          <TabsTrigger value="pessoas">
+            <Users />
             Pessoa física
             {/* `userTotal` é o total da consulta ATUAL. Na aba de associados
                 ele conta só os em dia, então mostrá-lo aqui mentiria. */}
-            {activeTab === 'pessoas' && userTotal > 0 && (
-              <span className="ml-1 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
-                {userTotal}
-              </span>
-            )}
+            {activeTab === 'pessoas' && userTotal > 0 && <TabCount n={userTotal} />}
           </TabsTrigger>
-          <TabsTrigger value="associados" className="flex items-center gap-1.5">
-            <BadgeCheck className="size-3.5" />
+          <TabsTrigger value="associados">
+            <BadgeCheck />
             Associados
-            {activeTab === 'associados' && userTotal > 0 && (
-              <span className="ml-1 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
-                {userTotal}
-              </span>
-            )}
+            {activeTab === 'associados' && userTotal > 0 && <TabCount n={userTotal} />}
           </TabsTrigger>
-          <TabsTrigger value="empresas" className="flex items-center gap-1.5">
-            <Building2 className="size-3.5" />
+          <TabsTrigger value="empresas">
+            <Building2 />
             Pessoa jurídica
-            {companyTotal > 0 && (
-              <span className="ml-1 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
-                {companyTotal}
-              </span>
-            )}
+            {companyTotal > 0 && <TabCount n={companyTotal} />}
           </TabsTrigger>
-          <TabsTrigger value="admins" className="flex items-center gap-1.5">
-            <Shield className="size-3.5" />
+          <TabsTrigger value="admins">
+            <Shield />
             Administradores
-            {adminTotal > 0 && (
-              <span className="ml-1 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
-                {adminTotal}
-              </span>
-            )}
+            {adminTotal > 0 && <TabCount n={adminTotal} />}
           </TabsTrigger>
         </TabsList>
 
         {/* Uma lista só para as duas abas de pessoa: o `value` acompanha a aba
             aberta, então o mesmo bloco serve a "Pessoa física" e a "Associados"
             sem duplicar 300 linhas de tela. */}
-        <TabsContent value={activeTab === 'associados' ? 'associados' : 'pessoas'}>
-          {/* Cadastros repetidos da mesma pessoa: a inscrição pública só acha por CPF,
-              então quem estava cadastrado sem CPF ganha um segundo cadastro. */}
-          <div className="mb-3 flex flex-wrap items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setDuplicatesView(v => !v)}
-              className={`inline-flex items-center gap-1.5 rounded-md border px-3 h-9 text-sm font-medium transition-colors ${
-                duplicatesView
-                  ? 'border-primary/40 bg-primary/5 text-primary dark:border-primary/60'
-                  : 'border-border bg-background text-muted-foreground hover:text-foreground hover:bg-muted/50'
-              }`}
-            >
-              <Copy className="size-3.5" />
-              Possíveis duplicados
-            </button>
-            {duplicatesView && (
-              <span className="text-xs text-muted-foreground">
-                Mesmo nome, telefone ou e-mail, com pelo menos um cadastro sem CPF.
-              </span>
-            )}
-          </div>
-
-          {duplicatesView ? (
-            <DuplicatePeopleList canMerge={can('DELETE_USER')} />
-          ) : (<>
-          {/* Search + advanced filter toggle */}
-          <div className="flex gap-2 mb-3">
-            <Input
-              placeholder="Buscar por nome, email ou CPF..."
-              value={usersSearch}
-              onChange={e => { setUsersSearch(e.target.value); setUsersPage(1) }}
-              className="h-9 flex-1"
-            />
-            <button
-              type="button"
-              onClick={() => setShowAdvanced(v => !v)}
-              className={`inline-flex items-center gap-1.5 rounded-md border px-3 h-9 text-sm font-medium transition-colors shrink-0 ${
-                activeFiltersCount > 0
-                  ? 'border-primary/40 bg-primary/5 text-primary dark:border-primary/60'
-                  : 'border-border bg-background text-muted-foreground hover:text-foreground hover:bg-muted/50'
-              }`}
-            >
-              <SlidersHorizontal className="size-3.5" />
-              Filtros
-              {activeFiltersCount > 0 && (
-                <span className="ml-0.5 flex size-4 items-center justify-center rounded-full bg-primary text-[10px] text-primary-foreground font-bold">
-                  {activeFiltersCount}
-                </span>
-              )}
-              <ChevronDown className={`size-3.5 transition-transform duration-200 ${showAdvanced ? 'rotate-180' : ''}`} />
-            </button>
-          </div>
-
-          {/* Advanced filters panel */}
-          {showAdvanced && (
-            <div className="rounded-lg border border-border bg-muted/30 p-3 mb-3 flex flex-wrap gap-x-3 gap-y-2 items-end">
-              <div className="flex flex-col gap-1">
-                <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Gênero</span>
-                <Select
-                  value={genderFilter || 'all'}
-                  onValueChange={v => { setGenderFilter(v === 'all' ? '' : v as 'MALE' | 'FEMALE' | 'OTHER'); setUsersPage(1) }}
-                >
-                  <SelectTrigger className="h-8 text-xs w-32"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Todos</SelectItem>
-                    <SelectItem value="MALE">Masculino</SelectItem>
-                    <SelectItem value="FEMALE">Feminino</SelectItem>
-                    <SelectItem value="OTHER">Outro</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="flex flex-col gap-1">
-                <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Etnia</span>
-                <Select
-                  value={ethnicityFilter || 'all'}
-                  onValueChange={v => { setEthnicityFilter(v === 'all' ? '' : v as 'WHITE' | 'BLACK' | 'MIXED' | 'ASIAN' | 'INDIGENOUS'); setUsersPage(1) }}
-                >
-                  <SelectTrigger className="h-8 text-xs w-36"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Todos</SelectItem>
-                    <SelectItem value="WHITE">Branco</SelectItem>
-                    <SelectItem value="BLACK">Preto</SelectItem>
-                    <SelectItem value="MIXED">Pardo</SelectItem>
-                    <SelectItem value="ASIAN">Amarelo</SelectItem>
-                    <SelectItem value="INDIGENOUS">Indígena</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="flex flex-col gap-1">
-                <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Escolaridade</span>
-                <Select
-                  value={educationFilter || 'all'}
-                  onValueChange={v => { setEducationFilter(v === 'all' ? '' : v); setUsersPage(1) }}
-                >
-                  <SelectTrigger className="h-8 text-xs w-44"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Todas</SelectItem>
-                    <SelectItem value="NO_FORMAL_EDUCATION">Sem escolaridade</SelectItem>
-                    <SelectItem value="INCOMPLETE_PRIMARY">Fund. incompleto</SelectItem>
-                    <SelectItem value="COMPLETE_PRIMARY">Fund. completo</SelectItem>
-                    <SelectItem value="INCOMPLETE_SECONDARY">Médio incompleto</SelectItem>
-                    <SelectItem value="COMPLETE_SECONDARY">Médio completo</SelectItem>
-                    <SelectItem value="INCOMPLETE_HIGHER">Superior incompleto</SelectItem>
-                    <SelectItem value="COMPLETE_HIGHER">Superior completo</SelectItem>
-                    <SelectItem value="POSTGRADUATE">Pós-graduação</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="flex flex-col gap-1">
-                <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Tipo de membro</span>
-                <Select
-                  value={memberTypeFilter || 'all'}
-                  onValueChange={v => { setMemberTypeFilter(v === 'all' ? '' : v); setUsersPage(1) }}
-                >
-                  <SelectTrigger className="h-8 text-xs w-52"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Todos</SelectItem>
-                    {MEMBER_TYPES.map(t => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="flex flex-col gap-1">
-                <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Classificação</span>
-                <Input
-                  className="h-8 text-xs w-36"
-                  placeholder="Classificação..."
-                  value={memberClassFilter}
-                  onChange={e => { setMemberClassFilter(e.target.value); setUsersPage(1) }}
-                />
-              </div>
-              {activeFiltersCount > 0 && (
-                <button
-                  type="button"
-                  onClick={clearAdvancedFilters}
-                  className="inline-flex items-center gap-1.5 h-8 px-2.5 rounded-md text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-colors self-end"
-                >
-                  <X className="size-3" />
-                  Limpar filtros
-                </button>
-              )}
-            </div>
-          )}
-
-          {/* Incomplete registration toggle */}
-          <div className="flex flex-wrap items-center gap-3 mb-4">
-            <button
-              type="button"
-              onClick={() => { setIncompleteOnly(v => !v); setUsersPage(1) }}
-              className={`inline-flex items-center gap-1.5 rounded-md border px-3 h-9 text-sm font-medium transition-colors ${
-                incompleteOnly
-                  ? 'border-amber-300 bg-amber-50 text-amber-700 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-400'
-                  : 'border-border bg-background text-muted-foreground hover:text-foreground hover:bg-muted/50'
-              }`}
-            >
-              <AlertCircle className="size-3.5" />
-              Cadastros incompletos
-            </button>
-            {incompleteOnly && userTotal > 0 && (
-              <span className="text-xs text-muted-foreground">
-                {userTotal} {userTotal === 1 ? 'cadastro incompleto' : 'cadastros incompletos'}
-              </span>
-            )}
-            {incompleteOnly && userTotal === 0 && !loadingUsers && !errorUsers && (
-              <span className="text-xs text-emerald-600 font-medium">Todos os cadastros estão completos</span>
-            )}
-            <div className="ml-auto flex items-center gap-2">
+        <TabsContent value={activeTab === 'associados' ? 'associados' : 'pessoas'} className="flex flex-col gap-4">
+          <FilterBar
+            actions={duplicatesView ? undefined : <>
               <SelectionInfo count={userSelection.count} onClear={userSelection.clear} />
               <BulkDeleteButton
                 ids={userSelection.ids}
@@ -1239,7 +1043,6 @@ function RouteComponent() {
                 allowed={can('DELETE_USER')}
                 onDelete={id => deleteWorker.mutateAsync(id)}
                 onDone={() => userSelection.clear()}
-                className="h-9"
               />
               <ExportMenu
                 dataset="people"
@@ -1253,16 +1056,171 @@ function RouteComponent() {
                   params: { ownerIds: userSelection.ids },
                   disabled: userSelection.count === 0,
                 }]}
-                className="h-9"
               />
+            </>}
+          >
+            {!duplicatesView && (
+              <div className="relative sm:w-80">
+                <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
+                <Input
+                  placeholder="Buscar por nome, email ou CPF..."
+                  aria-label="Buscar por nome, email ou CPF"
+                  value={usersSearch}
+                  onChange={e => { setUsersSearch(e.target.value); setUsersPage(1) }}
+                  className="pl-9"
+                />
+              </div>
+            )}
+            <div className="flex flex-wrap items-center gap-2">
+              {!duplicatesView && (<>
+                <Button
+                  type="button"
+                  variant="outline"
+                  aria-expanded={showAdvanced}
+                  onClick={() => setShowAdvanced(v => !v)}
+                  className={cn(activeFiltersCount > 0 && filtroAtivo)}
+                >
+                  <SlidersHorizontal className="size-4" />
+                  Filtros
+                  {activeFiltersCount > 0 && (
+                    <span className="flex size-5 items-center justify-center rounded-full bg-primary text-xs font-medium tabular-nums text-primary-foreground">
+                      {activeFiltersCount}
+                    </span>
+                  )}
+                  <ChevronDown className={cn('size-4 transition-transform', showAdvanced && 'rotate-180')} />
+                </Button>
+                {/* Cadastro incompleto é o que pede atenção: o filtro ligado fica em âmbar. */}
+                <Button
+                  type="button"
+                  variant="outline"
+                  aria-pressed={incompleteOnly}
+                  onClick={() => { setIncompleteOnly(v => !v); setUsersPage(1) }}
+                  className={cn(incompleteOnly && 'border-warning/30 bg-warning-soft text-warning hover:bg-warning-soft hover:text-warning')}
+                >
+                  <AlertCircle className="size-4" />
+                  Cadastros incompletos
+                </Button>
+              </>)}
+              {/* Cadastros repetidos da mesma pessoa: a inscrição pública só acha por CPF,
+                  então quem estava cadastrado sem CPF ganha um segundo cadastro. */}
+              <Button
+                type="button"
+                variant="outline"
+                aria-pressed={duplicatesView}
+                onClick={() => setDuplicatesView(v => !v)}
+                className={cn(duplicatesView && filtroAtivo)}
+              >
+                <Copy className="size-4" />
+                Possíveis duplicados
+              </Button>
             </div>
-          </div>
+          </FilterBar>
+
+          {duplicatesView && (
+            <p className="-mt-1 text-xs text-muted-foreground">
+              Mesmo nome, telefone ou e-mail, com pelo menos um cadastro sem CPF
+            </p>
+          )}
+
+          {duplicatesView ? (
+            <DuplicatePeopleList canMerge={can('DELETE_USER')} />
+          ) : (<>
+          {/* Filtros avançados */}
+          {showAdvanced && (
+            <div className="flex flex-col gap-3 rounded-xl border border-border bg-card p-3 sm:flex-row sm:flex-wrap sm:items-end">
+              <FilterField label="Gênero" htmlFor="f-genero">
+                <Select
+                  value={genderFilter || 'all'}
+                  onValueChange={v => { setGenderFilter(v === 'all' ? '' : v as 'MALE' | 'FEMALE' | 'OTHER'); setUsersPage(1) }}
+                >
+                  <SelectTrigger id="f-genero" className="w-full sm:w-36"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos</SelectItem>
+                    <SelectItem value="MALE">Masculino</SelectItem>
+                    <SelectItem value="FEMALE">Feminino</SelectItem>
+                    <SelectItem value="OTHER">Outro</SelectItem>
+                  </SelectContent>
+                </Select>
+              </FilterField>
+              <FilterField label="Etnia" htmlFor="f-etnia">
+                <Select
+                  value={ethnicityFilter || 'all'}
+                  onValueChange={v => { setEthnicityFilter(v === 'all' ? '' : v as 'WHITE' | 'BLACK' | 'MIXED' | 'ASIAN' | 'INDIGENOUS'); setUsersPage(1) }}
+                >
+                  <SelectTrigger id="f-etnia" className="w-full sm:w-36"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos</SelectItem>
+                    <SelectItem value="WHITE">Branco</SelectItem>
+                    <SelectItem value="BLACK">Preto</SelectItem>
+                    <SelectItem value="MIXED">Pardo</SelectItem>
+                    <SelectItem value="ASIAN">Amarelo</SelectItem>
+                    <SelectItem value="INDIGENOUS">Indígena</SelectItem>
+                  </SelectContent>
+                </Select>
+              </FilterField>
+              <FilterField label="Escolaridade" htmlFor="f-escolaridade">
+                <Select
+                  value={educationFilter || 'all'}
+                  onValueChange={v => { setEducationFilter(v === 'all' ? '' : v); setUsersPage(1) }}
+                >
+                  <SelectTrigger id="f-escolaridade" className="w-full sm:w-48"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todas</SelectItem>
+                    <SelectItem value="NO_FORMAL_EDUCATION">Sem escolaridade</SelectItem>
+                    <SelectItem value="INCOMPLETE_PRIMARY">Fund. incompleto</SelectItem>
+                    <SelectItem value="COMPLETE_PRIMARY">Fund. completo</SelectItem>
+                    <SelectItem value="INCOMPLETE_SECONDARY">Médio incompleto</SelectItem>
+                    <SelectItem value="COMPLETE_SECONDARY">Médio completo</SelectItem>
+                    <SelectItem value="INCOMPLETE_HIGHER">Superior incompleto</SelectItem>
+                    <SelectItem value="COMPLETE_HIGHER">Superior completo</SelectItem>
+                    <SelectItem value="POSTGRADUATE">Pós-graduação</SelectItem>
+                  </SelectContent>
+                </Select>
+              </FilterField>
+              <FilterField label="Tipo de membro" htmlFor="f-tipo-membro">
+                <Select
+                  value={memberTypeFilter || 'all'}
+                  onValueChange={v => { setMemberTypeFilter(v === 'all' ? '' : v); setUsersPage(1) }}
+                >
+                  <SelectTrigger id="f-tipo-membro" className="w-full sm:w-56"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos</SelectItem>
+                    {MEMBER_TYPES.map(t => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </FilterField>
+              <FilterField label="Classificação" htmlFor="f-classificacao">
+                <Input
+                  id="f-classificacao"
+                  className="w-full sm:w-40"
+                  placeholder="Classificação..."
+                  value={memberClassFilter}
+                  onChange={e => { setMemberClassFilter(e.target.value); setUsersPage(1) }}
+                />
+              </FilterField>
+              {activeFiltersCount > 0 && (
+                <Button type="button" variant="ghost" onClick={clearAdvancedFilters} className="text-muted-foreground sm:self-end">
+                  <X className="size-4" />
+                  Limpar filtros
+                </Button>
+              )}
+            </div>
+          )}
+
+          {incompleteOnly && userTotal > 0 && (
+            <p className="-mt-1 text-xs text-muted-foreground">
+              <span className="tabular-nums">{userTotal}</span> {userTotal === 1 ? 'cadastro incompleto' : 'cadastros incompletos'}
+            </p>
+          )}
+          {incompleteOnly && userTotal === 0 && !loadingUsers && !errorUsers && (
+            <p className="-mt-1 text-xs font-medium text-success">Todos os cadastros estão completos</p>
+          )}
 
           {loadingUsers && (
-            <div className="flex flex-col gap-3">
+            <div className="flex flex-col gap-2">
               {Array.from({ length: 4 }).map((_, i) => (
-                <div key={i} className="flex items-center gap-3 rounded-lg border border-border p-3">
-                  <Skeleton className="size-10 rounded-full" />
+                <div key={i} className="flex items-center gap-3 rounded-xl border border-border bg-card p-3">
+                  <Skeleton className="size-8 rounded-full" />
                   <div className="flex flex-col gap-1.5 flex-1">
                     <Skeleton className="h-4 w-32" />
                     <Skeleton className="h-3 w-48" />
@@ -1273,7 +1231,7 @@ function RouteComponent() {
           )}
           {!loadingUsers && errorUsers && (
             <LoadErrorRetry
-              className="rounded-lg border bg-card"
+              className="rounded-xl border border-border bg-card"
               message="Não foi possível carregar a lista de pessoas."
               onRetry={() => void refetchUsers()}
               retrying={fetchingUsers}
@@ -1281,17 +1239,57 @@ function RouteComponent() {
           )}
           {!loadingUsers && !errorUsers && usuarios.length === 0 && (
             <EmptyState
+              framed
               icon={Users}
               title={usersFiltered ? 'Nenhum associado encontrado' : 'Nenhum associado cadastrado'}
               description={usersFiltered ? 'Confira a busca ou limpe os filtros.' : undefined}
             />
           )}
           {!loadingUsers && usuarios.length > 0 && (
-            <>
-              <div
-                className={`rounded-lg border border-border bg-card overflow-hidden transition-opacity ${refreshingUsers ? 'opacity-60' : ''}`}
-                aria-busy={refreshingUsers}
-              >
+            <div className={cn('flex flex-col gap-2 transition-opacity', refreshingUsers && 'opacity-60')} aria-busy={refreshingUsers}>
+              {/* Celular: um cartão por pessoa, com o nome inteiro (na tabela ele era cortado). */}
+              <div className="flex flex-col gap-2 md:hidden">
+                {usuarios.length > 1 && (
+                  <label className="flex min-h-9 w-fit items-center gap-2 px-3 text-xs text-muted-foreground">
+                    <SelectCheckbox
+                      checked={userPageState === 'all'}
+                      indeterminate={userPageState === 'some'}
+                      onChange={() => userSelection.togglePage(userPageIds)}
+                      label="Selecionar todos desta página"
+                    />
+                    Selecionar todos desta página
+                  </label>
+                )}
+                <ul className="flex flex-col gap-2" aria-label="Pessoas">
+                  {usuarios.map(u => (
+                    <li key={u.id} className="flex items-start gap-3 rounded-xl border border-border bg-card p-3">
+                      <span className="flex h-8 shrink-0 items-center">
+                        <SelectCheckbox
+                          checked={userSelection.isSelected(u.id)}
+                          onChange={() => userSelection.toggle(u.id)}
+                          label={`Selecionar ${u.name}`}
+                        />
+                      </span>
+                      <InitialsAvatar name={u.name} avatar={u.avatar} size="sm" />
+                      <div className="min-w-0 flex-1">
+                        <Link
+                          to="/admin/usuarios/$id"
+                          params={{ id: u.id }}
+                          className="block break-words text-sm font-medium text-foreground hover:underline"
+                        >
+                          {u.name}
+                        </Link>
+                        <MemberBadge person={u} className="mt-1 flex w-fit" />
+                        {u.email && <p className="mt-1 break-all text-xs text-muted-foreground">{u.email}</p>}
+                        {u.phone && <p className="text-xs tabular-nums text-muted-foreground">{u.phone}</p>}
+                      </div>
+                      <RowActions visible={0} label={`Ações de ${u.name}`} actions={personActions(u)} className="-my-1.5 -mr-1.5" />
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              <div className="hidden overflow-hidden rounded-xl border border-border bg-card md:block">
                 <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
@@ -1305,7 +1303,7 @@ function RouteComponent() {
                         />
                       </TableHead>
                       <TableHead>Nome</TableHead>
-                      <TableHead className="hidden md:table-cell">Email</TableHead>
+                      <TableHead>Email</TableHead>
                       <TableHead className="hidden xl:table-cell">Telefone</TableHead>
                       <TableHead className="hidden xl:table-cell">CPF</TableHead>
                       <TableHead className="hidden xl:table-cell">Cadastro</TableHead>
@@ -1324,44 +1322,19 @@ function RouteComponent() {
                         </TableCell>
                         {/* Sem rolagem lateral: o nome tem largura máxima (reticências) e as colunas menores
                             só entram quando há espaço (o menu fixo come 256px a partir de lg). */}
-                        <TableCell className="max-w-[8rem] sm:max-w-[16rem] xl:max-w-[14rem]">
+                        <TableCell className="max-w-[16rem] xl:max-w-[14rem]">
                           <PersonNameCell person={u} />
                         </TableCell>
-                        <TableCell className="hidden max-w-[12rem] text-sm text-muted-foreground md:table-cell 2xl:max-w-[20rem]">
+                        <TableCell className="max-w-[12rem] text-sm text-muted-foreground 2xl:max-w-[20rem]">
                           <span className="block truncate" title={u.email || undefined}>{u.email || '—'}</span>
                         </TableCell>
-                        <TableCell className="text-muted-foreground text-sm hidden xl:table-cell">{u.phone}</TableCell>
-                        <TableCell className="text-muted-foreground text-sm font-mono hidden xl:table-cell">{u.cpf ? maskCPF(u.cpf) : '—'}</TableCell>
-                        <TableCell className="text-muted-foreground text-sm hidden xl:table-cell">
+                        <TableCell className="text-muted-foreground text-sm tabular-nums hidden xl:table-cell">{u.phone}</TableCell>
+                        <TableCell className="text-muted-foreground text-sm tabular-nums hidden xl:table-cell">{u.cpf ? maskCPF(u.cpf) : '—'}</TableCell>
+                        <TableCell className="num text-muted-foreground text-sm hidden xl:table-cell">
                           {new Date(u.createdAt).toLocaleDateString('pt-BR')}
                         </TableCell>
                         <TableCell className={`text-right ${STICKY_ACTIONS_CELL}`}>
-                          <div className="flex items-center justify-end gap-1">
-                            <Button variant="ghost" size="icon" className="size-7" asChild>
-                              <Link to="/admin/usuarios/$id" params={{ id: u.id }} aria-label="Ver associado" title="Ver associado">
-                                <ExternalLink className="size-3.5" />
-                              </Link>
-                            </Button>
-                            <Button
-                              variant="ghost" size="icon"
-                              className="size-7"
-                              disabled={exportingRow === u.id}
-                              onClick={() => handleExportRow('people', u.id)}
-                              aria-label="Exportar associado" title="Exportar associado"
-                            >
-                              {exportingRow === u.id ? <Loader2 className="size-3.5 animate-spin" /> : <Download className="size-3.5" />}
-                            </Button>
-                            <PermissionButton
-                              allowed={can('DELETE_USER')}
-                              noPermissionMessage="Sem permissão para excluir usuários"
-                              variant="ghost" size="icon"
-                              className="size-7 text-destructive/60 hover:text-destructive"
-                              onClick={() => setDeleteAssociadoTarget(u)}
-                              aria-label="Excluir associado"
-                            >
-                              <Trash2 className="size-3.5" />
-                            </PermissionButton>
-                          </div>
+                          <RowActions label={`Ações de ${u.name}`} actions={personActions(u)} />
                         </TableCell>
                       </TableRow>
                     ))}
@@ -1375,9 +1348,11 @@ function RouteComponent() {
                 total={userTotal}
                 limit={limit}
                 onPageChange={setUsersPage}
-                showLimitSelector={false}
+                // "Por página" junto da lista (antes ficava no cabeçalho da tela, ao lado de "Novo associado").
+                onLimitChange={n => { setLimit(n as typeof USERS_LIMIT_OPTIONS[number]); setUsersPage(1); setAdminsPage(1) }}
+                limitOptions={[...USERS_LIMIT_OPTIONS]}
               />
-            </>
+            </div>
           )}
           </>)}
         </TabsContent>
@@ -1386,11 +1361,30 @@ function RouteComponent() {
           <CompaniesList />
         </TabsContent>
 
-        <TabsContent value="admins">
+        <TabsContent value="admins" className="flex flex-col gap-4">
           {can('READ_USER_ADMIN') && <ConvitesPendentes canRevoke={can('CREATE_USER_ADMIN')} />}
-          <div className="flex flex-col sm:flex-row gap-2 mb-4">
+          <FilterBar
+            actions={canExportAdmins ? <>
+              <SelectionInfo count={adminSelection.count} onClear={adminSelection.clear} />
+              <BulkDeleteButton
+                ids={adminSelection.ids}
+                singular="administrador"
+                plural="administradores"
+                allowed={can('DELETE_USER_ADMIN')}
+                onDelete={id => deleteAdmin.mutateAsync(id)}
+                onDone={() => adminSelection.clear()}
+              />
+              <ExportMenu
+                dataset="admins"
+                filters={{ rulesId: rulesFilter || undefined }}
+                selectedIds={adminSelection.ids}
+                total={adminsData?.total}
+                filtered={!!rulesFilter}
+              />
+            </> : undefined}
+          >
             <Select value={rulesFilter || 'all'} onValueChange={handleRulesFilterChange}>
-              <SelectTrigger className="h-9 w-full sm:w-48">
+              <SelectTrigger className="w-full sm:w-56" aria-label="Filtrar por regra">
                 <SelectValue placeholder="Todas as regras" />
               </SelectTrigger>
               <SelectContent>
@@ -1400,57 +1394,60 @@ function RouteComponent() {
                 ))}
               </SelectContent>
             </Select>
-            {canExportAdmins && (
-              <div className="flex items-center gap-2 sm:ml-auto">
-                <SelectionInfo count={adminSelection.count} onClear={adminSelection.clear} />
-                <BulkDeleteButton
-                  ids={adminSelection.ids}
-                  singular="administrador"
-                  plural="administradores"
-                  allowed={can('DELETE_USER_ADMIN')}
-                  onDelete={id => deleteAdmin.mutateAsync(id)}
-                  onDone={() => adminSelection.clear()}
-                  className="h-9"
-                />
-                <ExportMenu
-                  dataset="admins"
-                  filters={{ rulesId: rulesFilter || undefined }}
-                  selectedIds={adminSelection.ids}
-                  total={adminsData?.total}
-                  filtered={!!rulesFilter}
-                  className="h-9"
-                />
-              </div>
-            )}
-          </div>
+          </FilterBar>
           {loadingAdmins && (
-            <div className="flex flex-col gap-3">
+            <div className="flex flex-col gap-2">
               {Array.from({ length: 3 }).map((_, i) => (
-                <div key={i} className="flex items-center gap-3 rounded-lg border border-border p-3">
-                  <Skeleton className="size-10 rounded-full" />
+                <div key={i} className="flex items-center gap-3 rounded-xl border border-border bg-card p-3">
+                  <Skeleton className="size-8 rounded-full" />
                   <div className="flex flex-col gap-1.5 flex-1">
                     <Skeleton className="h-4 w-24" />
                     <Skeleton className="h-3 w-40" />
                   </div>
-                  <Skeleton className="h-5 w-20 rounded-full" />
+                  <Skeleton className="h-5 w-20" />
                 </div>
               ))}
             </div>
           )}
           {!loadingAdmins && errorAdmins && (
             <LoadErrorRetry
-              className="rounded-lg border bg-card"
+              className="rounded-xl border border-border bg-card"
               message="Não foi possível carregar os administradores."
               onRetry={() => void refetchAdmins()}
               retrying={fetchingAdmins}
             />
           )}
           {!loadingAdmins && !errorAdmins && admins.length === 0 && (
-            <EmptyState icon={Shield} title="Nenhum administrador cadastrado" description={'Use o botão "Novo admin" para adicionar.'} />
+            <EmptyState framed icon={Shield} title="Nenhum administrador cadastrado" description={'Use o botão "Novo admin" para adicionar.'} />
           )}
           {!loadingAdmins && admins.length > 0 && (
-            <>
-            <div className="rounded-lg border border-border bg-card overflow-hidden">
+            <div className="flex flex-col gap-2">
+            {/* Celular: um cartão por administrador, com o nome inteiro. */}
+            <ul className="flex flex-col gap-2 md:hidden" aria-label="Administradores">
+              {admins.map(a => (
+                <li key={a.id} className="flex items-start gap-3 rounded-xl border border-border bg-card p-3">
+                  {canExportAdmins && (
+                    <span className="flex h-8 shrink-0 items-center">
+                      <SelectCheckbox
+                        checked={adminSelection.isSelected(a.id)}
+                        onChange={() => adminSelection.toggle(a.id)}
+                        label={`Selecionar ${a.userData.name}`}
+                      />
+                    </span>
+                  )}
+                  <InitialsAvatar name={a.userData.name} avatar={a.userData.avatar} size="sm" />
+                  <div className="min-w-0 flex-1">
+                    <p className="break-words text-sm font-medium text-foreground">{a.userData.name}</p>
+                    <p className="break-all text-xs text-muted-foreground">@{a.username}</p>
+                    <Badge variant="outline" className="mt-1 max-w-full" title={a.rules.name}>
+                      <Shield aria-hidden /><span className="truncate">{a.rules.name}</span>
+                    </Badge>
+                  </div>
+                  <RowActions visible={0} label={`Ações de ${a.userData.name}`} actions={adminActions(a)} className="-my-1.5 -mr-1.5" />
+                </li>
+              ))}
+            </ul>
+            <div className="hidden overflow-hidden rounded-xl border border-border bg-card md:block">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -1465,8 +1462,8 @@ function RouteComponent() {
                       </TableHead>
                     )}
                     <TableHead>Administrador</TableHead>
-                    <TableHead className="hidden md:table-cell">Email</TableHead>
-                    <TableHead className="hidden md:table-cell">Regra</TableHead>
+                    <TableHead>Email</TableHead>
+                    <TableHead>Regra</TableHead>
                     <TableHead className={`w-28 text-right ${STICKY_ACTIONS_CELL}`}>Ações</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -1482,58 +1479,25 @@ function RouteComponent() {
                           />
                         </TableCell>
                       )}
-                      <TableCell className="max-w-[8rem] sm:max-w-[16rem]">
+                      <TableCell className="max-w-[16rem]">
                         <div className="flex items-center gap-3">
                           <InitialsAvatar name={a.userData.name} avatar={a.userData.avatar} size="sm" />
                           <div className="min-w-0">
                             <p className="truncate font-medium text-sm text-foreground" title={a.userData.name}>{a.userData.name}</p>
-                            <p className="truncate text-xs text-muted-foreground font-mono" title={`@${a.username}`}>@{a.username}</p>
-                            {/* No celular a regra sai da coluna e vem para cá. */}
-                            <p className="truncate text-xs text-muted-foreground md:hidden" title={a.rules.name}>{a.rules.name}</p>
+                            <p className="truncate text-xs text-muted-foreground" title={`@${a.username}`}>@{a.username}</p>
                           </div>
                         </div>
                       </TableCell>
-                      <TableCell className="hidden max-w-[12rem] text-sm text-muted-foreground md:table-cell 2xl:max-w-[20rem]">
+                      <TableCell className="max-w-[12rem] text-sm text-muted-foreground 2xl:max-w-[20rem]">
                         <span className="block truncate" title={a.userData.email || undefined}>{a.userData.email || '—'}</span>
                       </TableCell>
-                      <TableCell className="hidden max-w-[12rem] md:table-cell">
-                        <div className="flex items-center gap-1.5">
-                          <Shield className="size-3.5 shrink-0 text-muted-foreground" />
-                          <Badge variant="outline" className="min-w-0 max-w-full text-xs" title={a.rules.name}><span className="truncate">{a.rules.name}</span></Badge>
-                        </div>
+                      <TableCell className="max-w-[12rem]">
+                        <Badge variant="outline" className="min-w-0 max-w-full" title={a.rules.name}>
+                          <Shield aria-hidden /><span className="truncate">{a.rules.name}</span>
+                        </Badge>
                       </TableCell>
                       <TableCell className={`text-right ${STICKY_ACTIONS_CELL}`}>
-                        <div className="flex items-center justify-end gap-1">
-                          <PermissionButton
-                            allowed={can('UPDATE_USER_ADMIN')}
-                            noPermissionMessage="Sem permissão para editar administradores"
-                            variant="ghost" size="icon"
-                            className="size-7"
-                            onClick={() => { setEditAdmin(a); setEditAdminKey(k => k + 1) }}
-                          >
-                            <Pencil className="size-3.5" />
-                          </PermissionButton>
-                          {canExportAdmins && (
-                            <Button
-                              variant="ghost" size="icon"
-                              className="size-7"
-                              disabled={exportingRow === a.id}
-                              onClick={() => handleExportRow('admins', a.id)}
-                              aria-label="Exportar administrador" title="Exportar administrador"
-                            >
-                              {exportingRow === a.id ? <Loader2 className="size-3.5 animate-spin" /> : <Download className="size-3.5" />}
-                            </Button>
-                          )}
-                          <PermissionButton
-                            allowed={can('DELETE_USER_ADMIN')}
-                            noPermissionMessage="Sem permissão para excluir administradores"
-                            variant="ghost" size="icon"
-                            className="size-7 text-destructive/60 hover:text-destructive"
-                            onClick={() => setDeleteAdminTarget(a)}
-                          >
-                            <Trash2 className="size-3.5" />
-                          </PermissionButton>
-                        </div>
+                        <RowActions label={`Ações de ${a.userData.name}`} actions={adminActions(a)} />
                       </TableCell>
                     </TableRow>
                   ))}
@@ -1548,7 +1512,7 @@ function RouteComponent() {
               onPageChange={setAdminsPage}
               showLimitSelector={false}
             />
-            </>
+            </div>
           )}
         </TabsContent>
       </Tabs>
@@ -1572,12 +1536,17 @@ function RouteComponent() {
         onOpenChange={open => !open && setDeleteAdminTarget(null)}
         title="Excluir administrador"
         description={<>
-          <span className="font-medium text-foreground">{deleteAdminTarget?.userData.name}</span> <span className="font-mono">@{deleteAdminTarget?.username}</span>
+          <span className="font-medium text-foreground">{deleteAdminTarget?.userData.name}</span> <span>@{deleteAdminTarget?.username}</span>
           <br />Esta ação não pode ser desfeita.
         </>}
         onConfirm={handleDeleteAdmin}
         pending={deleteAdmin.isPending}
       />
-    </div>
+    </PageContainer>
   )
+}
+
+/** Contador ao lado do nome da aba (sem pílula). */
+function TabCount({ n }: { n: number }) {
+  return <span className="text-xs tabular-nums text-faint-foreground">{n}</span>
 }
