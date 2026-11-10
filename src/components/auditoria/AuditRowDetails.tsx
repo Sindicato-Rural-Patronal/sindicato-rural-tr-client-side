@@ -25,8 +25,8 @@ export function AuditRowDetails({
             <>
               <span className="font-mono text-foreground">{row.ip}</span>
               {!ipFiltered && (
-                <Button size="sm" variant="outline" className="h-7 gap-1.5" onClick={() => onFilterIp(row.ip!)}>
-                  <Filter className="size-3.5" />
+                <Button size="xs" variant="outline" onClick={() => onFilterIp(row.ip!)}>
+                  <Filter aria-hidden />
                   Filtrar por este IP
                 </Button>
               )}
@@ -46,7 +46,7 @@ export function AuditRowDetails({
           {row.userAgent ? (
             <>
               {row.device && <span className="block text-foreground">{row.device}</span>}
-              <span className="block break-all font-mono text-[11px] text-muted-foreground">{row.userAgent}</span>
+              <span className="block break-all font-mono text-xs text-muted-foreground">{row.userAgent}</span>
             </>
           ) : (
             <span className="text-muted-foreground">Não registrado</span>
@@ -54,7 +54,7 @@ export function AuditRowDetails({
         </dd>
 
         <dt className="text-xs text-muted-foreground sm:text-sm">Rota</dt>
-        <dd className="break-all font-mono text-[11px] text-muted-foreground">
+        <dd className="break-all font-mono text-xs text-muted-foreground">
           {row.method} {row.path} · {row.statusCode}
         </dd>
       </dl>
@@ -62,7 +62,7 @@ export function AuditRowDetails({
       {changes.length > 0 && (
         <div className="flex flex-col gap-2">
           <p className="text-sm font-medium text-foreground">O que mudou</p>
-          <div className="overflow-x-auto rounded-md border border-border">
+          <div className="overflow-x-auto rounded-lg border border-border bg-card">
             <table className="w-full min-w-[420px] text-sm">
               <thead className="bg-muted/50 text-left text-xs text-muted-foreground">
                 <tr>
