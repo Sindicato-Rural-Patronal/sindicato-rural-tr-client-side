@@ -18,12 +18,14 @@ por cima. E o que ele pode fazer vem de uma **regra de permissão** — nunca de
 permissões soltas.
 
 Cada regra tem nome, descrição e a lista de permissões marcadas. As permissões
-vêm em conjuntos por assunto (cursos, usuários, notícias, banners, cotações,
-convênios, contatos, auditoria, financeiro) e em quatro níveis: **ver, criar,
-alterar e excluir**.
+vêm em conjuntos por assunto (usuários, cursos, regras, administradores,
+notícias, contatos, banners, cotações, auditoria, financeiro, convênios) e em
+quatro caixas: **Visualizar**, **Criar**, **Editar** e **Excluir**. Contatos e
+Auditoria têm só **Visualizar** e **Editar**.
 
-> **Ver** é o que liga o item no menu. Se alguém reclama que uma tela sumiu,
-> quase sempre falta a permissão de *ver* daquele assunto na regra dele.
+> **Visualizar** é o que liga o item no menu. Se alguém reclama que uma tela
+> sumiu, quase sempre falta a permissão de *Visualizar* daquele assunto na
+> regra dele.
 
 ## Convidando um administrador
 

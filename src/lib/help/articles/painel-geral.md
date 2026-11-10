@@ -39,7 +39,8 @@ está marcado nas salas, com cursos, eventos e reuniões. O tipo aparece num
 **Reunião**, em cima, filtram a agenda. É por aqui que se marca reserva de sala;
 veja [Salas, reservas e agenda](?topico=salas-e-agenda).
 
-**Financeiro em** (o mês) — entradas, saídas e saldo do mês corrente.
+**Financeiro do mês** (na tela, com o nome do mês: *Financeiro em novembro de
+2026*) — entradas, saídas e saldo do mês corrente.
 
 **Cursos públicos** — os cursos no ar, com as vagas no formato `8/40`, mais o
 aviso de *quase lotado* (a partir de 80%) e *lotado*.
