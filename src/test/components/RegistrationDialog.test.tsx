@@ -91,7 +91,7 @@ describe('Inscrição pelo site: CPF + 4 últimos dígitos do telefone', () => {
 
     apiFetch.mockResolvedValueOnce(ok({}))
     fireEvent.click(screen.getByRole('button', { name: 'Sim, confirmar inscrição' }))
-    await screen.findByText('Inscrição realizada!')
+    await screen.findByText('Inscrição realizada')
     expect(apiFetch.mock.calls[1][0]).toBe('/courses/c1/register-by-cpf')
     expect(bodyOf(1)).toEqual({ cpf: '52998224725', phoneEnd: '1234' })
   })

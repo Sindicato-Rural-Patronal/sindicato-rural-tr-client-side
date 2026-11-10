@@ -1,20 +1,26 @@
 import { Link, useLocation } from '@tanstack/react-router'
 import { Button } from '@/components/ui/button'
-import { Menu, X } from 'lucide-react'
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
+import { ChevronDown, Menu, X } from 'lucide-react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ThemeToggle } from '@/components/ThemeToggle'
 import { useConvenioMenu } from '@/hooks/useConvenios'
+import { cn } from '@/lib/utils'
 
-// Desktop: nome longo (ex.: convênio) é cortado com "…" e aparece inteiro no title.
+// Computador: item de 36 px; o ativo fica em texto principal com a linha verde embaixo.
+const linkBase =
+  'relative inline-flex h-9 items-center rounded-md px-3 text-sm font-medium transition-colors after:absolute after:inset-x-3 after:-bottom-[13px] after:h-0.5 after:rounded-full'
 const linkClass = {
-  active: 'max-w-40 truncate px-3 py-1.5 text-sm font-semibold text-primary border-b-2 border-primary',
-  idle: 'max-w-40 truncate px-3 py-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors',
+  active: `${linkBase} text-foreground after:bg-primary`,
+  idle: `${linkBase} text-muted-foreground hover:bg-accent hover:text-foreground after:bg-transparent`,
 }
 // Celular: cada item com pelo menos 44px de altura (alvo de toque confortável).
 const mobileClass = {
-  active: 'flex min-h-11 items-center px-4 py-2 text-base font-semibold bg-primary/10 text-primary rounded-lg',
-  idle: 'flex min-h-11 items-center px-4 py-2 text-base font-medium hover:bg-muted text-foreground rounded-lg transition-colors',
+  active: 'flex min-h-11 items-center rounded-lg bg-muted px-4 py-2 text-base font-medium text-foreground',
+  idle: 'flex min-h-11 items-center rounded-lg px-4 py-2 text-base font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground',
 }
 
 export function PublicHeader() {
@@ -24,57 +30,77 @@ export function PublicHeader() {
   const { t } = useTranslation()
   const { data: convenios } = useConvenioMenu()
 
-  // Cada convênio ativo é um item próprio do menu, entre Notícias e Sobre
-  // (são poucos; não precisa de submenu).
-  const links = [
+  // Os convênios ficam num item só ("Convênios"): antes cada um era um item do
+  // menu, e nomes longos ("TIM S.A (TIM CELULAR…") eram cortados.
+  const before = [
     { href: '/', label: t('nav.home') },
     { href: '/cursos', label: t('nav.courses') },
     { href: '/eventos', label: t('nav.events') },
     { href: '/noticias', label: t('nav.news') },
-    ...(convenios ?? []).map(c => ({ href: `/convenios/${c.slug}`, label: c.name })),
+  ]
+  const after = [
     { href: '/sobre', label: t('nav.about') },
     { href: '/contato', label: t('nav.contact') },
   ]
+  const convenioLinks = (convenios ?? []).map(c => ({ href: `/convenios/${c.slug}`, label: c.name }))
 
   const isActive = (href: string) => href === '/' ? pathname === href : pathname.startsWith(href)
+  const conveniosActive = isActive('/convenios')
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/60">
-      <div className="container mx-auto px-4 flex h-16 items-center justify-between">
-        {/* Marca + lema. A assinatura horizontal tem texto verde-escuro em fundo
-            transparente: no tema escuro ela vira silhueta branca, senão some.
-            O lema só aparece de xl para cima — abaixo disso ele disputaria a
-            barra com os itens do menu. */}
-        <Link to="/" className="flex min-w-0 items-center gap-3 shrink-0">
+    <header className="sticky top-0 z-50 w-full border-b border-border bg-background">
+      <div className="container mx-auto flex h-16 items-center justify-between gap-4 px-4">
+        {/* Só a assinatura: a imagem já traz "Sindicato Rural Terra Roxa Paraná".
+            Ela tem texto verde-escuro em fundo transparente: no tema escuro vira
+            silhueta clara, senão some. */}
+        <Link to="/" className="flex shrink-0 items-center rounded-md" aria-label="Sindicato Rural de Terra Roxa – início">
           <img
             src="/logo-icon.png"
             alt="Sindicato Rural de Terra Roxa – Paraná"
-            className="h-9 w-auto object-contain sm:h-10 dark:brightness-0 dark:invert"
+            width={130}
+            height={48}
+            className="h-10 w-auto object-contain sm:h-12 dark:brightness-0 dark:invert"
           />
-          <span className="hidden min-w-0 border-l border-border pl-3 xl:block">
-            <span className="block truncate text-xs font-semibold leading-tight text-foreground">
-              {t('header.slogan')}
-            </span>
-            <span className="block truncate text-[11px] leading-tight text-muted-foreground">
-              {t('header.sloganSub')}
-            </span>
-          </span>
         </Link>
 
-        {/* Desktop Nav */}
-        <nav className="hidden lg:flex items-center gap-1">
-          {links.map(link => (
-            <Link key={link.href} to={link.href} title={link.label} className={isActive(link.href) ? linkClass.active : linkClass.idle}>
+        {/* Computador */}
+        <nav className="hidden items-center gap-1 lg:flex" aria-label="Menu principal">
+          {before.map(link => (
+            <Link key={link.href} to={link.href} className={isActive(link.href) ? linkClass.active : linkClass.idle}>
               {link.label}
             </Link>
           ))}
-          <div className="ml-1 border-l border-border pl-1">
+          <DropdownMenu modal={false}>
+            <DropdownMenuTrigger className={cn(conveniosActive ? linkClass.active : linkClass.idle, 'gap-1 outline-none data-[state=open]:bg-accent data-[state=open]:text-foreground')}>
+              {t('nav.convenios')}
+              <ChevronDown className="size-4 text-faint-foreground" aria-hidden />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="w-60">
+              <DropdownMenuItem asChild>
+                <Link to="/convenios">{t('nav.allConvenios')}</Link>
+              </DropdownMenuItem>
+              {convenioLinks.length > 0 && <DropdownMenuSeparator />}
+              {convenioLinks.map(c => (
+                <DropdownMenuItem key={c.href} asChild>
+                  <Link to={c.href} className="min-w-0">
+                    <span className="truncate">{c.label}</span>
+                  </Link>
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+          {after.map(link => (
+            <Link key={link.href} to={link.href} className={isActive(link.href) ? linkClass.active : linkClass.idle}>
+              {link.label}
+            </Link>
+          ))}
+          <div className="ml-2 border-l border-border pl-2">
             <ThemeToggle />
           </div>
         </nav>
 
-        {/* Mobile: theme + menu button */}
-        <div className="flex lg:hidden items-center gap-1">
+        {/* Celular: tema + botão do menu */}
+        <div className="flex items-center gap-1 lg:hidden">
           <ThemeToggle className="size-11" />
           <Button
             variant="ghost"
@@ -82,22 +108,40 @@ export function PublicHeader() {
             className="size-11"
             onClick={() => setMenuOpen(!menuOpen)}
             aria-label={menuOpen ? t('nav.closeMenu') : t('nav.openMenu')}
+            aria-expanded={menuOpen}
           >
             {menuOpen ? <X className="size-5" /> : <Menu className="size-5" />}
           </Button>
         </div>
       </div>
 
-      {/* Mobile Nav */}
+      {/* Menu do celular */}
       {menuOpen && (
-        <nav className="lg:hidden border-t bg-background py-3 px-4 flex flex-col gap-1">
-          {links.map(link => (
+        <nav className="flex max-h-[calc(100dvh-4rem)] flex-col gap-1 overflow-y-auto border-t border-border bg-background px-4 py-3 lg:hidden" aria-label="Menu principal">
+          {before.map(link => (
+            <Link key={link.href} to={link.href} onClick={() => setMenuOpen(false)} className={isActive(link.href) ? mobileClass.active : mobileClass.idle}>
+              {link.label}
+            </Link>
+          ))}
+          <Link
+            to="/convenios"
+            onClick={() => setMenuOpen(false)}
+            className={pathname === '/convenios' || pathname === '/convenios/' ? mobileClass.active : mobileClass.idle}
+          >
+            {t('nav.convenios')}
+          </Link>
+          {convenioLinks.map(c => (
             <Link
-              key={link.href}
-              to={link.href}
+              key={c.href}
+              to={c.href}
               onClick={() => setMenuOpen(false)}
-              className={isActive(link.href) ? mobileClass.active : mobileClass.idle}
+              className={cn(isActive(c.href) ? mobileClass.active : mobileClass.idle, 'ml-4 min-w-0 text-sm')}
             >
+              <span className="truncate">{c.label}</span>
+            </Link>
+          ))}
+          {after.map(link => (
+            <Link key={link.href} to={link.href} onClick={() => setMenuOpen(false)} className={isActive(link.href) ? mobileClass.active : mobileClass.idle}>
               {link.label}
             </Link>
           ))}
