@@ -32,8 +32,10 @@ function RouteErrorContent({ error, reset }: ErrorComponentProps) {
 
   return (
     <div role="alert" className="flex min-h-[60vh] flex-col items-center justify-center px-4 py-16 text-center">
-      <AlertTriangle className="size-12 text-amber-500" aria-hidden />
-      <h1 className="mt-4 text-xl font-bold text-foreground md:text-2xl">{t('errorPage.title')}</h1>
+      <span className="flex size-12 items-center justify-center rounded-xl bg-warning-soft text-warning">
+        <AlertTriangle className="size-6" aria-hidden />
+      </span>
+      <h1 className="mt-4 text-xl font-semibold text-foreground md:text-2xl">{t('errorPage.title')}</h1>
       <p className="mt-2 max-w-md text-muted-foreground">{t('common.connectionHint')}</p>
       <div className="mt-8 flex flex-wrap justify-center gap-3">
         <Button className="h-11 gap-2 px-5" onClick={retry}>
