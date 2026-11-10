@@ -2,20 +2,21 @@ import { passwordStrength, type PasswordContext, type PasswordScore } from '@/li
 
 // Barra + rótulo + até duas dicas do que melhorar na senha. É só orientação:
 // nunca desabilita o botão de salvar nem impede o envio do formulário.
+// Cores do tema: fraca no vermelho da terra roxa, média no âmbar e forte no verde.
 
 const BAR_COLOR: Record<PasswordScore, string> = {
-  0: 'bg-red-500',
-  1: 'bg-red-500',
-  2: 'bg-amber-500',
-  3: 'bg-emerald-500',
-  4: 'bg-emerald-600',
+  0: 'bg-destructive',
+  1: 'bg-destructive',
+  2: 'bg-warning',
+  3: 'bg-success',
+  4: 'bg-success',
 }
 const TEXT_COLOR: Record<PasswordScore, string> = {
-  0: 'text-red-600 dark:text-red-400',
-  1: 'text-red-600 dark:text-red-400',
-  2: 'text-amber-600 dark:text-amber-400',
-  3: 'text-emerald-600 dark:text-emerald-400',
-  4: 'text-emerald-600 dark:text-emerald-400',
+  0: 'text-destructive',
+  1: 'text-destructive',
+  2: 'text-warning',
+  3: 'text-success',
+  4: 'text-success',
 }
 
 type Props = {
@@ -43,7 +44,7 @@ export function PasswordStrengthHint({ password, context, maxTips = 2, className
             />
           ))}
         </div>
-        <span className={`text-[11px] font-medium ${TEXT_COLOR[score]}`}>{label}</span>
+        <span className={`text-xs font-medium ${TEXT_COLOR[score]}`}>{label}</span>
       </div>
       <p className="sr-only">Força da senha: {label}.</p>
       {tips.slice(0, maxTips).map(tip => (
