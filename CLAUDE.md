@@ -113,7 +113,7 @@ docker compose -f docker-compose.prod.yml --env-file .env.production up -d --bui
 
 Layouts pai:
 - `_public.tsx` — Header + Footer público + botão flutuante do WhatsApp
-- `_admin.tsx` — Sidebar admin (AdminSideBar), token-gated (valida JWT + expiração); liga o tema Cinza/Verde-claro do painel (`syncTheme(true)`) ao entrar e desliga ao sair; no celular, topo com SidebarTrigger + sino de notificações; monta `CommandPalette` e `LeaveConfirmHost`
+- `_admin.tsx` — Sidebar admin (AdminSideBar), token-gated (valida JWT + expiração); liga o tema Cinza/Verde-claro do painel (`syncTheme(true)`) e as cores neutras (`setArea('painel')`, lib/area.ts) ao entrar e desliga ao sair; no celular, topo com SidebarTrigger + sino de notificações; monta `CommandPalette` e `LeaveConfirmHost`
 
 `routeTree.gen.ts` é **gerado automaticamente** pelo TanStack Router — não editar manualmente.
 
@@ -134,11 +134,14 @@ src/
 │   ├── course.ts                    # Course, CourseInstructor (shape da API, campos em inglês)
 │   └── news.ts                      # News, blocos de conteúdo (parágrafo, imagem, imagem+texto), NewsStatus
 ├── components/
-│   ├── ui/                          # shadcn/ui; date-picker.tsx (digitável dd/mm/aaaa), native-select.tsx,
-│   │                                #   pagination.tsx (componente Pagination), dialog.tsx (data-escape-owner)
+│   ├── ui/                          # shadcn/ui ajustado ao design (ver "Design"); date-picker.tsx (digitável dd/mm/aaaa),
+│   │                                #   native-select.tsx, pagination.tsx (componente Pagination), dialog.tsx (data-escape-owner)
+│   ├── PageHeader.tsx               # PageHeader (título, "?", descrição, ações) + PageContainer / PAGE_CONTAINER_CLASS (ver "Design")
+│   ├── RowActions.tsx               # Ações por linha: duas à vista, o resto no menu "Mais" (ver "Design")
+│   ├── FilterBar.tsx                # FilterBar (filtros à esquerda, ações no canto) + FilterField (ver "Design")
 │   ├── LoadErrorRetry.tsx           # PADRÃO de falha ao carregar (site e painel): mensagem + "Tentar de novo";
 │   │                                #   variant "inline" para faixas, selects e listas suspensas
-│   ├── EmptyState.tsx               # Vazio de verdade (prop `topico` liga à ajuda)
+│   ├── EmptyState.tsx               # Vazio de verdade (prop `topico` liga à ajuda; `framed` desenha a caixa)
 │   ├── ErrorAlert.tsx               # Erro de formulário/ação (não de carregamento)
 │   ├── NoPermission.tsx             # "Sem permissão" + "Por que não vejo esta tela?"; se as permissões não
 │   │                                #   carregaram, mostra LoadErrorRetry em vez disso
@@ -156,7 +159,7 @@ src/
 │   ├── home-events-section.tsx      # "Próximos eventos" (só quando há evento publicado)
 │   ├── home-news-section.tsx        # Notícias na home
 │   ├── course-card.tsx              # CourseCard + CourseCardSimple (carousel-aware)
-│   ├── StatusBadge.tsx              # Selo do status do curso
+│   ├── StatusBadge.tsx              # Selo do status do curso (tons do Badge)
 │   ├── GalleryLightbox.tsx          # Fotos de uma galeria em tela cheia (página Sobre)
 │   ├── adminSideBar.tsx             # Sidebar admin (favicon.ico como marca); sino ao lado do logo; itens por permissão
 │   ├── nav-user.tsx                 # Menu do usuário: Minha conta, sair (limpa o cache do React Query)
@@ -169,7 +172,7 @@ src/
 │   ├── MemberBadge.tsx              # Selo "Associado" (amarelo; só some para quem não está em dia): lista de pessoas, ficha e busca de pessoa
 │   ├── PasswordInput.tsx            # Campo de senha com mostrar/ocultar (repassa `ref`)
 │   ├── PasswordStrengthHint.tsx     # Força da senha: barra + rótulo + até 2 dicas; só orienta, nunca bloqueia
-│   ├── InitialsAvatar.tsx           # Foto ou iniciais
+│   ├── InitialsAvatar.tsx           # Foto ou iniciais (fundo neutro, sem cor por nome)
 │   ├── ImageCropDialog.tsx          # Recorte de imagem (banners, notícias)
 │   ├── DeleteConfirmDialog.tsx      # Confirmação de exclusão
 │   ├── confirm-close-dialog.tsx     # "Descartar alterações?" + LeaveConfirmHost (useUnsavedGuard)
@@ -234,6 +237,7 @@ src/
 │   │                                #   servidor), isAlreadyRegistered, isCannotConfirmRegistration (409 → link do WhatsApp)
 │   ├── theme.ts                     # Tema: ThemeMode, readStoredTheme, syncTheme(inAdmin), saveTheme. Cinza e Verde-claro (fundo fosco,
 │   │                                #   cartões brancos) só valem no painel: `data-painel` no <html> liga as cores de index.css
+│   ├── area.ts                      # `data-area` no <html>: 'site' (cores de papel) ou 'painel' (neutro); main.tsx e _admin.tsx
 │   ├── chunk-reload.ts              # Recarga automática depois de deploy (vite:preloadError): guarda por horário, 60 s entre recargas
 │   ├── login-error.ts               # loginErrorMessage: senha errada / 429 / sistema fora do ar / sem internet
 │   ├── auth-token.ts                # JWT no navegador: validade, renovação, safeAdminRedirect, loginHref
@@ -309,6 +313,95 @@ src/
 │   ├── safe-url.ts, escape-html.ts  # Link digitado pelo admin; texto dinâmico em dangerouslySetInnerHTML
 └── main.tsx                         # Tema salvo, recarga depois de deploy (lib/chunk-reload.ts), router com telas padrão em português
 ```
+
+## Design
+
+Direção aprovada pelo usuário em 10/11/2026 (`orquestracao/PLANO-DESIGN.md`, seção 2). A base (tokens e componentes) é da SR-080; as telas convergem para ela. Os valores estão em `src/index.css`, com o contraste medido ao lado de cada um.
+
+**Regras**
+- **Um destaque só: o verde do Sindicato** (`primary`). Botão principal, item selecionado, a linha da aba ativa, o número que importa. Fundos, bordas e textos ficam neutros.
+- **Mono só em números de quadro**: preços, datas e Nº, com a utilidade `num` (Geist Mono + algarismos tabulares). Nada de mono em rótulo, botão ou texto. `tabular-nums` sozinho continua valendo para contagens.
+- **Pesos 400, 500 e 600**: `font-bold` foi remapeado para 600 no tema, mas código novo usa `font-semibold`. Hierarquia vem do tamanho e da cor.
+- **Mínimo de 12 px** (`text-xs`): nada de `text-[10px]`/`text-[11px]`.
+- **Texto normal** (sentence case): sem `uppercase` com `tracking-wider` em rótulo ("Saldo em caixa", não "SALDO EM CAIXA").
+- **Movimento**: transição com nome (`transition-colors`, `transition-[color,background-color]`, `transition-opacity`), nunca `transition-all`; sem `hover:scale` (hover muda cor ou fundo); uma curva só, o padrão do tema (`ease-out` = `cubic-bezier(0.22, 1, 0.36, 1)`, 150 ms). O "reduzir movimento" do sistema corta tudo (index.css).
+- **Cantos**: etiqueta `rounded-sm` (6), item de menu e botão pequeno `rounded-md` (8), botão e campo `rounded-lg` (10), cartão `rounded-xl` (12), diálogo `rounded-2xl` (16). `rounded-full` só em avatar e etiqueta pequena.
+- **Linha fina, não anel**: `border border-border` (texto principal a 9%). Sem `backdrop-blur`, sem sombra colorida; sombra só no que flutua (`shadow-float`).
+
+**Tokens** (classes do Tailwind; o par do tema escuro e do site já vem junto)
+
+| Token | Quando usar |
+|---|---|
+| `bg-background` / `bg-card` / `bg-popover` | página / cartão, campo, tabela / menu, diálogo |
+| `bg-muted` (= `bg-secondary`) | superfície um tom acima: linha ativa, etiqueta neutra, faixa de resumo |
+| `bg-accent` | hover de menu e de botão fantasma |
+| `text-foreground` | texto principal |
+| `text-muted-foreground` | texto secundário: descrição, coluna secundária, rótulo |
+| `text-faint-foreground` | texto apagado: meta, legenda, placeholder, ícone de apoio (≈4,5:1, nunca em texto corrido) |
+| `primary` (`bg-primary`, `text-primary`, `ring`) | o destaque (verde do Sindicato) |
+| `success`, `success-foreground`, `success-soft` | positivo, entrada, "ativo", "no ar" |
+| `warning`, `warning-foreground`, `warning-soft` | aviso, pendente, "a confirmar", mês fechado |
+| `destructive`, `destructive-foreground`, `destructive-soft` | negativo, saída, erro, excluir (vermelho da terra roxa) |
+| `chart-1` … `chart-5` | gráficos: entradas, saídas, aviso e dois neutros |
+| `brand` | superfície de marca fixa nos dois temas (rodapé, faixas do site, login) |
+
+`-soft` é o fundo suave opaco do tom; o texto em cima é a cor do tom (`bg-warning-soft text-warning`). `-foreground` é o texto sobre a cor cheia (`bg-destructive text-destructive-foreground`): no tema escuro os tons são claros e o texto por cima é escuro, por isso **nunca `text-white` sobre `bg-destructive`/`bg-primary`**.
+
+**Áreas e temas.** O painel é neutro (cinza-grafite) e o site público usa cores de papel: o escopo é `html[data-area="site"]` (lib/area.ts), no `<html>` para valer também nos diálogos e menus, que abrem fora do layout. Login, `/cotacao`, convite e 404 são "site". Cinza e Verde-claro (`data-painel`) só trocam o fundo do painel; no site, com eles salvos, tudo fica claro. O tema escuro vale nos dois (no site, a rampa escura quente).
+
+**Componentes**
+- `Button`: `default` verde; `outline`, `secondary` e `ghost` neutros; `destructive` (suave) e `destructive-solid` (cheio, para a confirmação de excluir; o `DeleteConfirmDialog` já usa); `link`. Alturas: `xs` 28, `sm` 32, padrão 36, `lg` 40 (`icon*` iguais). Campos (`Input`, `SelectTrigger`, `NativeSelect`, `DatePicker`, `Textarea`) têm 36 px, canto de 10 e fundo do cartão.
+- `Badge` (etiqueta de situação): 20 px, texto de 12, canto de 6, fundo suave e texto da cor. Tons `neutral`, `success`, `warning`, `danger`; apelidos antigos: `default` = success, `secondary` = neutral, `destructive` = danger, `outline` = neutra só com a linha (para o que não é situação: "Parceira", "Nota"). `StatusBadge` e `MemberBadge` já usam.
+- `Tabs`: um estilo só (texto secundário, a ativa em texto principal com a linha verde, linha fina sob a barra). `variant="line"` e o padrão desenham o mesmo. Muitas abas no celular: `tabsWrapClass`.
+- `Dialog`: fundo escurecido sem desfoque e o "x" sempre (só desligue `showCloseButton` se a tela desenha o próprio no mesmo lugar, como a janela do curso). `AlertDialog` não tem "x": a pessoa escolhe um botão.
+- `Card`: linha fina, canto de 12. `Table`: cabeçalho de 12 px em texto secundário, linhas de 44 px.
+- `EmptyState`: um estilo só (ícone num quadrado neutro, título, explicação, ação). `framed` desenha a caixa quando o vazio fica solto na página; **nada de caixa tracejada feita à mão**.
+- **`PageHeader` + `PageContainer`** (`components/PageHeader.tsx`): toda tela do painel começa assim. O título não leva ícone; o "?" vai em `help` como elemento (o teste da ajuda procura o `<AjudaLink topico=…>` no arquivo da tela). No celular as ações descem para baixo do título.
+  ```tsx
+  <PageContainer>
+    <PageHeader
+      title="Banners"
+      description="Gerencie os banners exibidos na página inicial"
+      help={<AjudaLink topico="banners" titulo="Banners" />}
+      actions={<Button onClick={abrirNovo}><Plus /> Novo banner</Button>}
+    />
+    {/* filtros, conteúdo… (24 px entre os blocos) */}
+  </PageContainer>
+  ```
+  `PageContainer` = `p-4 md:p-6`, `gap-6`, até 1600 px; `PAGE_CONTAINER_CLASS` é a mesma classe para outro elemento.
+- **`RowActions`** (`components/RowActions.tsx`): a coluna "Ações" de toda tabela ou lista. As duas primeiras ações ficam à vista (ícone, nome na dica e no leitor de tela; 44 px no toque, 32 no computador) e o resto vai para o menu "Mais", com os nomes escritos e as destrutivas por último, depois de uma linha. Sobrando uma só, ela fica à vista. Cada ação: `{ label, icon, onClick, destructive?, hidden?, disabled?, reason?, busy?, key? }`. Sem permissão ou não se aplica → `hidden`; desligada com motivo (mês fechado) → `disabled` + `reason` (aparece na dica, substitui o `LockedReason`); gerando PDF → `busy`.
+  ```tsx
+  <RowActions label={`Ações do lançamento Nº ${t.number}`} actions={[
+    { label: 'Editar', icon: Pencil, onClick: () => abrirEditar(t), hidden: !canUpdate, disabled: !!lock, reason: lock ?? undefined },
+    { label: 'Repetir', icon: Repeat, onClick: () => abrirRepetir(t), hidden: !canCreate },
+    { label: 'Gerar Nota de Empenho', icon: Receipt, onClick: () => gerarNota(t), busy: notaBusy === t.id },
+    { label: 'Excluir', icon: Trash2, onClick: () => setDeleteTarget(t), destructive: true, hidden: !canDelete, disabled: !!lock, reason: lock ?? undefined },
+  ]} />
+  ```
+- **`FilterBar` + `FilterField`** (`components/FilterBar.tsx`): filtros à esquerda (quebram linha), ações da lista (Exportar, Novo…) sempre no canto direito; do tablet para baixo as ações sobem para cima dos filtros e, no celular, cada filtro ocupa a largura toda. `FilterField` põe o rótulo de 12 px em cima do campo. Use os campos do sistema (`DatePicker`, `NativeSelect`/`Select`), não o `<input type="date">` do navegador.
+  ```tsx
+  <FilterBar actions={<><ExportMenu … /><Button><Plus /> Novo lançamento</Button></>}>
+    <Input placeholder="Buscar" className="sm:w-72" … />
+    <FilterField label="De" htmlFor="f-de"><DatePicker id="f-de" … /></FilterField>
+    <FilterField label="Tipo" htmlFor="f-tipo"><NativeSelect id="f-tipo" …>…</NativeSelect></FilterField>
+  </FilterBar>
+  ```
+
+**Troca das cores fixas por tokens** (o que sobrou nas telas)
+
+| Cor fixa | Vira |
+|---|---|
+| `emerald-*`, `green-*` em valor positivo, entrada, "ok", "ativo", "no ar" | `text-success`; fundo `bg-success-soft`; borda `border-success/30`; etiqueta `Badge variant="success"` |
+| `emerald-*`, `green-*` em botão, link ou seleção | `Button` padrão / `text-primary` / `bg-primary` |
+| `red-*`, `rose-*` (saída, negativo, erro, excluir) | `text-destructive`, `bg-destructive-soft`, `border-destructive/30`; botão `variant="destructive"` ou `"destructive-solid"`; etiqueta `danger` |
+| `amber-*`, `yellow-*`, `orange-*` (aviso, pendente, a confirmar) | `text-warning`, `bg-warning-soft`, `border-warning/30`; etiqueta `warning` |
+| `sky-*`, `blue-*` (informação, "em andamento") | neutro: `text-muted-foreground`, `bg-muted`, etiqueta `neutral` ou `outline`; link → `text-primary` |
+| `violet-*`, `purple-*` (concluído, categoria) | neutro: `bg-muted text-muted-foreground`; categoria que precisa de cor → só um ponto de 8 px, não a etiqueta inteira |
+| `gray-*`, `neutral-*`, `zinc-*`, `slate-*` em texto | `text-foreground` / `text-muted-foreground` / `text-faint-foreground` |
+| `bg-white` em cartão ou campo; `text-white` sobre cor cheia | `bg-card`; `text-primary-foreground`, `text-destructive-foreground`… |
+| Gráfico: série de entradas / saídas | `var(--chart-1)` / `var(--chart-2)` (os outros com `--chart-4`/`--chart-5`, neutros) |
+
+Cor que vem do cadastro (cor da categoria e do caixa no Financeiro) continua como está.
 
 ## Padrões do código
 
