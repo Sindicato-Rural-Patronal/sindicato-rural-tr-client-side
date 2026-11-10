@@ -179,7 +179,7 @@ function BookingDialogSession({ open, booking, defaults, canUpdate = true, canDe
   return (
     <>
       <Dialog open={open} onOpenChange={isOpen => { if (!isOpen) requestClose() }}>
-        <DialogContent className="flex max-h-[92vh] flex-col gap-0 overflow-hidden p-0 sm:max-w-xl" showCloseButton={false}>
+        <DialogContent className="flex max-h-[92vh] flex-col gap-0 overflow-hidden p-0 sm:max-w-xl">
           <DialogHeader className="shrink-0 border-b px-5 pb-4 pt-5">
             <DialogTitle className="text-xl">{title}</DialogTitle>
             <DialogDescription>

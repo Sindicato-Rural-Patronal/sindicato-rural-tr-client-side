@@ -481,7 +481,7 @@ roomId })
   return (
     <>
     <Dialog open={open} onOpenChange={isOpen => { if (!isOpen) requestClose() }}>
-      <DialogContent className="sm:max-w-3xl max-h-[90vh] overflow-hidden flex flex-col" showCloseButton={false}>
+      <DialogContent className="sm:max-w-3xl max-h-[90vh] overflow-hidden flex flex-col">
         <DialogHeader className="px-6 pt-6 pb-4 border-b shrink-0">
           <DialogTitle className="text-xl">
             {editing ? t('admin.courses.editCourse') : source ? 'Duplicar curso' : t('admin.courses.newCourse')}

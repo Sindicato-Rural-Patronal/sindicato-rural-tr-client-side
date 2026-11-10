@@ -1,4 +1,5 @@
 import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { cn } from '@/lib/utils'
 import { Button } from './button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './select'
 
@@ -37,8 +38,8 @@ export function Pagination({
   const to = Math.min(page * limit, total)
 
   return (
-    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between py-3">
-      <p className="text-sm text-muted-foreground shrink-0">
+    <div className="flex flex-col gap-3 py-3 sm:flex-row sm:items-center sm:justify-between">
+      <p className="shrink-0 text-sm text-muted-foreground tabular-nums">
         {total === 0 ? 'Nenhum resultado' : `${from}–${to} de ${total}`}
       </p>
 
@@ -50,7 +51,7 @@ export function Pagination({
               value={String(limit)}
               onValueChange={v => { onLimitChange(Number(v)); onPageChange(1) }}
             >
-              <SelectTrigger className="h-8 w-16 text-xs">
+              <SelectTrigger size="sm" className="w-16 tabular-nums">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -62,26 +63,31 @@ export function Pagination({
           </div>
         )}
 
-        <div className="flex items-center gap-1">
+        <nav aria-label="Páginas" className="flex items-center gap-1">
           <Button
-            variant="outline"
-            size="icon"
-            className="size-8"
+            variant="ghost"
+            size="icon-sm"
             onClick={() => onPageChange(page - 1)}
             disabled={page <= 1 || isLoading}
+            aria-label="Página anterior"
           >
             <ChevronLeft className="size-4" />
           </Button>
 
           {pages.map((p, i) =>
             p === '...' ? (
-              <span key={`ellipsis-${i}`} className="px-1 text-sm text-muted-foreground select-none">…</span>
+              <span key={`ellipsis-${i}`} className="px-1 text-sm text-faint-foreground select-none">…</span>
             ) : (
+              // A página atual: um tom de fundo acima, com a linha fina; as outras em texto secundário.
               <Button
                 key={p}
-                variant={p === page ? 'default' : 'outline'}
-                size="icon"
-                className="size-8 text-xs"
+                variant="ghost"
+                size="icon-sm"
+                aria-current={p === page ? 'page' : undefined}
+                className={cn(
+                  'tabular-nums',
+                  p === page ? 'border-border bg-secondary text-foreground' : 'text-muted-foreground',
+                )}
                 onClick={() => onPageChange(p as number)}
                 disabled={isLoading}
               >
@@ -91,15 +97,15 @@ export function Pagination({
           )}
 
           <Button
-            variant="outline"
-            size="icon"
-            className="size-8"
+            variant="ghost"
+            size="icon-sm"
             onClick={() => onPageChange(page + 1)}
             disabled={page >= totalPages || isLoading}
+            aria-label="Próxima página"
           >
             <ChevronRight className="size-4" />
           </Button>
-        </div>
+        </nav>
       </div>
     </div>
   )
