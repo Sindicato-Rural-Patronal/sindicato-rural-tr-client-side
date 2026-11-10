@@ -96,12 +96,12 @@ function RegisteredView({ course, already, onClose }: { course: Course; already:
     <>
       <div className="flex flex-col items-center gap-3 pt-4 text-center">
         <div className={cn(
-          'flex size-16 items-center justify-center rounded-full',
-          already ? 'bg-primary/10' : 'bg-emerald-100 dark:bg-emerald-950/40',
+          'flex size-12 items-center justify-center rounded-xl',
+          already ? 'bg-muted' : 'bg-success-soft',
         )}>
           {already
-            ? <UserCheck className="size-8 text-primary" />
-            : <CheckCircle2 className="size-8 text-emerald-600" />}
+            ? <UserCheck className="size-6 text-muted-foreground" aria-hidden />
+            : <CheckCircle2 className="size-6 text-success" aria-hidden />}
         </div>
         <DialogTitle className="text-xl">
           {already ? t('registration.alreadyTitle') : t('registration.successTitle')}
@@ -111,19 +111,19 @@ function RegisteredView({ course, already, onClose }: { course: Course; already:
           : <DialogDescription dangerouslySetInnerHTML={{ __html: t('registration.successMessage', { courseName: escapeHtml(course.title) }) }} />}
       </div>
 
-      <div className="flex flex-col gap-2.5 rounded-lg border bg-muted/30 p-4 text-sm">
+      <div className="flex flex-col gap-2.5 rounded-lg border border-border bg-muted p-4 text-sm">
         <p className="font-semibold text-foreground">{course.title}</p>
         <div className="flex items-start gap-2.5">
-          <Calendar className="mt-0.5 size-4 shrink-0 text-primary" />
-          <p><span className="text-muted-foreground">{t('courseDetail.period')}: </span>{days}</p>
+          <Calendar className="mt-0.5 size-4 shrink-0 text-faint-foreground" aria-hidden />
+          <p><span className="text-muted-foreground">{t('courseDetail.period')}: </span><span className="num">{days}</span></p>
         </div>
         <div className="flex items-start gap-2.5">
-          <Clock className="mt-0.5 size-4 shrink-0 text-primary" />
-          <p><span className="text-muted-foreground">{t('courseDetail.schedule')}: </span>{course.startTime} – {course.endTime}</p>
+          <Clock className="mt-0.5 size-4 shrink-0 text-faint-foreground" aria-hidden />
+          <p><span className="text-muted-foreground">{t('courseDetail.schedule')}: </span><span className="num">{course.startTime} – {course.endTime}</span></p>
         </div>
         {course.location && (
           <div className="flex items-start gap-2.5">
-            <MapPin className="mt-0.5 size-4 shrink-0 text-primary" />
+            <MapPin className="mt-0.5 size-4 shrink-0 text-faint-foreground" aria-hidden />
             <p><span className="text-muted-foreground">{t('courseDetail.location')}: </span>{course.location}</p>
           </div>
         )}
@@ -147,7 +147,7 @@ function RegisteredView({ course, already, onClose }: { course: Course; already:
         )}
         <Button asChild variant="outline" className="h-11 w-full gap-2 text-base">
           <a href={whatsappShareUrl(event)} target="_blank" rel="noreferrer">
-            <FaWhatsapp className="size-5 text-[#25D366]" /> {t('registration.sendWhatsapp')}
+            <FaWhatsapp className="size-5 text-success" aria-hidden /> {t('registration.sendWhatsapp')}
           </a>
         </Button>
         {org.phone && (
@@ -343,7 +343,7 @@ export function RegistrationDialog({
                   </Button>
                   <Button className="h-11 flex-1 gap-2" disabled={loading || !cpfOk || !phoneEndOk} onClick={handleLookup}>
                     <Search className="size-4" />
-                    {loading ? 'Buscando...' : 'Continuar'}
+                    {loading ? 'Buscando…' : 'Continuar'}
                   </Button>
                 </DialogFooter>
               </div>
@@ -357,13 +357,13 @@ export function RegistrationDialog({
                 <DialogDescription>Encontramos um cadastro com esse CPF e telefone. É você?</DialogDescription>
               </DialogHeader>
               <div className="flex flex-col gap-4">
-                <div className="flex items-center gap-3 rounded-lg border bg-muted/30 p-4">
-                  <div className="flex size-10 items-center justify-center rounded-full bg-primary/10 text-primary">
-                    <UserCheck className="size-5" />
+                <div className="flex items-center gap-3 rounded-lg border border-border bg-muted p-4">
+                  <div className="flex size-10 items-center justify-center rounded-full bg-card text-muted-foreground">
+                    <UserCheck className="size-5" aria-hidden />
                   </div>
                   <div>
                     <p className="font-semibold">{lookupName}</p>
-                    <p className="text-xs text-muted-foreground font-mono">{cpf}</p>
+                    <p className="num text-sm text-muted-foreground">{cpf}</p>
                   </div>
                 </div>
                 {error && <ErrorAlert message={error} />}
@@ -399,7 +399,7 @@ export function RegistrationDialog({
                 </Field>
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <Field label="CPF">
-                    <Input value={cpf} disabled className={cn(inputCls, 'font-mono')} />
+                    <Input value={cpf} disabled className={cn(inputCls, 'num')} />
                   </Field>
                   <Field label="RG" optional>
                     <Input className={inputCls} value={f.rg} onChange={e => setF(p => ({ ...p, rg: e.target.value }))} autoComplete="off" />
@@ -488,7 +488,7 @@ export function RegistrationDialog({
                 {askSindicato && whatsappHref && (
                   <Button asChild variant="outline" className="h-11 w-full gap-2 text-base">
                     <a href={whatsappHref} target="_blank" rel="noreferrer">
-                      <FaWhatsapp className="size-5 text-[#25D366]" /> Falar com o Sindicato no WhatsApp
+                      <FaWhatsapp className="size-5 text-success" aria-hidden /> Falar com o Sindicato no WhatsApp
                     </a>
                   </Button>
                 )}
