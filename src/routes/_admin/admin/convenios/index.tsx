@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from '@tanstack/react-router'
+import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
 import { useState } from 'react'
 import { toast } from 'sonner'
 import { ExternalLink, HeartHandshake, Pencil, Plus, Trash2 } from 'lucide-react'
@@ -16,6 +16,8 @@ import { DeleteConfirmDialog } from '@/components/DeleteConfirmDialog'
 import { LoadErrorRetry } from '@/components/LoadErrorRetry'
 import { EmptyState } from '@/components/EmptyState'
 import { AjudaLink } from '@/components/ajuda/AjudaLink'
+import { PageContainer, PageHeader } from '@/components/PageHeader'
+import { RowActions } from '@/components/RowActions'
 
 export const Route = createFileRoute('/_admin/admin/convenios/')({
   beforeLoad: () => requirePermission('READ_CONVENIO'),
@@ -24,6 +26,7 @@ export const Route = createFileRoute('/_admin/admin/convenios/')({
 
 function ConveniosAdminPage() {
   const { can } = usePermissions()
+  const navigate = useNavigate()
   const { data, isLoading, isError, isFetching, refetch } = useAdminConvenios()
   const deleteM = useDeleteConvenio()
   const [deleteTarget, setDeleteTarget] = useState<Convenio | null>(null)
@@ -41,34 +44,28 @@ function ConveniosAdminPage() {
   }
 
   return (
-    <div className="p-6 flex flex-col gap-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <div className="flex items-center gap-1">
-            <h1 className="text-2xl font-bold tracking-tight text-foreground">Convênios</h1>
-            <AjudaLink topico="convenios" titulo="Convênios" />
-          </div>
-          <p className="text-sm text-muted-foreground">
-            Páginas públicas do menu "Convênios" do site: tabela de valores, documentos e informações.
-          </p>
-        </div>
-        {can('CREATE_CONVENIO') && (
-          <Button asChild className="shrink-0">
+    <PageContainer>
+      <PageHeader
+        title="Convênios"
+        description='Páginas públicas do menu "Convênios" do site: tabela de valores, documentos e informações'
+        help={<AjudaLink topico="convenios" titulo="Convênios" />}
+        actions={can('CREATE_CONVENIO') && (
+          <Button asChild>
             <Link to="/admin/convenios/novo"><Plus className="size-4" /> Novo convênio</Link>
           </Button>
         )}
-      </div>
+      />
 
       {isError && !data && (
         <LoadErrorRetry
-          className="rounded-lg border border-border bg-card"
+          className="rounded-xl border border-border bg-card"
           message="Não foi possível carregar os convênios."
           onRetry={() => void refetch()}
           retrying={isFetching}
         />
       )}
 
-      <div className="rounded-lg border border-border bg-card overflow-hidden">
+      <div className="rounded-xl border border-border bg-card overflow-hidden">
         <div className="overflow-x-auto">
           <Table>
             <TableHeader>
@@ -77,9 +74,9 @@ function ConveniosAdminPage() {
                 <TableHead className="hidden md:table-cell">Endereço no site</TableHead>
                 <TableHead className="hidden lg:table-cell">Faixas de preço</TableHead>
                 <TableHead className="hidden sm:table-cell">Ordem</TableHead>
-                <TableHead>Status</TableHead>
+                <TableHead className="hidden sm:table-cell">Status</TableHead>
                 <TableHead className="hidden xl:table-cell">Atualizado em</TableHead>
-                <TableHead className={`text-right ${STICKY_ACTIONS_CELL}`}>Ações</TableHead>
+                <TableHead className={`w-28 text-right ${STICKY_ACTIONS_CELL}`}>Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -89,7 +86,7 @@ function ConveniosAdminPage() {
                   <TableCell className="hidden md:table-cell"><Skeleton className="h-4 w-36" /></TableCell>
                   <TableCell className="hidden lg:table-cell"><Skeleton className="h-4 w-10" /></TableCell>
                   <TableCell className="hidden sm:table-cell"><Skeleton className="h-4 w-8" /></TableCell>
-                  <TableCell><Skeleton className="h-5 w-14" /></TableCell>
+                  <TableCell className="hidden sm:table-cell"><Skeleton className="h-5 w-14" /></TableCell>
                   <TableCell className="hidden xl:table-cell"><Skeleton className="h-4 w-20" /></TableCell>
                   <TableCell className={STICKY_ACTIONS_CELL}><Skeleton className="h-7 w-20 ml-auto" /></TableCell>
                 </TableRow>
@@ -97,7 +94,7 @@ function ConveniosAdminPage() {
 
               {!isLoading && !isError && list.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={7} className="p-0">
+                  <TableCell colSpan={7} className="p-0 whitespace-normal">
                     <EmptyState
                       icon={HeartHandshake}
                       title="Nenhum convênio"
@@ -112,7 +109,8 @@ function ConveniosAdminPage() {
                 <TableRow key={c.id} className={STICKY_ACTIONS_ROW}>
                   <TableCell className="max-w-[10rem] sm:max-w-[22rem]">
                     <div className="flex items-center gap-3">
-                      <div className="flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-md border bg-white">
+                      {/* Fundo branco de propósito: o logo do convênio é pensado para fundo claro (no tema escuro sumiria). */}
+                      <div className="flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-border bg-white">
                         {c.logoUrl
                           ? <img src={c.logoUrl} alt="" className="max-h-full max-w-full object-contain" />
                           : <HeartHandshake className="size-4 text-muted-foreground" />}
@@ -120,45 +118,30 @@ function ConveniosAdminPage() {
                       <div className="min-w-0">
                         <p className="font-medium text-foreground truncate">{c.name}</p>
                         <p className="text-xs text-muted-foreground truncate">{c.title}</p>
+                        {/* No celular a situação sai da coluna e vem para baixo do nome (as três ações precisam de espaço). */}
+                        <Badge variant={c.isActive ? 'success' : 'neutral'} className="mt-1 sm:hidden">{c.isActive ? 'Ativo' : 'Inativo'}</Badge>
                       </div>
                     </div>
                   </TableCell>
-                  <TableCell className="hidden md:table-cell font-mono text-xs text-muted-foreground">/convenios/{c.slug}</TableCell>
+                  <TableCell className="hidden md:table-cell text-xs text-muted-foreground">/convenios/{c.slug}</TableCell>
                   <TableCell className="hidden lg:table-cell tabular-nums text-muted-foreground">{c.priceRows.length}</TableCell>
                   <TableCell className="hidden sm:table-cell tabular-nums text-muted-foreground">{c.order}</TableCell>
-                  <TableCell>
-                    <Badge variant={c.isActive ? 'default' : 'secondary'}>{c.isActive ? 'Ativo' : 'Inativo'}</Badge>
+                  <TableCell className="hidden sm:table-cell">
+                    <Badge variant={c.isActive ? 'success' : 'neutral'}>{c.isActive ? 'Ativo' : 'Inativo'}</Badge>
                   </TableCell>
-                  <TableCell className="hidden xl:table-cell tabular-nums text-muted-foreground">
+                  <TableCell className="hidden xl:table-cell num text-muted-foreground">
                     {formatDateFromString(c.updatedAt)}
                   </TableCell>
                   <TableCell className={`text-right ${STICKY_ACTIONS_CELL}`}>
-                    <div className="flex items-center justify-end gap-1">
-                      {c.isActive && (
-                        <Button size="sm" variant="ghost" className="h-8 px-2" asChild>
-                          <a href={`/convenios/${c.slug}`} target="_blank" rel="noreferrer" aria-label="Ver página" title="Ver página no site">
-                            <ExternalLink className="size-4" />
-                          </a>
-                        </Button>
-                      )}
-                      <Button size="sm" variant="ghost" className="h-8 px-2" asChild>
-                        <Link to="/admin/convenios/$id" params={{ id: c.id }} aria-label="Editar" title="Editar">
-                          <Pencil className="size-4" />
-                        </Link>
-                      </Button>
-                      {can('DELETE_CONVENIO') && (
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="h-8 px-2 text-muted-foreground hover:text-destructive"
-                          onClick={() => setDeleteTarget(c)}
-                          aria-label="Excluir"
-                          title="Excluir"
-                        >
-                          <Trash2 className="size-4" />
-                        </Button>
-                      )}
-                    </div>
+                    <RowActions
+                      label={`Ações do convênio ${c.name}`}
+                      actions={[
+                        { label: 'Editar', icon: Pencil, onClick: () => void navigate({ to: '/admin/convenios/$id', params: { id: c.id } }) },
+                        // A página pública abre em outra aba, como o link de antes.
+                        { label: 'Ver página no site', icon: ExternalLink, onClick: () => window.open(`/convenios/${c.slug}`, '_blank', 'noreferrer'), hidden: !c.isActive },
+                        { label: 'Excluir', icon: Trash2, onClick: () => setDeleteTarget(c), destructive: true, hidden: !can('DELETE_CONVENIO') },
+                      ]}
+                    />
                   </TableCell>
                 </TableRow>
               ))}
@@ -180,6 +163,6 @@ function ConveniosAdminPage() {
         onConfirm={handleDelete}
         pending={deleteM.isPending}
       />
-    </div>
+    </PageContainer>
   )
 }
