@@ -9,7 +9,6 @@ const ptBR = {
     openMenu: 'Abrir menu',
     closeMenu: 'Fechar menu',
     convenios: 'Convênios',
-    allConvenios: 'Todos os convênios',
     quotes: 'Cotações',
   },
   footer: {
