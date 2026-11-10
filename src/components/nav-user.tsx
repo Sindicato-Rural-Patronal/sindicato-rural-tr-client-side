@@ -28,10 +28,10 @@ export function NavUser({ user }: { user: { name: string; email: string; avatar:
   return (
     <SidebarMenu>
       <SidebarMenuItem>
-        <SidebarMenuButton asChild size="lg" tooltip="Minha conta">
+        <SidebarMenuButton asChild size="lg" tooltip="Minha conta" className="h-11">
           <Link to="/admin/minha-conta">
             <InitialsAvatar name={user.name} avatar={user.avatar || undefined} size="sm" />
-            <div className="grid flex-1 text-left text-sm leading-tight">
+            <div className="grid flex-1 gap-0.5 text-left text-sm leading-tight">
               <span className="truncate font-medium">{user.name}</span>
               <span className="truncate text-xs text-muted-foreground">{me?.ruleName ?? ''}</span>
             </div>
