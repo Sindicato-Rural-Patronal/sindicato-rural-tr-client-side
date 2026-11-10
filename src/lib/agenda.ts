@@ -24,18 +24,16 @@ export const KIND_LABEL_PLURAL: Record<ScheduleKind, string> = {
   MEETING: 'Reuniões',
 }
 
-/** Selo do tipo (sempre com o texto — a cor não é a única pista). */
-export const KIND_BADGE_CLASS: Record<ScheduleKind, string> = {
-  COURSE: 'bg-sky-100 text-sky-800 border-sky-200 dark:bg-sky-950/50 dark:text-sky-300 dark:border-sky-900',
-  EVENT: 'bg-violet-100 text-violet-800 border-violet-200 dark:bg-violet-950/50 dark:text-violet-300 dark:border-violet-900',
-  MEETING: 'bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-950/50 dark:text-emerald-300 dark:border-emerald-900',
-}
-
-/** Bolinha de cor dos filtros por tipo. */
+/**
+ * A cor de cada tipo: só um ponto pequeno (no selo, no calendário, nos filtros e na
+ * barra de ocupação), dentro da paleta do sistema — curso no verde do Sindicato,
+ * evento no âmbar e reunião no cinza. O selo em si é neutro, e o tipo vem sempre
+ * escrito: a cor nunca é a única pista.
+ */
 export const KIND_DOT_CLASS: Record<ScheduleKind, string> = {
-  COURSE: 'bg-sky-500',
-  EVENT: 'bg-violet-500',
-  MEETING: 'bg-emerald-500',
+  COURSE: 'bg-chart-1',
+  EVENT: 'bg-chart-3',
+  MEETING: 'bg-chart-4',
 }
 
 const WEEKDAYS_LONG = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado']

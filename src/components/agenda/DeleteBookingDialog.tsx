@@ -66,7 +66,7 @@ export function DeleteBookingDialog({ booking, onClose, onDeleted }: {
             Só esta data
           </Button>
           <Button
-            className="h-10 bg-destructive text-white hover:bg-destructive/90"
+            className="h-10" variant="destructive-solid"
             disabled={remove.isPending}
             onClick={() => run('future')}
           >

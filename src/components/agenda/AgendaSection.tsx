@@ -23,6 +23,8 @@ import { usePermissions } from '@/hooks/usePermissions'
 import { useIsMobile } from '@/hooks/use-mobile'
 import { useRooms } from '@/hooks/useRooms'
 import { LoadErrorRetry } from '@/components/LoadErrorRetry'
+import { EmptyState } from '@/components/EmptyState'
+import { SegmentedControl } from '@/components/SegmentedControl'
 import { useRoomBookings, useRoomSchedule, type RoomBooking } from '@/hooks/useRoomBookings'
 import { apiErrorMessage } from '@/lib/api-error-message'
 import { downloadExport } from '@/lib/export'
@@ -190,13 +192,13 @@ export function AgendaSection({
       <CardHeader className="gap-3 pb-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <CardTitle className="flex min-w-0 items-center gap-2 text-base">
-            <CalendarCheck className="size-4 shrink-0 text-primary" aria-hidden />
+            <CalendarCheck className="size-4 shrink-0 text-muted-foreground" aria-hidden />
             <span className="capitalize">
               {view === 'day' ? `${weekdayLong(dia)}, ${formatDateBr(dia)}` : `Semana de ${rangeLabel(from, to)}`}
             </span>
           </CardTitle>
           <div className="flex items-center gap-2">
-            {contagem && <Badge variant="secondary">{contagem}</Badge>}
+            {contagem && <Badge variant="neutral">{contagem}</Badge>}
             <div className="flex items-center gap-1">
               <Button
                 variant="ghost"
@@ -217,23 +219,12 @@ export function AgendaSection({
                 <ChevronRight className="size-4" />
               </Button>
             </div>
-            {/* Dia / Semana */}
-            <div role="group" aria-label="Como ver a agenda" className="flex rounded-lg border bg-muted/40 p-1">
-              {(['day', 'week'] as AgendaView[]).map(option => (
-                <button
-                  key={option}
-                  type="button"
-                  aria-pressed={view === option}
-                  onClick={() => setView(option)}
-                  className={cn(
-                    'h-9 rounded-md px-3 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-                    view === option ? 'bg-background text-foreground shadow-sm ring-1 ring-border' : 'text-muted-foreground hover:text-foreground',
-                  )}
-                >
-                  {option === 'day' ? 'Dia' : 'Semana'}
-                </button>
-              ))}
-            </div>
+            <SegmentedControl<AgendaView>
+              label="Como ver a agenda"
+              value={view}
+              onChange={setView}
+              options={[{ value: 'day', label: 'Dia' }, { value: 'week', label: 'Semana' }]}
+            />
           </div>
         </div>
 
@@ -245,7 +236,7 @@ export function AgendaSection({
               <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
               <Input
                 id="agenda-busca"
-                className="h-9 pl-9 pr-9"
+                className="pl-9 pr-9"
                 value={searchInput}
                 onChange={e => setSearchInput(e.target.value)}
                 placeholder="Buscar por título ou responsável"
@@ -256,7 +247,7 @@ export function AgendaSection({
                   type="button"
                   onClick={() => setSearchInput('')}
                   aria-label="Limpar busca"
-                  className="absolute right-1 top-1/2 -translate-y-1/2 rounded-md p-1.5 text-muted-foreground hover:bg-muted"
+                  className="absolute right-1 top-1/2 -translate-y-1/2 rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
                 >
                   <X className="size-4" />
                 </button>
@@ -267,7 +258,7 @@ export function AgendaSection({
           {canRead && showBookings && (
             <DropdownMenu modal={false}>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" className="h-9 gap-2" disabled={exporting}>
+                <Button variant="outline" disabled={exporting}>
                   {exporting ? <Loader2 className="size-4 animate-spin" /> : <Download className="size-4" />}
                   Exportar
                 </Button>
@@ -285,13 +276,13 @@ export function AgendaSection({
             </DropdownMenu>
           )}
 
-          <Button variant="outline" className="h-9 gap-2" onClick={imprimirAgenda} disabled={printing}>
+          <Button variant="outline" onClick={imprimirAgenda} disabled={printing}>
             {printing ? <Loader2 className="size-4 animate-spin" /> : <Printer className="size-4" />}
             Imprimir
           </Button>
 
           {canCreate && (
-            <Button className="h-9" onClick={() => newBooking({})}>
+            <Button onClick={() => newBooking({})}>
               <Plus className="size-4" /> Nova reserva
             </Button>
           )}
@@ -328,25 +319,22 @@ export function AgendaSection({
             onOpenItem={openItem}
           />
         ) : dayItems.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-12 text-center">
-            <div className="mb-3 rounded-full bg-muted p-4">
-              <CalendarCheck className="size-6 text-muted-foreground" aria-hidden />
-            </div>
-            {search ? (
-              <>
-                <p className="text-sm font-medium text-foreground">Nada encontrado para “{search}”.</p>
-                <p className="text-xs text-muted-foreground">A busca vale só para eventos e reuniões.</p>
-                <Button variant="outline" size="sm" className="mt-3 h-9" onClick={() => setSearchInput('')}>
-                  Limpar busca
-                </Button>
-              </>
-            ) : (
-              <>
-                <p className="text-sm font-medium text-foreground">Nada marcado neste dia.</p>
-                <p className="text-xs text-muted-foreground">Selecione outro dia no calendário</p>
-              </>
-            )}
-          </div>
+          search ? (
+            <EmptyState
+              icon={CalendarCheck}
+              className="py-10"
+              title={`Nada encontrado para “${search}”`}
+              description="A busca vale só para eventos e reuniões."
+              action={<Button variant="outline" size="sm" onClick={() => setSearchInput('')}>Limpar busca</Button>}
+            />
+          ) : (
+            <EmptyState
+              icon={CalendarCheck}
+              className="py-10"
+              title="Nada marcado neste dia"
+              description="Selecione outro dia no calendário"
+            />
+          )
         ) : (
           <ul className="grid gap-3 sm:grid-cols-2">
             {dayItems.map(item => (
@@ -364,7 +352,7 @@ export function AgendaSection({
           <div className="border-t pt-3">
             <Button
               variant="ghost"
-              className="h-10 w-full justify-between px-2 text-sm font-medium"
+              className="h-10 w-full justify-between px-2 text-sm font-medium aria-expanded:bg-transparent hover:aria-expanded:bg-accent"
               aria-expanded={showOccupancy}
               onClick={() => setShowOccupancy(v => !v)}
             >
@@ -445,11 +433,11 @@ function ExportPeriodDialog({ open, from, to, busy, onClose, onConfirm }: {
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="agenda-export-de" className="text-sm font-medium">De *</Label>
-            <DatePicker id="agenda-export-de" className="h-10" value={inicio} onChange={setInicio} />
+            <DatePicker id="agenda-export-de" value={inicio} onChange={setInicio} />
           </div>
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="agenda-export-ate" className="text-sm font-medium">Até *</Label>
-            <DatePicker id="agenda-export-ate" className="h-10" value={fim} onChange={setFim} />
+            <DatePicker id="agenda-export-ate" value={fim} onChange={setFim} />
           </div>
         </div>
         {!valido && (
@@ -458,8 +446,8 @@ function ExportPeriodDialog({ open, from, to, busy, onClose, onConfirm }: {
           </p>
         )}
         <DialogFooter>
-          <Button variant="outline" className="h-10" onClick={onClose}>Cancelar</Button>
-          <Button className="h-10" disabled={!valido || busy} onClick={() => onConfirm({ from: inicio, to: fim })}>
+          <Button variant="outline" onClick={onClose}>Cancelar</Button>
+          <Button disabled={!valido || busy} onClick={() => onConfirm({ from: inicio, to: fim })}>
             {busy && <Loader2 className="size-4 animate-spin" />}
             Exportar
           </Button>

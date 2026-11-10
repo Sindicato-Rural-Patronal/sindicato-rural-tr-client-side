@@ -39,7 +39,7 @@ export function WeekAgenda({ days, items, selected, onSelectDay, onOpenItem }: {
               <span className="text-xs font-medium capitalize text-muted-foreground">
                 {weekdayLong(date).replace('-feira', '')}
               </span>
-              <span className={cn('text-sm font-semibold tabular-nums', isSelected && 'text-primary')}>
+              <span className={cn('num text-sm font-semibold', isSelected && 'text-primary')}>
                 {formatDateBr(date).slice(0, 5)}
               </span>
             </button>
