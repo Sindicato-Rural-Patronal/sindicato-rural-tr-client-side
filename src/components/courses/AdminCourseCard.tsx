@@ -1,16 +1,15 @@
 import { useTranslation } from 'react-i18next'
-import { BookOpen, Calendar, CopyPlus, Eye, Images, MoreVertical, Pencil, Trash2, User } from 'lucide-react'
+import { BookOpen, Calendar, CopyPlus, Eye, Images, Pencil, Trash2, User } from 'lucide-react'
 import type { CourseCardItem } from '@/hooks/useCourse'
 import { formatDateFromString } from '@/utils/format-data-from-string'
 import { formatBRL } from '@/utils/format-currency'
 import { markdownToPlainText } from '@/lib/markdown-text'
+import { cn } from '@/lib/utils'
 import { StatusBadge } from '@/components/StatusBadge'
+import { RowActions } from '@/components/RowActions'
 import { SelectCheckbox } from '@/components/export/ExportMenu'
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
-import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Card, CardContent } from '@/components/ui/card'
-import { Separator } from '@/components/ui/separator'
 
 // Cartão de curso da lista do painel (fora do arquivo da rota para poder ser testado).
 
@@ -28,25 +27,28 @@ export function AdminCourseCard({ course, onClick, onEdit, onDuplicate, onDelete
   const summary = markdownToPlainText(course.description)
   return (
     <Card
-      className={`group overflow-hidden cursor-pointer hover:shadow-md transition-all duration-200 ${selected ? 'ring-2 ring-primary' : ''}`}
+      className={cn(
+        'group cursor-pointer gap-0 overflow-hidden py-0 transition-colors hover:border-foreground/20',
+        selected && 'ring-2 ring-primary',
+      )}
       onClick={onClick}
     >
-      <div className="relative h-40 bg-muted flex items-center justify-center overflow-hidden">
+      <div className="relative flex h-40 items-center justify-center overflow-hidden bg-muted">
         {course.coverImage ? (
           <img
             src={course.coverImageThumb ?? course.coverImage}
             alt={course.title}
             loading="lazy"
             decoding="async"
-            className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-300"
+            className="h-full w-full object-cover"
           />
         ) : (
-          <BookOpen className="size-12 text-muted-foreground/30" />
+          <BookOpen className="size-10 text-faint-foreground" aria-hidden />
         )}
         <div className="absolute top-2 left-2 flex items-center gap-1.5">
           {onToggleSelect && (
             <span
-              className="flex size-7 items-center justify-center rounded-md bg-background/80 backdrop-blur-sm"
+              className="flex size-7 items-center justify-center rounded-md bg-background/90"
               onClick={e => { e.stopPropagation(); onToggleSelect() }}
             >
               <SelectCheckbox checked={selected} onChange={onToggleSelect} label={`Selecionar o curso ${course.title}`} />
@@ -55,89 +57,61 @@ export function AdminCourseCard({ course, onClick, onEdit, onDuplicate, onDelete
           <StatusBadge status={course.status} />
         </div>
         {course.eventNumber && (
-          <div className="absolute top-2 right-2 bg-background/80 backdrop-blur-sm rounded px-2 py-0.5">
-            <span className="text-xs font-mono">#{course.eventNumber}</span>
+          <div className="absolute top-2 right-2 rounded-sm bg-background/90 px-1.5 py-0.5">
+            <span className="num text-xs text-foreground">#{course.eventNumber}</span>
           </div>
         )}
         {(course.photoCount ?? 0) > 0 && (
-          <div className="absolute bottom-2 right-2 bg-background/80 backdrop-blur-sm rounded px-2 py-0.5 flex items-center gap-1">
-            <Images className="size-3" />
-            <span className="text-xs">{course.photoCount}</span>
+          <div className="absolute right-2 bottom-2 flex items-center gap-1 rounded-sm bg-background/90 px-1.5 py-0.5 text-foreground">
+            <Images className="size-3" aria-hidden />
+            <span className="text-xs tabular-nums">{course.photoCount}</span>
           </div>
         )}
       </div>
 
-      <CardContent className="p-4">
-        <div className="flex items-start gap-1 mb-1.5">
-          <h3 className="flex-1 font-semibold text-foreground line-clamp-2 leading-snug">{course.title}</h3>
+      <CardContent className="flex flex-1 flex-col gap-3 p-4">
+        <div className="flex items-start gap-1">
+          <h3 className="line-clamp-2 flex-1 leading-snug font-semibold text-foreground">{course.title}</h3>
           {/* stopPropagation: o menu (e o conteúdo dele, que fica num portal) não abre o card */}
-          <div className="-mr-2 -mt-1.5 shrink-0" onClick={e => e.stopPropagation()}>
-            <DropdownMenu modal={false}>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="size-8" aria-label={`Ações do curso ${course.title}`}>
-                  <MoreVertical className="size-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onSelect={onClick}>
-                  <Eye className="size-4" /> Ver detalhes
-                </DropdownMenuItem>
-                {onEdit && (
-                  <DropdownMenuItem onSelect={onEdit}>
-                    <Pencil className="size-4" /> {t('common.edit')}
-                  </DropdownMenuItem>
-                )}
-                {onDuplicate && (
-                  <DropdownMenuItem onSelect={onDuplicate}>
-                    <CopyPlus className="size-4" /> Duplicar curso
-                  </DropdownMenuItem>
-                )}
-                {onDelete && (
-                  <DropdownMenuItem onSelect={onDelete} className="text-destructive focus:text-destructive">
-                    <Trash2 className="size-4" /> {t('common.delete')}
-                  </DropdownMenuItem>
-                )}
-              </DropdownMenuContent>
-            </DropdownMenu>
+          <div className="-mt-1.5 -mr-2 shrink-0" onClick={e => e.stopPropagation()}>
+            <RowActions
+              visible={0}
+              label={`Ações do curso ${course.title}`}
+              actions={[
+                { label: 'Ver detalhes', icon: Eye, onClick },
+                { label: t('common.edit'), icon: Pencil, hidden: !onEdit, onClick: () => onEdit?.() },
+                { label: 'Duplicar curso', icon: CopyPlus, hidden: !onDuplicate, onClick: () => onDuplicate?.() },
+                { label: t('common.delete'), icon: Trash2, destructive: true, hidden: !onDelete, onClick: () => onDelete?.() },
+              ]}
+            />
           </div>
         </div>
         {summary && (
-          <p className="text-xs text-muted-foreground line-clamp-2 mb-3 leading-relaxed">{summary}</p>
+          <p className="-mt-1 line-clamp-2 text-xs leading-relaxed text-muted-foreground">{summary}</p>
         )}
 
-        <div className="flex flex-col gap-1.5 text-xs text-muted-foreground mb-3">
+        <div className="flex flex-col gap-1.5 text-xs text-muted-foreground">
           <div className="flex items-center gap-2">
-            <Calendar className="size-3.5 shrink-0" />
-            <span>{formatDateFromString(course.startDate)}</span>
+            <Calendar className="size-3.5 shrink-0 text-faint-foreground" aria-hidden />
+            <span className="num">{formatDateFromString(course.startDate)}</span>
           </div>
           {course.instructorName && (
             <div className="flex items-center gap-2">
-              <User className="size-3.5 shrink-0" />
+              <User className="size-3.5 shrink-0 text-faint-foreground" aria-hidden />
               <span className="truncate">{course.instructorName}</span>
             </div>
           )}
         </div>
 
-        <Separator className="mb-3" />
-
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="text-center">
-              <div className="text-lg font-bold text-primary">{course.enrolled}</div>
-              <div className="text-[10px] text-muted-foreground uppercase tracking-wide">
-                {t('admin.courses.enrolled', { count: course.enrolled }).split(' ')[0]}
-              </div>
-            </div>
-            <div className="text-center">
-              <div className="text-lg font-bold text-foreground">{course.maxStudents}</div>
-              <div className="text-[10px] text-muted-foreground uppercase tracking-wide">
-                {t('admin.courses.spotsMax', { max: '' }).replace(' ', '')}
-              </div>
-            </div>
-          </div>
-          <span className="text-sm font-semibold text-primary">
-            {course.price === 0 ? t('courseCard.free') : formatBRL(course.price)}
-          </span>
+        {/* Inscritos e vagas numa linha só, e o preço à direita (o mono é a assinatura dos valores). */}
+        <div className="mt-auto flex items-baseline justify-between gap-3 border-t border-border pt-3">
+          <p className="text-xs text-muted-foreground">
+            <span className="text-lg font-semibold tabular-nums text-foreground">{course.enrolled}</span>
+            {' '}<span className="tabular-nums">{t('admin.courses.spotsMax', { max: course.maxStudents })}</span> vagas
+          </p>
+          {course.price === 0
+            ? <span className="text-sm text-muted-foreground">{t('courseCard.free')}</span>
+            : <span className="num text-sm font-medium text-foreground">{formatBRL(course.price)}</span>}
         </div>
       </CardContent>
     </Card>
@@ -146,7 +120,7 @@ export function AdminCourseCard({ course, onClick, onEdit, onDuplicate, onDelete
 
 export function CourseCardSkeleton() {
   return (
-    <div className="flex flex-col rounded-lg border border-border bg-card overflow-hidden">
+    <div className="flex flex-col overflow-hidden rounded-xl border border-border bg-card">
       <Skeleton className="h-40 w-full rounded-none" />
       <div className="p-4 flex flex-col">
         {/* title — até 2 linhas */}

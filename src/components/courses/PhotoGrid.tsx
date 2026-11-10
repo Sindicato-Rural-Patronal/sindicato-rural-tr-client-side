@@ -12,7 +12,7 @@ export function PhotoGrid({ photos, onRemove, disabled }: {
   return (
     <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
       {photos.map(photo => (
-        <div key={photo.key} className="relative aspect-video rounded-xl overflow-hidden bg-muted">
+        <div key={photo.key} className="relative aspect-video overflow-hidden rounded-lg border border-border bg-muted">
           <img src={photo.url} alt={photo.caption || 'Foto'} className="h-full w-full object-cover" />
           <button
             type="button"
@@ -20,13 +20,14 @@ export function PhotoGrid({ photos, onRemove, disabled }: {
             disabled={disabled}
             aria-label="Remover foto"
             title="Remover foto"
-            className="absolute top-1.5 right-1.5 size-8 rounded-full bg-destructive text-white shadow-md flex items-center justify-center hover:bg-destructive/90 disabled:opacity-50"
+            className="absolute top-1.5 right-1.5 flex size-8 items-center justify-center rounded-full bg-destructive text-destructive-foreground shadow-float transition-colors hover:bg-destructive/90 disabled:opacity-50"
           >
             <Trash2 className="size-4" />
           </button>
           {photo.caption && (
             <div className="absolute bottom-0 left-0 right-0 bg-black/60 p-1.5">
-              <p className="text-white text-xs truncate">{photo.caption}</p>
+              {/* Legenda sobre a foto: texto branco no véu escuro, nos dois temas. */}
+              <p className="truncate text-xs text-white">{photo.caption}</p>
             </div>
           )}
         </div>
