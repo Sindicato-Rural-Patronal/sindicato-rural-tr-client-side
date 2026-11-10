@@ -30,9 +30,10 @@ function StatCard({ card }: { card: CardDef }) {
   const Icon = card.icon
   return (
     <Card
+      // Zero não muda o fundo (só o número fica apagado): com os temas Cinza e Verde-claro,
+      // o fundo translúcido deixava estes cartões da cor do tema e os outros brancos.
       className={cn(
         'transition-colors',
-        zero && 'bg-muted/30',
         acende && 'border-amber-300 bg-amber-50/60 dark:border-amber-900 dark:bg-amber-950/20',
       )}
     >

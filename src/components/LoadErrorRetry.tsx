@@ -48,7 +48,9 @@ export function LoadErrorRetry({ onRetry, retrying = false, message, hint = fals
 
   return (
     <div role="alert" className={cn('flex flex-col items-center gap-3 px-4 py-10 text-center', className)}>
-      <WifiOff className="size-10 text-muted-foreground/50" aria-hidden />
+      <span className="flex size-12 items-center justify-center rounded-xl bg-muted text-muted-foreground">
+        <WifiOff className="size-6" aria-hidden />
+      </span>
       <div>
         <p className="font-medium text-foreground">{text}</p>
         {hint && <p className="mt-1 text-sm text-muted-foreground">{t('common.connectionHint')}</p>}

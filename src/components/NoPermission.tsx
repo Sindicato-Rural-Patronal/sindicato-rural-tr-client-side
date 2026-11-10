@@ -13,9 +13,9 @@ export function NoPermission({ message = 'Você não tem permissão para ver est
   // quando o /admin/me falhou. Isso não é falta de permissão: avisa e tenta de novo.
   if (isError) {
     return (
-      <div className="p-6">
+      <div className="p-4 md:p-6">
         <LoadErrorRetry
-          className="rounded-lg border border-border bg-card"
+          className="rounded-xl border border-border bg-card"
           message="Não foi possível conferir suas permissões."
           onRetry={retry}
           retrying={retrying}
@@ -25,8 +25,8 @@ export function NoPermission({ message = 'Você não tem permissão para ver est
   }
 
   return (
-    <div className="p-6">
-      <div className="rounded-lg border border-border bg-muted/30 px-4 py-12 text-center text-sm text-muted-foreground">
+    <div className="p-4 md:p-6">
+      <div className="rounded-xl border border-border bg-card px-4 py-12 text-center text-sm text-muted-foreground">
         <p>{message}</p>
         {/* Quem chega aqui está travado: dizer só "não pode" deixa a pessoa sem
             saber se é defeito, se ela errou o caminho ou com quem falar. */}

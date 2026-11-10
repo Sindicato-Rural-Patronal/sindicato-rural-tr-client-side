@@ -36,15 +36,18 @@ export function ThemeSetting() {
 
   return (
     <div className="flex flex-col gap-2">
-      <div role="group" aria-label="Tema do painel" className="inline-flex max-w-full flex-wrap gap-0.5 rounded-md border border-border p-0.5">
+      {/* O escolhido: um tom acima, com a linha fina e o ícone verde (como o item ativo do menu). */}
+      <div role="group" aria-label="Tema do painel" className="inline-flex max-w-full flex-wrap gap-0.5 rounded-lg border border-border bg-muted p-0.5">
         {OPTIONS.map(o => (
           <button
             key={o.mode}
             type="button"
             onClick={() => pick(o.mode)}
             aria-pressed={mode === o.mode}
-            className={`inline-flex items-center gap-1.5 rounded px-3 py-1.5 text-sm font-medium transition-colors ${
-              mode === o.mode ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'
+            className={`inline-flex h-8 items-center gap-1.5 rounded-md px-3 text-sm font-medium transition-colors ${
+              mode === o.mode
+                ? 'bg-card text-foreground shadow-xs ring-1 ring-border [&_svg]:text-primary'
+                : 'text-muted-foreground hover:text-foreground'
             }`}
           >
             <o.Icon className="size-4" /> {o.label}

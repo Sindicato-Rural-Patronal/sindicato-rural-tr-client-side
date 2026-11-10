@@ -68,9 +68,9 @@ export function CommandPalette() {
             onChange={e => { setQ(e.target.value); setIdx(0) }}
             onKeyDown={onInputKey}
             placeholder="Ir para..."
-            className="w-full bg-transparent py-3 text-sm outline-none placeholder:text-muted-foreground"
+            className="h-12 w-full bg-transparent text-sm outline-none placeholder:text-faint-foreground"
           />
-          <kbd className="hidden sm:inline text-[10px] text-muted-foreground border border-border rounded px-1.5 py-0.5">esc</kbd>
+          <kbd className="hidden rounded-sm border border-border px-1.5 text-xs text-faint-foreground sm:inline">esc</kbd>
         </div>
         <ul className="max-h-72 overflow-y-auto p-1.5">
           {items.length === 0 && (
@@ -82,12 +82,12 @@ export function CommandPalette() {
                 type="button"
                 onClick={() => go(n)}
                 onMouseEnter={() => setIdx(i)}
-                className={`flex w-full items-center justify-between rounded-md px-3 py-2 text-sm text-left ${
-                  i === idx ? 'bg-muted text-foreground' : 'text-muted-foreground'
+                className={`flex h-9 w-full items-center justify-between rounded-md px-3 text-left text-sm transition-colors ${
+                  i === idx ? 'bg-accent text-foreground' : 'text-muted-foreground'
                 }`}
               >
                 <span className="text-foreground">{n.label}</span>
-                {i === idx && <CornerDownLeft className="size-3.5 text-muted-foreground" />}
+                {i === idx && <CornerDownLeft className="size-3.5 text-faint-foreground" />}
               </button>
             </li>
           ))}
