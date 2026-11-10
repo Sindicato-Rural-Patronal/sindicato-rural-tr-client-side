@@ -256,7 +256,7 @@ src/
 │   ├── unimed-options.ts            # UNIMED_MOVEMENT_TYPES, UNIMED_DEPENDENCY_DEGREES (listas fixas) + unimedOptionsWith
 │   ├── unimed-docs.ts               # Baixa Ficha/Termo/Contrato pelo id; unimed-{ficha,termo,contrato}-pdf.tsx,
 │   │                                #   unimed-pdf-assets.ts, unimed-pdf-utils.ts
-│   ├── org-contact.ts               # Dados padrão do sindicato (fallback) + phoneDigits
+│   ├── org-contact.ts               # CNPJ do sindicato (ORG_CONTACT) + phoneDigits, orgAddressLines; sem contato reserva
 │   ├── agenda.ts                    # Agenda das salas: horário de parede, itens de vários dias (occupiedDays — a MESMA regra
 │   │                                #   para curso e reserva), dia/semana, ocupação das salas, formulário de reserva
 │   ├── agenda-pdf.tsx               # "Imprimir" da agenda
@@ -454,7 +454,7 @@ useSendContactMessage       → POST /contacts/message (público, fetch cru)
 - `useConvenios.ts` — `useConvenioMenu`, `usePublicConvenio` (públicos), admin CRUD e logo.
 - `useGalleries.ts` — `usePublicGalleries` (publicGet), admin CRUD, fotos (upload, legenda, ordem).
 - `useMarketQuotes.ts` — `useMarketQuotes`, `useQuoteHistory` (públicos), `useAdminMarketQuotes`, `useSaveDailyQuotes`, `useUpdateQuoteUnit`.
-- `useSiteSettings.ts` — `usePublicSiteSettings`, `useAdminSiteSettings`, `useUpdateSiteSettings`, `useUpdateQuotesSource`, `useOrgInfo` (com fallback de `lib/org-contact.ts`).
+- `useSiteSettings.ts` — `usePublicSiteSettings`, `useAdminSiteSettings`, `useUpdateSiteSettings`, `useUpdateQuotesSource`, `useOrgInfo` (sem valor reserva: carregando ou erro = campos vazios, o site esconde a linha).
 - `usePublicContactsAdmin.ts`, `usePublicEvents.ts`, `useRooms.ts` (CRUD; `GET /rooms` exige READ_COURSE, então o Painel Geral chama `useRooms({ enabled })` só com a permissão), `useRoomBookings.ts` (`useRoomBookings`, `useRoomSchedule`, CRUD), `useAuditTrail.ts` (trilha + tempo de guarda), `useNotifications.ts` (a cada 60s e ao voltar à aba), `useInvite.ts` (`useInvite`, `useAcceptInvite`, fetch cru).
 - Utilitários: `usePermissions`, `use-unsaved-guard`, `useRowSelection` (seleção que continua entre páginas), `useCrudDialog`, `useDebouncedValue`, `useConfirmDeletePhoto`, `useSeo`, `use-mobile` (768 px: sino, agenda), `use-compact-nav` (1024 px: o menu lateral do painel vira gaveta), `use-users` (`authenticateUser`, `refreshAuthToken`).
 
