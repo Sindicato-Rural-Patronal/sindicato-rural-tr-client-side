@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { usePublicContacts, useSendContactMessage } from '@/hooks/useAdmin'
 import { Skeleton } from '@/components/ui/skeleton'
 import { LoadErrorRetry } from '@/components/LoadErrorRetry'
+import { PublicPageHeader } from '@/components/PublicPageHeader'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
@@ -53,40 +54,41 @@ function PublicContacts() {
   if (!contacts || contacts.length === 0) return null
 
   return (
-    <section className="py-12 md:py-16 bg-muted/30">
-      <div className="container mx-auto px-4">
-        <div className="mb-8 text-center">
-          <h2 className="text-2xl font-bold text-foreground md:text-3xl">Nossa Equipe</h2>
-          <p className="mt-2 text-muted-foreground">Entre em contato diretamente com nossos responsáveis</p>
+    <section className="border-b border-border py-12 md:py-16">
+      <div className="container mx-auto max-w-5xl px-4">
+        <div className="mb-6">
+          <h2 className="text-xl font-semibold text-foreground md:text-2xl">Nossa equipe</h2>
+          <p className="mt-1 text-sm text-muted-foreground">Fale direto com quem cuida de cada assunto</p>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 max-w-4xl mx-auto">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {contacts.map((c, i) => (
             <div
               key={`${c.userData.name}-${i}`}
-              className="flex items-center gap-4 rounded-xl border bg-card p-5 shadow-sm hover:shadow-md transition-shadow"
+              className="flex items-center gap-4 rounded-xl border border-border bg-card p-4"
             >
-              <InitialsAvatar name={c.userData.name} avatar={c.userData.avatar} size="lg" className="font-bold border-2 border-border" />
-              <div className="flex flex-col gap-1 min-w-0">
-                <p className="font-semibold text-foreground truncate">{c.userData.name}</p>
+              <InitialsAvatar name={c.userData.name} avatar={c.userData.avatar} size="lg" className="border border-border font-semibold" />
+              <div className="flex min-w-0 flex-col gap-1">
+                {/* Nome inteiro em até duas linhas (antes cortava "CLAUDIA REGINA M…"). */}
+                <p className="line-clamp-2 font-semibold leading-snug text-foreground wrap-break-word" title={c.userData.name}>{c.userData.name}</p>
                 {c.publicTitle && (
-                  <p className="text-xs font-medium text-primary">{c.publicTitle}</p>
+                  <p className="text-sm text-muted-foreground">{c.publicTitle}</p>
                 )}
                 {c.userData.email && (
                   <a
                     href={`mailto:${c.userData.email}`}
-                    className="text-xs text-muted-foreground hover:text-foreground transition-colors truncate flex items-center gap-1"
+                    className="flex min-w-0 items-center gap-1.5 text-sm text-primary transition-colors hover:underline"
                   >
-                    <Mail className="size-3 shrink-0" />
-                    {c.userData.email}
+                    <Mail className="size-3.5 shrink-0" aria-hidden />
+                    <span className="truncate">{c.userData.email}</span>
                   </a>
                 )}
                 {c.userData.phone && (
                   <a
                     href={`tel:${c.userData.phone.replace(/\D/g, '')}`}
-                    className="text-xs text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1"
+                    className="flex items-center gap-1.5 text-sm text-primary transition-colors hover:underline"
                   >
-                    <Phone className="size-3 shrink-0" />
-                    {c.userData.phone}
+                    <Phone className="size-3.5 shrink-0" aria-hidden />
+                    <span className="num">{c.userData.phone}</span>
                   </a>
                 )}
               </div>
@@ -147,10 +149,10 @@ function ContactForm() {
   if (sent) {
     return (
       <div className="flex flex-col items-center justify-center gap-4 py-12 text-center">
-        <div className="flex size-16 items-center justify-center rounded-full bg-emerald-100">
-          <CheckCircle2 className="size-8 text-emerald-600" />
+        <div className="flex size-12 items-center justify-center rounded-xl bg-success-soft">
+          <CheckCircle2 className="size-6 text-success" aria-hidden />
         </div>
-        <h3 className="text-xl font-semibold">Mensagem enviada!</h3>
+        <h3 className="text-xl font-semibold">Mensagem enviada</h3>
         <p className="text-muted-foreground max-w-xs">
           Recebemos sua mensagem e entraremos em contato em breve.
         </p>
@@ -212,16 +214,16 @@ function ContactForm() {
           id="ct-message"
           value={form.message}
           onChange={e => set('message', e.target.value)}
-          placeholder="Escreva sua mensagem..."
+          placeholder="Escreva sua mensagem"
           rows={5}
           required
           className="resize-none"
         />
       </div>
       {error && <p className="text-sm text-destructive">{error}</p>}
-      <Button type="submit" disabled={sendMessage.isPending} className="self-start gap-2">
-        <Send className="size-4" />
-        {sendMessage.isPending ? 'Enviando...' : 'Enviar mensagem'}
+      <Button type="submit" disabled={sendMessage.isPending} className="h-11 self-start sm:h-9">
+        <Send />
+        {sendMessage.isPending ? 'Enviando…' : 'Enviar mensagem'}
       </Button>
     </form>
   )
@@ -233,41 +235,42 @@ function ContatoPage() {
   const address = orgAddressLines(org)
   return (
     <main>
-      {/* Hero */}
-      <section className="bg-primary py-14 md:py-20">
-        <div className="container mx-auto px-4 text-center">
-          <h1 className="text-3xl font-bold text-primary-foreground md:text-4xl lg:text-5xl">
-            Entre em Contato
-          </h1>
-          <p className="mt-3 text-primary-foreground/80 text-lg max-w-xl mx-auto">
-            Estamos aqui para ajudar. Fale conosco por telefone, e-mail ou pelo formulário abaixo.
-          </p>
-        </div>
-      </section>
+      <PublicPageHeader
+        width="max-w-5xl"
+        title="Entre em contato"
+        description="Fale conosco por telefone, e-mail ou pelo formulário abaixo."
+        context={org.phone || org.hours.length > 0
+          ? <>
+              {org.phone && <a href={`tel:${phoneDigits(org.phone)}`} className="num font-medium text-foreground hover:underline">{org.phone}</a>}
+              {org.phone && org.hours.length > 0 && ' · '}
+              {org.hours[0] && <>{org.hours[0].label}{org.hours[0].time && `: ${org.hours[0].time}`}</>}
+            </>
+          : null}
+      />
 
       {/* Equipe pública */}
       <PublicContacts />
 
       {/* Formulário + Info */}
       <section className="py-12 md:py-16">
-        <div className="container mx-auto px-4">
-          <div className="grid grid-cols-1 lg:grid-cols-5 gap-10 max-w-5xl mx-auto">
+        <div className="container mx-auto max-w-5xl px-4">
+          <div className="grid grid-cols-1 gap-10 lg:grid-cols-5">
 
             {/* Formulário — 3 colunas */}
             <div className="lg:col-span-3">
-              <h2 className="text-xl font-bold mb-6">Envie uma mensagem</h2>
+              <h2 className="mb-6 text-xl font-semibold">Envie uma mensagem</h2>
               <ContactForm />
             </div>
 
             {/* Info — 2 colunas */}
             <div className="lg:col-span-2 flex flex-col gap-6">
-              <h2 className="text-xl font-bold">Informações</h2>
+              <h2 className="text-xl font-semibold">Informações</h2>
 
               <div className="flex flex-col gap-5">
                 {address.length > 0 && (
                   <div className="flex gap-3">
-                    <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary/10">
-                      <MapPin className="size-5 text-primary" />
+                    <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-muted">
+                      <MapPin className="size-5 text-muted-foreground" aria-hidden />
                     </div>
                     <div>
                       <p className="text-sm font-semibold text-foreground">Endereço</p>
@@ -280,8 +283,8 @@ function ContatoPage() {
 
                 {org.phone && (
                   <div className="flex gap-3">
-                    <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary/10">
-                      <Phone className="size-5 text-primary" />
+                    <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-muted">
+                      <Phone className="size-5 text-muted-foreground" aria-hidden />
                     </div>
                     <div>
                       <p className="text-sm font-semibold text-foreground">Telefone</p>
@@ -294,8 +297,8 @@ function ContatoPage() {
 
                 {org.email && (
                   <div className="flex gap-3">
-                    <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary/10">
-                      <Mail className="size-5 text-primary" />
+                    <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-muted">
+                      <Mail className="size-5 text-muted-foreground" aria-hidden />
                     </div>
                     <div>
                       <p className="text-sm font-semibold text-foreground">E-mail</p>
@@ -308,8 +311,8 @@ function ContatoPage() {
 
                 {org.hours.length > 0 && (
                   <div className="flex gap-3">
-                    <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary/10">
-                      <Clock className="size-5 text-primary" />
+                    <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-muted">
+                      <Clock className="size-5 text-muted-foreground" aria-hidden />
                     </div>
                     <div>
                       <p className="text-sm font-semibold text-foreground">Horário de atendimento</p>
@@ -317,7 +320,7 @@ function ContatoPage() {
                         {org.hours.map(h => (
                           <div key={h.label} className="flex items-center justify-between gap-4">
                             <span className="text-sm text-muted-foreground">{h.label}</span>
-                            <span className="text-sm font-medium text-foreground tabular-nums">{h.time}</span>
+                            <span className="text-sm font-medium text-foreground">{h.time}</span>
                           </div>
                         ))}
                       </div>
@@ -326,8 +329,8 @@ function ContatoPage() {
                 )}
 
                 <div className="flex gap-3">
-                  <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary/10">
-                    <User className="size-5 text-primary" />
+                  <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-muted">
+                    <User className="size-5 text-muted-foreground" aria-hidden />
                   </div>
                   <div>
                     <p className="text-sm font-semibold text-foreground">Associe-se</p>
