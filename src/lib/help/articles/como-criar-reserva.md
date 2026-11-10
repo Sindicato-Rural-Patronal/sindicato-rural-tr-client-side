@@ -8,17 +8,19 @@ veja: salas-e-agenda, como-criar-evento, painel-geral
 busca: reservar sala reuniao marcar agenda horario criar reserva
 ---
 
-1. Abra o **Painel Geral**. A agenda das salas fica logo abaixo do calendário.
+1. Abra o **Painel Geral** e vá ao bloco **Agenda das salas**. A agenda fica ao
+   lado do calendário (no celular, embaixo dele).
 2. Clique no **dia** desejado no calendário.
-3. Clique em **Nova reserva**. *(Se preferir, clique direto num espaço vazio da
-   faixa de ocupação: a sala e a hora já vêm preenchidas.)*
+3. Clique em **Nova reserva**. *(Se preferir, abra **Ocupação das salas neste
+   dia** e clique num espaço vazio da faixa, ou em **Marcar reserva nesta
+   sala**: a sala e a hora já vêm preenchidas.)*
 4. Escolha o **tipo**: **Reunião** para uso interno, **Evento** para algo
    aberto.
 5. Preencha **título**, **sala**, **data** e os horários de **início** e
    **término**.
 6. Se atravessar a meia-noite, marque **Termina em outro dia**.
 7. Informe o **responsável** — uma pessoa do cadastro ou um nome digitado.
-8. Salve.
+8. Clique em **Criar reserva**.
 
 ## Se a sala estiver ocupada
 

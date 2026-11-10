@@ -39,5 +39,6 @@ As pendências respeitam a permissão de cada um. Quem não cuida de cotações 
 recebe o aviso de cotação. Então dois administradores lado a lado veem números
 diferentes, e isso está certo.
 
-> Os avisos de pendência **não aparecem no Painel Geral**. O painel mostra os
-> números do dia; quem cobra é o sino.
+> O **Painel Geral** mostra só os **números** das pendências: as maiores que
+> zero vêm à frente, em âmbar. A **lista**, com cada pendência e o atalho para
+> ela, fica no sino.

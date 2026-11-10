@@ -15,7 +15,7 @@ Evento no site **não tem cadastro próprio**: ele nasce de uma reserva de sala.
 3. Preencha título, sala, data e horários, como em qualquer reserva.
 4. Marque **Mostrar no site**.
 5. Escreva o **Texto do evento no site** — é o que o público vai ler.
-6. Salve.
+6. Clique em **Criar reserva**.
 
 Pronto: ele entra na página **Eventos** do site, com data, horário e sala, e
 aparece na faixa "Próximos eventos" da página inicial. Na agenda do painel, a
