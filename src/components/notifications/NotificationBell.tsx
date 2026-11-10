@@ -53,7 +53,7 @@ export function NotificationBell({ className, side = 'bottom', align = 'end' }: 
         <span
           aria-hidden
           data-testid="notification-badge"
-          className="pointer-events-none absolute -top-0.5 -right-0.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-destructive px-1 text-[11px] leading-none font-bold text-white tabular-nums"
+          className="pointer-events-none absolute -top-0.5 -right-0.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-destructive px-1 text-xs leading-none font-semibold text-destructive-foreground tabular-nums ring-2 ring-sidebar"
         >
           {count > 9 ? '9+' : count}
         </span>
@@ -137,10 +137,10 @@ function NotificationPanel({ onClose, title, headerClassName, listClassName }: P
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <div className={cn('flex min-h-14 items-center justify-between gap-2 border-b px-4 py-2', headerClassName)}>
+      <div className={cn('flex min-h-14 items-center justify-between gap-2 border-b border-border px-4 py-2', headerClassName)}>
         {title}
         {unread > 0 && (
-          <Button variant="ghost" className="h-9 px-3 text-sm" onClick={markAll}>
+          <Button variant="ghost" onClick={markAll}>
             <CheckCheck className="size-4" /> Marcar todas como lidas
           </Button>
         )}
@@ -156,7 +156,7 @@ function NotificationPanel({ onClose, title, headerClassName, listClassName }: P
         ) : isError && !data ? (
           <div className="flex flex-col items-center gap-3 px-4 py-10 text-center">
             <p className="text-sm text-destructive">Não foi possível carregar as notificações.</p>
-            <Button variant="outline" className="h-10 px-4" onClick={() => refetch()} disabled={isFetching}>
+            <Button variant="outline" onClick={() => refetch()} disabled={isFetching}>
               <RefreshCw className={cn('size-4', isFetching && 'animate-spin')} /> Tentar de novo
             </Button>
           </div>
@@ -179,7 +179,7 @@ function NotificationPanel({ onClose, title, headerClassName, listClassName }: P
               )}
             </section>
 
-            <section aria-labelledby={`${headingId}-avisos`} className="mt-2 border-t">
+            <section aria-labelledby={`${headingId}-avisos`} className="mt-2 border-t border-border">
               <h3 id={`${headingId}-avisos`} className="px-4 pt-3 pb-2 text-sm font-semibold text-muted-foreground">
                 Avisos
               </h3>
@@ -208,27 +208,27 @@ function PendingRow({ item, onOpen }: { item: PendingItem; onOpen: (link: string
   const base = cn(
     'flex w-full items-start gap-3 rounded-lg border p-3 text-left',
     warning
-      ? 'border-amber-300 bg-amber-50 text-amber-950 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-100'
+      ? 'border-warning/30 bg-warning-soft text-foreground'
       : 'border-border bg-card text-foreground',
   )
   const content = (
     <>
       <Icon
         aria-hidden
-        className={cn('mt-0.5 size-5 shrink-0', warning ? 'text-amber-600 dark:text-amber-400' : 'text-muted-foreground')}
+        className={cn('mt-0.5 size-5 shrink-0', warning ? 'text-warning' : 'text-muted-foreground')}
       />
       <span className="min-w-0 flex-1">
         <span className="block text-sm leading-snug font-semibold">{item.title}</span>
         {item.body && (
-          <span className={cn('mt-0.5 block text-sm', warning ? 'text-amber-900/80 dark:text-amber-200/80' : 'text-muted-foreground')}>
+          <span className="mt-0.5 block text-sm text-muted-foreground">
             {item.body}
           </span>
         )}
       </span>
       <span
         className={cn(
-          'shrink-0 rounded-full px-2 py-0.5 text-xs font-bold tabular-nums',
-          warning ? 'bg-amber-200 text-amber-950 dark:bg-amber-800 dark:text-amber-50' : 'bg-muted text-foreground',
+          'inline-flex h-5 min-w-5 shrink-0 items-center justify-center rounded-sm px-1.5 text-xs font-semibold tabular-nums',
+          warning ? 'bg-warning text-warning-foreground' : 'bg-muted text-foreground',
         )}
       >
         {item.count}
@@ -245,7 +245,7 @@ function PendingRow({ item, onOpen }: { item: PendingItem; onOpen: (link: string
       className={cn(
         base,
         'transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none',
-        warning ? 'hover:bg-amber-100 dark:hover:bg-amber-950/60' : 'hover:bg-muted/60',
+        warning ? 'hover:border-warning/60' : 'hover:bg-muted/60',
       )}
     >
       {content}
@@ -262,7 +262,7 @@ function EventRow({ event, onSelect }: { event: NotificationEvent; onSelect: (e:
     >
       <span
         aria-hidden
-        className={cn('mt-1.5 size-2.5 shrink-0 rounded-full', event.read ? 'bg-transparent' : 'bg-primary')}
+        className={cn('mt-1.5 size-2 shrink-0 rounded-full', event.read ? 'bg-transparent' : 'bg-primary')}
       />
       <span className="min-w-0 flex-1">
         <span className={cn('block text-sm leading-snug', event.read ? 'text-foreground/80' : 'font-semibold text-foreground')}>
@@ -274,7 +274,7 @@ function EventRow({ event, onSelect }: { event: NotificationEvent; onSelect: (e:
       <time
         dateTime={event.createdAt}
         title={fullDateTime(event.createdAt)}
-        className="shrink-0 pt-0.5 text-xs text-muted-foreground"
+        className="shrink-0 pt-0.5 text-xs tabular-nums text-faint-foreground"
       >
         {relativeTime(event.createdAt)}
       </time>
