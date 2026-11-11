@@ -9,7 +9,7 @@ import {
   useCreateFinanceCategory, useUpdateFinanceCategory, useDeleteFinanceCategory,
   useFinanceAccounts, useCreateFinanceAccount, useUpdateFinanceAccount, useDeleteFinanceAccount,
   useCreateFinanceTransfer, fetchFinanceTransactionsForRange, useGenerateFinanceRecurrences,
-  useUploadFinanceAttachment, useDeleteFinanceAttachment, openFinanceAttachment, exportFinanceTransactions,
+  useUploadFinanceAttachment, useDeleteFinanceAttachment, openFinanceAttachment, financeExportFilters,
   useFinanceClosings, useFinanceNextNumber,
   type FinanceType, type FinanceCategory, type FinanceAccount, type FinanceTransaction, type TransactionFilters, type Empenho,
   type FinanceAttachment,
@@ -21,7 +21,7 @@ import { todayYmd, toYmd } from '@/utils/dates'
 import {
   Wallet, TrendingUp, TrendingDown, Scale, Plus, Pencil, Trash2, Search,
   Tag, ArrowUpCircle, ArrowDownCircle, Paperclip, FileText, X,
-  Download, Landmark, ArrowLeftRight, FileDown, Receipt, ChevronDown, User, Repeat,
+  Landmark, ArrowLeftRight, FileDown, Receipt, ChevronDown, User, Repeat,
   Building2,
 } from 'lucide-react'
 import { apiFetch, ApiError } from '@/lib/api'
@@ -57,6 +57,8 @@ import { ReciboButton } from '@/components/financeiro/ReciboButton'
 import { NumeroField } from '@/components/financeiro/NumeroField'
 import { NumeroSaltoDialog } from '@/components/financeiro/NumeroSaltoDialog'
 import { ClosedMonthBadge, ClosedMonthNotice, LockedReason } from '@/components/financeiro/ClosedMonth'
+import { ExportMenu } from '@/components/export/ExportMenu'
+import { textosDoFinanceiro } from '@/components/export/filter-texts'
 import { MemberBadge } from '@/components/MemberBadge'
 import { AjudaLink } from '@/components/ajuda/AjudaLink'
 import {
@@ -847,7 +849,6 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
   const cats = categories ?? []
   const accs = accounts ?? []
   const catsForType = form.type ? cats.filter(c => c.type === form.type) : []
-  const [exporting, setExporting] = useState(false)
 
   // ── Mês fechado ──
   // Nome do caixa para o motivo: da lista de caixas ou, se ele foi desativado, do próprio lançamento.
@@ -1113,17 +1114,18 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
     if (pendingInputRef.current) pendingInputRef.current.value = ''
   }
 
-  async function handleExport() {
-    setExporting(true)
-    try {
-      await exportFinanceTransactions(filters)
-    } catch (e) {
-      // Resposta da API (ex.: filtro recusado, 400) diz o motivo; sem resposta, o texto genérico.
-      toast.error(e instanceof ApiError ? apiErrorMessage(e, 'Erro ao exportar.') : 'Erro ao exportar.')
-    } finally {
-      setExporting(false)
-    }
-  }
+  // Exportar (SR-103): planilha, PDF e "Montar relatório…" da fonte `finance-transactions`, com os
+  // filtros e a ordem da tela (a lista não tem seleção). A linha "Filtros:" do montador diz o tipo,
+  // a categoria e o caixa pelo nome, como a API no PDF; o período, a forma e a busca ele já diz.
+  const temFiltro = !!(search.from || search.to || search.fType || search.cat || search.acc || search.pm || search.q)
+  const textosDosFiltros = textosDoFinanceiro({
+    type: search.fType,
+    categoryId: search.cat,
+    categoria: cats.find(c => c.id === search.cat)?.name ?? rows.find(r => r.categoryId === search.cat)?.category?.name,
+    accountId: search.acc,
+    caixa: search.acc ? accountNameOf(search.acc) : null,
+    orderBy: search.ord,
+  })
 
   function abrirTransferencia() {
     setTransfer({ fromAccountId: '', toAccountId: '', amount: '', date: todayYmd(), description: '' })
@@ -1224,9 +1226,14 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <Button variant="outline" className="shrink-0" disabled={exporting || rows.length === 0} onClick={handleExport}>
-            <Download className="size-4" /> {exporting ? 'Exportando...' : 'Exportar CSV'}
-          </Button>
+          <ExportMenu
+            dataset="finance-transactions"
+            className="shrink-0"
+            filters={financeExportFilters(filters)}
+            total={data?.total}
+            filtered={temFiltro}
+            filterTexts={textosDosFiltros}
+          />
           {canCreate && accs.length >= 2 && (
             <Button variant="outline" onClick={abrirTransferencia} className="shrink-0">
               <ArrowLeftRight className="size-4" /> Transferir

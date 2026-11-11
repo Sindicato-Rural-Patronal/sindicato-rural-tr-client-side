@@ -1,6 +1,8 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, fireEvent, act, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import type { RoomBooking, RoomBookingFilters, RoomScheduleItem } from '@/hooks/useRoomBookings'
+import type { AberturaDoMontador, FonteDoMontador } from '@/components/export/MontadorDeFontes'
 
 // Agenda das salas do Painel Geral: visão dia/semana, busca, exportar, imprimir
 // e faixa de ocupação. As chamadas à API ficam simuladas.
@@ -8,6 +10,8 @@ import type { RoomBooking, RoomBookingFilters, RoomScheduleItem } from '@/hooks/
 const spies = vi.hoisted(() => ({
   bookingFilters: [] as RoomBookingFilters[],
   scheduleFilters: [] as { from: string; to: string; roomId?: string }[],
+  /** O que a Agenda entrega ao montador de relatórios (o último render). */
+  montador: null as FonteDoMontador | null,
 }))
 
 const reuniao: RoomBooking = {
@@ -57,6 +61,15 @@ vi.mock('@/hooks/use-mobile', () => ({ useIsMobile: () => false }))
 vi.mock('@/components/PersonPicker', () => ({ PersonPicker: () => <input aria-label="Buscar pessoa" /> }))
 vi.mock('@/lib/export', () => ({ downloadExport: vi.fn().mockResolvedValue(2) }))
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
+// O montador (catálogo pela API, ReportBuilder) tem os testes dele; aqui, só o que a Agenda manda.
+vi.mock('@/components/export/MontadorDeFontes', () => ({
+  ItensDoMontador: ({ fontes, onAbrir }: { fontes: FonteDoMontador[]; onAbrir: (alvo: number) => void }) =>
+    <button type="button" role="menuitem" onClick={() => onAbrir(0)}>{fontes[0].rotulo}</button>,
+  MontadorAberto: ({ fontes, abertura }: { fontes: FonteDoMontador[]; abertura: AberturaDoMontador }) => {
+    spies.montador = fontes[0]
+    return abertura.aberto ? <div role="dialog" aria-label="Montador das reservas" /> : null
+  },
+}))
 
 const { AgendaSection } = await import('@/components/agenda/AgendaSection')
 
@@ -164,6 +177,29 @@ describe('AgendaSection', () => {
     renderSection()
     expect(screen.getByRole('button', { name: /Exportar/ })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /Imprimir/ })).toBeInTheDocument()
+  })
+
+  it('o Exportar tem "Montar relatório…" com o período, a sala, o tipo e a busca da tela (SR-103)', async () => {
+    renderSection({ sala: 'r2', tipo: 'MEETING' })
+    expect(spies.montador).toMatchObject({
+      rotulo: 'Montar relatório…',
+      dataset: 'room-bookings',
+      filters: { from: '2026-10-05', to: '2026-10-05', roomId: 'r2', type: 'MEETING', search: undefined },
+      filtered: true,
+      // As reservas da lista (a busca da tela é a mesma da exportação).
+      total: 2,
+      filterTexts: { roomId: 'Sala: SALA 1', type: 'Tipo: Reunião' },
+    })
+    await userEvent.click(screen.getByRole('button', { name: /Exportar/ }))
+    await userEvent.click(await screen.findByRole('menuitem', { name: 'Montar relatório…' }))
+    expect(screen.getByRole('dialog', { name: 'Montador das reservas' })).toBeInTheDocument()
+  })
+
+  it('na semana, o montador leva a semana inteira', () => {
+    renderSection()
+    fireEvent.click(screen.getByRole('button', { name: 'Semana' }))
+    expect(spies.montador?.filters).toMatchObject({ from: '2026-10-05', to: '2026-10-11', roomId: undefined, type: undefined })
+    expect(spies.montador?.filterTexts).toEqual({})
   })
 
   it('a ocupação abre com uma linha por sala e marca o horário no clique', () => {
