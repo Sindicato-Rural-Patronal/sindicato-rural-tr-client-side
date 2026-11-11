@@ -178,6 +178,55 @@ export function modelosDe(catalog: ExportCatalog): CatalogModelo[] {
 export const MODELO_RESUMO = 'Resumo'
 
 /**
+ * Fontes que só exportavam planilha antes da decisão 006 (o Financeiro e a
+ * Auditoria): não há colunas "de sempre" para manter, e os nomes preferidos de
+ * `pdfColumns` achariam no Financeiro só "Data" e "Descrição", sem o valor. O
+ * PDF rápido delas usa o modelo de fábrica resumido que a API define.
+ */
+const MODELO_DO_PDF_RAPIDO: Record<string, string> = {
+  'finance-transactions': 'resumido',
+  'audit-logs': 'resumida',
+}
+
+export type PdfRapido = {
+  /** Chaves do catálogo, na ordem das colunas. */
+  fields: string[]
+  /** Os rótulos dessas colunas: o PDF montado do CSV (acima do limite) mostra as mesmas. */
+  rotulos: string[]
+  /** O `modelo` do pedido: o cabeçalho do PDF e a auditoria dizem este nome. */
+  modelo: string
+}
+
+/**
+ * O PDF rápido do menu ("Relatório em PDF › Todos" e "› Selecionados") de uma
+ * fonte com catálogo: as colunas de sempre (`camposDoResumo`, modelo "Resumo")
+ * ou, nas fontes de `MODELO_DO_PDF_RAPIDO`, o modelo de fábrica resumido. Sem
+ * nenhuma coluna possível, null (o PDF sai do CSV).
+ */
+export function pdfRapido(catalog: ExportCatalog): PdfRapido | null {
+  const mapa = camposDoCatalogo(catalog)
+  const id = MODELO_DO_PDF_RAPIDO[catalog.dataset]
+  const deFabrica = id ? catalog.modelos.find(m => m.id === id) : undefined
+  const doModelo = deFabrica ? limparCampos(catalog, deFabrica.fields).campos : []
+  const fields = doModelo.length ? doModelo : camposDoResumo(catalog)
+  if (fields.length === 0) return null
+  return {
+    fields,
+    rotulos: fields.map(k => mapa.get(k)?.label ?? k),
+    modelo: doModelo.length && deFabrica ? deFabrica.name : MODELO_RESUMO,
+  }
+}
+
+/**
+ * O PDF rápido vai pela API? Acima de `limits.pdfRows` linhas (quando a tela
+ * sabe quantas), não: a API recusaria, e o PDF sai do CSV, como antes da
+ * decisão 006 (SR-103). Sem saber quantas, tenta pela API.
+ */
+export function pdfRapidoPelaApi(catalog: ExportCatalog, quantos: number | undefined): boolean {
+  return quantos == null || quantos <= catalog.limits.pdfRows
+}
+
+/**
  * As colunas do PDF rápido do menu ("Relatório em PDF › Todos"): as mesmas que
  * ele mostrava quando era montado do CSV, escolhidas do Padrão pelos nomes
  * preferidos de `pdfColumns` (até 7, na ordem do Padrão). Vão como `fields`, e a
@@ -493,6 +542,21 @@ export function problemaParaBaixar(
   return null
 }
 
+/**
+ * Quantos saem quando a fonte corta em vez de recusar: a Auditoria leva só as
+ * `limits.rows` linhas mais recentes, como sempre levou, e nunca dá o "passa de
+ * 20.000 linhas". Nas outras fontes, o total como veio.
+ */
+export function totalComCorte(total: number | undefined, catalog: ExportCatalog, cortaNoLimite = false): number | undefined {
+  return cortaNoLimite && total != null ? Math.min(total, catalog.limits.rows) : total
+}
+
+/** O aviso do corte, quando a lista passa do limite (null = não corta nada). */
+export function avisoDoCorte(total: number | undefined, catalog: ExportCatalog, cortaNoLimite = false): string | null {
+  if (!cortaNoLimite || total == null || total <= catalog.limits.rows) return null
+  return `Saem só as ${milhar(catalog.limits.rows)} linhas mais recentes.`
+}
+
 export function textoDoBotao(format: ReportFormat, quantos: Quantos): string {
   const numero = contagem(quantos)
   if (format === 'print') return `Imprimir${numero}`
@@ -522,6 +586,25 @@ export const ROTULOS_DOS_VALORES: Record<string, Record<string, string>> = {
   view: COURSE_VIEW_LABEL,
 }
 
+const DIA = /^\d{4}-\d{2}-\d{2}$/
+
+/** "2026-01-31" → "31/01/2026". */
+const diaBr = (ymd: string) => `${ymd.slice(8, 10)}/${ymd.slice(5, 7)}/${ymd.slice(0, 4)}`
+
+/**
+ * Um período de dias (AAAA-MM-DD) em palavras, como a API escreve no PDF:
+ * "Período: 01/01/2026 a 31/01/2026", "Dia: 05/10/2026" (início = fim), "De: …"
+ * ou "Até: …" (só uma ponta). Sem nenhuma, null.
+ */
+export function periodoEmPalavras(from?: string | null, to?: string | null): string | null {
+  const de = from && DIA.test(from) ? from : null
+  const ate = to && DIA.test(to) ? to : null
+  if (de && ate) return de === ate ? `Dia: ${diaBr(de)}` : `Período: ${diaBr(de)} a ${diaBr(ate)}`
+  if (de) return `De: ${diaBr(de)}`
+  if (ate) return `Até: ${diaBr(ate)}`
+  return null
+}
+
 /**
  * Os filtros da tela em palavras, com os nomes do catálogo: "Busca: silva",
  * "Sexo: Feminino", "Só associados em dia". Filtro sem nome no catálogo não
@@ -530,6 +613,9 @@ export const ROTULOS_DOS_VALORES: Record<string, Record<string, string>> = {
  *
  * O valor `false` não aparece (`activeMember: false` não filtra nada), a não
  * ser que a tela dê o texto dele: `isPartner: false` é "Só não parceiras".
+ *
+ * `from` e `to` em dias (Auditoria, Agenda, Financeiro) viram uma parte só, no
+ * lugar do primeiro deles, como a API diz: "Período: 01/01/2026 a 31/01/2026".
  */
 export function filtrosEmPalavras(
   filters: Record<string, ValorDeFiltro>,
@@ -540,10 +626,23 @@ export function filtrosEmPalavras(
   } = {},
 ): string[] {
   const partes: string[] = []
+  const diaDo = (chave: 'from' | 'to') => {
+    const v = filters[chave]
+    return filterLabels[chave] && typeof v === 'string' && DIA.test(v) ? v : null
+  }
+  let periodoDito = false
   for (const [chave, valor] of Object.entries(filters)) {
     const nome = filterLabels[chave]
     if (!nome || valor == null || valor === '') continue
     if (Array.isArray(valor) && valor.length === 0) continue
+    if ((chave === 'from' || chave === 'to') && !textos[chave] && typeof valor === 'string' && DIA.test(valor)) {
+      if (!periodoDito) {
+        periodoDito = true
+        const periodo = periodoEmPalavras(diaDo('from'), diaDo('to'))
+        if (periodo) partes.push(periodo)
+      }
+      continue
+    }
     if (textos[chave]) {
       partes.push(textos[chave])
     } else if (valor === false || valor === 'false') {

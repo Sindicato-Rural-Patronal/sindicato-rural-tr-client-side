@@ -4,7 +4,10 @@ import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import type { ComponentProps, ReactNode } from 'react'
 import { ApiError } from '@/lib/api'
-import { CATALOGO_INSCRICOES_CRU, CATALOGO_PESSOAS_CRU } from '../lib/export-catalog.fixture'
+import { toast } from 'sonner'
+import {
+  CATALOGO_AUDITORIA_CRU, CATALOGO_INSCRICOES_CRU, CATALOGO_LANCAMENTOS_CRU, CATALOGO_PESSOAS_CRU,
+} from '../lib/export-catalog.fixture'
 import '@/i18n'
 
 // "Montar relatório…" no menu Exportar (decisão 006): só aparece quando o
@@ -169,7 +172,7 @@ describe('ExportMenu: PDF rápido pela API (SR-101)', () => {
     const [, pdf] = await screen.findAllByRole('menuitem', { name: 'Todos (10)' })
     await userEvent.click(pdf)
 
-    await waitFor(() => expect(saveRelatorioPdf).toHaveBeenCalledWith('"Nome"', 'Pessoas', 'pessoas.pdf'))
+    await waitFor(() => expect(saveRelatorioPdf).toHaveBeenCalledWith('"Nome"', 'Pessoas', 'pessoas.pdf', undefined))
     expect(corpoDaExportacao('people')).toEqual({ search: 'silva' })
     expect(relatorioJsonPdf).not.toHaveBeenCalled()
   })
@@ -184,6 +187,131 @@ describe('ExportMenu: PDF rápido pela API (SR-101)', () => {
     await userEvent.click(csv)
     await waitFor(() => expect(saveBlob).toHaveBeenCalled())
     expect(corpoDaExportacao('people')).toEqual({ search: 'silva' })
+  })
+})
+
+describe('ExportMenu: PDF rápido acima do limite de linhas volta ao PDF do CSV (SR-103)', () => {
+  const CSV = () => ({
+    blob: () => Promise.resolve(new Blob(['"Nome"'])),
+    headers: new Headers({ 'Content-Disposition': 'attachment; filename="pessoas.csv"', 'X-Export-Count': '2500' }),
+  })
+
+  it('total conhecido acima de 2.000: nem tenta a API; o PDF sai do CSV com as mesmas colunas', async () => {
+    simular({ people: CATALOGO_PESSOAS_CRU }, CSV)
+    abrir({ total: 2500 })
+    await userEvent.click(screen.getByRole('button', { name: 'Exportar' }))
+    const [, pdf] = await screen.findAllByRole('menuitem', { name: 'Todos (2500)' })
+    await userEvent.click(pdf)
+
+    await waitFor(() => expect(saveRelatorioPdf).toHaveBeenCalledWith(
+      '"Nome"', 'Pessoas', 'pessoas.pdf', ['Nome', 'CPF', 'E-mail', 'Telefone'],
+    ))
+    expect(corpoDaExportacao('people')).toEqual({ search: 'silva' })
+    expect(relatorioJsonPdf).not.toHaveBeenCalled()
+    expect(toast.success).toHaveBeenCalledWith('Relatório com 2.500 registros baixado.')
+  })
+
+  it('até 2.000, vai pela API como antes', async () => {
+    simular({ people: CATALOGO_PESSOAS_CRU }, () => ({ json: () => Promise.resolve(JSON_PDF), headers: new Headers() }))
+    abrir({ total: 2000 })
+    await userEvent.click(screen.getByRole('button', { name: 'Exportar' }))
+    const [, pdf] = await screen.findAllByRole('menuitem', { name: 'Todos (2000)' })
+    await userEvent.click(pdf)
+    await waitFor(() => expect(relatorioJsonPdf).toHaveBeenCalled())
+    expect(saveRelatorioPdf).not.toHaveBeenCalled()
+  })
+
+  it('total desconhecido e a API recusa pelo limite: em vez do erro, o PDF sai do CSV', async () => {
+    const limite = new ApiError(400, 'O PDF aceita até 2.000 linhas. Baixe a planilha ou use um filtro.')
+    apiFetch.mockImplementation((path: string, init?: { body?: string }) => {
+      if (path.endsWith('/catalog')) return Promise.resolve({ json: () => Promise.resolve(CATALOGO_PESSOAS_CRU) })
+      const corpo = JSON.parse(init?.body ?? '{}') as Record<string, unknown>
+      return corpo.format === 'pdf' ? Promise.reject(limite) : Promise.resolve(CSV())
+    })
+    abrir({ total: undefined })
+    await userEvent.click(screen.getByRole('button', { name: 'Exportar' }))
+    const [, pdf] = await screen.findAllByRole('menuitem', { name: 'Todos' })
+    await userEvent.click(pdf)
+
+    await waitFor(() => expect(saveRelatorioPdf).toHaveBeenCalledWith(
+      '"Nome"', 'Pessoas', 'pessoas.pdf', ['Nome', 'CPF', 'E-mail', 'Telefone'],
+    ))
+    const pedidos = apiFetch.mock.calls.filter(c => c[0] === '/admin/export/people').map(c => JSON.parse(c[1].body as string))
+    expect(pedidos).toEqual([
+      { search: 'silva', fields: ['name', 'cpf', 'email', 'phone'], format: 'pdf', modelo: 'Resumo' },
+      { search: 'silva' },
+    ])
+    expect(toast.error).not.toHaveBeenCalled()
+  })
+
+  it('outro erro da API continua aparecendo, sem tentar o CSV', async () => {
+    apiFetch.mockImplementation((path: string) => path.endsWith('/catalog')
+      ? Promise.resolve({ json: () => Promise.resolve(CATALOGO_PESSOAS_CRU) })
+      : Promise.reject(new ApiError(403, 'Sem permissão para exportar: CPF.')))
+    abrir()
+    await userEvent.click(screen.getByRole('button', { name: 'Exportar' }))
+    const [, pdf] = await screen.findAllByRole('menuitem', { name: 'Todos (10)' })
+    await userEvent.click(pdf)
+    await waitFor(() => expect(toast.error).toHaveBeenCalledWith('Sem permissão para exportar: CPF.'))
+    expect(apiFetch.mock.calls.filter(c => c[0] === '/admin/export/people')).toHaveLength(1)
+    expect(saveRelatorioPdf).not.toHaveBeenCalled()
+  })
+
+  it('"Selecionados" usa quantos estão marcados para decidir', async () => {
+    simular({ people: CATALOGO_PESSOAS_CRU }, CSV)
+    const muitos = Array.from({ length: 2001 }, (_, i) => `p${i}`)
+    abrir({ selectedIds: muitos, total: 3000 })
+    await userEvent.click(screen.getByRole('button', { name: 'Exportar (2001)' }))
+    const [, pdf] = await screen.findAllByRole('menuitem', { name: 'Selecionados (2001)' })
+    await userEvent.click(pdf)
+    await waitFor(() => expect(saveRelatorioPdf).toHaveBeenCalled())
+    expect(corpoDaExportacao('people')).toEqual({ ids: muitos })
+  })
+})
+
+describe('ExportMenu: Financeiro e Auditoria (SR-103)', () => {
+  it('lançamentos: o PDF rápido usa o modelo "Resumido" e a ordem da tela', async () => {
+    simular({ 'finance-transactions': CATALOGO_LANCAMENTOS_CRU }, () => ({
+      json: () => Promise.resolve({ ...JSON_PDF, title: 'Lançamentos', filename: 'lancamentos-2026-11-11.pdf' }),
+      headers: new Headers(),
+    }))
+    abrir({ dataset: 'finance-transactions', selectedIds: undefined, filters: { from: '2026-10-01', orderBy: 'number' }, total: 61 })
+    await userEvent.click(screen.getByRole('button', { name: 'Exportar' }))
+    const [, pdf] = await screen.findAllByRole('menuitem', { name: 'Todos (61)' })
+    await userEvent.click(pdf)
+    await waitFor(() => expect(relatorioJsonPdf).toHaveBeenCalled())
+    expect(corpoDaExportacao('finance-transactions')).toEqual({
+      from: '2026-10-01', orderBy: 'number',
+      fields: ['number', 'date', 'description', 'payeeName', 'amount'], format: 'pdf', modelo: 'Resumido',
+    })
+    expect(saveBlob).toHaveBeenCalledWith(expect.any(Blob), 'lancamentos-2026-11-11.pdf')
+  })
+
+  it('a planilha dos lançamentos vai pela exportação, com o nome que a API manda', async () => {
+    simular({ 'finance-transactions': CATALOGO_LANCAMENTOS_CRU }, () => ({
+      blob: () => Promise.resolve(new Blob(['"Nº"'])),
+      headers: new Headers({ 'Content-Disposition': 'attachment; filename="lancamentos-2026-11-11.csv"', 'X-Export-Count': '1' }),
+    }))
+    abrir({ dataset: 'finance-transactions', selectedIds: undefined, filters: { search: 'coop' }, total: 1 })
+    await userEvent.click(screen.getByRole('button', { name: 'Exportar' }))
+    const [csv] = await screen.findAllByRole('menuitem', { name: 'Todos (1)' })
+    await userEvent.click(csv)
+    await waitFor(() => expect(saveBlob).toHaveBeenCalledWith(expect.any(Blob), 'lancamentos-2026-11-11.csv'))
+    expect(corpoDaExportacao('finance-transactions')).toEqual({ search: 'coop' })
+    expect(toast.success).toHaveBeenCalledWith('Planilha com 1 registro baixada.')
+  })
+
+  it('auditoria: o montador avisa do corte nas 20.000 mais recentes e deixa baixar a planilha', async () => {
+    comCatalogo(CATALOGO_AUDITORIA_CRU)
+    localStorage.setItem('sr:relatorio:audit-logs', JSON.stringify({ fields: ['createdAt', 'actor'], format: 'csv' }))
+    abrir({ dataset: 'audit-logs', selectedIds: undefined, filters: {}, total: 25000, cortaNoLimite: true })
+    await waitFor(() => expect(apiFetch).toHaveBeenCalledWith('/admin/export/audit-logs/catalog'))
+    await userEvent.click(screen.getByRole('button', { name: 'Exportar' }))
+    await userEvent.click(await screen.findByRole('menuitem', { name: 'Montar relatório…' }))
+    await screen.findByRole('dialog', { name: 'Montar relatório · Auditoria' })
+    expect(screen.getByRole('radio', { name: 'Todos (25.000)' })).toBeChecked()
+    expect(screen.getByText('Saem só as 20.000 linhas mais recentes.')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Baixar planilha (20.000)' })).toBeEnabled()
   })
 })
 

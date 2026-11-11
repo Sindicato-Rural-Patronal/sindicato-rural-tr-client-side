@@ -2,10 +2,11 @@
 // tela precise conhecer as colunas de cada relatório. O backend continua sendo
 // a única fonte das colunas: o PDF é outra forma de imprimir a MESMA planilha.
 //
-// Desde a fase 2 da decisão 006 (SR-101), só o "Relatório de cadastros" (4
-// tabelas num arquivo, sem montador) e a fonte sem catálogo (back velho) ainda
-// passam por aqui. O PDF rápido das fontes com montador vem da API, com as
-// colunas que `pdfColumns` escolhe (`camposDoResumo` em report-builder.ts).
+// Desde a fase 2 da decisão 006 (SR-101), passam por aqui só o "Relatório de
+// cadastros" (4 tabelas num arquivo, sem montador), a fonte sem catálogo (back
+// velho) e o PDF rápido acima do limite de linhas do PDF da API (SR-103). O PDF
+// rápido das fontes com montador vem da API, com as colunas que `pdfColumns`
+// escolhe (`camposDoResumo` em report-builder.ts).
 //
 // Formato gerado lá: BOM UTF-8, separador ";", CRLF, toda célula entre aspas e
 // aspas internas dobradas ("").
@@ -139,7 +140,15 @@ export function pesoDaColuna(cabecalho: string): number {
   return PESO_POR_COLUNA.find(g => g.termos.includes(cabecalho))?.peso ?? 1.5
 }
 
-export function pdfColumns(header: string[]): number[] {
+/**
+ * As colunas do PDF montado do CSV. `rotulos` (o PDF rápido acima do limite de
+ * linhas, SR-103) pede as mesmas colunas que o PDF pela API teria, nessa ordem;
+ * sem `rotulos`, ou se nenhum estiver na planilha, vale a escolha de sempre.
+ */
+export function pdfColumns(header: string[], rotulos?: string[]): number[] {
+  const pedidas = (rotulos ?? []).map(r => header.indexOf(r)).filter((i, n, todas) => i >= 0 && todas.indexOf(i) === n)
+  if (pedidas.length > 0) return pedidas
+
   const escolhidas = COLUNAS_PREFERIDAS
     .map(nome => header.indexOf(nome))
     .filter(i => i >= 0)

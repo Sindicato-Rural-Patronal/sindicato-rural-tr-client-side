@@ -8,9 +8,10 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { EXPORT_CATALOG_STALE_TIME, exportCatalogKey, fetchExportCatalog } from '@/hooks/useExportCatalog'
 import {
-  downloadExport, exportErrorMessage, type ExportDataset, type ExportFormat, type ExportOptions, type ExportParams,
+  downloadExport, ehLimiteDoPdf, exportErrorMessage, type ExportDataset, type ExportFormat, type ExportOptions,
+  type ExportParams,
 } from '@/lib/export'
-import { MODELO_RESUMO, camposDoResumo } from '@/components/export/report-builder'
+import { pdfRapido, pdfRapidoPelaApi } from '@/components/export/report-builder'
 import {
   ItensDoMontador, MontadorAberto, type AberturaDoMontador, type FonteDoMontador,
 } from '@/components/export/MontadorDeFontes'
@@ -28,16 +29,30 @@ export type ExportExtraItem = {
   builder?: boolean
 }
 
+/**
+ * Baixa e avisa. `doCsv` (só no PDF rápido pela API): se a API recusar por
+ * passar do limite de linhas do PDF ("O PDF aceita até 2.000 linhas…", quando a
+ * tela não sabia quantas eram), o PDF sai do CSV com estas opções, como antes
+ * da decisão 006, em vez de mostrar o erro.
+ */
 async function runExport(
   dataset: ExportDataset, params: ExportParams, format: ExportFormat = 'csv', opts: ExportOptions = {},
+  doCsv?: ExportOptions,
 ) {
-  const nome = format === 'pdf' ? 'Relatório' : 'Planilha'
+  const baixado = format === 'pdf' ? 'Relatório' : 'Planilha'
+  const fim = format === 'pdf' ? 'baixado' : 'baixada'
   try {
-    const count = await downloadExport(dataset, params, format, opts)
+    let count: number
+    try {
+      count = await downloadExport(dataset, params, format, opts)
+    } catch (err) {
+      if (!doCsv || !ehLimiteDoPdf(err)) throw err
+      count = await downloadExport(dataset, params, format, doCsv)
+    }
     toast.success(
-      count === 1 ? `${nome} com 1 registro baixado.`
-        : count >= 0 ? `${nome} com ${count} registros baixado.`
-          : `${nome} baixado.`,
+      count === 1 ? `${baixado} com 1 registro ${fim}.`
+        : count >= 0 ? `${baixado} com ${count.toLocaleString('pt-BR')} registros ${fim}.`
+          : `${baixado} ${fim}.`,
     )
   } catch (err) {
     toast.error(exportErrorMessage(err, 'Erro ao exportar.'))
@@ -60,13 +75,14 @@ function rotuloDoMontadorDoExtra(label: string): string {
  * `builder` ganha o seu "Montar relatório: …".
  *
  * O PDF rápido ("Relatório em PDF") da fonte com montador vem da API
- * (`format: 'pdf'`) com as colunas de sempre (`camposDoResumo`) e o modelo
- * "Resumo": a auditoria registra um PDF, com os campos. Sem catálogo, o PDF
- * ainda sai do CSV, como antes.
+ * (`format: 'pdf'`) com as colunas de sempre e o modelo "Resumo" (`pdfRapido`):
+ * a auditoria registra um PDF, com os campos. Sai do CSV, como antes, sem
+ * catálogo e acima do limite de linhas do PDF da API (o total conhecido passa
+ * de `limits.pdfRows`, ou a API recusa por isso), com as mesmas colunas.
  */
 export function ExportMenu({
   dataset, filters = {}, selectedIds, total, filtered = false, extra = [], className, label = 'Exportar', size,
-  confirmedTotal, filterTexts,
+  confirmedTotal, filterTexts, cortaNoLimite,
 }: {
   dataset: ExportDataset
   /** Mesmos filtros da listagem (sem página/limite). */
@@ -86,6 +102,8 @@ export function ExportMenu({
   confirmedTotal?: number
   /** Montador: como a tela diz um filtro na linha "Filtros:" ({ courseIds: 'Curso: Horta' }). */
   filterTexts?: Record<string, string>
+  /** Montador: a fonte leva só as linhas mais recentes até o limite, em vez de recusar (Auditoria). */
+  cortaNoLimite?: boolean
 }) {
   const [busy, setBusy] = useState(false)
   // Cada abertura do montador começa do zero (padrão ou último usado).
@@ -111,11 +129,18 @@ export function ExportMenu({
     }
   }
 
-  async function runPdf(params: ExportParams) {
+  /** `quantos`: quantos registros a tela sabe que vão sair (o total ou os selecionados). */
+  async function runPdf(params: ExportParams, quantos: number | undefined) {
     setBusy(true)
     const catalogo = await catalogoDa(dataset)
-    const fields = catalogo ? camposDoResumo(catalogo) : []
-    await runExport(dataset, params, 'pdf', fields.length ? { fields, modelo: MODELO_RESUMO } : {})
+    const resumo = catalogo ? pdfRapido(catalogo) : null
+    // O PDF do CSV mostra as mesmas colunas que o da API mostraria.
+    const doCsv: ExportOptions = resumo ? { colunasDoPdf: resumo.rotulos } : {}
+    if (catalogo && resumo && pdfRapidoPelaApi(catalogo, quantos)) {
+      await runExport(dataset, params, 'pdf', { fields: resumo.fields, modelo: resumo.modelo }, doCsv)
+    } else {
+      await runExport(dataset, params, 'pdf', doCsv)
+    }
     setBusy(false)
   }
 
@@ -128,7 +153,7 @@ export function ExportMenu({
   const fontes: FonteDoMontador[] = [
     {
       rotulo: 'Montar relatório…', dataset, filters, selectedIds, total, filtered,
-      totalConfirmadas: confirmedTotal, filterTexts,
+      totalConfirmadas: confirmedTotal, filterTexts, cortaNoLimite,
     },
     ...extra.filter(item => item.builder).map((item): FonteDoMontador => ({
       rotulo: rotuloDoMontadorDoExtra(item.label),
@@ -166,12 +191,12 @@ export function ExportMenu({
             Relatório em PDF (para imprimir)
           </DropdownMenuLabel>
           {temSelecao && (
-            <DropdownMenuItem disabled={n === 0} onSelect={() => runPdf({ ids })}>
+            <DropdownMenuItem disabled={n === 0} onSelect={() => runPdf({ ids }, n)}>
               <FileText className="size-4" />
               {n > 0 ? `Selecionados (${n})` : 'Selecionados (marque na lista)'}
             </DropdownMenuItem>
           )}
-          <DropdownMenuItem disabled={total === 0} onSelect={() => runPdf(filters)}>
+          <DropdownMenuItem disabled={total === 0} onSelect={() => runPdf(filters, total)}>
             <FileText className="size-4" />
             {allLabel}
           </DropdownMenuItem>

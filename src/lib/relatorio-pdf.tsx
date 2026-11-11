@@ -4,11 +4,12 @@ import { parseCsvSections, pdfColumns, pesoDaColuna, type CsvSection } from '@/l
 import type { RelatorioColuna, RelatorioJson } from '@/lib/export'
 
 // Relatório em PDF, de dois jeitos:
-//   • RelatorioDocument (o "Relatório de cadastros", com 4 tabelas, e o PDF
-//     rápido de fonte sem catálogo, com o back velho): a MESMA planilha que o
-//     CSV traz, montada para o papel. Deitado (A4 landscape) porque tabela em
-//     pé não cabe, e com só as colunas que identificam o registro — ver
-//     `pdfColumns`.
+//   • RelatorioDocument (o "Relatório de cadastros", com 4 tabelas, o PDF
+//     rápido de fonte sem catálogo, com o back velho, e o PDF rápido acima do
+//     limite de linhas do PDF da API): a MESMA planilha que o CSV traz, montada
+//     para o papel. Deitado (A4 landscape) porque tabela em pé não cabe, e com
+//     só as colunas que identificam o registro — ver `pdfColumns` — ou as
+//     pedidas em `colunas` (as do PDF rápido pela API).
 //   • RelatorioJsonDocument (montador e PDF rápido do menu, decisão 006): o
 //     JSON da API, só com as colunas escolhidas, na ordem escolhida. A folha e
 //     a letra se ajustam ao número de colunas (`layoutDoPdf`). O PDF rápido
@@ -139,8 +140,8 @@ function fracoesDoCsv(cabecalhos: string[]): number[] {
   return pesos.map(p => p / soma)
 }
 
-function Tabela({ secao }: { secao: CsvSection }) {
-  const colunas = pdfColumns(secao.header)
+function Tabela({ secao, rotulos }: { secao: CsvSection; rotulos?: string[] }) {
+  const colunas = pdfColumns(secao.header, rotulos)
   const fracoes = fracoesDoCsv(colunas.map(c => secao.header[c]))
   const quebras = quebrasDasColunas(fracoes, 'landscape', 8)
 
@@ -182,10 +183,12 @@ function Tabela({ secao }: { secao: CsvSection }) {
   )
 }
 
-export function RelatorioDocument({ titulo, secoes, geradoEm }: {
+export function RelatorioDocument({ titulo, secoes, geradoEm, colunas }: {
   titulo: string
   secoes: CsvSection[]
   geradoEm: string
+  /** Rótulos das colunas a mostrar, na ordem; sem eles, as de `pdfColumns`. */
+  colunas?: string[]
 }) {
   const total = secoes.reduce((soma, s) => soma + s.rows.length, 0)
 
@@ -199,7 +202,7 @@ export function RelatorioDocument({ titulo, secoes, geradoEm }: {
           </Text>
         </View>
 
-        {secoes.map((secao, i) => <Tabela key={secao.title ?? i} secao={secao} />)}
+        {secoes.map((secao, i) => <Tabela key={secao.title ?? i} secao={secao} rotulos={colunas} />)}
 
         <View style={styles.rodape} fixed>
           <Text>{titulo} · {geradoEm}</Text>
@@ -214,11 +217,11 @@ function agora(): string {
   return new Date().toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })
 }
 
-/** Monta o PDF a partir do CSV já baixado e entrega o arquivo. */
-export async function saveRelatorioPdf(csv: string, titulo: string, nomeDoArquivo: string): Promise<void> {
+/** Monta o PDF a partir do CSV já baixado e entrega o arquivo. `colunas`: ver `RelatorioDocument`. */
+export async function saveRelatorioPdf(csv: string, titulo: string, nomeDoArquivo: string, colunas?: string[]): Promise<void> {
   const secoes = parseCsvSections(csv)
   const blob = await pdf(
-    <RelatorioDocument titulo={titulo} secoes={secoes} geradoEm={agora()} />,
+    <RelatorioDocument titulo={titulo} secoes={secoes} geradoEm={agora()} colunas={colunas} />,
   ).toBlob()
   saveBlob(blob, nomeDoArquivo)
 }

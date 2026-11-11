@@ -112,6 +112,18 @@ describe('pdfColumns', () => {
     expect(pdfColumns(header).map(i => header[i]))
       .toEqual(['Razão social', 'Nome fantasia', 'CNPJ', 'Telefone'])
   })
+
+  it('com os rótulos pedidos (PDF rápido acima do limite), leva essas colunas, nessa ordem', () => {
+    // A planilha padrão dos lançamentos e as colunas do modelo "Resumido" (SR-103).
+    const header = ['Nº', 'Data', 'Tipo', 'Caixa', 'Categoria', 'Descrição', 'Nome / Razão social', 'CNPJ / CPF', 'Valor (R$)']
+    const resumido = ['Nº', 'Data', 'Descrição', 'Nome / Razão social', 'Valor (R$)']
+    expect(pdfColumns(header, resumido).map(i => header[i])).toEqual(resumido)
+    // Rótulo que a planilha não tem fica de fora; repetido, uma vez só.
+    expect(pdfColumns(header, ['Valor (R$)', 'Sumiu', 'Data', 'Data'])).toEqual([8, 1])
+    // Nenhum na planilha (ou nenhum pedido): a escolha de sempre.
+    expect(pdfColumns(header, ['Sumiu'])).toEqual(pdfColumns(header))
+    expect(pdfColumns(header, [])).toEqual(pdfColumns(header))
+  })
 })
 
 describe('pesoDaColuna', () => {

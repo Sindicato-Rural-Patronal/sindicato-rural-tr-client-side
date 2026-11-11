@@ -23,6 +23,8 @@ export type ExportDataset =
   | 'unimed'
   | 'audit-logs'
   | 'room-bookings'
+  /** Lançamentos do Financeiro (SR-102/SR-103; antes, `GET /admin/finance/transactions/export`). */
+  | 'finance-transactions'
   /** Relatório de cadastros: os 4 tipos num arquivo só (READ_USER_ADMIN). */
   | 'cadastros'
 
@@ -39,6 +41,7 @@ const FALLBACK_NAME: Record<ExportDataset, string> = {
   unimed: 'unimed',
   'audit-logs': 'auditoria',
   'room-bookings': 'agenda-salas',
+  'finance-transactions': 'lancamentos',
   cadastros: 'relatorio-de-cadastros',
 }
 
@@ -61,7 +64,8 @@ export function exportBody(params: ExportParams): Record<string, string | string
 
 /**
  * Nome amigável do relatório, para o título do PDF montado do CSV (Relatório de
- * cadastros, fonte sem catálogo) e quando o JSON do PDF vem sem título.
+ * cadastros, fonte sem catálogo, PDF rápido acima do limite de linhas) e quando
+ * o JSON do PDF vem sem título. Os mesmos títulos da API.
  */
 const TITULO: Record<ExportDataset, string> = {
   people: 'Pessoas',
@@ -74,6 +78,7 @@ const TITULO: Record<ExportDataset, string> = {
   unimed: 'Beneficiários Unimed',
   'audit-logs': 'Auditoria',
   'room-bookings': 'Reservas de sala',
+  'finance-transactions': 'Lançamentos',
   cadastros: 'Relatório de cadastros',
 }
 
@@ -99,6 +104,12 @@ export type ExportOptions = {
    * de baixar (o montador avisa na tela). Só vale quando a resposta diz quantos.
    */
   recusarVazio?: boolean
+  /**
+   * PDF montado do CSV (sem `fields`): os rótulos das colunas que ele mostra,
+   * na ordem. O PDF rápido acima do limite de linhas manda as do PDF da API,
+   * para os dois saírem iguais. Ausente = a escolha de sempre (`pdfColumns`).
+   */
+  colunasDoPdf?: string[]
 }
 
 /** O relatório saiu sem nenhum registro e não foi baixado (`recusarVazio`). */
@@ -183,6 +194,11 @@ export function exportErrorMessage(err: unknown, fallback: string): string {
   return apiErrorMessage(err, fallback)
 }
 
+/** O 400 da API para PDF acima do limite ("O PDF aceita até 2.000 linhas. …"). */
+export function ehLimiteDoPdf(err: unknown): boolean {
+  return err instanceof ApiError && err.status === 400 && /^O PDF aceita até /.test(err.message)
+}
+
 /**
  * Abre o PDF para imprimir; se o navegador bloquear a aba, baixa o arquivo.
  * Devolve true quando abriu numa aba.
@@ -220,8 +236,9 @@ function contagemDoCabecalho(res: Response): number {
  * Com `opts.fields` (o montador e, nas fontes com montador, o PDF rápido do
  * menu), o PDF vem como JSON, só com as colunas escolhidas. Sem `opts.fields`,
  * o servidor manda CSV e o PDF é montado aqui a partir dele, com as colunas que
- * cabem no papel: é o caminho do "Relatório de cadastros" (4 tabelas num
- * arquivo) e das fontes sem catálogo (back velho).
+ * cabem no papel (ou as de `colunasDoPdf`): é o caminho do "Relatório de
+ * cadastros" (4 tabelas num arquivo), das fontes sem catálogo (back velho) e do
+ * PDF rápido acima do limite de linhas do PDF da API (SR-103).
  */
 export async function exportarRelatorio(
   dataset: ExportDataset,
@@ -254,7 +271,7 @@ export async function exportarRelatorio(
 
   if (format === 'pdf') {
     const { saveRelatorioPdf } = await import('@/lib/relatorio-pdf')
-    await saveRelatorioPdf(await blob.text(), TITULO[dataset], filename.replace(/\.csv$/i, '.pdf'))
+    await saveRelatorioPdf(await blob.text(), TITULO[dataset], filename.replace(/\.csv$/i, '.pdf'), opts.colunasDoPdf)
   } else {
     saveBlob(blob, filename)
   }

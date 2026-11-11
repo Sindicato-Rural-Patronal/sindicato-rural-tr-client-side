@@ -1,11 +1,14 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import {
-  aplicarModelo, avisoDadosPessoais, camposDoResumo, chaveDoUltimo, contagem, estadoInicial, filtrarGrupos, filtrosEmPalavras,
-  formatoNaTela, guardarUltimo, lerCatalogo, lerUltimo, limparCampos, marcarCampo, modeloParaApi,
-  modelosDe, moverCampo, moverPara, nomeDoModelo, problemaParaBaixar, quantosVaoSair, textoDoBotao, tirarCampo,
+  aplicarModelo, avisoDadosPessoais, avisoDoCorte, camposDoResumo, chaveDoUltimo, contagem, estadoInicial, filtrarGrupos,
+  filtrosEmPalavras, formatoNaTela, guardarUltimo, lerCatalogo, lerUltimo, limparCampos, marcarCampo, modeloParaApi,
+  modelosDe, moverCampo, moverPara, nomeDoModelo, pdfRapido, pdfRapidoPelaApi, periodoEmPalavras, problemaParaBaixar,
+  quantosVaoSair, textoDoBotao, tirarCampo, totalComCorte,
   MODELO_RESUMO, PADRAO_ID, PADRAO_NOME, TEXTO_NENHUMA_CONFIRMADA, type ReportState,
 } from '@/components/export/report-builder'
-import { CATALOGO_PESSOAS_CRU, catalogoInscricoes, catalogoPessoas } from './export-catalog.fixture'
+import {
+  CATALOGO_PESSOAS_CRU, catalogoAuditoria, catalogoInscricoes, catalogoLancamentos, catalogoPessoas,
+} from './export-catalog.fixture'
 
 // O estado do montador de relatórios (decisão 006): puro, sem React. Os
 // catálogos são recortes do formato real da API (SR-088).
@@ -417,6 +420,84 @@ describe('PDF rápido do menu: as colunas de sempre (SR-101)', () => {
       padrao: rotulos.map((_, i) => `k${i}`),
     })!
     expect(camposDoResumo(c)).toEqual(['k0', 'k1', 'k2', 'k3', 'k4', 'k5', 'k6'])
+  })
+})
+
+describe('fase 2, parte B: período, Financeiro e Auditoria (SR-103)', () => {
+  it('o período em dias sai como a API escreve no PDF', () => {
+    expect(periodoEmPalavras('2026-01-01', '2026-01-31')).toBe('Período: 01/01/2026 a 31/01/2026')
+    expect(periodoEmPalavras('2026-10-05', '2026-10-05')).toBe('Dia: 05/10/2026')
+    expect(periodoEmPalavras('2026-10-05', undefined)).toBe('De: 05/10/2026')
+    expect(periodoEmPalavras(null, '2026-10-05')).toBe('Até: 05/10/2026')
+    expect(periodoEmPalavras(undefined, '')).toBeNull()
+    // Não é dia (AAAA-MM-DD): nada.
+    expect(periodoEmPalavras('ontem', undefined)).toBeNull()
+  })
+
+  it('from e to viram uma parte só, no lugar do primeiro, na ordem da API', () => {
+    const auditoria = catalogoAuditoria().filterLabels
+    expect(filtrosEmPalavras(
+      { action: 'export', entity: 'Usuário', actorId: 'a1', ip: undefined, from: '2026-01-01', to: '2026-01-31', q: 'joão' },
+      auditoria,
+      { textos: { action: 'Ação: Exportações', actorId: 'Quem: bali' } },
+    )).toEqual(['Ação: Exportações', 'Área: Usuário', 'Quem: bali', 'Período: 01/01/2026 a 31/01/2026', 'Busca: joão'])
+    expect(filtrosEmPalavras({ from: undefined, to: '2026-01-31' }, auditoria)).toEqual(['Até: 31/01/2026'])
+    expect(filtrosEmPalavras({ to: '2026-10-05', from: '2026-10-05' }, { from: 'De', to: 'Até', roomId: 'Sala' }))
+      .toEqual(['Dia: 05/10/2026'])
+  })
+
+  it('Financeiro: os filtros da tela na ordem da API, sem id', () => {
+    expect(filtrosEmPalavras(
+      { from: '2026-10-01', to: '2026-10-31', type: 'OUT', categoryId: 'c1', accountId: 'a1', method: 'PIX', search: 'coop', orderBy: 'number' },
+      catalogoLancamentos().filterLabels,
+      { textos: { type: 'Tipo: Saída', categoryId: 'Categoria: INSUMOS', accountId: 'Caixa: BANCO', orderBy: 'Ordem: Nº' } },
+    )).toEqual([
+      'Período: 01/10/2026 a 31/10/2026', 'Tipo: Saída', 'Categoria: INSUMOS', 'Caixa: BANCO', 'Método: PIX', 'Busca: coop', 'Ordem: Nº',
+    ])
+  })
+
+  it('PDF rápido: Financeiro e Auditoria usam o modelo resumido da API', () => {
+    expect(pdfRapido(catalogoLancamentos())).toEqual({
+      fields: ['number', 'date', 'description', 'payeeName', 'amount'],
+      rotulos: ['Nº', 'Data', 'Descrição', 'Nome / Razão social', 'Valor (R$)'],
+      modelo: 'Resumido',
+    })
+    expect(pdfRapido(catalogoAuditoria())).toEqual({
+      fields: ['createdAt', 'actor', 'action', 'target'],
+      rotulos: ['Data e hora', 'Quem', 'Ação', 'Alvo'],
+      modelo: 'Resumida',
+    })
+  })
+
+  it('PDF rápido: as outras fontes continuam com as colunas de sempre e o "Resumo"', () => {
+    expect(pdfRapido(cat)).toEqual({
+      fields: ['name', 'cpf', 'email', 'phone'], rotulos: ['Nome', 'CPF', 'E-mail', 'Telefone'], modelo: MODELO_RESUMO,
+    })
+    // Sem o modelo resumido no catálogo (back de outra versão), volta às colunas de sempre.
+    const semModelo = catalogoLancamentos({ modelos: [] })
+    expect(pdfRapido(semModelo)).toMatchObject({ fields: ['date', 'description'], modelo: MODELO_RESUMO })
+  })
+
+  it('PDF rápido pela API só até o limite de linhas do PDF (total conhecido)', () => {
+    expect(pdfRapidoPelaApi(cat, 2000)).toBe(true)
+    expect(pdfRapidoPelaApi(cat, 2001)).toBe(false)
+    expect(pdfRapidoPelaApi(cat, undefined)).toBe(true)
+    expect(pdfRapidoPelaApi(catalogoPessoas({ limits: { rows: 20000, pdfRows: 10, fields: 80 } }), 11)).toBe(false)
+  })
+
+  it('a Auditoria corta nas 20.000 mais recentes: conta as que saem e não trava', () => {
+    const aud = catalogoAuditoria()
+    expect(totalComCorte(25000, aud, true)).toBe(20000)
+    expect(totalComCorte(25000, aud, false)).toBe(25000)
+    expect(totalComCorte(undefined, aud, true)).toBeUndefined()
+    expect(avisoDoCorte(25000, aud, true)).toBe('Saem só as 20.000 linhas mais recentes.')
+    expect(avisoDoCorte(20000, aud, true)).toBeNull()
+    expect(avisoDoCorte(25000, aud, false)).toBeNull()
+    // Com o total cortado, a planilha baixa; o PDF continua com o limite de 2.000.
+    const csv = estado({ fields: ['createdAt'], modeloId: null })
+    expect(problemaParaBaixar(csv, aud, { total: totalComCorte(25000, aud, true), selecionados: 0 })).toBeNull()
+    expect(problemaParaBaixar({ ...csv, format: 'pdf' }, aud, { total: totalComCorte(25000, aud, true), selecionados: 0 }))
+      .toMatch(/O PDF aceita/)
   })
 })
 

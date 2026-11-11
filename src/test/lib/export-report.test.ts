@@ -21,7 +21,9 @@ vi.mock('@/lib/relatorio-pdf', () => ({
   saveRelatorioPdf: (...args: unknown[]) => saveRelatorioPdf(...args),
 }))
 
-const { downloadExport, exportarRelatorio, reportBody, lerRelatorioJson, exportErrorMessage, RelatorioVazioError } = await import('@/lib/export')
+const {
+  downloadExport, exportarRelatorio, reportBody, lerRelatorioJson, exportErrorMessage, ehLimiteDoPdf, RelatorioVazioError,
+} = await import('@/lib/export')
 const { ApiError } = await import('@/lib/api')
 await import('@/i18n')
 
@@ -170,7 +172,25 @@ describe('downloadExport do montador', () => {
     apiFetch.mockResolvedValue(respostaCsv('"Nome"\r\n"ANA"', { 'Content-Disposition': 'attachment; filename="pessoas.csv"' }))
     await downloadExport('people', { ids: ['1'] }, 'pdf')
     expect(corpoEnviado()).toEqual({ ids: ['1'] })
-    expect(saveRelatorioPdf).toHaveBeenCalledWith('"Nome"\r\n"ANA"', 'Pessoas', 'pessoas.pdf')
+    expect(saveRelatorioPdf).toHaveBeenCalledWith('"Nome"\r\n"ANA"', 'Pessoas', 'pessoas.pdf', undefined)
     expect(relatorioJsonPdf).not.toHaveBeenCalled()
+  })
+
+  it('PDF do CSV acima do limite: as colunas pedidas vão para o desenho; sem nome no cabeçalho, o da fonte', async () => {
+    apiFetch.mockResolvedValue(respostaCsv('"Nº";"Data"', { 'X-Export-Count': '2500' }))
+    await downloadExport('finance-transactions', { search: 'coop' }, 'pdf', { colunasDoPdf: ['Nº', 'Data'] })
+    expect(corpoEnviado()).toEqual({ search: 'coop' })
+    expect(saveRelatorioPdf).toHaveBeenCalledWith(
+      '"Nº";"Data"', 'Lançamentos', expect.stringMatching(/^lancamentos-\d{4}-\d{2}-\d{2}\.pdf$/), ['Nº', 'Data'],
+    )
+  })
+})
+
+describe('ehLimiteDoPdf', () => {
+  it('só o 400 do limite de linhas do PDF', () => {
+    expect(ehLimiteDoPdf(new ApiError(400, 'O PDF aceita até 2.000 linhas. Baixe a planilha ou use um filtro.'))).toBe(true)
+    expect(ehLimiteDoPdf(new ApiError(400, 'O relatório passa de 20.000 linhas. Use um filtro para diminuir.'))).toBe(false)
+    expect(ehLimiteDoPdf(new ApiError(403, 'O PDF aceita até 2.000 linhas.'))).toBe(false)
+    expect(ehLimiteDoPdf(new Error('O PDF aceita até 2.000 linhas.'))).toBe(false)
   })
 })

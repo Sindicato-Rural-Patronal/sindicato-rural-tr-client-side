@@ -82,6 +82,90 @@ export const CATALOGO_INSCRICOES_CRU = {
   limits: { rows: 20000, pdfRows: 2000, fields: 80 },
 }
 
+// Fase 2, parte B (SR-102, back 6e2758e): recortes das respostas reais.
+export const CATALOGO_LANCAMENTOS_CRU = {
+  dataset: 'finance-transactions',
+  title: 'Lançamentos',
+  groups: [
+    {
+      name: 'Lançamento',
+      fields: [
+        campo('number', 'Nº', 'number', 'comum'),
+        campo('date', 'Data', 'date', 'comum'),
+        campo('type', 'Tipo', 'text', 'comum'),
+        campo('account', 'Caixa', 'text', 'comum'),
+        campo('category', 'Categoria', 'text', 'comum'),
+        campo('description', 'Descrição', 'text', 'comum'),
+        campo('method', 'Método', 'text', 'comum'),
+      ],
+    },
+    { name: 'Valores', fields: [campo('amount', 'Valor (R$)', 'money', 'comum')] },
+    {
+      name: 'Favorecido',
+      fields: [campo('payeeName', 'Nome / Razão social', 'text', 'comum'), campo('payeeDocument', 'CNPJ / CPF', 'text', 'pessoal')],
+    },
+    { name: 'Relatório', fields: [campo('ordinal', 'Nº de ordem', 'number', 'comum'), campo('signature', 'Assinatura', 'blank', 'comum')] },
+  ],
+  padrao: ['number', 'date', 'type', 'account', 'category', 'description', 'payeeName', 'payeeDocument', 'method', 'amount'],
+  modelos: [{ id: 'resumido', name: 'Resumido', fields: ['number', 'date', 'description', 'payeeName', 'amount'] }],
+  filterLabels: {
+    from: 'De', to: 'Até', type: 'Tipo', categoryId: 'Categoria', accountId: 'Caixa', method: 'Método', search: 'Busca', orderBy: 'Ordem',
+  },
+  limits: { rows: 20000, pdfRows: 2000, fields: 80 },
+}
+
+export const CATALOGO_AUDITORIA_CRU = {
+  dataset: 'audit-logs',
+  title: 'Auditoria',
+  groups: [
+    {
+      name: 'Registro',
+      fields: [
+        campo('createdAt', 'Data e hora', 'datetime', 'comum'),
+        campo('actor', 'Quem', 'text', 'comum'),
+        campo('action', 'Ação', 'text', 'comum'),
+        campo('entity', 'Área', 'text', 'comum'),
+        campo('target', 'Alvo', 'text', 'comum'),
+        campo('path', 'Caminho', 'text', 'comum'),
+      ],
+    },
+    {
+      name: 'De onde veio',
+      fields: [campo('ip', 'IP', 'text', 'pessoal'), campo('location', 'Local', 'text', 'pessoal'), campo('device', 'Aparelho', 'text', 'pessoal')],
+    },
+    {
+      name: 'Detalhes',
+      fields: [campo('changes', 'Alterações', 'text', 'comum'), campo('exportDetails', 'Detalhes da exportação', 'text', 'comum')],
+    },
+  ],
+  padrao: ['createdAt', 'actor', 'action', 'entity', 'target', 'path', 'ip', 'location', 'device', 'changes'],
+  modelos: [{ id: 'resumida', name: 'Resumida', fields: ['createdAt', 'actor', 'action', 'target'] }],
+  filterLabels: { action: 'Ação', entity: 'Área', actorId: 'Quem', ip: 'IP', from: 'De', to: 'Até', q: 'Busca' },
+  limits: { rows: 20000, pdfRows: 2000, fields: 80 },
+}
+
+export const CATALOGO_RESERVAS_CRU = {
+  dataset: 'room-bookings',
+  title: 'Reservas de sala',
+  groups: [
+    { name: 'Reserva', fields: [campo('type', 'Tipo', 'text', 'comum'), campo('title', 'Título', 'text', 'comum')] },
+    { name: 'Quando e onde', fields: [campo('room', 'Sala', 'text', 'comum'), campo('startTime', 'Início', 'wallclock', 'comum')] },
+    { name: 'Responsável', fields: [campo('responsible', 'Responsável', 'text', 'pessoal')] },
+  ],
+  padrao: ['type', 'title', 'room', 'startTime', 'responsible'],
+  modelos: [],
+  filterLabels: { from: 'De', to: 'Até', roomId: 'Sala', type: 'Tipo', search: 'Busca' },
+  limits: { rows: 20000, pdfRows: 2000, fields: 80 },
+}
+
+export function catalogoLancamentos(over: Partial<ExportCatalog> = {}): ExportCatalog {
+  return { ...lerCatalogo(CATALOGO_LANCAMENTOS_CRU)!, ...over }
+}
+
+export function catalogoAuditoria(over: Partial<ExportCatalog> = {}): ExportCatalog {
+  return { ...lerCatalogo(CATALOGO_AUDITORIA_CRU)!, ...over }
+}
+
 export function catalogoPessoas(over: Partial<ExportCatalog> = {}): ExportCatalog {
   return { ...lerCatalogo(CATALOGO_PESSOAS_CRU)!, ...over }
 }

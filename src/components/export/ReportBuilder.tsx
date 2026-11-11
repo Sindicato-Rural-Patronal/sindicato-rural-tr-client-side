@@ -18,10 +18,10 @@ import {
 import { cn } from '@/lib/utils'
 import { PrivacyBadge, ReportFieldPicker } from '@/components/export/ReportFieldPicker'
 import {
-  AVISO_COLUNAS_PDF, TEXTO_NENHUM_REGISTRO, TEXTO_NENHUMA_CONFIRMADA, aplicarModelo, avisoDadosPessoais,
+  AVISO_COLUNAS_PDF, TEXTO_NENHUM_REGISTRO, TEXTO_NENHUMA_CONFIRMADA, aplicarModelo, avisoDadosPessoais, avisoDoCorte,
   camposDoCatalogo, contagem, estadoInicial, filtrosEmPalavras, formatoNaTela, guardarUltimo, lerUltimo, marcarCampo,
   modeloParaApi, modelosDe, moverCampo, moverPara, nomeDoModelo, problemaParaBaixar, quantosVaoSair, textoDoBotao,
-  tirarCampo,
+  tirarCampo, totalComCorte,
   type CampoComGrupo, type ExportCatalog, type ReportFormat, type ReportState,
 } from '@/components/export/report-builder'
 
@@ -64,6 +64,11 @@ export type ReportBuilderProps = {
    * este texto, e vão os `filters` como estão. Fichas e extras do menu.
    */
   escopo?: string
+  /**
+   * A fonte leva só as `limits.rows` linhas mais recentes em vez de recusar
+   * (Auditoria): o botão conta as que saem, avisa do corte e não trava.
+   */
+  cortaNoLimite?: boolean
 }
 
 const INSTRUCOES_LEITOR: ScreenReaderInstructions = {
@@ -171,7 +176,7 @@ function LinhaArrastavel(props: Omit<Parameters<typeof LinhaDaColuna>[0], 'alca'
 
 export function ReportBuilder({
   open, onOpenChange, dataset, catalog, filters = {}, selectedIds, total, filtered = false, totalConfirmadas,
-  filterTexts, escopo,
+  filterTexts, escopo, cortaNoLimite = false,
 }: ReportBuilderProps) {
   const celular = useIsMobile()
   const temSelecao = !escopo && selectedIds !== undefined
@@ -190,7 +195,9 @@ export function ReportBuilder({
   const campos = useMemo(() => camposDoCatalogo(catalog), [catalog])
   const modelos = useMemo(() => modelosDe(catalog), [catalog])
   const formato = formatoNaTela(estado.format, celular)
-  const contagens = { total, selecionados, totalConfirmadas }
+  // O que sai de verdade (a Auditoria corta nas mais recentes); o "Todos" mostra o total da tela.
+  const contagens = { total: totalComCorte(total, catalog, cortaNoLimite), selecionados, totalConfirmadas }
+  const corte = avisoDoCorte(total, catalog, cortaNoLimite)
   const quantos = quantosVaoSair(estado, contagens)
   const problema = problemaParaBaixar(estado, catalog, { ...contagens, celular })
   const dadosPessoais = avisoDadosPessoais(estado, catalog)
@@ -362,7 +369,7 @@ export function ReportBuilder({
   )
 
   // O número do "Todos" segue o "Só confirmadas" (ou vira teto: "até 5").
-  const numeroTodos = contagem(quantosVaoSair({ ...estado, scope: 'all' }, contagens))
+  const numeroTodos = contagem(quantosVaoSair({ ...estado, scope: 'all' }, { ...contagens, total }))
   const todosRotulo = `${filtered && !celular ? 'Todos com os filtros atuais' : 'Todos'}${numeroTodos}`
   const oQueEntra = (
     <fieldset className="flex min-w-0 flex-col gap-1.5">
@@ -393,6 +400,7 @@ export function ReportBuilder({
       {!escopo && estado.scope === 'all' && filtrosTexto.length > 0 && (
         <p className="text-xs text-muted-foreground">Filtros: {filtrosTexto.join(' · ')}</p>
       )}
+      {estado.scope === 'all' && corte && <p className="text-xs text-muted-foreground">{corte}</p>}
       {dataset === 'registrations' && (
         <label className={cn('flex cursor-pointer items-center gap-2 text-sm', celular && 'min-h-11')}>
           <input
