@@ -125,7 +125,10 @@ export function CompaniesList() {
               ...(type ? { type: `Tipo: ${COMPANY_TYPE_LABEL[type]}` } : {}),
               ...(isPartner === false ? { isPartner: 'Só não parceiras' } : {}),
             }}
-            extra={[{ label: 'Propriedades das selecionadas', dataset: 'properties', params: { ownerIds: selection.ids }, disabled: selection.count === 0 }]}
+            extra={[{
+              label: 'Propriedades das selecionadas', dataset: 'properties', params: { ownerIds: selection.ids },
+              disabled: selection.count === 0, builder: true,
+            }]}
           />
         </div>
       </div>

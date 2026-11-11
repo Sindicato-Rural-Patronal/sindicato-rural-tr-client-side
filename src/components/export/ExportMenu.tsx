@@ -1,51 +1,26 @@
-import { lazy, Suspense, useEffect, useState } from 'react'
+import { useState } from 'react'
 import { toast } from 'sonner'
-import { Columns3, Download, FileSpreadsheet, FileText, Loader2, X } from 'lucide-react'
+import { Download, FileSpreadsheet, FileText, Loader2, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { useExportCatalog } from '@/hooks/useExportCatalog'
 import { downloadExport, exportErrorMessage, type ExportDataset, type ExportFormat, type ExportParams } from '@/lib/export'
+import {
+  ItensDoMontador, MontadorAberto, type AberturaDoMontador, type FonteDoMontador,
+} from '@/components/export/MontadorDeFontes'
 import { cn } from '@/lib/utils'
-
-// O montador (dnd-kit e companhia) só entra no pacote de quem abre. O pedaço
-// começa a carregar quando o menu abre, e a mesma promessa serve ao `lazy`.
-const importarMontador = () => import('@/components/export/ReportBuilder').then(m => ({ default: m.ReportBuilder }))
-let montadorCarregando: ReturnType<typeof importarMontador> | null = null
-function carregarMontador() {
-  // Falhou (internet caiu)? A próxima abertura do menu tenta de novo.
-  montadorCarregando ??= importarMontador().catch(e => { montadorCarregando = null; throw e })
-  return montadorCarregando
-}
-const ReportBuilder = lazy(carregarMontador)
-
-/**
- * Enquanto o pedaço do montador carrega (primeira vez, internet lenta): um
- * "Abrindo o montador…" por cima da tela, para ninguém clicar de novo. Só
- * aparece se demorar, para não piscar quando já está carregado.
- */
-function AbrindoMontador() {
-  const [visivel, setVisivel] = useState(false)
-  useEffect(() => {
-    const t = setTimeout(() => setVisivel(true), 150)
-    return () => clearTimeout(t)
-  }, [])
-  if (!visivel) return null
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/10">
-      <p role="status" className="flex items-center gap-2 rounded-lg bg-popover px-4 py-3 text-sm text-popover-foreground shadow-lg ring-1 ring-foreground/10">
-        <Loader2 className="size-4 animate-spin" aria-hidden /> Abrindo o montador…
-      </p>
-    </div>
-  )
-}
 
 export type ExportExtraItem = {
   label: string
   dataset: ExportDataset
   params: ExportParams
   disabled?: boolean
+  /**
+   * Também no montador: "Montar relatório: <label>…", com os mesmos `params` e
+   * o `label` em "O que entra". Só aparece quando o catálogo da fonte carrega.
+   */
+  builder?: boolean
 }
 
 async function runExport(dataset: ExportDataset, params: ExportParams, format: ExportFormat = 'csv') {
@@ -62,6 +37,11 @@ async function runExport(dataset: ExportDataset, params: ExportParams, format: E
   }
 }
 
+/** "Inscrições de todos os cursos" → "Montar relatório: inscrições de todos os cursos…". */
+function rotuloDoMontadorDoExtra(label: string): string {
+  return `Montar relatório: ${label.charAt(0).toLocaleLowerCase('pt-BR')}${label.slice(1)}…`
+}
+
 /**
  * Botão "Exportar" das listas: os selecionados (quando houver) ou todos os que
  * batem com os filtros atuais. `extra` adiciona exportações relacionadas
@@ -69,7 +49,8 @@ async function runExport(dataset: ExportDataset, params: ExportParams, format: E
  *
  * "Montar relatório…" (decisão 006) só aparece quando o catálogo da fonte
  * carrega: o back velho e as fontes sem montador respondem 404 e o menu fica
- * como antes. O montador recebe os mesmos filtros e a mesma seleção.
+ * como antes. O montador recebe os mesmos filtros e a mesma seleção. Extra com
+ * `builder` ganha o seu "Montar relatório: …".
  */
 export function ExportMenu({
   dataset, filters = {}, selectedIds, total, filtered = false, extra = [], className, label = 'Exportar', size,
@@ -96,8 +77,7 @@ export function ExportMenu({
 }) {
   const [busy, setBusy] = useState(false)
   // Cada abertura do montador começa do zero (padrão ou último usado).
-  const [montador, setMontador] = useState({ aberto: false, vez: 0 })
-  const { data: catalogo } = useExportCatalog(dataset)
+  const [montador, setMontador] = useState<AberturaDoMontador>({ aberto: false, vez: 0, alvo: 0 })
 
   async function run(ds: ExportDataset, params: ExportParams, format: ExportFormat = 'csv') {
     setBusy(true)
@@ -110,9 +90,24 @@ export function ExportMenu({
   const n = ids.length
   const allLabel = `${filtered ? 'Todos com os filtros atuais' : 'Todos'}${total != null ? ` (${total})` : ''}`
 
+  // O montador da lista e o de cada extra com `builder`, numa lista só.
+  const fontes: FonteDoMontador[] = [
+    {
+      rotulo: 'Montar relatório…', dataset, filters, selectedIds, total, filtered,
+      totalConfirmadas: confirmedTotal, filterTexts,
+    },
+    ...extra.filter(item => item.builder).map((item): FonteDoMontador => ({
+      rotulo: rotuloDoMontadorDoExtra(item.label),
+      dataset: item.dataset,
+      filters: item.params,
+      escopo: item.label,
+      disabled: item.disabled,
+    })),
+  ]
+
   return (
     <>
-      <DropdownMenu modal={false} onOpenChange={aberto => { if (aberto && catalogo) void carregarMontador().catch(() => {}) }}>
+      <DropdownMenu modal={false}>
         <DropdownMenuTrigger asChild>
           <Button variant="outline" size={size} className={cn('gap-2', className)} disabled={busy}>
             {busy ? <Loader2 className="size-4 animate-spin" /> : <Download className="size-4" />}
@@ -152,35 +147,15 @@ export function ExportMenu({
               {item.label}
             </DropdownMenuItem>
           ))}
-          {catalogo && (
-            <>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onSelect={() => setMontador(m => ({ aberto: true, vez: m.vez + 1 }))}>
-                <Columns3 className="size-4" />
-                Montar relatório…
-              </DropdownMenuItem>
-            </>
-          )}
+          <ItensDoMontador fontes={fontes} onAbrir={alvo => setMontador(m => ({ aberto: true, vez: m.vez + 1, alvo }))} />
         </DropdownMenuContent>
       </DropdownMenu>
 
-      {catalogo && montador.vez > 0 && (
-        <Suspense fallback={montador.aberto ? <AbrindoMontador /> : null}>
-          <ReportBuilder
-            key={montador.vez}
-            open={montador.aberto}
-            onOpenChange={aberto => setMontador(m => ({ ...m, aberto }))}
-            dataset={dataset}
-            catalog={catalogo}
-            filters={filters}
-            selectedIds={selectedIds}
-            total={total}
-            filtered={filtered}
-            totalConfirmadas={confirmedTotal}
-            filterTexts={filterTexts}
-          />
-        </Suspense>
-      )}
+      <MontadorAberto
+        fontes={fontes}
+        abertura={montador}
+        onOpenChange={aberto => setMontador(m => ({ ...m, aberto }))}
+      />
     </>
   )
 }

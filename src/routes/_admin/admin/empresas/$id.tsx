@@ -5,6 +5,9 @@ import { ArrowLeft, Building2, Download, Handshake, Loader2, TreePine, Trash2, U
 import { requirePermission } from '@/lib/auth-guard'
 import { apiErrorMessage } from '@/lib/api-error-message'
 import { downloadExport, type ExportDataset, type ExportParams } from '@/lib/export'
+import {
+  ItensDoMontador, MontadorAberto, type AberturaDoMontador, type FonteDoMontador,
+} from '@/components/export/MontadorDeFontes'
 import { usePermissions } from '@/hooks/usePermissions'
 import {
   useAdminCompany, useUpdateCompany, useDeleteCompany, useAddCompanyProperty, useRemoveCompanyProperty, useUpdateCompanyProperty,
@@ -48,6 +51,7 @@ function EmpresaPage() {
   const [tab, setTab] = useState('dados')
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [exporting, setExporting] = useState(false)
+  const [montador, setMontador] = useState<AberturaDoMontador>({ aberto: false, vez: 0, alvo: 0 })
   const readOnly = !can('UPDATE_USER')
   // allowLeave do formulário de dados: excluir a empresa sai sem o aviso de não salvo.
   const allowLeaveRef = useRef<(() => void) | null>(null)
@@ -104,6 +108,20 @@ function EmpresaPage() {
     }
   }
 
+  // "Montar relatório (escolher campos)" do Exportar (decisão 006): os dados e as
+  // propriedades desta empresa, com os campos e a ordem que quem exporta escolher.
+  const nPropriedades = company.properties.length
+  const fontesDoMontador: FonteDoMontador[] = [
+    {
+      rotulo: 'Dados da empresa…', dataset: 'companies', filters: { ids: [id] }, total: 1,
+      escopo: `Só esta empresa: ${companyDisplayName(company)}`,
+    },
+    {
+      rotulo: `Propriedades (${nPropriedades})…`, dataset: 'properties', filters: { ownerIds: [id] },
+      total: nPropriedades, escopo: `As propriedades desta empresa (${nPropriedades})`, disabled: nPropriedades === 0,
+    },
+  ]
+
   return (
     <div className="flex flex-col gap-6 p-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -139,8 +157,18 @@ function EmpresaPage() {
               <DropdownMenuItem disabled={company.properties.length === 0} onSelect={() => handleExport('properties', { ownerIds: [id] })}>
                 Propriedades ({company.properties.length})
               </DropdownMenuItem>
+              <ItensDoMontador
+                titulo="Montar relatório (escolher campos)"
+                fontes={fontesDoMontador}
+                onAbrir={alvo => setMontador(m => ({ aberto: true, vez: m.vez + 1, alvo }))}
+              />
             </DropdownMenuContent>
           </DropdownMenu>
+          <MontadorAberto
+            fontes={fontesDoMontador}
+            abertura={montador}
+            onOpenChange={aberto => setMontador(m => ({ ...m, aberto }))}
+          />
           {can('DELETE_USER') && (
             <Button variant="outline" size="sm" className="text-destructive hover:text-destructive" onClick={() => setConfirmDelete(true)}>
               <Trash2 className="size-3.5" /> Excluir

@@ -45,6 +45,9 @@ import { ApiError } from '@/lib/api'
 import { apiErrorMessage } from '@/lib/api-error-message'
 import { downloadExport, type ExportDataset, type ExportParams } from '@/lib/export'
 import {
+  ItensDoMontador, MontadorAberto, type AberturaDoMontador, type FonteDoMontador,
+} from '@/components/export/MontadorDeFontes'
+import {
   validatePersonFields, firstInvalidField, focusFieldById,
   type PersonField as CampoValidado, type PersonFieldErrors,
 } from '@/lib/person-validation'
@@ -949,6 +952,7 @@ function RouteComponent() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [showMerge, setShowMerge] = useState(false)
   const [exporting, setExporting] = useState(false)
+  const [montador, setMontador] = useState<AberturaDoMontador>({ aberto: false, vez: 0, alvo: 0 })
   const { can } = usePermissions()
   const deleteWorker = useDeleteWorker()
   const navigate = useNavigate()
@@ -1027,6 +1031,19 @@ function RouteComponent() {
     if (isIncomplete) setCompleteMode(true)
   }
 
+  // "Montar relatório (escolher campos)" do Exportar (decisão 006): a ficha e as
+  // propriedades desta pessoa, com os campos e a ordem que quem exporta escolher.
+  const fontesDoMontador: FonteDoMontador[] = [
+    {
+      rotulo: 'Ficha completa…', dataset: 'people', filters: { ids: [id] }, total: 1,
+      escopo: `Só esta pessoa: ${user.name}`,
+    },
+    {
+      rotulo: `Propriedades (${propertiesTotal})…`, dataset: 'properties', filters: { ownerIds: [id] },
+      total: propertiesTotal, escopo: `As propriedades desta pessoa (${propertiesTotal})`, disabled: propertiesTotal === 0,
+    },
+  ]
+
   return (
     <div className="p-6 flex flex-col gap-6">
       {/* Header */}
@@ -1075,8 +1092,18 @@ function RouteComponent() {
               <DropdownMenuItem disabled={propertiesTotal === 0} onSelect={() => handleExport('properties', { ownerIds: [id] })}>
                 Propriedades ({propertiesTotal})
               </DropdownMenuItem>
+              <ItensDoMontador
+                titulo="Montar relatório (escolher campos)"
+                fontes={fontesDoMontador}
+                onAbrir={alvo => setMontador(m => ({ aberto: true, vez: m.vez + 1, alvo }))}
+              />
             </DropdownMenuContent>
           </DropdownMenu>
+          <MontadorAberto
+            fontes={fontesDoMontador}
+            abertura={montador}
+            onOpenChange={aberto => setMontador(m => ({ ...m, aberto }))}
+          />
           {/* Mesma pessoa cadastrada duas vezes (ver "Possíveis duplicados" na lista). */}
           {can('DELETE_USER') && (
             <Button

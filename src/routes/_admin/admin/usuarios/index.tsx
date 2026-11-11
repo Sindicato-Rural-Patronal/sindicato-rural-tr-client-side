@@ -1244,6 +1244,7 @@ function RouteComponent() {
                   dataset: 'properties',
                   params: { ownerIds: userSelection.ids },
                   disabled: userSelection.count === 0,
+                  builder: true,
                 }]}
                 className="h-9"
               />

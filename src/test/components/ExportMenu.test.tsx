@@ -22,6 +22,18 @@ vi.mock('@/lib/api', async importOriginal => ({
   ...(await importOriginal<typeof import('@/lib/api')>()),
   apiFetch: (...args: unknown[]) => apiFetch(...args),
 }))
+// O PDF rápido: nada de desenhar PDF nem baixar arquivo no jsdom.
+const relatorioJsonPdf = vi.fn()
+const saveRelatorioPdf = vi.fn()
+vi.mock('@/lib/relatorio-pdf', () => ({
+  relatorioJsonPdf: (...args: unknown[]) => relatorioJsonPdf(...args),
+  saveRelatorioPdf: (...args: unknown[]) => saveRelatorioPdf(...args),
+}))
+const saveBlob = vi.fn()
+vi.mock('@/utils/download', async importOriginal => ({
+  ...(await importOriginal<typeof import('@/utils/download')>()),
+  saveBlob: (...args: unknown[]) => saveBlob(...args),
+}))
 
 const { ExportMenu } = await import('@/components/export/ExportMenu')
 
@@ -43,7 +55,29 @@ function comCatalogo(catalogo: unknown = CATALOGO_PESSOAS_CRU) {
 beforeEach(() => {
   vi.clearAllMocks()
   localStorage.clear()
+  relatorioJsonPdf.mockResolvedValue(new Blob(['%PDF']))
 })
+
+/** Catálogo por fonte (ausente = 404, sem montador) e a resposta da exportação. */
+function simular(catalogos: Record<string, unknown>, exportacao: (path: string) => unknown) {
+  apiFetch.mockImplementation((path: string) => {
+    const m = path.match(/^\/admin\/export\/([^/]+)\/catalog$/)
+    if (m) {
+      const c = catalogos[m[1]]
+      return c
+        ? Promise.resolve({ json: () => Promise.resolve(c) })
+        : Promise.reject(new ApiError(404, 'Este conjunto ainda não tem o montador.'))
+    }
+    return Promise.resolve(exportacao(path))
+  })
+}
+
+/** Corpo do POST da exportação da fonte. */
+function corpoDaExportacao(dataset: string): Record<string, unknown> {
+  const chamada = apiFetch.mock.calls.find(c => c[0] === `/admin/export/${dataset}`)
+  expect(chamada).toBeDefined()
+  return JSON.parse(chamada![1].body as string)
+}
 
 describe('ExportMenu e o montador', () => {
   it('com o catálogo, o item abre o montador com os filtros da tela', async () => {
@@ -91,5 +125,51 @@ describe('ExportMenu e o montador', () => {
     abrir({ selectedIds: ['a', 'b'] })
     await userEvent.click(screen.getByRole('button', { name: 'Exportar (2)' }))
     expect(await screen.findAllByRole('menuitem', { name: 'Selecionados (2)' })).toHaveLength(2)
+  })
+})
+
+describe('ExportMenu: montador nos extras (SR-101)', () => {
+  it('extra com builder ganha "Montar relatório: …"; o desligado continua desligado', async () => {
+    simular({ people: CATALOGO_PESSOAS_CRU, registrations: CATALOGO_INSCRICOES_CRU }, () => ({}))
+    abrir({
+      extra: [
+        { label: 'Inscrições dos cursos selecionados', dataset: 'registrations', params: { courseIds: [] }, disabled: true, builder: true },
+        { label: 'Inscrições de todos os cursos', dataset: 'registrations', params: {}, builder: true },
+        { label: 'Sem montador', dataset: 'properties', params: {} },
+      ],
+    })
+    await waitFor(() => expect(apiFetch).toHaveBeenCalledWith('/admin/export/registrations/catalog'))
+    await userEvent.click(screen.getByRole('button', { name: 'Exportar' }))
+    expect(await screen.findByRole('menuitem', { name: 'Montar relatório…' })).toBeInTheDocument()
+    expect(screen.getByRole('menuitem', { name: 'Montar relatório: inscrições dos cursos selecionados…' }))
+      .toHaveAttribute('data-disabled')
+    expect(screen.getByRole('menuitem', { name: 'Montar relatório: inscrições de todos os cursos…' }))
+      .not.toHaveAttribute('data-disabled')
+    expect(screen.queryByRole('menuitem', { name: /Montar relatório: sem montador/ })).not.toBeInTheDocument()
+  })
+
+  it('o montador do extra diz o que entra e manda os params dele, sem "Todos" nem "Selecionados"', async () => {
+    simular({ people: CATALOGO_PESSOAS_CRU, registrations: CATALOGO_INSCRICOES_CRU }, () => ({
+      blob: () => Promise.resolve(new Blob(['"Nome"'])), headers: new Headers({ 'X-Export-Count': '4' }),
+    }))
+    abrir({
+      extra: [{ label: 'Inscrições dos cursos selecionados', dataset: 'registrations', params: { courseIds: ['c1', 'c2'] }, builder: true }],
+    })
+    await waitFor(() => expect(apiFetch).toHaveBeenCalledWith('/admin/export/registrations/catalog'))
+    await userEvent.click(screen.getByRole('button', { name: 'Exportar' }))
+    await userEvent.click(await screen.findByRole('menuitem', { name: 'Montar relatório: inscrições dos cursos selecionados…' }))
+
+    const dialogo = await screen.findByRole('dialog', { name: 'Montar relatório · Inscrições' })
+    expect(dialogo).toHaveTextContent('O que entraInscrições dos cursos selecionados')
+    expect(screen.queryByRole('radio', { name: /^Todos/ })).not.toBeInTheDocument()
+    expect(screen.queryByRole('radio', { name: /^Selecionados/ })).not.toBeInTheDocument()
+    expect(screen.getByRole('checkbox', { name: 'Só confirmadas' })).toBeInTheDocument()
+
+    await userEvent.click(screen.getByRole('button', { name: 'Baixar planilha' }))
+    await waitFor(() => expect(saveBlob).toHaveBeenCalled())
+    expect(corpoDaExportacao('registrations')).toEqual({
+      courseIds: ['c1', 'c2'], fields: ['course', 'name', 'cpf', 'email', 'phone', 'confirmed', 'registeredAt'],
+      format: 'csv', modelo: 'Padrão (como hoje)',
+    })
   })
 })

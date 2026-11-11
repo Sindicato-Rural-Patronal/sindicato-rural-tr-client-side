@@ -58,6 +58,12 @@ export type ReportBuilderProps = {
   totalConfirmadas?: number
   /** Como a tela diz um filtro na linha "Filtros:" ({ courseIds: 'Curso: Horta' }). */
   filterTexts?: Record<string, string>
+  /**
+   * O que entra já está decidido pela tela ("Só esta pessoa", "Inscrições dos
+   * cursos selecionados"): em vez de "Todos"/"Selecionados", "O que entra" mostra
+   * este texto, e vão os `filters` como estão. Fichas e extras do menu.
+   */
+  escopo?: string
 }
 
 const INSTRUCOES_LEITOR: ScreenReaderInstructions = {
@@ -165,11 +171,11 @@ function LinhaArrastavel(props: Omit<Parameters<typeof LinhaDaColuna>[0], 'alca'
 
 export function ReportBuilder({
   open, onOpenChange, dataset, catalog, filters = {}, selectedIds, total, filtered = false, totalConfirmadas,
-  filterTexts,
+  filterTexts, escopo,
 }: ReportBuilderProps) {
   const celular = useIsMobile()
-  const temSelecao = selectedIds !== undefined
-  const selecionados = selectedIds?.length ?? 0
+  const temSelecao = !escopo && selectedIds !== undefined
+  const selecionados = temSelecao ? (selectedIds?.length ?? 0) : 0
   const [estado, setEstado] = useState<ReportState>(
     () => estadoInicial(catalog, { ultimo: lerUltimo(dataset), selecionados }),
   )
@@ -361,26 +367,30 @@ export function ReportBuilder({
   const oQueEntra = (
     <fieldset className="flex min-w-0 flex-col gap-1.5">
       <legend className="mb-1 text-sm font-medium text-foreground">O que entra</legend>
-      <div className="flex flex-wrap gap-x-4 gap-y-1">
-        <label className={cn('flex cursor-pointer items-center gap-2 text-sm', celular && 'min-h-11')}>
-          <input
-            type="radio" name={`${ids}-escopo`} className="size-4 accent-primary"
-            checked={estado.scope === 'all'} onChange={() => mudar(s => ({ ...s, scope: 'all' }))}
-          />
-          {todosRotulo}
-        </label>
-        {temSelecao && (
-          <label className={cn('flex items-center gap-2 text-sm', selecionados === 0 ? 'cursor-not-allowed text-muted-foreground' : 'cursor-pointer', celular && 'min-h-11')}>
+      {escopo ? (
+        <p className="text-sm text-foreground">{escopo}</p>
+      ) : (
+        <div className="flex flex-wrap gap-x-4 gap-y-1">
+          <label className={cn('flex cursor-pointer items-center gap-2 text-sm', celular && 'min-h-11')}>
             <input
               type="radio" name={`${ids}-escopo`} className="size-4 accent-primary"
-              checked={estado.scope === 'selected'} disabled={selecionados === 0}
-              onChange={() => mudar(s => ({ ...s, scope: 'selected' }))}
+              checked={estado.scope === 'all'} onChange={() => mudar(s => ({ ...s, scope: 'all' }))}
             />
-            {selecionados > 0 ? `Selecionados (${selecionados})` : 'Selecionados (marque na lista)'}
+            {todosRotulo}
           </label>
-        )}
-      </div>
-      {estado.scope === 'all' && filtrosTexto.length > 0 && (
+          {temSelecao && (
+            <label className={cn('flex items-center gap-2 text-sm', selecionados === 0 ? 'cursor-not-allowed text-muted-foreground' : 'cursor-pointer', celular && 'min-h-11')}>
+              <input
+                type="radio" name={`${ids}-escopo`} className="size-4 accent-primary"
+                checked={estado.scope === 'selected'} disabled={selecionados === 0}
+                onChange={() => mudar(s => ({ ...s, scope: 'selected' }))}
+              />
+              {selecionados > 0 ? `Selecionados (${selecionados})` : 'Selecionados (marque na lista)'}
+            </label>
+          )}
+        </div>
+      )}
+      {!escopo && estado.scope === 'all' && filtrosTexto.length > 0 && (
         <p className="text-xs text-muted-foreground">Filtros: {filtrosTexto.join(' · ')}</p>
       )}
       {dataset === 'registrations' && (

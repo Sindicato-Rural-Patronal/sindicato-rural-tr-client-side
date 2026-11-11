@@ -201,8 +201,11 @@ export function CoursesList({
               total={data?.total}
               filtered={filtrando}
               extra={[
-                { label: 'Inscrições dos cursos selecionados', dataset: 'registrations', params: { courseIds: selection.ids }, disabled: selection.count === 0 },
-                { label: 'Inscrições de todos os cursos', dataset: 'registrations', params: {} },
+                {
+                  label: 'Inscrições dos cursos selecionados', dataset: 'registrations', params: { courseIds: selection.ids },
+                  disabled: selection.count === 0, builder: true,
+                },
+                { label: 'Inscrições de todos os cursos', dataset: 'registrations', params: {}, builder: true },
               ]}
             />
           </div>
