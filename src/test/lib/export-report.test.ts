@@ -21,7 +21,7 @@ vi.mock('@/lib/relatorio-pdf', () => ({
   saveRelatorioPdf: (...args: unknown[]) => saveRelatorioPdf(...args),
 }))
 
-const { downloadExport, reportBody, lerRelatorioJson, exportErrorMessage } = await import('@/lib/export')
+const { downloadExport, exportarRelatorio, reportBody, lerRelatorioJson, exportErrorMessage, RelatorioVazioError } = await import('@/lib/export')
 const { ApiError } = await import('@/lib/api')
 await import('@/i18n')
 
@@ -130,21 +130,40 @@ describe('downloadExport do montador', () => {
     apiFetch.mockResolvedValue(respostaJson(JSON_PDF))
     const aba = { closed: false, location: { href: '' } } as unknown as Window
 
-    await downloadExport('people', {}, 'pdf', { fields: ['name'], print: true, printWindow: aba })
+    const r = await exportarRelatorio('people', {}, 'pdf', { fields: ['name'], print: true, printWindow: aba })
 
     expect(aba.location.href).toBe('blob:relatorio')
     expect(saveBlob).not.toHaveBeenCalled()
+    expect(r).toEqual({ count: 2, abriuAba: true })
   })
 
-  it('Imprimir sem aba (bloqueada): tenta abrir e, se não der, baixa', async () => {
+  it('Imprimir sem aba (bloqueada): tenta abrir e, se não der, baixa e diz que baixou', async () => {
     apiFetch.mockResolvedValue(respostaJson(JSON_PDF))
     const open = vi.spyOn(window, 'open').mockReturnValue(null)
 
-    await downloadExport('people', {}, 'pdf', { fields: ['name'], print: true, printWindow: null })
+    const r = await exportarRelatorio('people', {}, 'pdf', { fields: ['name'], print: true, printWindow: null })
 
     expect(open).toHaveBeenCalledWith('blob:relatorio', '_blank')
     expect(saveBlob).toHaveBeenCalledWith(expect.any(Blob), 'pessoas-2026-11-11.pdf')
+    expect(r).toEqual({ count: 2, abriuAba: false })
     open.mockRestore()
+  })
+
+  it('recusarVazio: PDF ou planilha sem nenhum registro não vira arquivo', async () => {
+    apiFetch.mockResolvedValue(respostaJson({ ...JSON_PDF, count: 0, rows: [] }))
+    await expect(exportarRelatorio('registrations', {}, 'pdf', { fields: ['name'], recusarVazio: true }))
+      .rejects.toBeInstanceOf(RelatorioVazioError)
+    expect(relatorioJsonPdf).not.toHaveBeenCalled()
+
+    apiFetch.mockResolvedValue(respostaCsv('"Nome"', { 'X-Export-Count': '0' }))
+    await expect(exportarRelatorio('registrations', {}, 'csv', { fields: ['name'], recusarVazio: true }))
+      .rejects.toBeInstanceOf(RelatorioVazioError)
+    expect(saveBlob).not.toHaveBeenCalled()
+
+    // Sem recusarVazio (os itens rápidos), baixa como sempre.
+    apiFetch.mockResolvedValue(respostaCsv('"Nome"', { 'X-Export-Count': '0' }))
+    expect(await downloadExport('registrations', {}, 'csv')).toBe(0)
+    expect(saveBlob).toHaveBeenCalled()
   })
 
   it('os itens rápidos do menu continuam montando o PDF do CSV', async () => {

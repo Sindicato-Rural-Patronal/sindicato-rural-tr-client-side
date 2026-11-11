@@ -90,6 +90,26 @@ export type ExportOptions = {
    * esperar a API e o desenho do PDF; aberta no clique, ela só recebe o PDF.
    */
   printWindow?: Window | null
+  /**
+   * Nada de arquivo vazio: com 0 registros, lança `RelatorioVazioError` em vez
+   * de baixar (o montador avisa na tela). Só vale quando a resposta diz quantos.
+   */
+  recusarVazio?: boolean
+}
+
+/** O relatório saiu sem nenhum registro e não foi baixado (`recusarVazio`). */
+export class RelatorioVazioError extends Error {
+  constructor() {
+    super('O relatório não tem nenhum registro.')
+    this.name = 'RelatorioVazioError'
+  }
+}
+
+export type ResultadoDaExportacao = {
+  /** Quantos registros vieram (-1 = não se sabe). */
+  count: number
+  /** Imprimir: true = o PDF abriu numa aba; false = o navegador bloqueou e o arquivo foi baixado. */
+  abriuAba: boolean
 }
 
 /** Uma coluna do relatório em JSON (decisão 006, seção 3). */
@@ -159,33 +179,50 @@ export function exportErrorMessage(err: unknown, fallback: string): string {
   return apiErrorMessage(err, fallback)
 }
 
-/** Abre o PDF para imprimir; se o navegador bloquear a aba, baixa o arquivo. */
-function abrirParaImprimir(blob: Blob, filename: string, printWindow?: Window | null) {
+/**
+ * Abre o PDF para imprimir; se o navegador bloquear a aba, baixa o arquivo.
+ * Devolve true quando abriu numa aba.
+ */
+function abrirParaImprimir(blob: Blob, filename: string, printWindow?: Window | null): boolean {
   const url = URL.createObjectURL(blob)
+  let abriu = true
   if (printWindow && !printWindow.closed) {
     printWindow.location.href = url
   } else {
     const aba = window.open(url, '_blank')
     if (aba) aba.opener = null
-    else saveBlob(blob, filename)
+    else {
+      saveBlob(blob, filename)
+      abriu = false
+    }
   }
   // O leitor de PDF da aba já carregou o arquivo bem antes disso.
   setTimeout(() => URL.revokeObjectURL(url), 10 * 60_000)
+  return abriu
+}
+
+/** `X-Export-Count`; ausente (ex.: CORS sem expor) não pode virar "0 registros". */
+function contagemDoCabecalho(res: Response): number {
+  const header = res.headers.get('X-Export-Count')
+  if (header == null) return -1
+  const count = Number(header)
+  return Number.isFinite(count) ? count : -1
 }
 
 /**
- * Baixa o relatório e devolve quantos registros vieram (-1 se não souber).
+ * Baixa o relatório (ou abre para imprimir) e diz quantos registros vieram e
+ * se a aba de imprimir abriu.
  *
  * Sem `opts.fields` (os itens rápidos do menu), o servidor manda CSV e o PDF é
  * montado aqui a partir dele, com as colunas que cabem no papel. Com
  * `opts.fields` (o montador), o PDF vem como JSON, só com as colunas escolhidas.
  */
-export async function downloadExport(
+export async function exportarRelatorio(
   dataset: ExportDataset,
   params: ExportParams = {},
   format: ExportFormat = 'csv',
   opts: ExportOptions = {},
-): Promise<number> {
+): Promise<ResultadoDaExportacao> {
   const res = await apiFetch(`/admin/export/${dataset}`, {
     method: 'POST',
     body: JSON.stringify(reportBody(params, format, opts)),
@@ -194,14 +231,17 @@ export async function downloadExport(
 
   if (opts.fields && format === 'pdf') {
     const data = lerRelatorioJson(await res.json(), TITULO[dataset], `${FALLBACK_NAME[dataset]}-${today}.pdf`)
+    if (opts.recusarVazio && data.rows.length === 0) throw new RelatorioVazioError()
     // O react-pdf é pesado: só entra no pacote de quem pede um PDF.
     const { relatorioJsonPdf } = await import('@/lib/relatorio-pdf')
     const blob = await relatorioJsonPdf(data)
-    if (opts.print) abrirParaImprimir(blob, data.filename, opts.printWindow)
-    else saveBlob(blob, data.filename)
-    return data.count
+    if (opts.print) return { count: data.count, abriuAba: abrirParaImprimir(blob, data.filename, opts.printWindow) }
+    saveBlob(blob, data.filename)
+    return { count: data.count, abriuAba: false }
   }
 
+  const count = contagemDoCabecalho(res)
+  if (opts.recusarVazio && count === 0) throw new RelatorioVazioError()
   const blob = await res.blob()
   const disposition = res.headers.get('Content-Disposition') ?? ''
   const filename = disposition.match(/filename="([^"]+)"/)?.[1] ?? `${FALLBACK_NAME[dataset]}-${today}.csv`
@@ -212,10 +252,15 @@ export async function downloadExport(
   } else {
     saveBlob(blob, filename)
   }
+  return { count, abriuAba: false }
+}
 
-  // Header ausente (ex.: CORS sem expor) não pode virar "0 registros"
-  const header = res.headers.get('X-Export-Count')
-  if (header == null) return -1
-  const count = Number(header)
-  return Number.isFinite(count) ? count : -1
+/** Baixa o relatório e devolve quantos registros vieram (-1 se não souber). */
+export async function downloadExport(
+  dataset: ExportDataset,
+  params: ExportParams = {},
+  format: ExportFormat = 'csv',
+  opts: ExportOptions = {},
+): Promise<number> {
+  return (await exportarRelatorio(dataset, params, format, opts)).count
 }
