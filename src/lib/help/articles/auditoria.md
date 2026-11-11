@@ -4,8 +4,8 @@ resumo: O histórico de tudo que foi criado, alterado e excluído no painel.
 grupo: gestao
 ordem: 2
 permissao: READ_AUDIT
-veja: administradores, seguranca, exportar-planilhas
-busca: auditoria historico trilha log quem alterou ip navegador retencao guarda exportar fechamento de caixa fechou reabriu mes lancamento numero n corrigiu numero financeiro
+veja: administradores, seguranca, exportar-planilhas, montar-relatorio
+busca: auditoria historico trilha log quem alterou ip navegador retencao guarda exportar exportou o que foi exportado campos cpf modelo formato fechamento de caixa fechou reabriu mes lancamento numero n corrigiu numero financeiro
 ---
 
 **Gestão › Auditoria** é o histórico do painel: quem fez, o que fez e quando.
@@ -19,9 +19,17 @@ sistema**. Clicar na linha abre os detalhes:
 - **IP** e **local** de onde partiu
 - **navegador** usado
 - **O que mudou** — os campos, com o valor antes e depois
+- **O que foi exportado** — nas exportações de Pessoas e de Inscrições
 
 Esse "o que mudou" é a parte mais útil: em vez de "fulano editou o curso", você
 vê que o preço foi de R$ 100 para R$ 10.
+
+Numa exportação de Pessoas ou de Inscrições, o bloco **O que foi exportado**
+mostra o **Formato**, o **Modelo**, **O que entrou** (selecionados ou todos),
+quantos **Registros**, os **Filtros** e os **Campos**, na ordem das colunas. Para
+achar quem exportou CPF, escolha **Exportações** no filtro **Ação** e digite
+*CPF* na busca. O que fica e o que não fica registrado está em
+[Exportar planilhas](?topico=exportar-planilhas).
 
 ## Filtrando
 
