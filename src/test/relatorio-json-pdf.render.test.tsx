@@ -97,7 +97,7 @@ describe('relatório em PDF do JSON', { timeout: 30_000 }, () => {
     expect(vazio.subarray(0, 4).toString()).toBe('%PDF')
     const presenca = relatorio(3, 5, {
       columns: [
-        { key: 'ordem', label: 'Nº', type: 'number' },
+        { key: 'ordinal', label: 'Nº de ordem', type: 'number', weight: 1 },
         { key: 'name', label: 'Nome', type: 'text' },
         { key: 'signature', label: 'Assinatura', type: 'blank' },
       ],

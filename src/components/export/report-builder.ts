@@ -381,11 +381,20 @@ export function camposPessoais(state: ReportState, catalog: ExportCatalog): Camp
   return state.fields.map(k => mapa.get(k)).filter((f): f is CampoComGrupo => !!f && f.privacy !== 'comum')
 }
 
-/** "Leva dados pessoais: CPF, Nascimento." — aviso, não pede confirmação. */
+/** Quantos campos o aviso de dados pessoais cita pelo nome (o Padrão de pessoas tem mais de 40). */
+export const AVISO_PESSOAIS_MAX = 8
+
+/**
+ * "Leva dados pessoais: CPF, Nascimento." — aviso, não pede confirmação. Os
+ * sensíveis vêm primeiro; passando de 8, "e mais N".
+ */
 export function avisoDadosPessoais(state: ReportState, catalog: ExportCatalog): string | null {
   const pessoais = camposPessoais(state, catalog)
   if (pessoais.length === 0) return null
-  return `Leva dados pessoais: ${pessoais.map(f => f.label).join(', ')}.`
+  const ordem = [...pessoais.filter(f => f.privacy === 'sensivel'), ...pessoais.filter(f => f.privacy !== 'sensivel')]
+  const citados = ordem.slice(0, AVISO_PESSOAIS_MAX).map(f => f.label).join(', ')
+  const resto = ordem.length - AVISO_PESSOAIS_MAX
+  return `Leva dados pessoais: ${citados}${resto > 0 ? ` e mais ${resto}` : ''}.`
 }
 
 /** A partir daqui o montador avisa que a letra do PDF fica pequena. */

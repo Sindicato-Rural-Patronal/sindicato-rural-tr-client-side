@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, within, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { ApiError } from '@/lib/api'
-import { catalogoPessoas } from '../lib/export-catalog.fixture'
+import { catalogoInscricoes, catalogoPessoas } from '../lib/export-catalog.fixture'
 import type { ReportBuilderProps } from '@/components/export/ReportBuilder'
 import '@/i18n'
 
@@ -192,7 +192,7 @@ describe('montador no computador', () => {
   })
 
   it('inscrições: a Lista de presença liga "Só confirmadas" e manda confirmed', async () => {
-    abrir({ dataset: 'registrations', selectedIds: undefined, filters: { courseIds: ['c1'] }, total: 12, filtered: false })
+    abrir({ dataset: 'registrations', catalog: catalogoInscricoes(), selectedIds: undefined, filters: { courseIds: ['c1'] }, total: 12, filtered: false })
     expect(screen.queryByRole('radio', { name: /Selecionados/ })).not.toBeInTheDocument()
     const confirmadas = screen.getByRole('checkbox', { name: 'Só confirmadas' })
     expect(confirmadas).not.toBeChecked()
@@ -201,7 +201,7 @@ describe('montador no computador', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Baixar planilha (12)' }))
     expect(downloadExport).toHaveBeenCalledWith(
       'registrations', { courseIds: ['c1'] }, 'csv',
-      expect.objectContaining({ fields: ['ordem', 'name', 'cpf', 'signature'], confirmed: true, modelo: 'Lista de presença' }),
+      expect.objectContaining({ fields: ['ordinal', 'name', 'cpf', 'signature'], confirmed: true, modelo: 'Lista de presença' }),
     )
   })
 })

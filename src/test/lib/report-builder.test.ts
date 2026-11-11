@@ -5,10 +5,10 @@ import {
   modelosDe, moverCampo, moverPara, nomeDoModelo, problemaParaBaixar, textoDoBotao, tirarCampo,
   PADRAO_ID, PADRAO_NOME, type ReportState,
 } from '@/components/export/report-builder'
-import { CATALOGO_PESSOAS_CRU, catalogoPessoas } from './export-catalog.fixture'
+import { CATALOGO_PESSOAS_CRU, catalogoInscricoes, catalogoPessoas } from './export-catalog.fixture'
 
-// O estado do montador de relatórios (decisão 006): puro, sem React. O catálogo
-// é de mentira, no formato da seção 3 da decisão.
+// O estado do montador de relatórios (decisão 006): puro, sem React. Os
+// catálogos são recortes do formato real da API (SR-088).
 
 const cat = catalogoPessoas()
 
@@ -19,7 +19,7 @@ function estado(over: Partial<ReportState> = {}): ReportState {
 describe('lerCatalogo', () => {
   it('aceita o formato da decisão e completa o que falta', () => {
     expect(cat.title).toBe('Pessoas')
-    expect(cat.groups.map(g => g.name)).toEqual(['Identificação', 'Documentos', 'Contato', 'Endereço', 'Outros'])
+    expect(cat.groups.map(g => g.name)).toEqual(['Identificação', 'Documentos', 'Contato', 'Endereço', 'Relatório'])
     expect(cat.limits).toEqual({ rows: 20000, pdfRows: 2000, fields: 80 })
     const rg = cat.groups[1].fields[1]
     expect(rg).toMatchObject({ key: 'rg', allowed: false, reason: 'Pede a permissão Visualizar usuários' })
@@ -111,12 +111,15 @@ describe('modelos', () => {
     expect(s.avisos[0]).toContain('RG')
   })
 
-  it('a Lista de presença liga "Só confirmadas"; os outros não desligam', () => {
-    let s = aplicarModelo(estado(), cat, 'lista-presenca')
+  it('a Lista de presença das inscrições liga "Só confirmadas"; os outros não desligam', () => {
+    const insc = catalogoInscricoes()
+    let s = aplicarModelo(estado(), insc, 'lista-presenca')
     expect(s.confirmed).toBe(true)
-    expect(s.fields).toEqual(['ordem', 'name', 'cpf', 'signature'])
-    s = aplicarModelo(s, cat, 'nome-cpf')
+    expect(s.fields).toEqual(['ordinal', 'name', 'cpf', 'signature'])
+    s = aplicarModelo(s, insc, 'nome-cpf')
     expect(s.confirmed).toBe(true)
+    // A de pessoas não tem "Só confirmadas".
+    expect(aplicarModelo(estado(), cat, 'lista-presenca').confirmed).toBe(false)
   })
 
   it('modelo que não existe não muda nada', () => {
@@ -216,7 +219,7 @@ describe('estadoInicial', () => {
   })
 
   it('o último usado da Lista de presença volta com "Só confirmadas"', () => {
-    const s = estadoInicial(cat, { ultimo: { fields: ['ordem', 'name', 'cpf', 'signature'], format: 'pdf' } })
+    const s = estadoInicial(catalogoInscricoes(), { ultimo: { fields: ['ordinal', 'name', 'cpf', 'signature'], format: 'pdf' } })
     expect(s.confirmed).toBe(true)
   })
 })
@@ -242,10 +245,18 @@ describe('busca de campos', () => {
 })
 
 describe('o que vai sair', () => {
-  it('"Leva dados pessoais" lista os pessoais e os sensíveis, na ordem das colunas', () => {
-    expect(avisoDadosPessoais(estado({ fields: ['ethnicity', 'name', 'cpf'] }), cat))
-      .toBe('Leva dados pessoais: Etnia, CPF.')
+  it('"Leva dados pessoais" lista os sensíveis primeiro e depois os pessoais, na ordem das colunas', () => {
+    expect(avisoDadosPessoais(estado({ fields: ['cpf', 'name', 'ethnicity', 'email'] }), cat))
+      .toBe('Leva dados pessoais: Etnia, CPF, E-mail.')
     expect(avisoDadosPessoais(estado({ fields: ['name', 'nickname'] }), cat)).toBeNull()
+  })
+
+  it('passando de 8 campos pessoais, cita 8 e diz quantos faltam', () => {
+    const muitos = lerCatalogo({
+      groups: [{ name: 'G', fields: Array.from({ length: 11 }, (_, i) => ({ key: `p${i}`, label: `P${i}`, privacy: 'pessoal' })) }],
+    })!
+    const s = estado({ fields: muitos.groups[0].fields.map(f => f.key) })
+    expect(avisoDadosPessoais(s, muitos)).toBe('Leva dados pessoais: P0, P1, P2, P3, P4, P5, P6, P7 e mais 3.')
   })
 
   it('no celular não há Imprimir: vira PDF', () => {
@@ -262,9 +273,10 @@ describe('o que vai sair', () => {
 
   it('filtros em palavras usam os nomes do catálogo', () => {
     expect(filtrosEmPalavras(
-      { search: 'silva', activeMember: true, gender: '', incompleteRegistration: true, ownerIds: ['a', 'b'], x: undefined },
+      { search: 'silva', activeMember: true, gender: '', memberType: undefined, semNome: 'x', incompleteRegistration: 'true' },
       cat.filterLabels,
-    )).toEqual(['Busca: silva', 'Só associados em dia', 'Donos (2)'])
+    )).toEqual(['Busca: silva', 'Só associados em dia', 'Cadastro incompleto'])
+    expect(filtrosEmPalavras({ courseIds: ['c1'] }, catalogoInscricoes().filterLabels)).toEqual(['Cursos (1)'])
     expect(filtrosEmPalavras({ activeMember: false }, cat.filterLabels)).toEqual([])
   })
 })
