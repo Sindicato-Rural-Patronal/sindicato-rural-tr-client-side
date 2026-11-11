@@ -3,27 +3,62 @@ titulo: Como montar um relatório
 resumo: Escolher os campos e a ordem das colunas e baixar em planilha ou PDF, ou imprimir.
 grupo: como-fazer
 ordem: 14
-veja: exportar-planilhas, auditoria, usuarios, cursos
-busca: montar relatorio escolher campos colunas ordem modelo padrao alterado nome e cpf nome e email contato lista de presenca assinatura numero de ordem endereco correspondencia mala direta etiqueta associados inscricoes so confirmadas nenhuma inscricao confirmada planilha csv pdf imprimir aba bloqueada pop-up excel exportar arrastar dados pessoais sensivel telefone formatado limite abrindo o montador hifen palavra cortada
+veja: exportar-planilhas, auditoria, usuarios, empresas, cursos, financeiro
+busca: montar relatorio escolher campos colunas ordem modelo padrao alterado nome e cpf nome e email contato lista de presenca assinatura numero de ordem endereco correspondencia mala direta etiqueta associados inscricoes so confirmadas nenhuma inscricao confirmada planilha csv pdf imprimir aba bloqueada pop-up excel exportar arrastar dados pessoais sensivel telefone formatado limite abrindo o montador hifen palavra cortada empresas razao social e cnpj propriedades administradores cursos calendario mensagens unimed nome cpf e plano auditoria resumida detalhes da exportacao lancamentos financeiro resumido agenda reservas sala ficha completa dados da empresa propriedades dos selecionados propriedades das selecionadas inscricoes dos cursos selecionados inscricoes de todos os cursos filtros aba armazenados ano regra de acesso so nao lidas so parceiras 20.000 linhas mais recentes 2.000 linhas
 ---
 
 O **Montar relatório…** deixa você escolher **quais colunas saem e em que
 ordem**: só nome e CPF, nome e e-mail, uma lista para assinar, os endereços para
-mandar carta. Em vez de baixar a planilha inteira e apagar colunas no Excel,
-você leva só o que precisa.
+mandar carta, os lançamentos do mês com o valor. Em vez de baixar a planilha
+inteira e apagar colunas no Excel, você leva só o que precisa.
 
 ## Onde fica
 
-Por enquanto, em dois lugares:
+Toda lista do painel que exporta tem o montador. Ele fica no fim do menu do
+botão **Exportar** (nas inscrições de um curso, do botão **Planilha**):
 
 | Lista | Como chegar |
 |---|---|
-| Pessoas | **Gestão › Usuários**, aba **Pessoa física** ou **Associados**. Clique em **Exportar** e, no fim do menu, em **Montar relatório…** |
-| Inscrições de um curso | **Gestão › Cursos**, abra o curso e vá na aba **Inscrições**. Clique em **Planilha** e, no fim do menu, em **Montar relatório…** |
+| Pessoas | **Gestão › Usuários**, aba **Pessoa física** ou **Associados** › **Exportar** › **Montar relatório…** |
+| Empresas | **Gestão › Usuários**, aba **Pessoa jurídica** › **Exportar** › **Montar relatório…** |
+| Administradores | **Gestão › Usuários**, aba **Administradores** › **Exportar** › **Montar relatório…** |
+| Cursos | **Gestão › Cursos** › **Exportar** › **Montar relatório…** |
+| Inscrições de um curso | **Gestão › Cursos**, abra o curso e vá na aba **Inscrições** › **Planilha** › **Montar relatório…** |
+| Beneficiários da Unimed | **Gestão › Unimed** › **Exportar** › **Montar relatório…** |
+| Mensagens de contato | **Gestão › Mensagens** › **Exportar** › **Montar relatório…** |
+| Auditoria | **Gestão › Auditoria** › **Exportar** › **Montar relatório…** |
+| Lançamentos | **Financeiro**, aba **Lançamentos** › **Exportar** › **Montar relatório…** |
+| Reservas das salas | **Painel Geral**, na agenda das salas › **Exportar** › **Montar relatório…** |
 
-As outras listas (Empresas, Administradores, Unimed, Cursos, Mensagens,
-Auditoria, agenda e Financeiro) continuam só com a planilha de sempre. O
-montador chega a elas numa próxima atualização.
+O título do montador diz qual lista ele leva, por exemplo **Montar relatório ·
+Empresas**. Só o **Relatório de cadastros**, no topo de **Gestão › Usuários**,
+não tem montador: ele sai sempre com todas as colunas.
+
+**Nas fichas.** A ficha de uma pessoa e a de uma empresa também têm o montador.
+Clique em **Exportar**, no topo da ficha. Embaixo da planilha, o grupo **Montar
+relatório (escolher campos)** tem dois itens:
+
+| Ficha | Itens |
+|---|---|
+| Pessoa (**Gestão › Usuários**, clique no nome) | **Ficha completa…** e **Propriedades (N)…** |
+| Empresa (aba **Pessoa jurídica**, abra a empresa) | **Dados da empresa…** e **Propriedades (N)…** |
+
+O **N** é quantas propriedades a pessoa ou a empresa tem. Sem nenhuma, o item
+fica desligado. No celular, o **Exportar** da ficha da pessoa mostra só o ícone
+de download.
+
+**Montar com as propriedades ou as inscrições.** Alguns menus têm, além do
+**Montar relatório…**, um item para montar outra lista, ligada aos registros:
+
+| Onde | Item do menu **Exportar** | O que leva |
+|---|---|---|
+| Abas **Pessoa física** e **Associados** | **Montar relatório: propriedades dos selecionados…** | As propriedades das pessoas marcadas |
+| Aba **Pessoa jurídica** | **Montar relatório: propriedades das selecionadas…** | As propriedades das empresas marcadas |
+| **Gestão › Cursos** | **Montar relatório: inscrições dos cursos selecionados…** | As inscrições dos cursos marcados |
+| **Gestão › Cursos** | **Montar relatório: inscrições de todos os cursos…** | As inscrições de todos os cursos, sem olhar a aba, a busca nem o ano |
+
+Os itens "dos selecionados" e "das selecionadas" ficam desligados até você
+marcar alguém na lista.
 
 Com o montador aberto, o **?** ao lado do título abre este artigo em outra aba
 do navegador. O montador continua aberto na aba do painel, com o que você já
@@ -33,24 +68,33 @@ montou.
 
 - **Filtre a lista antes de abrir o montador.** Ele usa a mesma busca e os
   mesmos filtros da tela e não tem filtro próprio. Na aba **Associados**, por
-  exemplo, só entram os associados em dia.
-- **Para levar só algumas pessoas, marque-as na lista** (a caixinha de cada
+  exemplo, só entram os associados em dia. Nos **Cursos**, entram só os da aba
+  aberta (**Próximos** ou **Armazenados**), com a busca e o **Ano**.
+- **Para levar só alguns registros, marque-os na lista** (a caixinha de cada
   linha). Com alguém marcado, o montador já abre em **Selecionados**.
-- **Nas inscrições não há seleção.** O relatório leva todas as inscrições do
-  curso, ou só as confirmadas (veja [O que entra](#o-que-entra)). O botão
+- **Algumas listas não têm seleção:** as **Inscrições** de um curso, a
+  **Auditoria**, os **Lançamentos** e a agenda. Nelas o relatório leva tudo o que
+  a lista mostra com os filtros de agora. Nas inscrições, você ainda escolhe
+  entre todas e só as confirmadas (veja [O que entra](#o-que-entra)). O botão
   **Planilha** só aparece quando o curso tem alguma inscrição.
+- **Na agenda, o montador leva o período da tela:** o dia, em **Dia**, ou a
+  semana, em **Semana**, com a sala, o tipo e a busca. Os cursos não entram, só
+  os eventos e as reuniões. O **Escolher período…** do mesmo menu é só para a
+  planilha.
 
 ## Passo a passo
 
 1. Clique em **Exportar** (ou em **Planilha**, nas inscrições) e depois em
-   **Montar relatório…**. Na primeira vez, com a internet lenta, pode aparecer
-   *Abrindo o montador…* por um instante. Espere: ele abre sozinho.
+   **Montar relatório…**, ou num dos itens das fichas e dos extras que você viu
+   em [Onde fica](#onde-fica). Na primeira vez, com a internet lenta, pode
+   aparecer *Abrindo o montador…* por um instante. Espere: ele abre sozinho.
 2. Em **Modelo**, escolha um ponto de partida. As colunas dele aparecem em
    **Colunas, nesta ordem**.
 3. Acerte as colunas: marque ou desmarque campos em **Campos** e mude a ordem
    (veja [Mudar as colunas](#mudar-as-colunas)).
 4. Em **O que entra**, escolha **Todos** ou **Selecionados**. Nas inscrições,
-   marque ou desmarque **Só confirmadas**.
+   marque ou desmarque **Só confirmadas**. Nas fichas e nos extras, não há o que
+   escolher: o montador já diz o que vai sair.
 5. Em **Formato**, escolha **Planilha CSV**, **PDF** ou **Imprimir**.
 6. Leia os avisos embaixo, como o *Leva dados pessoais: CPF.*
 7. Clique no botão de baixar, no pé do montador. O nome dele acompanha o
@@ -72,11 +116,13 @@ que fazer com cada mensagem está em [Se algo der errado](#se-algo-der-errado).
 O modelo é só um ponto de partida: depois de escolher, você pode tirar, pôr e
 reordenar colunas.
 
+Toda lista tem o **Padrão (como hoje)**: as mesmas colunas da planilha de
+sempre, na mesma ordem. Os outros modelos mudam com a lista.
+
 **Em Pessoas:**
 
 | Modelo | Colunas |
 |---|---|
-| **Padrão (como hoje)** | As mesmas colunas da planilha de sempre, na mesma ordem |
 | **Nome e CPF** | Nome, CPF |
 | **Nome e e-mail** | Nome, E-mail |
 | **Contato** | Nome, Telefone, Telefone 2, Telefone 3, E-mail e a cidade |
@@ -88,18 +134,32 @@ reordenar colunas.
 
 | Modelo | Colunas |
 |---|---|
-| **Padrão (como hoje)** | As mesmas colunas da planilha de inscrições de sempre |
 | **Nome e CPF** | Nome, CPF |
 | **Nome e e-mail** | Nome, E-mail |
 | **Contato** | Nome, Telefone e E-mail |
 | **Lista de presença** | Nº de ordem, Nome, CPF e Assinatura. **Marca o Só confirmadas** |
+
+**Nas outras listas:**
+
+| Lista | Modelo | Colunas |
+|---|---|---|
+| Empresas | **Razão social e CNPJ** | Razão social, CNPJ |
+| Empresas | **Contato** | Razão social, Nome fantasia, Telefone, Telefone 2, Telefone 3, E-mail e a cidade da sede |
+| Administradores | **Contato** | Nome, Telefone e E-mail |
+| Cursos | **Calendário** | Curso, Início, Término, Sala e Instrutores |
+| Beneficiários da Unimed | **Nome, CPF e plano** | Nome, CPF e Plano |
+| Mensagens de contato | **Contato** | Nome, E-mail e Telefone |
+| Auditoria | **Resumida** | Data e hora, Quem, Ação e Alvo |
+| Lançamentos | **Resumido** | Nº, Data, Descrição, Nome / Razão social e Valor (R$) |
+| Propriedades | — | Só o **Padrão (como hoje)** |
+| Reservas das salas | — | Só o **Padrão (como hoje)** |
 
 Nas inscrições, o modelo também decide o **Só confirmadas**: a **Lista de
 presença** marca a caixa, e os outros modelos desmarcam. Depois de escolher o
 modelo, você ainda pode marcar ou desmarcar à mão.
 
 Na primeira vez, o montador abre no **Padrão (como hoje)**, para ninguém se
-perder. Depois, abre no último relatório que você baixou (veja
+perder. Depois, abre no último relatório que você baixou daquela lista (veja
 [O montador lembra a última escolha](#o-montador-lembra-a-ultima-escolha)).
 
 **"(alterado)".** Se você mexe nas colunas depois de escolher um modelo, o
@@ -122,9 +182,12 @@ seletor mostra **Montado à mão**.
 
 - **Marcar** um campo em **Campos** o põe **no fim** das colunas. Desmarcar o
   tira.
-- Os campos ficam em grupos: Identificação, Documentos, Contato, Endereço,
-  Associado, Vínculos, Sistema e Relatório. Nas inscrições, o grupo Inscrição
-  vem primeiro. Clique no nome do grupo para abrir ou fechar.
+- Os campos ficam em grupos, que mudam com a lista. Em Pessoas: Identificação,
+  Documentos, Contato, Endereço, Associado, Vínculos e Sistema (nas inscrições,
+  o grupo Inscrição vem primeiro). Nas Empresas: Empresa, Contato, Sede,
+  Vínculos, Parceria e Sistema. Nos Lançamentos: Lançamento, Valores,
+  Favorecido, Nota de Empenho e Sistema. Toda lista termina com o grupo
+  Relatório. Clique no nome do grupo para abrir ou fechar.
 - **Procurar campo…** acha pelo nome, sem precisar de acento. Procurar
   *endereco* traz o grupo Endereço inteiro.
 - Para **mudar a ordem**, arraste a coluna pela alça (os pontinhos à esquerda)
@@ -136,8 +199,8 @@ seletor mostra **Montado à mão**.
 **No celular**, o montador ocupa a tela toda, numa coluna só, nesta ordem:
 **Modelo**, **O que entra**, **Formato**, os avisos e, por último,
 **Colunas, nesta ordem (N)**, com o botão **+ Adicionar campo** logo no começo
-da lista. Assim você não precisa rolar as colunas todas (o **Padrão** tem
-dezenas) para chegar às outras escolhas.
+da lista. Assim você não precisa rolar as colunas todas (o **Padrão** de
+Pessoas tem dezenas) para chegar às outras escolhas.
 
 - Para pôr um campo, toque em **+ Adicionar campo**. A lista de campos ocupa a
   tela: marque os que quiser e toque em **Pronto**, que mostra quantas colunas
@@ -148,12 +211,21 @@ dezenas) para chegar às outras escolhas.
 
 Alguns campos que só existem no montador:
 
-- **Nº de ordem**: numera as linhas (1, 2, 3…).
-- **Assinatura**: uma coluna larga, em branco, para assinar no papel.
-- **Endereço numa linha**: o endereço da propriedade principal numa coluna só,
-  como *Rua X, 10 - Centro - Terra Roxa/PR - 85990-000*. Serve para etiqueta e
-  mala direta.
+- **Nº de ordem**: numera as linhas (1, 2, 3…). Está em toda lista.
+- **Assinatura**: uma coluna larga, em branco, para assinar no papel. Está em
+  toda lista.
+- **Endereço numa linha**: o endereço numa coluna só, como *Rua X, 10 - Centro -
+  Terra Roxa/PR - 85990-000*. Serve para etiqueta e mala direta. Em Pessoas, é o
+  da propriedade principal; nas Empresas, chama **Sede numa linha**.
 - **Idade**: em Pessoas, só pelo montador (a planilha de inscrições já tinha).
+- **Detalhes da exportação**: na Auditoria, o que cada exportação levou, numa
+  coluna só. Ele não vem no **Padrão**: marque o campo no grupo Detalhes. Veja
+  [Auditoria](?topico=auditoria).
+
+Algumas listas têm campos que a planilha de sempre não traz. Nos
+**Lançamentos**, por exemplo: o desconto, os dados da Nota de Empenho
+(endereço, telefone, banco, nota fiscal, cheque), quantos comprovantes e a data
+em que foi lançado.
 
 Cabem até 80 colunas. Chegando nisso, os outros campos ficam desligados.
 
@@ -161,9 +233,27 @@ Cabem até 80 colunas. Chegando nisso, os outros campos ficam desligados.
 
 | Opção | O que leva |
 |---|---|
-| **Todos** ou **Todos com os filtros atuais** | Tudo o que a lista mostra com a busca e os filtros de agora, não só a página na tela. Embaixo, os filtros aparecem em palavras, como *Filtros: Busca: silva · Sexo: Feminino · Só associados em dia*. Nas inscrições, aparece *Filtros: Curso:* e o nome do curso |
+| **Todos** ou **Todos com os filtros atuais** | Tudo o que a lista mostra com a busca e os filtros de agora, não só a página na tela |
 | **Selecionados (N)** | Só as linhas que você marcou na lista. Sem ninguém marcado, aparece **Selecionados (marque na lista)**, desligado |
 | **Só confirmadas (N)** (só nas inscrições) | Uma caixa à parte: leva só as inscrições confirmadas. O número é quantas estão confirmadas |
+
+Com **Todos**, os filtros aparecem embaixo, em palavras, como no cabeçalho do
+PDF. Alguns exemplos:
+
+| Lista | Como os filtros aparecem |
+|---|---|
+| Pessoas | *Filtros: Busca: silva · Sexo: Feminino · Só associados em dia* |
+| Cursos | *Filtros: Aba: Armazenados · Busca: horta · Ano: 2026* |
+| Inscrições de um curso | *Filtros: Curso:* e o nome do curso |
+| Empresas | *Filtros: Tipo: Privada · Só parceiras* (ou *Só não parceiras*) |
+| Administradores | *Filtros: Regra de acesso:* e o nome da regra |
+| Mensagens | *Filtros: Só lidas* (ou *Só não lidas*) |
+| Lançamentos | *Filtros: Período: 01/10/2026 a 31/10/2026 · Tipo: Saída · Categoria: INSUMOS · Caixa: BANCO · Método: PIX · Busca: adubo · Ordem: Nº* |
+| Auditoria | *Filtros: Ação: Exportações · Quem:* e o usuário de quem fez |
+| Agenda | *Filtros: Dia: 12/11/2026 · Sala: AUDITORIO · Tipo: Reunião* (na semana, *Período:* com o primeiro e o último dia) |
+
+Nos Cursos, a aba sempre aparece, mesmo sem outro filtro. O **Todos** só vira
+**Todos com os filtros atuais** quando há busca ou ano.
 
 Detalhes:
 
@@ -177,6 +267,26 @@ Detalhes:
   menos de 12.
 - Sem nenhuma inscrição confirmada, o botão de baixar desliga e diz:
   *Nenhuma inscrição confirmada. Desmarque "Só confirmadas" para levar todas.*
+- Na **Auditoria**, quando a trilha passa de 20.000 linhas, aparece embaixo
+  *Saem só as 20.000 linhas mais recentes.* O **Todos** mostra o total da tela,
+  e o botão conta as que saem: **Baixar planilha (20.000)**.
+
+**Nas fichas e nos extras**, o que entra já está decidido. Em vez de **Todos** e
+**Selecionados**, **O que entra** mostra uma frase:
+
+| Aberto por | O que entra mostra |
+|---|---|
+| **Ficha completa…** | *Só esta pessoa:* e o nome dela |
+| **Dados da empresa…** | *Só esta empresa:* e o nome dela |
+| **Propriedades (3)…**, na ficha | *As propriedades desta pessoa (3)* ou *As propriedades desta empresa (3)* |
+| **Montar relatório: propriedades dos selecionados…** | *Propriedades dos selecionados* |
+| **Montar relatório: propriedades das selecionadas…** | *Propriedades das selecionadas* |
+| **Montar relatório: inscrições dos cursos selecionados…** | *Inscrições dos cursos selecionados* |
+| **Montar relatório: inscrições de todos os cursos…** | *Inscrições de todos os cursos* |
+
+Nesses casos não aparece a linha *Filtros:*. Nos extras, o botão de baixar sai
+sem número, só **Baixar planilha**, porque a tela não sabe quantos registros
+eles têm. Nas inscrições, a caixa **Só confirmadas** continua lá.
 
 ## Planilha, PDF ou Imprimir
 
@@ -204,6 +314,10 @@ Sobre o PDF:
 - Com a coluna **Assinatura**, as linhas ficam mais altas, para dar espaço de
   assinar.
 
+O **Relatório em PDF** do menu **Exportar**, sem montar, é outra coisa: ele sai
+com as colunas principais, no modelo **Resumo**, e acima de 2.000 linhas sai do
+jeito antigo. Veja [Exportar planilhas](?topico=exportar-planilhas).
+
 Sobre o **Imprimir**: a aba nova abre na hora, com *Gerando o relatório…*, e o
 PDF aparece nela quando fica pronto. Imprima por ali. Se o navegador bloquear a
 aba nova, o PDF é baixado e aparece o aviso *O navegador não abriu outra aba: o
@@ -217,8 +331,12 @@ No celular não há **Imprimir**: baixe o **PDF** e imprima pelo leitor de PDF.
 No relatório montado, o telefone com DDD sai como *(44) 99999-8888*, em
 **todos** os modelos, inclusive no **Padrão (como hoje)**. É de propósito: sem
 a formatação, o Excel transforma o telefone num número como *4,5E+10*. Telefone
-digitado com outro tamanho (sem DDD, por exemplo) sai como foi digitado. CPF e
-CEP saem com a pontuação.
+digitado com outro tamanho (sem DDD, por exemplo) sai como foi digitado. CPF,
+CNPJ e CEP saem com a pontuação, e o CNS da Unimed sai como
+*123 4567 8901 2345*.
+
+A exceção é a coluna **CNPJ / CPF** dos **Lançamentos**: ela sai como foi
+digitada na Nota de Empenho, com ou sem pontuação, como sempre saiu.
 
 Por isso o **Padrão (como hoje)** do montador tem as mesmas colunas da planilha
 rápida do menu, mas não é igual a ela: na planilha rápida, sem montar, o
@@ -229,9 +347,11 @@ telefone continua saindo **como foi digitado no cadastro**. Veja
 
 Ao lado de cada campo há uma etiqueta quando ele é dado pessoal:
 
-- **pessoal**: documentos, contato, endereço, nascimento, idade, renda;
-- **sensível** (em vermelho): etnia, necessidades especiais, Unimed e a
-  situação de associado, que mostra a filiação ao Sindicato.
+- **pessoal**: documentos, contato, endereço, nascimento, idade, renda, o texto
+  das mensagens de contato, o responsável de uma reserva e, na Auditoria, o IP,
+  o local e o aparelho;
+- **sensível** (em vermelho): etnia, necessidades especiais, Unimed (o plano e
+  o CNS) e a situação de associado, que mostra a filiação ao Sindicato.
 
 Antes de baixar, o montador lista os campos pessoais que vão sair, os sensíveis
 primeiro: *Leva dados pessoais: CPF, Telefone.* Passando de 8, ele cita os 8
@@ -249,12 +369,18 @@ baixado vira sua responsabilidade: veja
 Campo em cinza é campo que **a sua regra não deixa exportar**. Embaixo do nome
 aparece o motivo, por exemplo *Pede a permissão Visualizar usuários*.
 
-Isso acontece nas **inscrições**, com quem pode ver cursos mas não pode ver
-usuários. Os campos que a planilha de inscrições sempre teve continuam
-liberados: nome, CPF, e-mail, telefone, nascimento, idade, associado em dia,
-empresa parceira, cargo na diretoria e contato público. O resto da ficha (RG,
-endereço, renda…) pede também a permissão de ver usuários. Assim ninguém leva
-pelo curso o que não vê no cadastro.
+Isso acontece em duas listas, com quem não pode ver usuários:
+
+- **Nas inscrições**, com quem pode ver cursos. Os campos que a planilha de
+  inscrições sempre teve continuam liberados: nome, CPF, e-mail, telefone,
+  nascimento, idade, associado em dia, empresa parceira, cargo na diretoria e
+  contato público.
+- **Nos Administradores**, com quem pode ver administradores. Continuam
+  liberados o usuário, a regra de acesso, a data de criação, o nome, o e-mail,
+  o CPF e o telefone.
+
+O resto da ficha da pessoa (RG, endereço, renda…) pede também a permissão de
+ver usuários. Assim ninguém leva por outra tela o que não vê no cadastro.
 
 Para liberar, quem cuida das regras marca **Visualizar** em Usuários na sua
 regra. Isso também abre a tela **Usuários** para você. Veja por que cada pessoa
@@ -264,10 +390,14 @@ vê uma coisa em
 ## O montador lembra a última escolha
 
 Quando você baixa, o montador guarda as colunas e o formato **neste
-navegador**, separado para Pessoas e para Inscrições. Na próxima vez, ele abre
-igual. Se as colunas batem com um modelo, ele volta com o nome do modelo (e, se
-for a **Lista de presença** das inscrições, com **Só confirmadas** marcada).
+navegador**, separado para cada lista: Pessoas, Inscrições, Empresas, Cursos e
+assim por diante. Na próxima vez, ele abre igual. Se as colunas batem com um
+modelo, ele volta com o nome do modelo (e, se for a **Lista de presença** das
+inscrições, com **Só confirmadas** marcada).
 
+- **A ficha usa a lembrança da lista.** A **Ficha completa…** abre como o
+  último relatório de Pessoas, e os **Dados da empresa…**, como o último de
+  Empresas. As propriedades são uma lista só, venham da ficha ou do menu.
 - **Só guarda quando você baixa.** Fechar ou clicar em **Cancelar** não guarda.
 - **Não acompanha você em outro computador** nem em outro navegador, e some se
   os dados do navegador forem apagados (ou numa janela anônima).
@@ -283,23 +413,27 @@ Para voltar ao começo, escolha **Padrão (como hoje)** em **Modelo**.
 
 | Limite | O que acontece |
 |---|---|
-| 20.000 linhas por relatório | O botão de baixar desliga. Filtre a lista |
-| 2.000 linhas no PDF e no Imprimir | O botão desliga. Baixe a planilha ou filtre |
+| 20.000 linhas por relatório | O botão de baixar desliga. Filtre a lista. Na **Auditoria** ele não desliga: saem só as 20.000 linhas mais recentes |
+| 2.000 linhas no PDF e no Imprimir | O botão desliga. Baixe a planilha ou filtre. O **Relatório em PDF** do menu, sem montar, não desliga: acima de 2.000 linhas, ele sai do jeito antigo |
 | 80 colunas | Os outros campos ficam desligados |
+| 5000 linhas marcadas | Marque menos, ou use **Todos** com um filtro |
 | 30 exportações por minuto | Contam todas as exportações do painel que saem da mesma internet. No escritório, a conta é da equipe toda |
 
 ## Se algo der errado
 
 | O que aparece | O que fazer |
 |---|---|
-| O menu não tem **Montar relatório…** | Por enquanto ele só existe em **Pessoa física**, **Associados** e nas **Inscrições** de um curso. Nessas, o item aparece quando o sistema termina de carregar os campos: feche o menu e abra de novo. Se continuar sem, recarregue a página (F5) |
+| O menu não tem **Montar relatório…** | O item aparece quando o sistema termina de carregar os campos: feche o menu e abra de novo. Se continuar sem, recarregue a página (F5). O **Relatório de cadastros** não tem montador |
+| **Montar relatório: propriedades dos selecionados…** (ou outro item "dos selecionados") desligado | Marque as linhas na lista primeiro |
+| **Propriedades (0)…** desligado na ficha | A pessoa ou a empresa não tem propriedade cadastrada |
 | *Abrindo o montador…* | O montador está carregando pela primeira vez nesta visita ao painel, e a internet está lenta. Espere um instante: ele abre sozinho |
 | Não acho o botão **Planilha** nas inscrições | Ele só aparece quando o curso tem inscrição |
 | *Escolha pelo menos um campo.* | Marque um campo ou escolha um modelo |
 | *Nenhum registro selecionado. Marque na lista ou escolha "Todos".* | Feche o montador e marque as linhas na lista, ou mude **O que entra** para **Todos** |
 | *Nenhum registro para exportar.* | Com a busca e os filtros de agora, a lista está vazia. Limpe a busca ou os filtros |
 | *Nenhuma inscrição confirmada. Desmarque "Só confirmadas" para levar todas.* | Nenhuma inscrição do curso está confirmada. Desmarque **Só confirmadas** para levar todas, ou confirme as inscrições na aba **Inscrições** e monte de novo |
-| *O relatório passa de 20.000 linhas. Use um filtro para diminuir.* | Filtre a lista (busca, aba **Associados**, filtros) e monte de novo |
+| *O relatório passa de 20.000 linhas. Use um filtro para diminuir.* | Filtre a lista e monte de novo. Se veio de **inscrições de todos os cursos**, marque os cursos e use **inscrições dos cursos selecionados** |
+| *Saem só as 20.000 linhas mais recentes.* | A trilha da Auditoria passa de 20.000 linhas, e as mais antigas ficam de fora. Para levá-las, filtre por **De** e **Até** e monte de novo |
 | *O PDF aceita até 2.000 linhas. Baixe a planilha ou use um filtro.* | Troque o formato para **Planilha CSV**, ou filtre a lista |
 | *Selecione no máximo 5000 registros* | Marque menos linhas, ou use **Todos** com um filtro |
 | *Sem permissão para exportar: RG.* | A sua regra não deixa exportar o campo citado (ela pode ter mudado com o montador aberto). Tire o campo, ou feche e abra o montador de novo |
@@ -312,5 +446,5 @@ Para voltar ao começo, escolha **Padrão (como hoje)** em **Modelo**.
 | O relatório saiu com menos linhas que o número do botão | O número tinha *até* na frente, como **(até 12)**: a tela não sabia quantas inscrições estavam confirmadas, e o arquivo saiu só com as confirmadas |
 | O PDF ficou com a letra muito pequena, ou com palavras cortadas | Tire colunas: com até 5, a folha fica em pé e a letra, maior. Ou baixe a planilha |
 | No Excel, o telefone virou *4,5E+10* | O arquivo saiu pela planilha rápida do menu. Monte o relatório (até o **Padrão (como hoje)** serve): ele formata o telefone |
-| O montador abriu com colunas que eu não queria | Ele abre no último relatório que você baixou. Escolha outro modelo em **Modelo** |
+| O montador abriu com colunas que eu não queria | Ele abre no último relatório que você baixou daquela lista. Escolha outro modelo em **Modelo** |
 | O montador abriu com **Só confirmadas** marcada | O último relatório de inscrições que você baixou foi uma **Lista de presença**. Desmarque a caixa, ou escolha outro modelo |
