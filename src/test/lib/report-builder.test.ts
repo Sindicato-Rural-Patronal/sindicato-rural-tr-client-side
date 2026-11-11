@@ -300,6 +300,11 @@ describe('o que vai sair', () => {
       'Busca: cristina', 'Sexo: Feminino', 'Etnia: Parda', 'Escolaridade: Superior completo', 'Tipo de membro: Produtor rural',
     ])
     expect(filtrosEmPalavras({ gender: 'MALE' }, cat.filterLabels)).toEqual(['Sexo: Masculino'])
+    // Por extenso, como a API escreve no PDF (antes "Fund. incompleto").
+    expect(filtrosEmPalavras({ educationLevel: 'INCOMPLETE_PRIMARY' }, cat.filterLabels))
+      .toEqual(['Escolaridade: Fundamental incompleto'])
+    expect(filtrosEmPalavras({ educationLevel: 'COMPLETE_PRIMARY' }, cat.filterLabels))
+      .toEqual(['Escolaridade: Fundamental completo'])
     // Valor que a tela não conhece sai como veio.
     expect(filtrosEmPalavras({ gender: 'NOVO' }, cat.filterLabels)).toEqual(['Sexo: NOVO'])
   })

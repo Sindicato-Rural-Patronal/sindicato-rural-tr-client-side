@@ -49,6 +49,7 @@ import { DuplicatePeopleList } from '@/components/cadastro/DuplicatePeopleList'
 import { PersonNameCell } from '@/components/cadastro/PersonNameCell'
 import { useAdminCompanies } from '@/hooks/useCompanies'
 import { MEMBER_TYPES } from '@/lib/member-types'
+import { EDUCATION_OPTIONS } from '@/lib/user-form-options'
 import { downloadExport, type ExportDataset, type ExportFormat, type ExportParams } from '@/lib/export'
 import { useRowSelection } from '@/hooks/useRowSelection'
 import { ExportMenu, SelectCheckbox, SelectionInfo } from '@/components/export/ExportMenu'
@@ -1159,17 +1160,11 @@ function RouteComponent() {
                   value={educationFilter || 'all'}
                   onValueChange={v => { setEducationFilter(v === 'all' ? '' : v); setUsersPage(1) }}
                 >
-                  <SelectTrigger className="h-8 text-xs w-44"><SelectValue /></SelectTrigger>
+                  {/* w-48: "Fundamental incompleto" pede 136 px de texto e o w-44 deixa 134 (saía cortado). */}
+                  <SelectTrigger className="h-8 text-xs w-48"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">Todas</SelectItem>
-                    <SelectItem value="NO_FORMAL_EDUCATION">Sem escolaridade</SelectItem>
-                    <SelectItem value="INCOMPLETE_PRIMARY">Fund. incompleto</SelectItem>
-                    <SelectItem value="COMPLETE_PRIMARY">Fund. completo</SelectItem>
-                    <SelectItem value="INCOMPLETE_SECONDARY">Médio incompleto</SelectItem>
-                    <SelectItem value="COMPLETE_SECONDARY">Médio completo</SelectItem>
-                    <SelectItem value="INCOMPLETE_HIGHER">Superior incompleto</SelectItem>
-                    <SelectItem value="COMPLETE_HIGHER">Superior completo</SelectItem>
-                    <SelectItem value="POSTGRADUATE">Pós-graduação</SelectItem>
+                    {EDUCATION_OPTIONS.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>

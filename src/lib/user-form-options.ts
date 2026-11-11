@@ -1,6 +1,8 @@
 // Opções compartilhadas dos selects da ficha de associado.
-// Usadas em usuarios/$id.tsx (edição) e usuarios/novo.tsx (cadastro) —
-// mantidas aqui para não duplicar os mesmos value/label nos dois formulários.
+// Usadas no cadastro (components/cadastro/person-form-fields.tsx, que serve a
+// usuarios/$id.tsx e usuarios/novo.tsx), nos filtros da lista de Pessoas, no
+// "Filtros:" do montador de relatórios e na ficha da Unimed — mantidas aqui
+// para não duplicar os mesmos value/label.
 
 export type SelectOption = { value: string; label: string }
 
@@ -20,8 +22,10 @@ export const ETHNICITY_OPTIONS: SelectOption[] = [
 
 export const EDUCATION_OPTIONS: SelectOption[] = [
   { value: 'NO_FORMAL_EDUCATION', label: 'Sem escolaridade' },
-  { value: 'INCOMPLETE_PRIMARY', label: 'Fund. incompleto' },
-  { value: 'COMPLETE_PRIMARY', label: 'Fund. completo' },
+  // Por extenso, como as outras opções e como a API escreve no PDF e na
+  // Auditoria (back: src/lib/export-labels.ts).
+  { value: 'INCOMPLETE_PRIMARY', label: 'Fundamental incompleto' },
+  { value: 'COMPLETE_PRIMARY', label: 'Fundamental completo' },
   { value: 'INCOMPLETE_SECONDARY', label: 'Médio incompleto' },
   { value: 'COMPLETE_SECONDARY', label: 'Médio completo' },
   { value: 'INCOMPLETE_HIGHER', label: 'Superior incompleto' },
