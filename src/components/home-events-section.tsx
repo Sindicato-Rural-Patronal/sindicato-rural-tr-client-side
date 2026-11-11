@@ -22,7 +22,7 @@ export function EventDateBlock({ event, className }: { event: PublicEvent; class
   return (
     <div
       aria-hidden
-      className={cn('flex w-14 shrink-0 flex-col items-center rounded-lg border border-border bg-muted py-1.5 text-center', className)}
+      className={cn('flex w-14 shrink-0 flex-col items-center self-start rounded-lg border border-border bg-muted py-1.5 text-center', className)}
     >
       <span className="text-xs text-muted-foreground">{month}</span>
       <span className="num text-2xl font-semibold leading-tight text-foreground">{day}</span>

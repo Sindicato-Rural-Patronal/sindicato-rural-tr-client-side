@@ -395,7 +395,8 @@ function RouteComponent() {
             <div
               key={msg.id}
               className={cn(
-                'flex items-center gap-3 rounded-xl border border-border bg-card px-4 py-3 transition-colors hover:bg-muted/50 sm:gap-4',
+                'flex items-center gap-3 rounded-xl border border-border px-4 py-3 transition-colors sm:gap-4',
+                msg.read ? 'bg-card hover:bg-muted/50' : 'bg-secondary hover:bg-accent',
                 selection.isSelected(msg.id) && 'ring-1 ring-primary/40',
               )}
             >

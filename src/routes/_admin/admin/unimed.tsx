@@ -13,6 +13,7 @@ import { maskCPF } from '@/utils/masks'
 import { STICKY_ACTIONS_CELL, STICKY_ACTIONS_ROW } from '@/lib/table-sticky-actions'
 import { useDebouncedValue } from '@/hooks/useDebouncedValue'
 import { useRowSelection } from '@/hooks/useRowSelection'
+import { useIsMobile } from '@/hooks/use-mobile'
 import { usePermissions } from '@/hooks/usePermissions'
 import { useUnimedList, useDeleteUnimed, type UnimedRow } from '@/hooks/useUnimed'
 import { Button } from '@/components/ui/button'
@@ -66,6 +67,7 @@ function RouteComponent() {
 
   const { data, isLoading, isError, isFetching, refetch } = useUnimedList({ page, limit: 20, search })
   const deleteM = useDeleteUnimed()
+  const isMobile = useIsMobile()
   const { can } = usePermissions()
 
   const [dialogOpen, setDialogOpen] = useState(false)
@@ -263,7 +265,7 @@ function RouteComponent() {
                   <TableCell className={`text-right ${STICKY_ACTIONS_CELL}`}>
                     {/* Editar e Ficha à vista; o resto no "Mais", com os rótulos escritos
                         (os ícones sozinhos só se explicariam no hover, que o celular não tem). */}
-                    <RowActions label={`Ações de ${r.userData.name}`} actions={actionsOf(r)} />
+                    <RowActions label={`Ações de ${r.userData.name}`} actions={actionsOf(r)} visible={isMobile ? 1 : 2} />
                   </TableCell>
                 </TableRow>
               ))}

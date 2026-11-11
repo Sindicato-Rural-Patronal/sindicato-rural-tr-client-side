@@ -723,7 +723,7 @@ function FilteredTotals({ totals, loading }: {
 }
 
 // Botões Entrada / Saída / Só nota do formulário: o escolhido no tom do tipo, os outros neutros.
-const TIPO_BOTAO = 'flex items-center justify-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium transition-colors'
+const TIPO_BOTAO = 'flex items-center justify-center gap-1.5 whitespace-nowrap rounded-lg border px-2 py-2 text-sm sm:gap-2 sm:px-3 font-medium transition-colors'
 const TIPO_BOTAO_INATIVO = 'border-input text-muted-foreground hover:bg-accent hover:text-foreground'
 
 type TxForm = {

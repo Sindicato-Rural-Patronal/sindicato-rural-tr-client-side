@@ -114,7 +114,7 @@ export function AdminSideBar({ ...props }: React.ComponentProps<typeof Sidebar>)
           </Link>
         </SidebarMenuButton>
         {item.url === '/admin/mensagens' && unread > 0 && (
-          <SidebarMenuBadge className="bg-primary text-primary-foreground">
+          <SidebarMenuBadge className="bg-primary text-primary-foreground peer-hover/menu-button:text-primary-foreground peer-data-active/menu-button:text-primary-foreground">
             {unread > 99 ? '99+' : unread}
           </SidebarMenuBadge>
         )}
