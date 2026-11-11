@@ -1,10 +1,10 @@
 ---
 titulo: Como montar um relatório
-resumo: Escolher os campos e a ordem das colunas e baixar em planilha ou PDF, ou imprimir.
+resumo: Escolher os campos e a ordem das colunas e baixar em planilha (CSV ou Excel) ou PDF, ou imprimir.
 grupo: como-fazer
 ordem: 14
 veja: exportar-planilhas, auditoria, usuarios, empresas, cursos, financeiro
-busca: montar relatorio escolher campos colunas ordem modelo padrao alterado nome e cpf nome e email contato lista de presenca assinatura numero de ordem endereco correspondencia mala direta etiqueta associados inscricoes so confirmadas nenhuma inscricao confirmada planilha csv pdf imprimir aba bloqueada pop-up excel exportar arrastar dados pessoais sensivel telefone formatado limite abrindo o montador hifen palavra cortada empresas razao social e cnpj propriedades administradores cursos calendario mensagens unimed nome cpf e plano auditoria resumida detalhes da exportacao lancamentos financeiro resumido agenda reservas sala ficha completa dados da empresa propriedades dos selecionados propriedades das selecionadas inscricoes dos cursos selecionados inscricoes de todos os cursos filtros aba armazenados ano regra de acesso so nao lidas so parceiras 20.000 linhas mais recentes 2.000 linhas
+busca: montar relatorio escolher campos colunas ordem modelo padrao alterado nome e cpf nome e email contato lista de presenca assinatura numero de ordem endereco correspondencia mala direta etiqueta associados inscricoes so confirmadas nenhuma inscricao confirmada planilha csv pdf imprimir aba bloqueada pop-up excel exportar arrastar dados pessoais sensivel telefone formatado limite abrindo o montador hifen palavra cortada empresas razao social e cnpj propriedades administradores cursos calendario mensagens unimed nome cpf e plano auditoria resumida detalhes da exportacao lancamentos financeiro resumido agenda reservas sala ficha completa dados da empresa propriedades dos selecionados propriedades das selecionadas inscricoes dos cursos selecionados inscricoes de todos os cursos filtros aba armazenados ano regra de acesso so nao lidas so parceiras 20.000 linhas mais recentes 2.000 linhas planilha do excel xlsx baixar planilha do excel aba sobre cabecalho preso valor em reais data forma de pagamento tipo usuario
 ---
 
 O **Montar relatório…** deixa você escolher **quais colunas saem e em que
@@ -95,16 +95,25 @@ montou.
 4. Em **O que entra**, escolha **Todos** ou **Selecionados**. Nas inscrições,
    marque ou desmarque **Só confirmadas**. Nas fichas e nos extras, não há o que
    escolher: o montador já diz o que vai sair.
-5. Em **Formato**, escolha **Planilha CSV**, **PDF** ou **Imprimir**.
+5. Em **Formato**, escolha **Planilha CSV**, **Planilha do Excel (.xlsx)**,
+   **PDF** ou **Imprimir** (veja
+   [Planilha, Excel, PDF ou Imprimir](#planilha-excel-pdf-ou-imprimir)).
 6. Leia os avisos embaixo, como o *Leva dados pessoais: CPF.*
 7. Clique no botão de baixar, no pé do montador. O nome dele acompanha o
-   formato: **Baixar planilha (123)**, **Baixar PDF (123)** ou
-   **Imprimir (123)**. O número é quantos registros vão sair.
+   formato: **Baixar planilha (123)**, **Baixar planilha do Excel (123)**,
+   **Baixar PDF (123)** ou **Imprimir (123)**. O número é quantos registros vão
+   sair.
 
-O arquivo vai para a pasta de downloads do navegador, e aparece o aviso
-*Planilha com 123 registros baixada.* (ou *Relatório com 123 registros
-baixado.*). No **Imprimir**, o aviso é *Relatório aberto em outra aba para
-imprimir.*
+O arquivo vai para a pasta de downloads do navegador, e aparece um aviso:
+
+| Formato | Aviso |
+|---|---|
+| **Planilha CSV** | *Planilha com 123 registros baixada.* |
+| **Planilha do Excel (.xlsx)** | *Planilha do Excel com 123 registros baixada.* |
+| **PDF** | *Relatório com 123 registros baixado.* |
+| **Imprimir** | *Relatório aberto em outra aba para imprimir.* |
+
+Acima de mil, o número vem com ponto: *Planilha com 2.500 registros baixada.*
 
 Quando o botão de baixar está desligado, o motivo aparece ao lado dele (no
 celular, logo acima). Se der erro depois do clique, a mensagem aparece em
@@ -248,12 +257,17 @@ PDF. Alguns exemplos:
 | Empresas | *Filtros: Tipo: Privada · Só parceiras* (ou *Só não parceiras*) |
 | Administradores | *Filtros: Regra de acesso:* e o nome da regra |
 | Mensagens | *Filtros: Só lidas* (ou *Só não lidas*) |
-| Lançamentos | *Filtros: Período: 01/10/2026 a 31/10/2026 · Tipo: Saída · Categoria: INSUMOS · Caixa: BANCO · Método: PIX · Busca: adubo · Ordem: Nº* |
-| Auditoria | *Filtros: Ação: Exportações · Quem:* e o usuário de quem fez |
+| Lançamentos | *Filtros: Período: 01/10/2026 a 31/10/2026 · Tipo: Saída · Categoria: INSUMOS · Caixa: BANCO · Forma de pagamento: PIX · Busca: adubo · Ordem: Nº* |
+| Auditoria | *Filtros: Ação: Exportações · Tipo: Usuário · Quem:* e o usuário de quem fez |
 | Agenda | *Filtros: Dia: 12/11/2026 · Sala: AUDITORIO · Tipo: Reunião* (na semana, *Período:* com o primeiro e o último dia) |
 
 Nos Cursos, a aba sempre aparece, mesmo sem outro filtro. O **Todos** só vira
 **Todos com os filtros atuais** quando há busca ou ano.
+
+O nome do filtro nem sempre é o da coluna. Nos Lançamentos, o filtro aparece
+como *Forma de pagamento*, mas a coluna da planilha se chama **Método**. Na
+Auditoria, o filtro aparece como *Tipo*, como na tela, e a coluna se chama
+**Área**.
 
 Detalhes:
 
@@ -288,15 +302,36 @@ Nesses casos não aparece a linha *Filtros:*. Nos extras, o botão de baixar sai
 sem número, só **Baixar planilha**, porque a tela não sabe quantos registros
 eles têm. Nas inscrições, a caixa **Só confirmadas** continua lá.
 
-## Planilha, PDF ou Imprimir
+## Planilha, Excel, PDF ou Imprimir
 
 | Formato | Para quê |
 |---|---|
-| **Planilha CSV** | Abrir no Excel, mexer nos dados, fazer mala direta. Até 20.000 linhas |
+| **Planilha CSV** | O arquivo de sempre. Abre no Excel e no Google Planilhas e serve para levar os dados a outro programa. Até 20.000 linhas |
+| **Planilha do Excel (.xlsx)** | Abrir no Excel e trabalhar nos dados: ordenar, filtrar, somar valores, fazer mala direta. Até 20.000 linhas, como a planilha CSV |
 | **PDF** | Guardar, mandar ou imprimir depois. Até 2.000 linhas |
 | **Imprimir** | O mesmo PDF, aberto numa aba nova para você imprimir. Só no computador |
 
-Sobre o PDF:
+No celular aparecem os três primeiros: só o **Imprimir** fica de fora.
+
+### A planilha do Excel
+
+- **A primeira aba tem os dados**, com o nome da lista (*Pessoas*,
+  *Lançamentos*…). A linha dos títulos fica presa no alto quando você rola. Não
+  há nada acima dela, então dá para ordenar, filtrar e montar tabela dinâmica
+  direto.
+- **A aba Sobre** diz o que é o arquivo: o relatório, quando foi gerado,
+  quantos registros, o que entrou, os filtros, o modelo e os campos.
+- **Telefone, CPF, CNS e CEP saem como texto.** O Excel não os transforma em
+  número, e o zero da frente não some.
+- **Valor sai como número em R$**, pronto para somar. **Data sai como data**,
+  para ordenar e filtrar por período.
+- **Texto que começa com "=" aparece como foi escrito.** Ele não vira fórmula
+  do Excel.
+
+O aviso de letra pequena e o limite de 2.000 linhas são só do PDF. A planilha do
+Excel tem os limites da planilha CSV.
+
+### O PDF e o Imprimir
 
 - **Até 5 colunas, a folha sai em pé**; com mais, sai deitada, e a letra
   diminui conforme as colunas aumentam. A partir de 9 colunas, o montador
@@ -315,8 +350,9 @@ Sobre o PDF:
   assinar.
 
 O **Relatório em PDF** do menu **Exportar**, sem montar, é outra coisa: ele sai
-com as colunas principais, no modelo **Resumo**, e acima de 2.000 linhas sai do
-jeito antigo. Veja [Exportar planilhas](?topico=exportar-planilhas).
+com as colunas principais, no modelo **Resumo**. Acima de 2.000 linhas, ele sai
+do jeito antigo, menos nos **Lançamentos** e na **Auditoria**, onde fica
+desligado. Veja [Exportar planilhas](?topico=exportar-planilhas).
 
 Sobre o **Imprimir**: a aba nova abre na hora, com *Gerando o relatório…*, e o
 PDF aparece nela quando fica pronto. Imprima por ali. Se o navegador bloquear a
@@ -330,10 +366,10 @@ No celular não há **Imprimir**: baixe o **PDF** e imprima pelo leitor de PDF.
 
 No relatório montado, o telefone com DDD sai como *(44) 99999-8888*, em
 **todos** os modelos, inclusive no **Padrão (como hoje)**. É de propósito: sem
-a formatação, o Excel transforma o telefone num número como *4,5E+10*. Telefone
-digitado com outro tamanho (sem DDD, por exemplo) sai como foi digitado. CPF,
-CNPJ e CEP saem com a pontuação, e o CNS da Unimed sai como
-*123 4567 8901 2345*.
+a formatação, o Excel transforma o telefone de uma planilha CSV num número como
+*4,5E+10*. Telefone digitado com outro tamanho (sem DDD, por exemplo) sai como
+foi digitado. CPF, CNPJ e CEP saem com a pontuação, e o CNS da Unimed sai como
+*123 4567 8901 2345*. Vale para a planilha CSV, a do Excel e o PDF.
 
 A exceção é a coluna **CNPJ / CPF** dos **Lançamentos**: ela sai como foi
 digitada na Nota de Empenho, com ou sem pontuação, como sempre saiu.
@@ -359,10 +395,10 @@ primeiros e diz "e mais N". **É um aviso, não impede de baixar.** Leve só o q
 a tarefa pede: se você vai ligar para as pessoas, não precisa do CPF.
 
 Cada relatório montado fica na [Auditoria](?topico=auditoria), com os campos
-que saíram. A planilha aparece como *Exportou a planilha "…"*, e o PDF (baixado
-ou pelo **Imprimir**) como *Exportou o relatório em PDF "…"*. E o arquivo
-baixado vira sua responsabilidade: veja
-[Exportar planilhas](?topico=exportar-planilhas).
+que saíram. A planilha CSV aparece como *Exportou a planilha "…"*, a do Excel
+como *Exportou a planilha do Excel "…"*, e o PDF (baixado ou pelo **Imprimir**)
+como *Exportou o relatório em PDF "…"*. E o arquivo baixado vira sua
+responsabilidade: veja [Exportar planilhas](?topico=exportar-planilhas).
 
 ## Campos em cinza
 
@@ -413,8 +449,8 @@ Para voltar ao começo, escolha **Padrão (como hoje)** em **Modelo**.
 
 | Limite | O que acontece |
 |---|---|
-| 20.000 linhas por relatório | O botão de baixar desliga. Filtre a lista. Na **Auditoria** ele não desliga: saem só as 20.000 linhas mais recentes |
-| 2.000 linhas no PDF e no Imprimir | O botão desliga. Baixe a planilha ou filtre. O **Relatório em PDF** do menu, sem montar, não desliga: acima de 2.000 linhas, ele sai do jeito antigo |
+| 20.000 linhas por relatório, na planilha CSV e na do Excel | O botão de baixar desliga. Filtre a lista. Na **Auditoria** ele não desliga: saem só as 20.000 linhas mais recentes |
+| 2.000 linhas no PDF e no Imprimir | O botão desliga. Baixe a planilha ou filtre. No **Relatório em PDF** do menu, sem montar, depende da lista: veja [Exportar planilhas](?topico=exportar-planilhas) |
 | 80 colunas | Os outros campos ficam desligados |
 | 5000 linhas marcadas | Marque menos, ou use **Todos** com um filtro |
 | 30 exportações por minuto | Contam todas as exportações do painel que saem da mesma internet. No escritório, a conta é da equipe toda |
@@ -434,7 +470,7 @@ Para voltar ao começo, escolha **Padrão (como hoje)** em **Modelo**.
 | *Nenhuma inscrição confirmada. Desmarque "Só confirmadas" para levar todas.* | Nenhuma inscrição do curso está confirmada. Desmarque **Só confirmadas** para levar todas, ou confirme as inscrições na aba **Inscrições** e monte de novo |
 | *O relatório passa de 20.000 linhas. Use um filtro para diminuir.* | Filtre a lista e monte de novo. Se veio de **inscrições de todos os cursos**, marque os cursos e use **inscrições dos cursos selecionados** |
 | *Saem só as 20.000 linhas mais recentes.* | A trilha da Auditoria passa de 20.000 linhas, e as mais antigas ficam de fora. Para levá-las, filtre por **De** e **Até** e monte de novo |
-| *O PDF aceita até 2.000 linhas. Baixe a planilha ou use um filtro.* | Troque o formato para **Planilha CSV**, ou filtre a lista |
+| *O PDF aceita até 2.000 linhas. Baixe a planilha ou use um filtro.* | Troque o formato para **Planilha CSV** ou **Planilha do Excel (.xlsx)**, ou filtre a lista |
 | *Selecione no máximo 5000 registros* | Marque menos linhas, ou use **Todos** com um filtro |
 | *Sem permissão para exportar: RG.* | A sua regra não deixa exportar o campo citado (ela pode ter mudado com o montador aberto). Tire o campo, ou feche e abra o montador de novo |
 | *Ficaram de fora campos do modelo que você não pode exportar: …* | O modelo saiu sem esses campos. O resto do relatório sai normalmente |
@@ -445,6 +481,6 @@ Para voltar ao começo, escolha **Padrão (como hoje)** em **Modelo**.
 | *O navegador não abriu outra aba: o relatório foi baixado. Abra o arquivo para imprimir.* | O navegador bloqueou a aba nova do **Imprimir**. Abra o arquivo na pasta de downloads e imprima por ele. Para a aba abrir da próxima vez, permita janelas novas (pop-ups) para o painel |
 | O relatório saiu com menos linhas que o número do botão | O número tinha *até* na frente, como **(até 12)**: a tela não sabia quantas inscrições estavam confirmadas, e o arquivo saiu só com as confirmadas |
 | O PDF ficou com a letra muito pequena, ou com palavras cortadas | Tire colunas: com até 5, a folha fica em pé e a letra, maior. Ou baixe a planilha |
-| No Excel, o telefone virou *4,5E+10* | O arquivo saiu pela planilha rápida do menu. Monte o relatório (até o **Padrão (como hoje)** serve): ele formata o telefone |
+| No Excel, o telefone virou *4,5E+10* | O arquivo saiu em planilha CSV pelo menu. Baixe de novo em **Excel (.xlsx)**, no menu ou no montador, que guarda o telefone como texto. Ou monte o relatório (até o **Padrão (como hoje)** serve): ele formata o telefone |
 | O montador abriu com colunas que eu não queria | Ele abre no último relatório que você baixou daquela lista. Escolha outro modelo em **Modelo** |
 | O montador abriu com **Só confirmadas** marcada | O último relatório de inscrições que você baixou foi uma **Lista de presença**. Desmarque a caixa, ou escolha outro modelo |
