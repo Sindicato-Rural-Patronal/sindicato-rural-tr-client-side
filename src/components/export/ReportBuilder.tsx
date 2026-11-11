@@ -7,17 +7,21 @@ import {
 import { SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { ArrowDown, ArrowLeft, ArrowUp, GripVertical, Info, Loader2, Plus, ShieldAlert, X } from 'lucide-react'
+import { AjudaLink } from '@/components/ajuda/AjudaLink'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Sheet, SheetClose, SheetContent, SheetDescription, SheetTitle } from '@/components/ui/sheet'
 import { useIsMobile } from '@/hooks/use-mobile'
-import { downloadExport, exportErrorMessage, type ExportDataset, type ExportParams } from '@/lib/export'
+import {
+  RelatorioVazioError, exportErrorMessage, exportarRelatorio, type ExportDataset, type ExportParams,
+} from '@/lib/export'
 import { cn } from '@/lib/utils'
 import { PrivacyBadge, ReportFieldPicker } from '@/components/export/ReportFieldPicker'
 import {
-  AVISO_COLUNAS_PDF, aplicarModelo, avisoDadosPessoais, camposDoCatalogo, estadoInicial, filtrosEmPalavras,
-  formatoNaTela, guardarUltimo, lerUltimo, marcarCampo, modeloParaApi, modelosDe, moverCampo, moverPara,
-  nomeDoModelo, problemaParaBaixar, quantosVaoSair, textoDoBotao, tirarCampo,
+  AVISO_COLUNAS_PDF, TEXTO_NENHUM_REGISTRO, TEXTO_NENHUMA_CONFIRMADA, aplicarModelo, avisoDadosPessoais,
+  camposDoCatalogo, contagem, estadoInicial, filtrosEmPalavras, formatoNaTela, guardarUltimo, lerUltimo, marcarCampo,
+  modeloParaApi, modelosDe, moverCampo, moverPara, nomeDoModelo, problemaParaBaixar, quantosVaoSair, textoDoBotao,
+  tirarCampo,
   type CampoComGrupo, type ExportCatalog, type ReportFormat, type ReportState,
 } from '@/components/export/report-builder'
 
@@ -47,6 +51,13 @@ export type ReportBuilderProps = {
   total?: number
   /** Há filtro ativo? Muda "Todos" para "Todos com os filtros atuais". */
   filtered?: boolean
+  /**
+   * Quantas estão confirmadas, quando a tela sabe (Inscrições). Com "Só
+   * confirmadas", é o número do botão; sem ele, o total vira só um teto ("até 5").
+   */
+  totalConfirmadas?: number
+  /** Como a tela diz um filtro na linha "Filtros:" ({ courseIds: 'Curso: Horta' }). */
+  filterTexts?: Record<string, string>
 }
 
 const INSTRUCOES_LEITOR: ScreenReaderInstructions = {
@@ -153,7 +164,8 @@ function LinhaArrastavel(props: Omit<Parameters<typeof LinhaDaColuna>[0], 'alca'
 }
 
 export function ReportBuilder({
-  open, onOpenChange, dataset, catalog, filters = {}, selectedIds, total, filtered = false,
+  open, onOpenChange, dataset, catalog, filters = {}, selectedIds, total, filtered = false, totalConfirmadas,
+  filterTexts,
 }: ReportBuilderProps) {
   const celular = useIsMobile()
   const temSelecao = selectedIds !== undefined
@@ -172,13 +184,14 @@ export function ReportBuilder({
   const campos = useMemo(() => camposDoCatalogo(catalog), [catalog])
   const modelos = useMemo(() => modelosDe(catalog), [catalog])
   const formato = formatoNaTela(estado.format, celular)
-  const quantos = quantosVaoSair(estado, { total, selecionados })
-  const problema = problemaParaBaixar(estado, catalog, { total, selecionados, celular })
+  const contagens = { total, selecionados, totalConfirmadas }
+  const quantos = quantosVaoSair(estado, contagens)
+  const problema = problemaParaBaixar(estado, catalog, { ...contagens, celular })
   const dadosPessoais = avisoDadosPessoais(estado, catalog)
   const nomeModelo = nomeDoModelo(estado, catalog)
   const modeloEscolhido = modelos.find(m => m.id === estado.modeloId)
   const alterado = !!modeloEscolhido && nomeModelo !== modeloEscolhido.name
-  const filtrosTexto = filtrosEmPalavras(filters, catalog.filterLabels)
+  const filtrosTexto = filtrosEmPalavras(filters, catalog.filterLabels, { textos: filterTexts })
   const muitasColunas = formato !== 'csv' && estado.fields.length >= AVISO_COLUNAS_PDF
   const escolhidos = estado.fields.map(k => campos.get(k)).filter((c): c is CampoComGrupo => !!c)
 
@@ -252,24 +265,34 @@ export function ReportBuilder({
     setBaixando(true)
     try {
       const params: ExportParams = estado.scope === 'selected' ? { ids: selectedIds ?? [] } : filters
-      const count = await downloadExport(dataset, params, formato === 'csv' ? 'csv' : 'pdf', {
+      const { count, abriuAba } = await exportarRelatorio(dataset, params, formato === 'csv' ? 'csv' : 'pdf', {
         fields: estado.fields,
         modelo: modeloParaApi(estado, catalog),
         confirmed: estado.confirmed,
         print: imprimir,
         printWindow: aba,
+        // Com "Só confirmadas" a tela pode não saber quantas são: em vez de um
+        // arquivo vazio, o aviso aparece aqui.
+        recusarVazio: true,
       })
       guardarUltimo(dataset, { fields: estado.fields, format: estado.format })
       const registros = count === 1 ? '1 registro' : count >= 0 ? `${count} registros` : null
       toast.success(
-        imprimir ? 'Relatório aberto em outra aba para imprimir.'
+        imprimir
+          ? abriuAba
+            ? 'Relatório aberto em outra aba para imprimir.'
+            : 'O navegador não abriu outra aba: o relatório foi baixado. Abra o arquivo para imprimir.'
           : formato === 'csv' ? `Planilha${registros ? ` com ${registros}` : ''} baixada.`
             : `Relatório${registros ? ` com ${registros}` : ''} baixado.`,
       )
       onOpenChange(false)
     } catch (e) {
       aba?.close()
-      setErro(exportErrorMessage(e, 'Não foi possível gerar o relatório. Tente de novo.'))
+      setErro(
+        e instanceof RelatorioVazioError
+          ? (estado.confirmed ? TEXTO_NENHUMA_CONFIRMADA : TEXTO_NENHUM_REGISTRO)
+          : exportErrorMessage(e, 'Não foi possível gerar o relatório. Tente de novo.'),
+      )
     } finally {
       setBaixando(false)
     }
@@ -332,7 +355,9 @@ export function ReportBuilder({
     </DndContext>
   )
 
-  const todosRotulo = `${filtered ? 'Todos com os filtros atuais' : 'Todos'}${total != null ? ` (${total.toLocaleString('pt-BR')})` : ''}`
+  // O número do "Todos" segue o "Só confirmadas" (ou vira teto: "até 5").
+  const numeroTodos = contagem(quantosVaoSair({ ...estado, scope: 'all' }, contagens))
+  const todosRotulo = `${filtered && !celular ? 'Todos com os filtros atuais' : 'Todos'}${numeroTodos}`
   const oQueEntra = (
     <fieldset className="flex min-w-0 flex-col gap-1.5">
       <legend className="mb-1 text-sm font-medium text-foreground">O que entra</legend>
@@ -342,7 +367,7 @@ export function ReportBuilder({
             type="radio" name={`${ids}-escopo`} className="size-4 accent-primary"
             checked={estado.scope === 'all'} onChange={() => mudar(s => ({ ...s, scope: 'all' }))}
           />
-          {celular && filtered ? `Todos${total != null ? ` (${total.toLocaleString('pt-BR')})` : ''}` : todosRotulo}
+          {todosRotulo}
         </label>
         {temSelecao && (
           <label className={cn('flex items-center gap-2 text-sm', selecionados === 0 ? 'cursor-not-allowed text-muted-foreground' : 'cursor-pointer', celular && 'min-h-11')}>
@@ -364,7 +389,7 @@ export function ReportBuilder({
             type="checkbox" className="size-4 accent-primary"
             checked={estado.confirmed} onChange={e => { const v = e.target.checked; mudar(s => ({ ...s, confirmed: v })) }}
           />
-          Só confirmadas
+          Só confirmadas{totalConfirmadas != null ? ` (${totalConfirmadas.toLocaleString('pt-BR')})` : ''}
         </label>
       )}
     </fieldset>
@@ -431,10 +456,21 @@ export function ReportBuilder({
     </Button>
   )
 
+  // O "?" da Ajuda: 44 px no celular; no computador, do tamanho do título.
+  const ajuda = (
+    <AjudaLink
+      topico="montar-relatorio"
+      titulo="Montar relatório"
+      className="md:size-7"
+    />
+  )
+
   if (celular) {
     return (
       <Sheet open={open} onOpenChange={onOpenChange}>
-        <SheetContent side="bottom" showCloseButton={false} className="h-dvh max-h-dvh gap-0 p-0">
+        {/* A altura vai no mesmo seletor do ui/sheet (data-[side=bottom]:h-auto),
+            senão ele ganha: a folha encolhia e a busca pulava enquanto se digitava. */}
+        <SheetContent side="bottom" showCloseButton={false} className="max-h-dvh gap-0 p-0 data-[side=bottom]:h-dvh">
           <div className="flex items-center gap-1 border-b border-border px-1 py-1">
             {tela === 'campos' && (
               <Button type="button" variant="ghost" size="icon" className="size-11" aria-label="Voltar às colunas" onClick={() => setTela('colunas')}>
@@ -442,6 +478,7 @@ export function ReportBuilder({
               </Button>
             )}
             <SheetTitle className="min-w-0 flex-1 truncate px-2">{tela === 'campos' ? 'Adicionar campo' : titulo}</SheetTitle>
+            {ajuda}
             <SheetClose asChild>
               <Button type="button" variant="ghost" size="icon" className="size-11" aria-label="Fechar">
                 <X />
@@ -458,18 +495,21 @@ export function ReportBuilder({
                 busca={busca} onBusca={setBusca}
               />
             ) : (
+              // A lista de colunas fica por último e o "+ Adicionar campo" no
+              // topo dela: com o Padrão (57 colunas) ela passa de 3.000 px, e o
+              // resto ficaria lá embaixo.
               <div className="flex flex-col gap-4">
                 {seletorDeModelo}
-                <section className="flex flex-col gap-2">
-                  <h3 className="text-sm font-medium text-foreground">Colunas, nesta ordem</h3>
-                  {listaDeColunas}
-                  <Button type="button" variant="outline" className="h-11 gap-2" onClick={() => setTela('campos')}>
-                    <Plus /> Adicionar campo
-                  </Button>
-                </section>
                 {oQueEntra}
                 {escolhaDeFormato}
                 {avisos}
+                <section className="flex flex-col gap-2 border-t border-border pt-3">
+                  <h3 className="text-sm font-medium text-foreground">Colunas, nesta ordem ({estado.fields.length})</h3>
+                  <Button type="button" variant="outline" className="h-11 gap-2" onClick={() => setTela('campos')}>
+                    <Plus /> Adicionar campo
+                  </Button>
+                  {listaDeColunas}
+                </section>
               </div>
             )}
           </div>
@@ -495,7 +535,10 @@ export function ReportBuilder({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="flex h-[min(760px,92dvh)] flex-col gap-3 sm:max-w-[880px]">
         <DialogHeader className="pr-8">
-          <DialogTitle>{titulo}</DialogTitle>
+          <div className="flex items-center gap-1">
+            <DialogTitle>{titulo}</DialogTitle>
+            {ajuda}
+          </div>
           <DialogDescription>Escolha os campos e a ordem das colunas.</DialogDescription>
         </DialogHeader>
 

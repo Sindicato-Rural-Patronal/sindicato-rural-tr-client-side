@@ -2,9 +2,11 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import type { ReactNode } from 'react'
 import type { Registration } from '@/hooks/useAdmin'
 import { brasiliaToday } from '@/utils/course-status'
 import { TooltipProvider } from '@/components/ui/tooltip'
+import { CATALOGO_INSCRICOES_CRU } from '../lib/export-catalog.fixture'
 import '@/i18n'
 
 // Inscritos do curso: a API entrega da mais antiga para a mais nova (ordem de
@@ -17,6 +19,12 @@ vi.mock('@/lib/api', async importOriginal => ({
   apiFetch: (...args: unknown[]) => apiFetch(...args),
 }))
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
+// O montador de relatórios (menu Planilha) usa o tamanho da tela e o "?" da Ajuda.
+vi.mock('@/hooks/use-mobile', () => ({ useIsMobile: () => false }))
+vi.mock('@tanstack/react-router', () => ({
+  Link: ({ children, to, search, ...props }: { children: ReactNode; to: string; search?: { topico?: string } }) =>
+    <a href={`${to}?topico=${search?.topico ?? ''}`} {...props}>{children}</a>,
+}))
 
 const { RegistrationsTab } = await import('@/components/courses/RegistrationsTab')
 
@@ -41,13 +49,18 @@ const ORDEM_DE_CHEGADA = [
   inscricao('r3', 'Ana Souza', '2026-10-30T17:35:00.000Z'),
 ]
 
-function simular(regs: Registration[], curso: { startDate: string } = { startDate: '2026-12-01' }) {
+function simular(
+  regs: Registration[],
+  curso: { startDate: string } = { startDate: '2026-12-01' },
+  catalogo: unknown = {},
+) {
   const pagina = { data: regs, total: regs.length, page: 1, limit: 20, totalPages: 1 }
   apiFetch.mockImplementation((path: string) => {
     const corpo = (() => {
       if (path === '/admin/me') return { permissions: ['READ_COURSE', 'UPDATE_COURSE', 'READ_USER'] }
       if (path.startsWith('/admin/courses/c1/registrations')) return pagina
       if (path === '/admin/courses/c1') return { id: 'c1', title: 'Curso de Soja', status: 'PUBLIC', instructors: [], ...curso }
+      if (path === '/admin/export/registrations/catalog') return catalogo
       return {}
     })()
     return Promise.resolve({ json: () => Promise.resolve(corpo) })
@@ -200,5 +213,24 @@ describe('inscritos do curso: presença continua funcionando', () => {
     await waitFor(() => expect(apiFetch.mock.calls.some(c => c[0] === '/admin/courses/c1')).toBe(true))
     expect(screen.queryByRole('button', { name: /Presente/ })).not.toBeInTheDocument()
     expect(screen.queryByText(/Presença:/)).not.toBeInTheDocument()
+  })
+})
+
+describe('inscritos do curso: Montar relatório', () => {
+  it('o montador diz o nome do curso e conta as confirmadas da lista', async () => {
+    simular([
+      ORDEM_DE_CHEGADA[0],
+      { ...ORDEM_DE_CHEGADA[1], confirmed: false },
+      ORDEM_DE_CHEGADA[2],
+    ], undefined, CATALOGO_INSCRICOES_CRU)
+    abrir()
+    await screen.findByText('Zilda Alves')
+    const usuario = userEvent.setup()
+    await usuario.click(screen.getByRole('button', { name: 'Planilha' }))
+    await usuario.click(await screen.findByRole('menuitem', { name: 'Montar relatório…' }))
+    expect(await screen.findByText('Filtros: Curso: Curso de Soja')).toBeInTheDocument()
+    expect(screen.getByRole('radio', { name: 'Todos (3)' })).toBeChecked()
+    await usuario.click(screen.getByRole('checkbox', { name: 'Só confirmadas (2)' }))
+    expect(screen.getByRole('button', { name: 'Baixar planilha (2)' })).toBeEnabled()
   })
 })

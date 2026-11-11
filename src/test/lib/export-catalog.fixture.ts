@@ -46,6 +46,8 @@ export const CATALOGO_PESSOAS_CRU = {
     search: 'Busca',
     memberType: 'Tipo de membro',
     gender: 'Sexo',
+    ethnicity: 'Etnia',
+    educationLevel: 'Escolaridade',
     incompleteRegistration: 'Cadastro incompleto',
     activeMember: 'Só associados em dia',
   },

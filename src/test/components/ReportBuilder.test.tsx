@@ -1,7 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
+import type { ReactNode } from 'react'
 import { render, screen, within, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { ApiError } from '@/lib/api'
+import { RelatorioVazioError } from '@/lib/export'
 import { catalogoInscricoes, catalogoPessoas } from '../lib/export-catalog.fixture'
 import type { ReportBuilderProps } from '@/components/export/ReportBuilder'
 import '@/i18n'
@@ -12,10 +14,15 @@ import '@/i18n'
 let celular = false
 vi.mock('@/hooks/use-mobile', () => ({ useIsMobile: () => celular }))
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
-const downloadExport = vi.fn()
+const exportarRelatorio = vi.fn()
 vi.mock('@/lib/export', async importOriginal => ({
   ...(await importOriginal<typeof import('@/lib/export')>()),
-  downloadExport: (...args: unknown[]) => downloadExport(...args),
+  exportarRelatorio: (...args: unknown[]) => exportarRelatorio(...args),
+}))
+// O "?" da Ajuda é um Link do roteador.
+vi.mock('@tanstack/react-router', () => ({
+  Link: ({ children, to, search, ...props }: { children: ReactNode; to: string; search?: { topico?: string } }) =>
+    <a href={`${to}?topico=${search?.topico ?? ''}`} {...props}>{children}</a>,
 }))
 
 const { ReportBuilder } = await import('@/components/export/ReportBuilder')
@@ -54,7 +61,7 @@ beforeEach(() => {
   vi.clearAllMocks()
   localStorage.clear()
   celular = false
-  downloadExport.mockResolvedValue(123)
+  exportarRelatorio.mockResolvedValue({ count: 123, abriuAba: false })
 })
 
 describe('montador no computador', () => {
@@ -129,7 +136,7 @@ describe('montador no computador', () => {
     await userEvent.click(screen.getByRole('radio', { name: 'PDF' }))
     await userEvent.click(screen.getByRole('button', { name: 'Baixar PDF (123)' }))
 
-    expect(downloadExport).toHaveBeenCalledWith(
+    expect(exportarRelatorio).toHaveBeenCalledWith(
       'people',
       { search: 'silva', activeMember: true },
       'pdf',
@@ -156,7 +163,7 @@ describe('montador no computador', () => {
 
     expect(open).toHaveBeenCalledWith('', '_blank')
     expect(aba.opener).toBeNull()
-    expect(downloadExport).toHaveBeenCalledWith('people', expect.anything(), 'pdf', expect.objectContaining({ print: true, printWindow: aba }))
+    expect(exportarRelatorio).toHaveBeenCalledWith('people', expect.anything(), 'pdf', expect.objectContaining({ print: true, printWindow: aba }))
     open.mockRestore()
   })
 
@@ -164,7 +171,7 @@ describe('montador no computador', () => {
     abrir({ selectedIds: ['p1', 'p2'] })
     expect(screen.getByRole('radio', { name: 'Selecionados (2)' })).toBeChecked()
     await userEvent.click(screen.getByRole('button', { name: 'Baixar planilha (2)' }))
-    expect(downloadExport).toHaveBeenCalledWith('people', { ids: ['p1', 'p2'] }, 'csv', expect.objectContaining({ fields: expect.any(Array) }))
+    expect(exportarRelatorio).toHaveBeenCalledWith('people', { ids: ['p1', 'p2'] }, 'csv', expect.objectContaining({ fields: expect.any(Array) }))
   })
 
   it('PDF com mais de 2.000 linhas não baixa e diz por quê', async () => {
@@ -175,7 +182,7 @@ describe('montador no computador', () => {
   })
 
   it('o erro da API aparece no montador, que continua aberto', async () => {
-    downloadExport.mockRejectedValue(new ApiError(403, 'Sem permissão para exportar: RG, Endereço.'))
+    exportarRelatorio.mockRejectedValue(new ApiError(403, 'Sem permissão para exportar: RG, Endereço.'))
     abrir()
     await userEvent.click(screen.getByRole('button', { name: 'Baixar planilha (123)' }))
     expect(await screen.findByRole('alert')).toHaveTextContent('Sem permissão para exportar: RG, Endereço.')
@@ -198,11 +205,106 @@ describe('montador no computador', () => {
     expect(confirmadas).not.toBeChecked()
     await userEvent.selectOptions(screen.getByLabelText('Modelo'), 'lista-presenca')
     expect(confirmadas).toBeChecked()
-    await userEvent.click(screen.getByRole('button', { name: 'Baixar planilha (12)' }))
-    expect(downloadExport).toHaveBeenCalledWith(
+    // Sem saber quantas estão confirmadas, o total é só o teto.
+    expect(screen.getByRole('radio', { name: 'Todos (até 12)' })).toBeChecked()
+    await userEvent.click(screen.getByRole('button', { name: 'Baixar planilha (até 12)' }))
+    expect(exportarRelatorio).toHaveBeenCalledWith(
       'registrations', { courseIds: ['c1'] }, 'csv',
-      expect.objectContaining({ fields: ['ordinal', 'name', 'cpf', 'signature'], confirmed: true, modelo: 'Lista de presença' }),
+      expect.objectContaining({
+        fields: ['ordinal', 'name', 'cpf', 'signature'], confirmed: true, modelo: 'Lista de presença', recusarVazio: true,
+      }),
     )
+  })
+
+  it('filtros de lista fixa saem com o rótulo da tela, não com o valor gravado', () => {
+    abrir({ filters: { search: 'cristina', gender: 'FEMALE', educationLevel: 'COMPLETE_HIGHER' } })
+    expect(screen.getByText('Filtros: Busca: cristina · Sexo: Feminino · Escolaridade: Superior completo')).toBeInTheDocument()
+  })
+})
+
+describe('montador das inscrições de um curso', () => {
+  const inscricoes = {
+    dataset: 'registrations' as const, catalog: catalogoInscricoes(), selectedIds: undefined,
+    filters: { courseIds: ['c1'] }, total: 5, filtered: false,
+    filterTexts: { courseIds: 'Curso: Primeiros Socorros' },
+  }
+
+  it('a linha "Filtros:" diz o nome do curso', () => {
+    abrir(inscricoes)
+    expect(screen.getByText('Filtros: Curso: Primeiros Socorros')).toBeInTheDocument()
+  })
+
+  it('com a contagem da tela, "Só confirmadas" muda o número do Todos e do botão', async () => {
+    abrir({ ...inscricoes, totalConfirmadas: 3 })
+    expect(screen.getByRole('radio', { name: 'Todos (5)' })).toBeChecked()
+    await userEvent.click(screen.getByRole('checkbox', { name: 'Só confirmadas (3)' }))
+    expect(screen.getByRole('radio', { name: 'Todos (3)' })).toBeChecked()
+    expect(screen.getByRole('button', { name: 'Baixar planilha (3)' })).toBeEnabled()
+  })
+
+  it('trocar da Lista de presença para outro modelo desmarca "Só confirmadas"', async () => {
+    abrir({ ...inscricoes, totalConfirmadas: 3 })
+    const confirmadas = screen.getByRole('checkbox', { name: 'Só confirmadas (3)' })
+    await userEvent.selectOptions(screen.getByLabelText('Modelo'), 'lista-presenca')
+    expect(confirmadas).toBeChecked()
+    await userEvent.selectOptions(screen.getByLabelText('Modelo'), 'nome-cpf')
+    expect(confirmadas).not.toBeChecked()
+    // À mão continua valendo.
+    await userEvent.click(confirmadas)
+    expect(confirmadas).toBeChecked()
+  })
+
+  it('nenhuma confirmada: o botão desliga e diz por quê, em vez de baixar um PDF vazio', async () => {
+    abrir({ ...inscricoes, totalConfirmadas: 0 })
+    await userEvent.selectOptions(screen.getByLabelText('Modelo'), 'lista-presenca')
+    await userEvent.click(screen.getByRole('radio', { name: 'PDF' }))
+    expect(screen.getByRole('button', { name: 'Baixar PDF (0)' })).toBeDisabled()
+    expect(screen.getByText('Nenhuma inscrição confirmada. Desmarque "Só confirmadas" para levar todas.')).toBeInTheDocument()
+  })
+
+  it('sem a contagem e a API sem nenhuma: avisa no montador, que fica aberto', async () => {
+    exportarRelatorio.mockRejectedValue(new RelatorioVazioError())
+    abrir({ ...inscricoes, filterTexts: undefined })
+    await userEvent.selectOptions(screen.getByLabelText('Modelo'), 'lista-presenca')
+    await userEvent.click(screen.getByRole('button', { name: 'Baixar planilha (até 5)' }))
+    expect(await screen.findByRole('alert'))
+      .toHaveTextContent('Nenhuma inscrição confirmada. Desmarque "Só confirmadas" para levar todas.')
+    expect(onOpenChange).not.toHaveBeenCalled()
+  })
+})
+
+describe('avisos, Ajuda e botão de fechar', () => {
+  it('Imprimir com a aba bloqueada: o aviso diz que o arquivo foi baixado', async () => {
+    const { toast } = await import('sonner')
+    const open = vi.spyOn(window, 'open').mockReturnValue(null)
+    exportarRelatorio.mockResolvedValue({ count: 123, abriuAba: false })
+    abrir()
+    await userEvent.click(screen.getByRole('radio', { name: 'Imprimir' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Imprimir (123)' }))
+    await waitFor(() => expect(toast.success).toHaveBeenCalledWith(
+      'O navegador não abriu outra aba: o relatório foi baixado. Abra o arquivo para imprimir.',
+    ))
+    open.mockRestore()
+  })
+
+  it('Imprimir com a aba aberta: o aviso diz que abriu em outra aba', async () => {
+    const { toast } = await import('sonner')
+    const aba = { opener: {}, close: vi.fn(), document: document.implementation.createHTMLDocument('') }
+    const open = vi.spyOn(window, 'open').mockReturnValue(aba as unknown as Window)
+    exportarRelatorio.mockResolvedValue({ count: 123, abriuAba: true })
+    abrir()
+    await userEvent.click(screen.getByRole('radio', { name: 'Imprimir' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Imprimir (123)' }))
+    await waitFor(() => expect(toast.success).toHaveBeenCalledWith('Relatório aberto em outra aba para imprimir.'))
+    open.mockRestore()
+  })
+
+  it('o título tem o "?" da Ajuda e o botão de fechar diz "Fechar"', () => {
+    abrir()
+    expect(screen.getByRole('link', { name: 'Ajuda sobre Montar relatório' }))
+      .toHaveAttribute('href', '/admin/ajuda?topico=montar-relatorio')
+    expect(screen.getByRole('button', { name: 'Fechar' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Close' })).not.toBeInTheDocument()
   })
 })
 
@@ -217,6 +319,25 @@ describe('montador no celular', () => {
     expect(screen.queryByRole('button', { name: /Arrastar/ })).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Subir CPF' })).toHaveClass('size-11')
     expect(screen.getByRole('button', { name: 'Fechar' })).toHaveClass('size-11')
+    expect(screen.getByRole('link', { name: 'Ajuda sobre Montar relatório' })).toBeInTheDocument()
+  })
+
+  it('a folha tem a altura toda (o h-auto do ui/sheet não ganha)', () => {
+    abrir()
+    const folha = screen.getByRole('dialog', { name: 'Montar relatório · Pessoas' })
+    expect(folha).toHaveClass('data-[side=bottom]:h-dvh')
+    expect(folha).not.toHaveClass('data-[side=bottom]:h-auto')
+  })
+
+  it('com a lista comprida, modelo, "O que entra", formato e "+ Adicionar campo" vêm antes das colunas', () => {
+    abrir()
+    const primeiraColuna = within(screen.getByRole('list', { name: 'Colunas, nesta ordem' })).getAllByRole('listitem')[0]
+    const antes = (el: HTMLElement) =>
+      expect(el.compareDocumentPosition(primeiraColuna) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    antes(screen.getByLabelText('Modelo'))
+    antes(screen.getByRole('group', { name: 'O que entra' }))
+    antes(screen.getByRole('group', { name: 'Formato' }))
+    antes(screen.getByRole('button', { name: 'Adicionar campo' }))
   })
 
   it('"Imprimir" guardado no computador vira PDF no celular', () => {

@@ -495,6 +495,8 @@ export function RegistrationsTab({
               className="h-8 gap-1.5"
               filters={{ courseIds: [courseId] }}
               total={total}
+              confirmedTotal={allRegs.data ? allRegs.data.length - pendingCount : undefined}
+              filterTexts={{ courseIds: `Curso: ${courseTitle}` }}
             />
             <Button size="sm" variant="outline" className="h-8 gap-1.5" disabled={exportingLista} onClick={downloadListaPresenca} title="Lista de presença para imprimir (inscrições confirmadas)">
               {exportingLista ? <Loader2 className="size-3.5 animate-spin" /> : <ClipboardList className="size-3.5" />}

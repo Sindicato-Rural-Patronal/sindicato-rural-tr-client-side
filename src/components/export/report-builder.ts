@@ -5,6 +5,11 @@
 // pessoa escolheu, NA ORDEM das colunas. Nada aqui conhece os campos de uma
 // fonte: tudo vem do catálogo.
 
+import {
+  EDUCATION_OPTIONS, ETHNICITY_OPTIONS, GENDER_OPTIONS, MARITAL_STATUS_OPTIONS,
+} from '@/lib/user-form-options'
+import { MEMBER_STATUS, MEMBER_TYPES } from '@/lib/member-types'
+
 // ---------------------------------------------------------------------------
 // Contrato do catálogo (decisão 006, seção 3)
 // ---------------------------------------------------------------------------
@@ -286,7 +291,11 @@ export function estadoInicial(
   }
 }
 
-/** O modelo escolhido preenche as colunas (e liga "Só confirmadas" se ele pedir). */
+/**
+ * O modelo escolhido preenche as colunas e decide "Só confirmadas": liga se ele
+ * pede (Lista de presença) e desliga se não pede. Depois a pessoa ainda pode
+ * marcar ou desmarcar à mão.
+ */
 export function aplicarModelo(state: ReportState, catalog: ExportCatalog, modeloId: string): ReportState {
   const modelo = modelosDe(catalog).find(m => m.id === modeloId)
   if (!modelo) return state
@@ -295,7 +304,7 @@ export function aplicarModelo(state: ReportState, catalog: ExportCatalog, modelo
     ...state,
     fields: limpos.campos,
     modeloId: modelo.id,
-    confirmed: modelo.confirmed ? true : state.confirmed,
+    confirmed: modelo.confirmed === true,
     avisos: avisosDaLimpeza(limpos, 'modelo'),
   }
 }
@@ -405,15 +414,32 @@ export function formatoNaTela(format: ReportFormat, celular: boolean): ReportFor
   return celular && format === 'print' ? 'pdf' : format
 }
 
-/** Quantos registros vão sair (undefined = não se sabe). */
+/**
+ * Quantos registros vão sair. `n` undefined = não se sabe. `teto` = o número é
+ * só o máximo: com "Só confirmadas" e a tela sem saber quantas estão
+ * confirmadas, sai no máximo o total (quem conta é a API).
+ */
+export type Quantos = { n: number | undefined; teto: boolean }
+
 export function quantosVaoSair(
   state: ReportState,
-  { total, selecionados }: { total?: number; selecionados: number },
-): number | undefined {
-  return state.scope === 'selected' ? selecionados : total
+  { total, selecionados, totalConfirmadas }: { total?: number; selecionados: number; totalConfirmadas?: number },
+): Quantos {
+  const base = state.scope === 'selected' ? selecionados : total
+  if (!state.confirmed) return { n: base, teto: false }
+  if (state.scope === 'all' && totalConfirmadas != null) return { n: totalConfirmadas, teto: false }
+  return { n: base, teto: base != null }
 }
 
 const milhar = (n: number) => n.toLocaleString('pt-BR')
+
+/** " (123)", " (até 123)" ou nada, para o botão e o "Todos". */
+export function contagem({ n, teto }: Quantos): string {
+  return n != null ? ` (${teto ? 'até ' : ''}${milhar(n)})` : ''
+}
+
+export const TEXTO_NENHUM_REGISTRO = 'Nenhum registro para exportar.'
+export const TEXTO_NENHUMA_CONFIRMADA = 'Nenhuma inscrição confirmada. Desmarque "Só confirmadas" para levar todas.'
 
 /**
  * Por que o botão de baixar está desligado (null = pode baixar). São os mesmos
@@ -422,15 +448,21 @@ const milhar = (n: number) => n.toLocaleString('pt-BR')
 export function problemaParaBaixar(
   state: ReportState,
   catalog: ExportCatalog,
-  { total, selecionados, celular = false }: { total?: number; selecionados: number; celular?: boolean },
+  { total, selecionados, totalConfirmadas, celular = false }: {
+    total?: number
+    selecionados: number
+    totalConfirmadas?: number
+    celular?: boolean
+  },
 ): string | null {
   if (state.fields.length === 0) return 'Escolha pelo menos um campo.'
   if (state.fields.length > catalog.limits.fields) return `No máximo ${catalog.limits.fields} campos por relatório.`
   if (state.scope === 'selected' && selecionados === 0) return 'Nenhum registro selecionado. Marque na lista ou escolha "Todos".'
-  const n = quantosVaoSair(state, { total, selecionados })
-  // Com "Só confirmadas" o total da tela é só um teto: quem confere é a API.
-  if (n == null || state.confirmed) return null
-  if (n === 0) return 'Nenhum registro para exportar.'
+  const { n, teto } = quantosVaoSair(state, { total, selecionados, totalConfirmadas })
+  if (n == null) return null
+  if (n === 0) return state.confirmed && !teto ? TEXTO_NENHUMA_CONFIRMADA : TEXTO_NENHUM_REGISTRO
+  // Só o teto: quem confere os limites é a API.
+  if (teto) return null
   if (n > catalog.limits.rows) {
     return `O relatório passa de ${milhar(catalog.limits.rows)} linhas. Use um filtro para diminuir.`
   }
@@ -441,33 +473,58 @@ export function problemaParaBaixar(
   return null
 }
 
-export function textoDoBotao(format: ReportFormat, n: number | undefined): string {
-  const quantos = n != null ? ` (${milhar(n)})` : ''
-  if (format === 'print') return `Imprimir${quantos}`
-  if (format === 'pdf') return `Baixar PDF${quantos}`
-  return `Baixar planilha${quantos}`
+export function textoDoBotao(format: ReportFormat, quantos: Quantos): string {
+  const numero = contagem(quantos)
+  if (format === 'print') return `Imprimir${numero}`
+  if (format === 'pdf') return `Baixar PDF${numero}`
+  return `Baixar planilha${numero}`
 }
 
 type ValorDeFiltro = string | number | boolean | string[] | null | undefined
 
+const deOpcoes = (lista: readonly { value: string; label: string }[]) =>
+  Object.fromEntries(lista.map(o => [o.value, o.label]))
+
+/**
+ * Rótulo de cada valor dos filtros de lista fixa, os mesmos dos selects das
+ * telas ("FEMALE" → "Feminino"). A chave é a do filtro que a tela manda.
+ */
+export const ROTULOS_DOS_VALORES: Record<string, Record<string, string>> = {
+  gender: deOpcoes(GENDER_OPTIONS),
+  ethnicity: deOpcoes(ETHNICITY_OPTIONS),
+  educationLevel: deOpcoes(EDUCATION_OPTIONS),
+  maritalStatus: deOpcoes(MARITAL_STATUS_OPTIONS),
+  memberType: deOpcoes(MEMBER_TYPES),
+  memberStatus: deOpcoes(MEMBER_STATUS),
+}
+
 /**
  * Os filtros da tela em palavras, com os nomes do catálogo: "Busca: silva",
- * "Só associados em dia". Filtro sem nome no catálogo não aparece.
+ * "Sexo: Feminino", "Só associados em dia". Filtro sem nome no catálogo não
+ * aparece. `textos` troca a parte de um filtro pelo que a tela sabe dizer
+ * melhor ("Curso: Horta" em vez de "Cursos (1)").
  */
 export function filtrosEmPalavras(
   filters: Record<string, ValorDeFiltro>,
   filterLabels: Record<string, string>,
+  { textos = {}, valores = ROTULOS_DOS_VALORES }: {
+    textos?: Record<string, string>
+    valores?: Record<string, Record<string, string>>
+  } = {},
 ): string[] {
   const partes: string[] = []
   for (const [chave, valor] of Object.entries(filters)) {
     const nome = filterLabels[chave]
     if (!nome || valor == null || valor === '' || valor === false || valor === 'false') continue
-    if (Array.isArray(valor)) {
-      if (valor.length) partes.push(`${nome} (${valor.length})`)
+    if (Array.isArray(valor) && valor.length === 0) continue
+    if (textos[chave]) {
+      partes.push(textos[chave])
+    } else if (Array.isArray(valor)) {
+      partes.push(`${nome} (${valor.length})`)
     } else if (valor === true || valor === 'true') {
       partes.push(nome)
     } else {
-      partes.push(`${nome}: ${valor}`)
+      partes.push(`${nome}: ${valores[chave]?.[String(valor)] ?? valor}`)
     }
   }
   return partes

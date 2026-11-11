@@ -2,9 +2,9 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import type { ComponentProps } from 'react'
+import type { ComponentProps, ReactNode } from 'react'
 import { ApiError } from '@/lib/api'
-import { CATALOGO_PESSOAS_CRU } from '../lib/export-catalog.fixture'
+import { CATALOGO_INSCRICOES_CRU, CATALOGO_PESSOAS_CRU } from '../lib/export-catalog.fixture'
 import '@/i18n'
 
 // "Montar relatório…" no menu Exportar (decisão 006): só aparece quando o
@@ -12,6 +12,11 @@ import '@/i18n'
 
 vi.mock('@/hooks/use-mobile', () => ({ useIsMobile: () => false }))
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
+// O montador tem o "?" da Ajuda (Link do roteador).
+vi.mock('@tanstack/react-router', () => ({
+  Link: ({ children, to, search, ...props }: { children: ReactNode; to: string; search?: { topico?: string } }) =>
+    <a href={`${to}?topico=${search?.topico ?? ''}`} {...props}>{children}</a>,
+}))
 const apiFetch = vi.fn()
 vi.mock('@/lib/api', async importOriginal => ({
   ...(await importOriginal<typeof import('@/lib/api')>()),
@@ -29,9 +34,9 @@ function abrir(props: Partial<ComponentProps<typeof ExportMenu>> = {}) {
   )
 }
 
-function comCatalogo() {
+function comCatalogo(catalogo: unknown = CATALOGO_PESSOAS_CRU) {
   apiFetch.mockImplementation((path: string) => path.endsWith('/catalog')
-    ? Promise.resolve({ json: () => Promise.resolve(CATALOGO_PESSOAS_CRU) })
+    ? Promise.resolve({ json: () => Promise.resolve(catalogo) })
     : Promise.reject(new Error('inesperado')))
 }
 
@@ -66,6 +71,19 @@ describe('ExportMenu e o montador', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Planilha' }))
     expect(await screen.findAllByRole('menuitem', { name: 'Todos (10)' })).toHaveLength(2)
     expect(screen.queryByRole('menuitem', { name: /Selecionados/ })).not.toBeInTheDocument()
+  })
+
+  it('inscrições: o montador recebe o nome do curso e quantas estão confirmadas', async () => {
+    comCatalogo(CATALOGO_INSCRICOES_CRU)
+    abrir({
+      dataset: 'registrations', label: 'Planilha', selectedIds: undefined, filters: { courseIds: ['c1'] }, total: 5,
+      confirmedTotal: 3, filterTexts: { courseIds: 'Curso: Horta' },
+    })
+    await waitFor(() => expect(apiFetch).toHaveBeenCalledWith('/admin/export/registrations/catalog'))
+    await userEvent.click(screen.getByRole('button', { name: 'Planilha' }))
+    await userEvent.click(await screen.findByRole('menuitem', { name: 'Montar relatório…' }))
+    expect(await screen.findByText('Filtros: Curso: Horta')).toBeInTheDocument()
+    expect(screen.getByRole('checkbox', { name: 'Só confirmadas (3)' })).not.toBeChecked()
   })
 
   it('com seleção, o botão mostra quantos e os itens "Selecionados" continuam', async () => {

@@ -1,9 +1,9 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import {
-  aplicarModelo, avisoDadosPessoais, chaveDoUltimo, estadoInicial, filtrarGrupos, filtrosEmPalavras,
+  aplicarModelo, avisoDadosPessoais, chaveDoUltimo, contagem, estadoInicial, filtrarGrupos, filtrosEmPalavras,
   formatoNaTela, guardarUltimo, lerCatalogo, lerUltimo, limparCampos, marcarCampo, modeloParaApi,
-  modelosDe, moverCampo, moverPara, nomeDoModelo, problemaParaBaixar, textoDoBotao, tirarCampo,
-  PADRAO_ID, PADRAO_NOME, type ReportState,
+  modelosDe, moverCampo, moverPara, nomeDoModelo, problemaParaBaixar, quantosVaoSair, textoDoBotao, tirarCampo,
+  PADRAO_ID, PADRAO_NOME, TEXTO_NENHUMA_CONFIRMADA, type ReportState,
 } from '@/components/export/report-builder'
 import { CATALOGO_PESSOAS_CRU, catalogoInscricoes, catalogoPessoas } from './export-catalog.fixture'
 
@@ -111,13 +111,15 @@ describe('modelos', () => {
     expect(s.avisos[0]).toContain('RG')
   })
 
-  it('a Lista de presença das inscrições liga "Só confirmadas"; os outros não desligam', () => {
+  it('"Só confirmadas" segue o modelo: a Lista de presença liga, os outros desligam', () => {
     const insc = catalogoInscricoes()
     let s = aplicarModelo(estado(), insc, 'lista-presenca')
     expect(s.confirmed).toBe(true)
     expect(s.fields).toEqual(['ordinal', 'name', 'cpf', 'signature'])
     s = aplicarModelo(s, insc, 'nome-cpf')
-    expect(s.confirmed).toBe(true)
+    expect(s.confirmed).toBe(false)
+    // Marcado à mão e depois outro modelo sem confirmed: desliga também.
+    expect(aplicarModelo(estado({ confirmed: true }), insc, PADRAO_ID).confirmed).toBe(false)
     // A de pessoas não tem "Só confirmadas".
     expect(aplicarModelo(estado(), cat, 'lista-presenca').confirmed).toBe(false)
   })
@@ -265,10 +267,20 @@ describe('o que vai sair', () => {
     expect(formatoNaTela('csv', true)).toBe('csv')
   })
 
-  it('o botão diz o formato e quantos registros', () => {
-    expect(textoDoBotao('csv', 123)).toBe('Baixar planilha (123)')
-    expect(textoDoBotao('pdf', 1500)).toBe('Baixar PDF (1.500)')
-    expect(textoDoBotao('print', undefined)).toBe('Imprimir')
+  it('o botão diz o formato e quantos registros (ou o teto)', () => {
+    expect(textoDoBotao('csv', { n: 123, teto: false })).toBe('Baixar planilha (123)')
+    expect(textoDoBotao('pdf', { n: 1500, teto: false })).toBe('Baixar PDF (1.500)')
+    expect(textoDoBotao('pdf', { n: 5, teto: true })).toBe('Baixar PDF (até 5)')
+    expect(textoDoBotao('print', { n: undefined, teto: false })).toBe('Imprimir')
+    expect(contagem({ n: 0, teto: false })).toBe(' (0)')
+  })
+
+  it('com "Só confirmadas", conta as confirmadas quando a tela sabe; senão o total é teto', () => {
+    const contagens = { total: 5, selecionados: 0 }
+    expect(quantosVaoSair(estado(), { ...contagens, totalConfirmadas: 3 })).toEqual({ n: 5, teto: false })
+    expect(quantosVaoSair(estado({ confirmed: true }), { ...contagens, totalConfirmadas: 3 })).toEqual({ n: 3, teto: false })
+    expect(quantosVaoSair(estado({ confirmed: true }), contagens)).toEqual({ n: 5, teto: true })
+    expect(quantosVaoSair(estado({ confirmed: true }), { selecionados: 0 })).toEqual({ n: undefined, teto: false })
   })
 
   it('filtros em palavras usam os nomes do catálogo', () => {
@@ -278,6 +290,27 @@ describe('o que vai sair', () => {
     )).toEqual(['Busca: silva', 'Só associados em dia', 'Cadastro incompleto'])
     expect(filtrosEmPalavras({ courseIds: ['c1'] }, catalogoInscricoes().filterLabels)).toEqual(['Cursos (1)'])
     expect(filtrosEmPalavras({ activeMember: false }, cat.filterLabels)).toEqual([])
+  })
+
+  it('filtro de lista fixa sai com o rótulo da tela, não com o valor gravado', () => {
+    expect(filtrosEmPalavras(
+      { search: 'cristina', gender: 'FEMALE', ethnicity: 'MIXED', educationLevel: 'COMPLETE_HIGHER', memberType: 'PRODUTOR RURAL' },
+      cat.filterLabels,
+    )).toEqual([
+      'Busca: cristina', 'Sexo: Feminino', 'Etnia: Parda', 'Escolaridade: Superior completo', 'Tipo de membro: Produtor rural',
+    ])
+    expect(filtrosEmPalavras({ gender: 'MALE' }, cat.filterLabels)).toEqual(['Sexo: Masculino'])
+    // Valor que a tela não conhece sai como veio.
+    expect(filtrosEmPalavras({ gender: 'NOVO' }, cat.filterLabels)).toEqual(['Sexo: NOVO'])
+  })
+
+  it('a tela pode dizer um filtro melhor que o catálogo (o nome do curso)', () => {
+    expect(filtrosEmPalavras(
+      { courseIds: ['c1'] }, catalogoInscricoes().filterLabels, { textos: { courseIds: 'Curso: Horta Orgânica' } },
+    )).toEqual(['Curso: Horta Orgânica'])
+    // Sem o filtro, o texto da tela não aparece.
+    expect(filtrosEmPalavras({ courseIds: [] }, catalogoInscricoes().filterLabels, { textos: { courseIds: 'Curso: X' } }))
+      .toEqual([])
   })
 })
 
@@ -306,9 +339,20 @@ describe('problemaParaBaixar', () => {
       .toBe('O relatório passa de 20.000 linhas. Use um filtro para diminuir.')
   })
 
-  it('total desconhecido ou "Só confirmadas" deixa a API decidir', () => {
+  it('total desconhecido ou "Só confirmadas" sem a contagem deixa a API decidir', () => {
     expect(problemaParaBaixar(estado({ format: 'pdf' }), cat, { selecionados: 0 })).toBeNull()
     expect(problemaParaBaixar(estado({ format: 'pdf', confirmed: true }), cat, { total: 5000, selecionados: 0 })).toBeNull()
+  })
+
+  it('"Só confirmadas" com a contagem: nenhuma confirmada não baixa; o limite vale para as confirmadas', () => {
+    const insc = catalogoInscricoes()
+    expect(problemaParaBaixar(estado({ confirmed: true }), insc, { total: 4, selecionados: 0, totalConfirmadas: 0 }))
+      .toBe(TEXTO_NENHUMA_CONFIRMADA)
+    expect(problemaParaBaixar(estado({ confirmed: true }), insc, { total: 4, selecionados: 0, totalConfirmadas: 3 })).toBeNull()
+    expect(problemaParaBaixar(estado({ confirmed: true, format: 'pdf' }), insc, { total: 9000, selecionados: 0, totalConfirmadas: 2500 }))
+      .toMatch(/O PDF aceita/)
+    // Sem nenhuma inscrição, o teto já diz que não há o que baixar.
+    expect(problemaParaBaixar(estado({ confirmed: true }), insc, { total: 0, selecionados: 0 })).toBe('Nenhum registro para exportar.')
   })
 
   it('lista vazia não baixa', () => {

@@ -1,4 +1,4 @@
-import { lazy, Suspense, useState } from 'react'
+import { lazy, Suspense, useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import { Columns3, Download, FileSpreadsheet, FileText, Loader2, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -9,8 +9,37 @@ import { useExportCatalog } from '@/hooks/useExportCatalog'
 import { downloadExport, exportErrorMessage, type ExportDataset, type ExportFormat, type ExportParams } from '@/lib/export'
 import { cn } from '@/lib/utils'
 
-// O montador (dnd-kit e companhia) só entra no pacote de quem abre.
-const ReportBuilder = lazy(() => import('@/components/export/ReportBuilder').then(m => ({ default: m.ReportBuilder })))
+// O montador (dnd-kit e companhia) só entra no pacote de quem abre. O pedaço
+// começa a carregar quando o menu abre, e a mesma promessa serve ao `lazy`.
+const importarMontador = () => import('@/components/export/ReportBuilder').then(m => ({ default: m.ReportBuilder }))
+let montadorCarregando: ReturnType<typeof importarMontador> | null = null
+function carregarMontador() {
+  // Falhou (internet caiu)? A próxima abertura do menu tenta de novo.
+  montadorCarregando ??= importarMontador().catch(e => { montadorCarregando = null; throw e })
+  return montadorCarregando
+}
+const ReportBuilder = lazy(carregarMontador)
+
+/**
+ * Enquanto o pedaço do montador carrega (primeira vez, internet lenta): um
+ * "Abrindo o montador…" por cima da tela, para ninguém clicar de novo. Só
+ * aparece se demorar, para não piscar quando já está carregado.
+ */
+function AbrindoMontador() {
+  const [visivel, setVisivel] = useState(false)
+  useEffect(() => {
+    const t = setTimeout(() => setVisivel(true), 150)
+    return () => clearTimeout(t)
+  }, [])
+  if (!visivel) return null
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/10">
+      <p role="status" className="flex items-center gap-2 rounded-lg bg-popover px-4 py-3 text-sm text-popover-foreground shadow-lg ring-1 ring-foreground/10">
+        <Loader2 className="size-4 animate-spin" aria-hidden /> Abrindo o montador…
+      </p>
+    </div>
+  )
+}
 
 export type ExportExtraItem = {
   label: string
@@ -44,6 +73,7 @@ async function runExport(dataset: ExportDataset, params: ExportParams, format: E
  */
 export function ExportMenu({
   dataset, filters = {}, selectedIds, total, filtered = false, extra = [], className, label = 'Exportar', size,
+  confirmedTotal, filterTexts,
 }: {
   dataset: ExportDataset
   /** Mesmos filtros da listagem (sem página/limite). */
@@ -59,6 +89,10 @@ export function ExportMenu({
   /** Texto do botão ("Planilha" nas inscrições do curso). */
   label?: string
   size?: 'sm' | 'default'
+  /** Montador: quantas confirmadas há (Inscrições), para o número de "Só confirmadas". */
+  confirmedTotal?: number
+  /** Montador: como a tela diz um filtro na linha "Filtros:" ({ courseIds: 'Curso: Horta' }). */
+  filterTexts?: Record<string, string>
 }) {
   const [busy, setBusy] = useState(false)
   // Cada abertura do montador começa do zero (padrão ou último usado).
@@ -78,7 +112,7 @@ export function ExportMenu({
 
   return (
     <>
-      <DropdownMenu modal={false}>
+      <DropdownMenu modal={false} onOpenChange={aberto => { if (aberto && catalogo) void carregarMontador().catch(() => {}) }}>
         <DropdownMenuTrigger asChild>
           <Button variant="outline" size={size} className={cn('gap-2', className)} disabled={busy}>
             {busy ? <Loader2 className="size-4 animate-spin" /> : <Download className="size-4" />}
@@ -131,7 +165,7 @@ export function ExportMenu({
       </DropdownMenu>
 
       {catalogo && montador.vez > 0 && (
-        <Suspense fallback={null}>
+        <Suspense fallback={montador.aberto ? <AbrindoMontador /> : null}>
           <ReportBuilder
             key={montador.vez}
             open={montador.aberto}
@@ -142,6 +176,8 @@ export function ExportMenu({
             selectedIds={selectedIds}
             total={total}
             filtered={filtered}
+            totalConfirmadas={confirmedTotal}
+            filterTexts={filterTexts}
           />
         </Suspense>
       )}
