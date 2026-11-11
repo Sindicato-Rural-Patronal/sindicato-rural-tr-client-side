@@ -9,8 +9,8 @@ import { useAdminCourse, adminCourseQuery, fetchAllCourseRegistrations, useAllCo
 import { useCourseRegistrations, useCancelRegistration, useConfirmRegistration, useStartCourse, useUploadRegistrationFicha, useDeleteRegistrationFicha, openRegistrationFicha } from '@/hooks/useAdmin'
 import type { UserDataDetail, Registration } from '@/hooks/useAdmin'
 import { apiErrorMessage } from '@/lib/api-error-message'
-import { apiFetch } from '@/lib/api'
-import { alvoDoDocumento, erroDoDocumento, registrarDocumento } from '@/lib/registrar-documento'
+import { ApiError, apiFetch } from '@/lib/api'
+import { alvoDoDocumento, erroDoDocumento, registrarDocumento, TEXTOS_DO_REGISTRO } from '@/lib/registrar-documento'
 import { calcAge } from '@/utils/age'
 import { hasCourseStarted } from '@/utils/course-status'
 import { attendanceCounts, attendanceSummary } from '@/utils/course-attendance'
@@ -20,6 +20,7 @@ import { whatsappUrl, telHref, uniqueContactLines, phoneKey } from '@/lib/contac
 import { copyText } from '@/lib/copy-text'
 import { cn } from '@/lib/utils'
 import { ExportMenu } from '@/components/export/ExportMenu'
+import { PermissionButton } from '@/components/PermissionButton'
 import { CheckCheck, CheckCircle2, CircleCheckBig, Circle, ClipboardList, Eye, FileDown, Loader2, Mail, Paperclip, Phone, PlayCircle, UserCheck, UserPlus, UserRoundCheck, UserRoundX, UserX, X } from 'lucide-react'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog'
@@ -38,9 +39,52 @@ import type { PickedPerson } from '@/components/PersonPicker'
 // rota para poder ser testada. A API entrega da mais antiga para a mais nova
 // (ordem de chegada): a tela mostra na ordem recebida, sem reordenar.
 
+/**
+ * A ficha de inscrição (uma e "Exportar todas") lê a ficha completa da pessoa
+ * (`GET /admin/users/:id`), que pede READ_USER além do READ_COURSE da janela do
+ * curso. Sem ela, o botão fica desligado com este motivo (SR-111), como o campo
+ * de pessoa no montador das inscrições.
+ */
+const FICHA_PEDE_LER_USUARIOS = 'Pede a permissão Visualizar usuários'
+
+/**
+ * A mensagem de quando a ficha não sai. O 403 da busca da pessoa (a permissão
+ * tirada depois que a tela carregou) diz que falta permissão, como o 403 do
+ * registro na auditoria, em vez do "Erro ao gerar a ficha de inscrição.".
+ */
+function erroDaFicha(e: unknown, fallback: string): string {
+  if (e instanceof ApiError && e.status === 403) return TEXTOS_DO_REGISTRO.semPermissao
+  return erroDoDocumento(e, fallback)
+}
+
 // Botão pequeno de ação com dica e nome para leitor de tela; o texto ao lado do
-// ícone só aparece em telas largas (no celular fica só o ícone).
-function RowAction({ label, className, ...props }: { label: string } & ComponentProps<typeof Button>) {
+// ícone só aparece em telas largas (no celular fica só o ícone). Com `motivo`, o
+// botão fica desligado e a dica diz por quê (como o PermissionButton: o botão
+// desligado não recebe o mouse, então a dica fica num invólucro que recebe o foco).
+function RowAction({ label, className, motivo, ...props }: { label: string; motivo?: string | null } & ComponentProps<typeof Button>) {
+  if (motivo) {
+    return (
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <span tabIndex={0} className="inline-flex rounded-md focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-hidden">
+            <Button
+              size="sm"
+              variant="ghost"
+              aria-label={label}
+              className={cn('h-9 min-w-9 gap-1 px-2 text-xs lg:h-7 lg:min-w-7', className)}
+              {...props}
+              disabled
+              style={{ pointerEvents: 'none' }}
+            />
+          </span>
+        </TooltipTrigger>
+        <TooltipContent>
+          <span className="block">{label}</span>
+          <span className="block">{motivo}</span>
+        </TooltipContent>
+      </Tooltip>
+    )
+  }
   return (
     <Tooltip>
       <TooltipTrigger asChild>
@@ -187,8 +231,10 @@ export function RegistrationsTab({
   const [exportingLista, setExportingLista] = useState(false)
   const { data: courseDetail } = useAdminCourse(courseId)
   const queryClient = useQueryClient()
-  const { can } = usePermissions()
+  const { can, isLoading: carregandoPermissoes, isError: semAsPermissoes } = usePermissions()
   const canManage = can('UPDATE_COURSE')
+  // Só depois de saber as permissões: carregando ou com falha, o botão fica ligado e quem decide é a API.
+  const fichaSemPermissao = !carregandoPermissoes && !semAsPermissoes && !can('READ_USER') ? FICHA_PEDE_LER_USUARIOS : null
   const { t } = useTranslation()
 
   const inProgress = courseStatus === 'IN_PROGRESS'
@@ -354,7 +400,7 @@ export function RegistrationsTab({
       })
       await downloadFichaPdf([{ course, user }], `ficha-${user.name}`)
     } catch (e) {
-      toast.error(erroDoDocumento(e, t('admin.courses.fichaError')))
+      toast.error(erroDaFicha(e, t('admin.courses.fichaError')))
     } finally {
       setFichaId(null)
     }
@@ -434,7 +480,7 @@ export function RegistrationsTab({
         `fichas-${courseTitle}`,
       )
     } catch (e) {
-      toast.error(erroDoDocumento(e, t('admin.courses.fichaError')))
+      toast.error(erroDaFicha(e, t('admin.courses.fichaError')))
     } finally {
       setExportingAll(false)
     }
@@ -501,10 +547,18 @@ export function RegistrationsTab({
               {copying === 'emails' ? <Loader2 className="size-3.5 animate-spin" /> : <Mail className="size-3.5" />}
               Copiar e-mails
             </Button>
-            <Button size="sm" variant="outline" className="h-8 gap-1.5" disabled={exportingAll} onClick={exportAll}>
+            <PermissionButton
+              allowed={!fichaSemPermissao}
+              noPermissionMessage={FICHA_PEDE_LER_USUARIOS}
+              size="sm"
+              variant="outline"
+              className="h-8 gap-1.5"
+              disabled={exportingAll}
+              onClick={exportAll}
+            >
               {exportingAll ? <Loader2 className="size-3.5 animate-spin" /> : <FileDown className="size-3.5" />}
               {t('admin.courses.exportAllFichas')}
-            </Button>
+            </PermissionButton>
             {/* Planilha (CSV ou PDF) das inscrições, gerada no servidor; com o
                 catálogo, também "Montar relatório…" (decisão 006). */}
             <ExportMenu
@@ -677,6 +731,7 @@ export function RegistrationsTab({
               </RowAction>
               <RowAction
                 label="Baixar ficha de inscrição"
+                motivo={fichaSemPermissao}
                 disabled={fichaId === reg.userDataId}
                 onClick={() => exportOne(reg.userDataId, reg.id)}
               >

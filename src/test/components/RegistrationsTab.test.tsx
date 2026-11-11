@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import type { ReactNode } from 'react'
@@ -72,11 +72,12 @@ function simular(
   regs: Registration[],
   curso: { startDate: string } = { startDate: '2026-12-01' },
   catalogo: unknown = {},
+  permissions: string[] = ['READ_COURSE', 'UPDATE_COURSE', 'READ_USER'],
 ) {
   const pagina = { data: regs, total: regs.length, page: 1, limit: 20, totalPages: 1 }
   apiFetch.mockImplementation((path: string) => {
     const corpo = (() => {
-      if (path === '/admin/me') return { permissions: ['READ_COURSE', 'UPDATE_COURSE', 'READ_USER'] }
+      if (path === '/admin/me') return { permissions }
       if (path.startsWith('/admin/courses/c1/registrations')) return pagina
       if (path === '/admin/courses/c1') return { id: 'c1', title: 'Curso de Soja', status: 'PUBLIC', instructors: [], ...curso }
       if (path === '/admin/export/registrations/catalog') return catalogo
@@ -321,6 +322,38 @@ describe('documentos do curso na auditoria antes de gerar (SR-106)', () => {
 
   it('ficha sem permissão: não gera e diz por quê', async () => {
     comDocumentos(() => Promise.reject(new ApiError(403, 'Forbidden')))
+    abrir()
+    await screen.findByText('Zilda Alves')
+    await userEvent.click(screen.getAllByRole('button', { name: 'Baixar ficha de inscrição' })[0])
+    await waitFor(() => expect(toast.error).toHaveBeenCalledWith('Você não tem permissão para gerar este documento.'))
+    expect(downloadFichaPdf).not.toHaveBeenCalled()
+  })
+})
+
+describe('ficha de inscrição sem "Visualizar usuários" (SR-111)', () => {
+  it('as fichas ficam desligadas, com o motivo na dica, e nada é pedido à API', async () => {
+    simular(ORDEM_DE_CHEGADA, undefined, {}, ['READ_COURSE', 'UPDATE_COURSE'])
+    abrir()
+    await screen.findByText('Zilda Alves')
+    // As permissões podem chegar depois da lista: até lá, o botão fica ligado.
+    await waitFor(() => expect(screen.getAllByRole('button', { name: 'Baixar ficha de inscrição' })[0]).toBeDisabled())
+    expect(screen.getAllByRole('button', { name: 'Baixar ficha de inscrição' }).every(b => (b as HTMLButtonElement).disabled))
+      .toBe(true)
+    expect(screen.getByRole('button', { name: 'Exportar todas' })).toBeDisabled()
+
+    // O motivo aparece na dica, pelo teclado (o botão desligado não recebe o mouse).
+    act(() => { (screen.getAllByRole('button', { name: 'Baixar ficha de inscrição' })[0].parentElement as HTMLElement).focus() })
+    expect(await screen.findByRole('tooltip')).toHaveTextContent('Baixar ficha de inscriçãoPede a permissão Visualizar usuários')
+
+    expect(apiFetch.mock.calls.some(c => String(c[0]).startsWith('/admin/users/'))).toBe(false)
+    expect(downloadFichaPdf).not.toHaveBeenCalled()
+  })
+
+  it('com a permissão tirada depois de abrir a tela, o 403 da pessoa diz que falta permissão', async () => {
+    simular(ORDEM_DE_CHEGADA)
+    const base = apiFetch.getMockImplementation()!
+    apiFetch.mockImplementation((path: string, init?: RequestInit) =>
+      path.startsWith('/admin/users/') ? Promise.reject(new ApiError(403, 'Forbidden')) : base(path, init))
     abrir()
     await screen.findByText('Zilda Alves')
     await userEvent.click(screen.getAllByRole('button', { name: 'Baixar ficha de inscrição' })[0])
