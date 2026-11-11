@@ -1,13 +1,17 @@
-import { useState } from 'react'
+import { lazy, Suspense, useState } from 'react'
 import { toast } from 'sonner'
-import { Download, FileSpreadsheet, FileText, Loader2, X } from 'lucide-react'
+import { Columns3, Download, FileSpreadsheet, FileText, Loader2, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import { useExportCatalog } from '@/hooks/useExportCatalog'
 import { apiErrorMessage } from '@/lib/api-error-message'
 import { downloadExport, type ExportDataset, type ExportFormat, type ExportParams } from '@/lib/export'
 import { cn } from '@/lib/utils'
+
+// O montador (dnd-kit e companhia) só entra no pacote de quem abre.
+const ReportBuilder = lazy(() => import('@/components/export/ReportBuilder').then(m => ({ default: m.ReportBuilder })))
 
 export type ExportExtraItem = {
   label: string
@@ -34,11 +38,18 @@ async function runExport(dataset: ExportDataset, params: ExportParams, format: E
  * Botão "Exportar" das listas: os selecionados (quando houver) ou todos os que
  * batem com os filtros atuais. `extra` adiciona exportações relacionadas
  * (ex.: propriedades das pessoas selecionadas).
+ *
+ * "Montar relatório…" (decisão 006) só aparece quando o catálogo da fonte
+ * carrega: o back velho e as fontes sem montador respondem 404 e o menu fica
+ * como antes. O montador recebe os mesmos filtros e a mesma seleção.
  */
-export function ExportMenu({ dataset, filters = {}, selectedIds = [], total, filtered = false, extra = [], className }: {
+export function ExportMenu({
+  dataset, filters = {}, selectedIds, total, filtered = false, extra = [], className, label = 'Exportar', size,
+}: {
   dataset: ExportDataset
   /** Mesmos filtros da listagem (sem página/limite). */
   filters?: ExportParams
+  /** Seleção da lista. Sem a prop, a tela não tem seleção e os itens "Selecionados" somem. */
   selectedIds?: string[]
   /** Total da lista com os filtros atuais, para o rótulo. */
   total?: number
@@ -46,8 +57,14 @@ export function ExportMenu({ dataset, filters = {}, selectedIds = [], total, fil
   filtered?: boolean
   extra?: ExportExtraItem[]
   className?: string
+  /** Texto do botão ("Planilha" nas inscrições do curso). */
+  label?: string
+  size?: 'sm' | 'default'
 }) {
   const [busy, setBusy] = useState(false)
+  // Cada abertura do montador começa do zero (padrão ou último usado).
+  const [montador, setMontador] = useState({ aberto: false, vez: 0 })
+  const { data: catalogo } = useExportCatalog(dataset)
 
   async function run(ds: ExportDataset, params: ExportParams, format: ExportFormat = 'csv') {
     setBusy(true)
@@ -55,48 +72,81 @@ export function ExportMenu({ dataset, filters = {}, selectedIds = [], total, fil
     setBusy(false)
   }
 
-  const n = selectedIds.length
+  const temSelecao = selectedIds !== undefined
+  const ids = selectedIds ?? []
+  const n = ids.length
   const allLabel = `${filtered ? 'Todos com os filtros atuais' : 'Todos'}${total != null ? ` (${total})` : ''}`
 
   return (
-    <DropdownMenu modal={false}>
-      <DropdownMenuTrigger asChild>
-        <Button variant="outline" className={cn('gap-2', className)} disabled={busy}>
-          {busy ? <Loader2 className="size-4 animate-spin" /> : <Download className="size-4" />}
-          Exportar{n > 0 ? ` (${n})` : ''}
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-64">
-        <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">Planilha CSV (abre no Excel)</DropdownMenuLabel>
-        <DropdownMenuItem disabled={n === 0} onSelect={() => run(dataset, { ids: selectedIds })}>
-          <FileSpreadsheet className="size-4" />
-          {n > 0 ? `Selecionados (${n})` : 'Selecionados (marque na lista)'}
-        </DropdownMenuItem>
-        <DropdownMenuItem disabled={total === 0} onSelect={() => run(dataset, filters)}>
-          <FileSpreadsheet className="size-4" />
-          {allLabel}
-        </DropdownMenuItem>
-        <DropdownMenuSeparator />
-        {/* O PDF sai do mesmo dado, com as colunas que cabem no papel. */}
-        <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">
-          Relatório em PDF (para imprimir)
-        </DropdownMenuLabel>
-        <DropdownMenuItem disabled={n === 0} onSelect={() => run(dataset, { ids: selectedIds }, 'pdf')}>
-          <FileText className="size-4" />
-          {n > 0 ? `Selecionados (${n})` : 'Selecionados (marque na lista)'}
-        </DropdownMenuItem>
-        <DropdownMenuItem disabled={total === 0} onSelect={() => run(dataset, filters, 'pdf')}>
-          <FileText className="size-4" />
-          {allLabel}
-        </DropdownMenuItem>
-        {extra.length > 0 && <DropdownMenuSeparator />}
-        {extra.map(item => (
-          <DropdownMenuItem key={item.label} disabled={item.disabled} onSelect={() => run(item.dataset, item.params)}>
-            {item.label}
+    <>
+      <DropdownMenu modal={false}>
+        <DropdownMenuTrigger asChild>
+          <Button variant="outline" size={size} className={cn('gap-2', className)} disabled={busy}>
+            {busy ? <Loader2 className="size-4 animate-spin" /> : <Download className="size-4" />}
+            {label}{n > 0 ? ` (${n})` : ''}
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-64">
+          <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">Planilha CSV (abre no Excel)</DropdownMenuLabel>
+          {temSelecao && (
+            <DropdownMenuItem disabled={n === 0} onSelect={() => run(dataset, { ids })}>
+              <FileSpreadsheet className="size-4" />
+              {n > 0 ? `Selecionados (${n})` : 'Selecionados (marque na lista)'}
+            </DropdownMenuItem>
+          )}
+          <DropdownMenuItem disabled={total === 0} onSelect={() => run(dataset, filters)}>
+            <FileSpreadsheet className="size-4" />
+            {allLabel}
           </DropdownMenuItem>
-        ))}
-      </DropdownMenuContent>
-    </DropdownMenu>
+          <DropdownMenuSeparator />
+          {/* O PDF sai do mesmo dado, com as colunas que cabem no papel. */}
+          <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">
+            Relatório em PDF (para imprimir)
+          </DropdownMenuLabel>
+          {temSelecao && (
+            <DropdownMenuItem disabled={n === 0} onSelect={() => run(dataset, { ids }, 'pdf')}>
+              <FileText className="size-4" />
+              {n > 0 ? `Selecionados (${n})` : 'Selecionados (marque na lista)'}
+            </DropdownMenuItem>
+          )}
+          <DropdownMenuItem disabled={total === 0} onSelect={() => run(dataset, filters, 'pdf')}>
+            <FileText className="size-4" />
+            {allLabel}
+          </DropdownMenuItem>
+          {extra.length > 0 && <DropdownMenuSeparator />}
+          {extra.map(item => (
+            <DropdownMenuItem key={item.label} disabled={item.disabled} onSelect={() => run(item.dataset, item.params)}>
+              {item.label}
+            </DropdownMenuItem>
+          ))}
+          {catalogo && (
+            <>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onSelect={() => setMontador(m => ({ aberto: true, vez: m.vez + 1 }))}>
+                <Columns3 className="size-4" />
+                Montar relatório…
+              </DropdownMenuItem>
+            </>
+          )}
+        </DropdownMenuContent>
+      </DropdownMenu>
+
+      {catalogo && montador.vez > 0 && (
+        <Suspense fallback={null}>
+          <ReportBuilder
+            key={montador.vez}
+            open={montador.aberto}
+            onOpenChange={aberto => setMontador(m => ({ ...m, aberto }))}
+            dataset={dataset}
+            catalog={catalogo}
+            filters={filters}
+            selectedIds={selectedIds}
+            total={total}
+            filtered={filtered}
+          />
+        </Suspense>
+      )}
+    </>
   )
 }
 
