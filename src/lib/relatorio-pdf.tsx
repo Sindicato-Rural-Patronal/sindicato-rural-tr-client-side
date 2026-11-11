@@ -161,12 +161,15 @@ export function largurasDasColunas(columns: RelatorioColuna[]): string[] {
   return pesos.map(p => `${(p / soma) * 100}%`)
 }
 
-/** Linha do cabeçalho com o modelo e os filtros (vazio = não aparece). */
+/**
+ * Linha do cabeçalho com o modelo e os filtros (vazio = não aparece). A seleção
+ * já vem dita pela API ("Seleção: 8 registros") e não leva "Filtros:".
+ */
 export function linhaDoModeloEFiltros(data: Pick<RelatorioJson, 'modelo' | 'filters'>): string | null {
-  const partes = [
-    data.modelo ? `Modelo: ${data.modelo}` : null,
-    data.filters ? `Filtros: ${data.filters}` : null,
-  ].filter(Boolean)
+  const filtros = data.filters
+    ? (/^Seleção\b/.test(data.filters) ? data.filters : `Filtros: ${data.filters}`)
+    : null
+  const partes = [data.modelo ? `Modelo: ${data.modelo}` : null, filtros].filter(Boolean)
   return partes.length ? partes.join(' · ') : null
 }
 

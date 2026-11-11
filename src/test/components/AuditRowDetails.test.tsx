@@ -11,8 +11,8 @@ const DETALHES = {
   formato: 'pdf',
   modelo: 'Nome e CPF',
   campos: ['Nome', 'CPF'],
-  escopo: 'filtros',
-  filtros: [{ nome: 'Busca', valor: 'silva' }, { nome: 'Só associados em dia', valor: true }],
+  escopo: 'com filtros',
+  filtros: [{ nome: 'Busca', valor: 'silva' }, { nome: 'Só associados em dia', valor: 'Sim' }],
   linhas: 123,
 }
 
@@ -32,9 +32,14 @@ describe('detalhesDaExportacao', () => {
       modelo: 'Nome e CPF',
       campos: ['Nome', 'CPF'],
       escopo: 'Todos com os filtros',
-      filtros: [{ nome: 'Busca', valor: 'silva' }, { nome: 'Só associados em dia', valor: 'sim' }],
+      filtros: [{ nome: 'Busca', valor: 'silva' }, { nome: 'Só associados em dia', valor: '' }],
       linhas: 123,
     })
+  })
+
+  it('o escopo da API vira texto da tela', () => {
+    expect(detalhesDaExportacao({ escopo: 'seleção' })?.escopo).toBe('Selecionados')
+    expect(detalhesDaExportacao({ escopo: 'todos' })?.escopo).toBe('Todos')
   })
 
   it('valor desconhecido aparece como veio', () => {

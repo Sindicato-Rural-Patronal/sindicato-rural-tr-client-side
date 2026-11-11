@@ -18,14 +18,11 @@ const FORMATOS: Record<string, string> = {
   xlsx: 'Excel (.xlsx)',
 }
 
+// A API grava 'seleção' | 'com filtros' | 'todos'.
 const ESCOPOS: Record<string, string> = {
-  selecionados: 'Selecionados',
-  selected: 'Selecionados',
-  ids: 'Selecionados',
-  filtros: 'Todos com os filtros',
-  filtered: 'Todos com os filtros',
+  'seleção': 'Selecionados',
+  'com filtros': 'Todos com os filtros',
   todos: 'Todos',
-  all: 'Todos',
 }
 
 function texto(v: unknown): string | null {
@@ -34,9 +31,10 @@ function texto(v: unknown): string | null {
   return null
 }
 
+/** Filtro ligado ("Só associados em dia": Sim) aparece só pelo nome. */
 function valorDoFiltro(v: unknown): string | null {
-  if (v === true) return 'sim'
-  if (v === false) return 'não'
+  if (v === true || v === 'Sim') return null
+  if (v === false) return 'Não'
   if (Array.isArray(v)) return v.map(texto).filter(Boolean).join(', ') || null
   return texto(v)
 }

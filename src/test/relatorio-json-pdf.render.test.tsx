@@ -67,6 +67,7 @@ describe('larguras e cabeçalho', () => {
     expect(linhaDoModeloEFiltros({ modelo: 'Nome e CPF', filters: 'Busca: silva' }))
       .toBe('Modelo: Nome e CPF · Filtros: Busca: silva')
     expect(linhaDoModeloEFiltros({ modelo: null, filters: null })).toBeNull()
+    expect(linhaDoModeloEFiltros({ modelo: null, filters: 'Seleção: 8 registros' })).toBe('Seleção: 8 registros')
   })
 })
 
