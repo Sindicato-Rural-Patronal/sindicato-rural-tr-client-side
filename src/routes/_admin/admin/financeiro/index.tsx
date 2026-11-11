@@ -1222,7 +1222,7 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
             </NativeSelect>
           </div>
           <div className="flex min-w-0 max-w-full flex-col gap-1">
-            <Label className="text-[11px] text-muted-foreground">Forma</Label>
+            <Label className="text-[11px] text-muted-foreground">Forma de pagamento</Label>
             <PaymentMethodSelect
               className="h-9"
               value={search.pm ?? ''}
