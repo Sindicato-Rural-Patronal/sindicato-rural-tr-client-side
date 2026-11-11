@@ -9,6 +9,7 @@ import {
   EDUCATION_OPTIONS, ETHNICITY_OPTIONS, GENDER_OPTIONS, MARITAL_STATUS_OPTIONS,
 } from '@/lib/user-form-options'
 import { MEMBER_STATUS, MEMBER_TYPES } from '@/lib/member-types'
+import { COURSE_VIEW_LABEL } from '@/lib/course-views'
 
 // ---------------------------------------------------------------------------
 // Contrato do catálogo (decisão 006, seção 3)
@@ -496,6 +497,10 @@ export const ROTULOS_DOS_VALORES: Record<string, Record<string, string>> = {
   maritalStatus: deOpcoes(MARITAL_STATUS_OPTIONS),
   memberType: deOpcoes(MEMBER_TYPES),
   memberStatus: deOpcoes(MEMBER_STATUS),
+  // Abas da lista de cursos ("Aba: Próximos"). O `type` das empresas NÃO entra
+  // aqui: a mesma chave existe nas reservas, com outros valores. A tela de
+  // empresas diz o tipo pelo `filterTexts`.
+  view: COURSE_VIEW_LABEL,
 }
 
 /**
@@ -503,6 +508,9 @@ export const ROTULOS_DOS_VALORES: Record<string, Record<string, string>> = {
  * "Sexo: Feminino", "Só associados em dia". Filtro sem nome no catálogo não
  * aparece. `textos` troca a parte de um filtro pelo que a tela sabe dizer
  * melhor ("Curso: Horta" em vez de "Cursos (1)").
+ *
+ * O valor `false` não aparece (`activeMember: false` não filtra nada), a não
+ * ser que a tela dê o texto dele: `isPartner: false` é "Só não parceiras".
  */
 export function filtrosEmPalavras(
   filters: Record<string, ValorDeFiltro>,
@@ -515,10 +523,12 @@ export function filtrosEmPalavras(
   const partes: string[] = []
   for (const [chave, valor] of Object.entries(filters)) {
     const nome = filterLabels[chave]
-    if (!nome || valor == null || valor === '' || valor === false || valor === 'false') continue
+    if (!nome || valor == null || valor === '') continue
     if (Array.isArray(valor) && valor.length === 0) continue
     if (textos[chave]) {
       partes.push(textos[chave])
+    } else if (valor === false || valor === 'false') {
+      continue
     } else if (Array.isArray(valor)) {
       partes.push(`${nome} (${valor.length})`)
     } else if (valor === true || valor === 'true') {

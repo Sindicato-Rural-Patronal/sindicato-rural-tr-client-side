@@ -365,6 +365,35 @@ describe('problemaParaBaixar', () => {
   })
 })
 
+describe('fase 2: filtros das outras fontes em palavras (SR-101)', () => {
+  const cursos = { view: 'Aba', search: 'Busca', year: 'Ano', status: 'Status' }
+
+  it('cursos: a aba pelo nome da tela e o ano como número, na ordem da API', () => {
+    expect(filtrosEmPalavras({ view: 'stored', search: 'horta', year: 2026 }, cursos))
+      .toEqual(['Aba: Armazenados', 'Busca: horta', 'Ano: 2026'])
+    expect(filtrosEmPalavras({ view: 'upcoming', search: '', year: undefined }, cursos)).toEqual(['Aba: Próximos'])
+  })
+
+  it('false só aparece com o texto da tela ("Só não parceiras", "Só não lidas")', () => {
+    const empresas = { search: 'Busca', type: 'Tipo', isPartner: 'Só parceiras' }
+    expect(filtrosEmPalavras({ isPartner: false }, empresas)).toEqual([])
+    expect(filtrosEmPalavras({ isPartner: false }, empresas, { textos: { isPartner: 'Só não parceiras' } }))
+      .toEqual(['Só não parceiras'])
+    expect(filtrosEmPalavras({ isPartner: true }, empresas)).toEqual(['Só parceiras'])
+    expect(filtrosEmPalavras({ read: 'false' }, { read: 'Só lidas' }, { textos: { read: 'Só não lidas' } }))
+      .toEqual(['Só não lidas'])
+    // O texto da tela não inventa filtro: sem valor, nada.
+    expect(filtrosEmPalavras({ isPartner: undefined }, empresas, { textos: { isPartner: 'Só não parceiras' } }))
+      .toEqual([])
+  })
+
+  it('o tipo da empresa não está no mapa global (a chave `type` também é das reservas)', () => {
+    expect(filtrosEmPalavras({ type: 'PRIVATE' }, { type: 'Tipo' })).toEqual(['Tipo: PRIVATE'])
+    expect(filtrosEmPalavras({ type: 'PRIVATE' }, { type: 'Tipo' }, { textos: { type: 'Tipo: Privada' } }))
+      .toEqual(['Tipo: Privada'])
+  })
+})
+
 describe('último relatório no navegador', () => {
   beforeEach(() => {
     localStorage.clear()

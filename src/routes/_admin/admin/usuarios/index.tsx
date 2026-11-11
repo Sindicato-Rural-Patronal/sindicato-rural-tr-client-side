@@ -848,6 +848,7 @@ function RouteComponent() {
     activeMember: activeTab === 'associados' ? true : undefined,
   })
   const { data: regrasData } = useAdminRules()
+  const nomeDaRegraFiltrada = rulesFilter ? regrasData?.data.find(r => r.id === rulesFilter)?.name : undefined
   const { data: adminsData, isLoading: loadingAdmins, isError: errorAdmins, isFetching: fetchingAdmins, refetch: refetchAdmins } = useAdminAdmins({
     page: adminsPage,
     limit,
@@ -1409,6 +1410,8 @@ function RouteComponent() {
                   selectedIds={adminSelection.ids}
                   total={adminsData?.total}
                   filtered={!!rulesFilter}
+                  // O filtro manda o id; o montador diz o nome, como a API no PDF.
+                  filterTexts={nomeDaRegraFiltrada ? { rulesId: `Regra de acesso: ${nomeDaRegraFiltrada}` } : undefined}
                   className="h-9"
                 />
               </div>
