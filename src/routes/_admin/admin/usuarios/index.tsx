@@ -49,7 +49,7 @@ import { DuplicatePeopleList } from '@/components/cadastro/DuplicatePeopleList'
 import { PersonNameCell } from '@/components/cadastro/PersonNameCell'
 import { useAdminCompanies } from '@/hooks/useCompanies'
 import { MEMBER_TYPES } from '@/lib/member-types'
-import { EDUCATION_OPTIONS } from '@/lib/user-form-options'
+import { EDUCATION_OPTIONS, ETHNICITY_OPTIONS } from '@/lib/user-form-options'
 import { downloadExport, type ExportDataset, type ExportFormat, type ExportParams } from '@/lib/export'
 import { useRowSelection } from '@/hooks/useRowSelection'
 import { ExportMenu, SelectCheckbox, SelectionInfo } from '@/components/export/ExportMenu'
@@ -1146,11 +1146,7 @@ function RouteComponent() {
                   <SelectTrigger className="h-8 text-xs w-36"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">Todos</SelectItem>
-                    <SelectItem value="WHITE">Branco</SelectItem>
-                    <SelectItem value="BLACK">Preto</SelectItem>
-                    <SelectItem value="MIXED">Pardo</SelectItem>
-                    <SelectItem value="ASIAN">Amarelo</SelectItem>
-                    <SelectItem value="INDIGENOUS">Indígena</SelectItem>
+                    {ETHNICITY_OPTIONS.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>

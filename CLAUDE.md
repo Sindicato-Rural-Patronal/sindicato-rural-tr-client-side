@@ -260,7 +260,8 @@ src/
 │   ├── csv-parse.ts                 # Lê o CSV do backend de volta (o PDF rápido do menu sai dele; sai na fase 2 da decisão 006)
 │   ├── person-fields.ts             # Campos de pessoa como DADO: PERSON_LABELS, PERSON_FIELD_NAMES, READ_MODE_FIELD
 │   ├── person-validation.ts         # validatePersonFields (mesmas regras do backend), firstInvalidField, focusFieldById
-│   ├── user-form-options.ts         # Opções dos selects do cadastro de pessoa
+│   ├── user-form-options.ts         # Opções dos selects do cadastro de pessoa; os filtros de Etnia e Escolaridade da
+│   │                                #   lista de Pessoas leem daqui (mesmos rótulos da ficha e da API: "Parda", "Fundamental incompleto")
 │   ├── cin.ts                       # CPF_LABEL ("CPF / CIN") e CIN_HINT
 │   ├── member-types.ts              # MEMBER_TYPES e MEMBER_STATUS (listas fixas, iguais às do backend) + memberTypeLabel
 │   ├── membership.ts                # isActiveMember / personIsActiveMember (selo "Associado": ACTIVE e validade vazia ou de hoje em diante, dia em Brasília)
