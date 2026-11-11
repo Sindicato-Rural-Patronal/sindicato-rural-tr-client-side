@@ -68,9 +68,9 @@ período da tela (o dia, em **Dia**, ou a semana, em **Semana**), com a sala, o
 tipo e a busca. Para outro período, mude o dia ou a semana na agenda antes de
 abrir. Alguns detalhes:
 
-- só há o modelo **Padrão (como hoje)**, com as colunas da planilha. **No
-  site** e **Texto no site** ficam fora dele: marque-os em **Campos** se
-  precisar;
+- o único modelo de fábrica é o **Padrão (como hoje)**, com as colunas da
+  planilha. **No site** e **Texto no site** ficam fora dele: marque-os em
+  **Campos** se precisar. A equipe pode salvar os próprios modelos;
 - os cursos também não entram, só os eventos e as reuniões;
 - o montador avisa *Leva dados pessoais: Responsável.*, porque o responsável
   é uma pessoa.

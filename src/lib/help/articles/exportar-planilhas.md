@@ -4,7 +4,7 @@ resumo: Tirar as listas do painel em planilha (CSV ou Excel) ou PDF, e o que fic
 grupo: dia-a-dia
 ordem: 7
 veja: montar-relatorio, busca-e-filtros, auditoria, usuarios, cursos, financeiro
-busca: exportar csv excel xlsx planilha do excel aba sobre baixar relatorio pdf lista selecionados download montar colunas campos telefone formatado 4,5e+10 padrao como hoje auditoria registrado exportou a planilha exportou a planilha do excel exportou o relatorio em pdf gerou o documento documento lista de presenca ficha de inscricao nota de empenho recibo unimed imprimir agenda numero n anterior ordem lancamentos financeiro resumo resumido resumida folha em pe deitada 2.000 linhas 20.000 linhas o pdf aceita ate nao foi possivel montar o pdf aba ano proximos armazenados relatorio de cadastros copiar telefones copiar e-mails muitos documentos seguidos ficha da pessoa ficha da empresa ficha completa dados da empresa planilha baixada
+busca: exportar csv excel xlsx planilha do excel aba sobre baixar relatorio pdf lista selecionados download montar colunas campos telefone formatado 4,5e+10 padrao como hoje auditoria registrado exportou a planilha exportou a planilha do excel exportou o relatorio em pdf gerou o documento documento lista de presenca ficha de inscricao nota de empenho recibo unimed imprimir agenda numero n anterior ordem lancamentos financeiro resumo resumido resumida folha em pe deitada 2.000 linhas 20.000 linhas o pdf aceita ate nao foi possivel montar o pdf aba ano proximos armazenados relatorio de cadastros copiar telefones copiar e-mails muitos documentos seguidos ficha da pessoa ficha da empresa ficha completa dados da empresa planilha baixada modelos da equipe salvar como modelo modelo de fabrica
 ---
 
 Toda lista do painel exporta em planilha. O botão **Exportar** fica no topo da
@@ -90,9 +90,14 @@ lista, marque a linha e use **Selecionados**.
 Os itens **Selecionados** e **Todos** do menu tiram a planilha com **todas as
 colunas de sempre**. Toda lista tem, no fim do menu, o item **Montar
 relatório…**: você escolhe os campos e a ordem das colunas, parte de um modelo
-pronto (*Nome e CPF*, *Lista de presença*, *Calendário*…) e baixa em planilha
-CSV, planilha do Excel ou PDF, ou imprime. As fichas de pessoa e de empresa
-também têm. O passo a passo está em
+de fábrica (*Nome e CPF*, *Lista de presença*, *Calendário*…) e baixa em
+planilha CSV, planilha do Excel ou PDF, ou imprime. As fichas de pessoa e de
+empresa também têm. O passo a passo está em
+[Como montar um relatório](?topico=montar-relatorio).
+
+Relatório que se repete pode virar **modelo da equipe**: você salva as colunas
+e o formato com um nome, e todos que exportam a lista o encontram no seletor
+**Modelo**. Veja a seção "Modelos da equipe" em
 [Como montar um relatório](?topico=montar-relatorio).
 
 Só o **Relatório de cadastros**, no topo de **Gestão › Usuários**, sai sempre

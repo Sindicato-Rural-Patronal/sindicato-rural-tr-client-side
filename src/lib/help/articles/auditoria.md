@@ -5,7 +5,7 @@ grupo: gestao
 ordem: 2
 permissao: READ_AUDIT
 veja: administradores, seguranca, exportar-planilhas, montar-relatorio
-busca: auditoria historico trilha log quem alterou ip navegador retencao guarda exportar exportou o que foi exportado exportou a planilha exportou o relatorio em pdf campos cpf modelo formato fechamento de caixa fechou reabriu mes lancamento numero n corrigiu numero financeiro planilha csv montar relatorio resumida detalhes da exportacao 20.000 linhas mais recentes local aparelho dados pessoais excel xlsx exportou a planilha do excel gerou o documento documento lista de presenca ficha de inscricao recibo nota de empenho unimed agenda imprimir tipo area milhar ponto 0 registros nenhum registro
+busca: auditoria historico trilha log quem alterou ip navegador retencao guarda exportar exportou o que foi exportado exportou a planilha exportou o relatorio em pdf campos cpf modelo formato fechamento de caixa fechou reabriu mes lancamento numero n corrigiu numero financeiro planilha csv montar relatorio resumida detalhes da exportacao 20.000 linhas mais recentes local aparelho dados pessoais excel xlsx exportou a planilha do excel gerou o documento documento lista de presenca ficha de inscricao recibo nota de empenho unimed agenda imprimir tipo area milhar ponto 0 registros nenhum registro modelo de relatorio modelos da equipe criou o modelo editou o modelo excluiu o modelo renomeou antes campos formato so confirmadas
 ---
 
 **Gestão › Auditoria** é o histórico do painel: quem fez, o que fez e quando.
@@ -26,7 +26,8 @@ Esse "o que mudou" é a parte mais útil: em vez de "fulano editou o curso", voc
 vê que o preço foi de R$ 100 para R$ 10.
 
 Numa exportação, o bloco **O que foi exportado** mostra o **Formato**
-(*Planilha CSV*, *Excel (.xlsx)* ou *PDF*), o **Modelo**, **O que entrou**
+(*Planilha CSV*, *Excel (.xlsx)* ou *PDF*), o **Modelo** (de fábrica ou da
+equipe, com *(alterado)* se a pessoa mexeu nas colunas), **O que entrou**
 (selecionados ou todos), quantos **Registros**, os **Filtros** e os **Campos**,
 na ordem das colunas. Vale para todas as listas; só o **Relatório de
 cadastros** fica sem esse bloco. Num documento em PDF, como a lista de
@@ -124,6 +125,38 @@ só isso, escolha **Fechamento de caixa** no filtro **Tipo**. As linhas dizem:
 Ao abrir a linha de uma reabertura, **O que mudou** mostra o que estava fechado
 (mês, caixa, saldo esperado, saldo contado e diferença). É o jeito de responder
 "quem reabriu o mês de outubro?". Veja [Financeiro](?topico=financeiro).
+
+### Modelos de relatório
+
+Os modelos da equipe do **Montar relatório…** valem para todo mundo. Quando
+alguém salva, muda, renomeia ou exclui um deles, a trilha registra. Para ver só
+isso, escolha **Modelo de relatório** no filtro **Tipo**. A frase diz a lista e
+o nome do modelo:
+
+- *Criou o modelo de relatório "Pessoas: Telefones dos associados"*
+- *Editou o modelo de relatório "Pessoas: Telefones dos associados"*
+- *Excluiu o modelo de relatório "Pessoas: Telefones dos associados"*
+
+Quando o nome muda, a frase cita também o antigo: *Editou o modelo de relatório
+"Pessoas: Contatos da diretoria (antes Telefones dos associados)"*. Por isso
+você acha o modelo procurando pelo nome novo ou pelo antigo.
+
+Abra a linha para ver **O que mudou**:
+
+| Campo | O que mostra |
+|---|---|
+| **Nome** | O nome do modelo |
+| **Campos** | As colunas, na ordem, como *Nome, Telefone, CPF* |
+| **Formato** | *CSV*, *PDF* ou *Excel* |
+| **Só confirmadas** | *Sim* ou *Não*. Só nos modelos das inscrições |
+
+Numa exclusão, a coluna **Antes** guarda o que o modelo tinha. Se alguém
+excluiu um modelo por engano, dá para montar de novo com esses campos e salvar.
+Veja [Como montar um relatório](?topico=montar-relatorio).
+
+Quem só **usa** um modelo da equipe para exportar não aparece neste tipo. A
+exportação fica em **Exportações**, no filtro **Ação**, com o nome do modelo em
+**Modelo**, no bloco **O que foi exportado**.
 
 ## Exportar a trilha
 
