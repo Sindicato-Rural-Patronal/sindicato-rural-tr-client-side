@@ -47,8 +47,9 @@ const styles = StyleSheet.create({
 // não cabe na coluna (e-mail, nome no PDF de 57 colunas) passa por cima da
 // coluna do lado. Por isso cada coluna decide pela sua largura: a palavra que
 // cabe não se quebra; a que não cabe é hifenizada como antes. E, no montador,
-// cada coluna fica pelo menos da largura da maior palavra do rótulo (e das
-// datas, CPFs e números), para o cabeçalho não sair cortado no meio
+// cada coluna fica pelo menos da largura da maior palavra do rótulo (e do
+// maior valor inteiro das datas, CPFs, telefones e números), para o cabeçalho
+// não sair cortado no meio e o telefone não se separar do DDD
 // (`fracoesDasColunas`). Vai em cada <Text> (prop `hyphenationCallback`), e não
 // no `Font` global, para não mudar os outros PDFs do sistema.
 
@@ -66,14 +67,20 @@ const AFM_HELVETICA_NEGRITO = (
   + '611 611 611 611 389 556 333 611 556 778 556 556 500 389 280 389 584'
 ).split(' ').map(Number)
 
+/** Espaço que não separa: a Helvetica desenha como o espaço, mas o react-pdf não quebra a linha nele. */
+const ESPACO_QUE_NAO_SEPARA = String.fromCharCode(0xa0)
+
 /** Largura da palavra em pt, na Helvetica (a letra dos PDFs). Acento não muda a largura. */
 export function larguraDaPalavra(palavra: string, fontSize: number, negrito = false): number {
   const tabela = negrito ? AFM_HELVETICA_NEGRITO : AFM_HELVETICA
   let milesimos = 0
   for (const letra of palavra.normalize('NFD').replace(/[\u0300-\u036f]/g, '')) {
     const c = letra.charCodeAt(0)
-    // Fora da tabela: º e ª são estreitos; o resto, uma letra larga, para sobrar.
-    milesimos += c >= 32 && c <= 126 ? tabela[c - 32] : letra === 'º' || letra === 'ª' ? 370 : 722
+    // Fora da tabela: o espaço que não separa tem a largura do espaço; º e ª são
+    // estreitos; o resto, uma letra larga, para sobrar.
+    milesimos += c >= 32 && c <= 126
+      ? tabela[c - 32]
+      : letra === ESPACO_QUE_NAO_SEPARA ? tabela[0] : letra === 'º' || letra === 'ª' ? 370 : 722
   }
   return (milesimos * fontSize) / 1000
 }
@@ -260,21 +267,49 @@ export function largurasDasColunas(columns: RelatorioColuna[]): string[] {
   return fracoesPelosPesos(columns).map(emPorcento)
 }
 
-/** Tipos cujo valor não se quebra bem (data, CPF, número…): a coluna precisa caber o maior deles. */
+/**
+ * Tipos de valor curto e formatado (data, data e hora, CPF, telefone, número…):
+ * a coluna precisa caber o maior valor inteiro, para "(44) 9991-1096" e
+ * "10/11/2026 15:32" não se separarem no espaço.
+ */
 const VALOR_INTEIRO = new Set(['cpf', 'cnpj', 'cns', 'cep', 'phone', 'date', 'datetime', 'wallclock', 'number', 'money', 'boolean'])
+
+/**
+ * Até quantas letras o valor conta como curto. Os formatados têm até 18 (CNPJ,
+ * CNS); o que passa disso é um telefone gravado fora do padrão, e esse quebra
+ * nos espaços, como texto.
+ */
+const VALOR_CURTO = 20
+
+/** O valor da célula é de um tipo de `VALOR_INTEIRO` e curto: deve sair inteiro. */
+function ehValorInteiro(type: string, valor: string): boolean {
+  return VALOR_INTEIRO.has(type) && valor.trim().length <= VALOR_CURTO
+}
 
 /** Um respiro, para a conta da largura não ficar no limite. */
 const FOLGA = 0.5
 
 /**
  * Largura mínima de cada coluna, em pt: a maior palavra do rótulo (em negrito)
- * e, nos tipos de `VALOR_INTEIRO`, a maior palavra dos valores; mais a margem.
+ * e, nos tipos de `VALOR_INTEIRO`, o maior valor inteiro (com `inteiro` false,
+ * a maior palavra dos valores, como na SR-092); mais a margem.
  */
-export function minimosDasColunas(columns: RelatorioColuna[], rows: string[][], fontSize: number): number[] {
+export function minimosDasColunas(
+  columns: RelatorioColuna[],
+  rows: string[][],
+  fontSize: number,
+  inteiro = true,
+): number[] {
   return columns.map((c, i) => {
     let maior = maiorPalavra(c.label, fontSize, true)
     if (VALOR_INTEIRO.has(c.type)) {
-      for (const linha of rows) maior = Math.max(maior, maiorPalavra(linha[i] ?? '', fontSize))
+      for (const linha of rows) {
+        const valor = (linha[i] ?? '').trim()
+        const largura = inteiro && ehValorInteiro(c.type, valor)
+          ? larguraDaPalavra(valor, fontSize)
+          : maiorPalavra(valor, fontSize)
+        maior = Math.max(maior, largura)
+      }
     }
     return maior + 2 * MARGEM_DA_CELULA + FOLGA
   })
@@ -283,7 +318,8 @@ export function minimosDasColunas(columns: RelatorioColuna[], rows: string[][], 
 /**
  * Fração da largura de cada coluna: pelos pesos, mas nenhuma abaixo do seu
  * mínimo (`minimosDasColunas`). A que ficaria estreita demais fica no mínimo e
- * as outras dividem o resto pelos pesos. Se nem os mínimos cabem na folha (o
+ * as outras dividem o resto pelos pesos. O mínimo é o do valor inteiro; se a
+ * soma não cabe na folha, o da maior palavra do valor; se nem esse cabe (o
  * Padrão de pessoas, com 57 colunas), fica só pelos pesos, como antes.
  */
 export function fracoesDasColunas(
@@ -293,8 +329,10 @@ export function fracoesDasColunas(
 ): number[] {
   const pesos = fracoesPelosPesos(columns)
   const total = larguraDaTabela(orientation)
-  const minimos = minimosDasColunas(columns, rows, fontSize)
-  const somaDosMinimos = minimos.reduce((a, b) => a + b, 0)
+  const soma = (larguras: number[]) => larguras.reduce((a, b) => a + b, 0)
+  let minimos = minimosDasColunas(columns, rows, fontSize)
+  if (soma(minimos) > total) minimos = minimosDasColunas(columns, rows, fontSize, false)
+  const somaDosMinimos = soma(minimos)
   if (somaDosMinimos > total) return pesos
   const noMinimo = columns.map(() => false)
   for (;;) {
@@ -308,6 +346,18 @@ export function fracoesDasColunas(
   }
   // Todas no mínimo: a sobra vai para elas, na proporção do mínimo.
   return minimos.map(m => m / somaDosMinimos)
+}
+
+/**
+ * O texto da célula no desenho do PDF. O valor curto de `VALOR_INTEIRO` que
+ * cabe inteiro na coluna troca o espaço pelo que não separa, para não ir em
+ * duas linhas ("(44)" / "9991-1096"). O dado não muda, só o desenho. O que não
+ * cabe (como no Padrão de 57 colunas) continua quebrando no espaço.
+ */
+export function textoDaCelula(valor: string, type: string, larguraUtil: number, fontSize: number): string {
+  const texto = valor.trim()
+  if (!texto.includes(' ') || !ehValorInteiro(type, texto)) return valor
+  return larguraDaPalavra(texto, fontSize) <= larguraUtil ? texto.replace(/ /g, ESPACO_QUE_NAO_SEPARA) : valor
 }
 
 /**
@@ -329,6 +379,7 @@ export function RelatorioJsonDocument({ data, geradoEm }: { data: RelatorioJson;
   const fracoes = fracoesDasColunas(data.columns, data.rows, { orientation, fontSize })
   const largura = fracoes.map(emPorcento)
   const quebras = quebrasDasColunas(fracoes, orientation, fontSize)
+  const uteis = fracoes.map(f => larguraUtilDaColuna(f, orientation))
   const modeloEFiltros = linhaDoModeloEFiltros(data)
   // Coluna de assinatura (tipo "blank"): a linha precisa de altura para assinar.
   const comAssinatura = data.columns.some(c => c.type === 'blank')
@@ -369,7 +420,7 @@ export function RelatorioJsonDocument({ data, geradoEm }: { data: RelatorioJson;
                     style={[styles.celula, { width: largura[i] }, ALINHA_DIREITA.has(c.type) ? { textAlign: 'right' } : {}]}
                     hyphenationCallback={quebras[i].linha}
                   >
-                    {linha[i] ?? ''}
+                    {textoDaCelula(linha[i] ?? '', c.type, uteis[i], fontSize)}
                   </Text>
                 ))}
               </View>
