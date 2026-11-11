@@ -5,7 +5,7 @@ grupo: gestao
 ordem: 2
 permissao: READ_AUDIT
 veja: administradores, seguranca, exportar-planilhas, montar-relatorio
-busca: auditoria historico trilha log quem alterou ip navegador retencao guarda exportar exportou o que foi exportado exportou a planilha exportou o relatorio em pdf campos cpf modelo formato fechamento de caixa fechou reabriu mes lancamento numero n corrigiu numero financeiro planilha csv montar relatorio resumida detalhes da exportacao 20.000 linhas mais recentes local aparelho dados pessoais
+busca: auditoria historico trilha log quem alterou ip navegador retencao guarda exportar exportou o que foi exportado exportou a planilha exportou o relatorio em pdf campos cpf modelo formato fechamento de caixa fechou reabriu mes lancamento numero n corrigiu numero financeiro planilha csv montar relatorio resumida detalhes da exportacao 20.000 linhas mais recentes local aparelho dados pessoais excel xlsx exportou a planilha do excel gerou o documento documento lista de presenca ficha de inscricao recibo nota de empenho unimed agenda imprimir tipo area
 ---
 
 **Gestão › Auditoria** é o histórico do painel: quem fez, o que fez e quando.
@@ -13,8 +13,9 @@ busca: auditoria historico trilha log quem alterou ip navegador retencao guarda 
 
 ## Lendo a trilha
 
-Cada linha é uma ação: **criação**, **edição**, **exclusão** ou **entrada no
-sistema**. Clicar na linha abre os detalhes:
+Cada linha é uma ação: **criação**, **edição**, **exclusão**, **exportação**
+(planilha, PDF ou documento) ou **entrada no sistema**. Clicar na linha abre os
+detalhes:
 
 - **IP** e **local** de onde partiu
 - **navegador** usado
@@ -24,13 +25,15 @@ sistema**. Clicar na linha abre os detalhes:
 Esse "o que mudou" é a parte mais útil: em vez de "fulano editou o curso", você
 vê que o preço foi de R$ 100 para R$ 10.
 
-Numa exportação, o bloco **O que foi exportado** mostra o **Formato**, o
-**Modelo**, **O que entrou** (selecionados ou todos), quantos **Registros**, os
-**Filtros** e os **Campos**, na ordem das colunas. Vale para todas as listas;
-só o **Relatório de cadastros** fica sem esse bloco. Para achar quem exportou
-CPF, escolha **Exportações** no filtro **Ação** e digite *CPF* na busca. O que
-fica e o que não fica registrado está em
-[Exportar planilhas](?topico=exportar-planilhas).
+Numa exportação, o bloco **O que foi exportado** mostra o **Formato**
+(*Planilha CSV*, *Excel (.xlsx)* ou *PDF*), o **Modelo**, **O que entrou**
+(selecionados ou todos), quantos **Registros**, os **Filtros** e os **Campos**,
+na ordem das colunas. Vale para todas as listas; só o **Relatório de
+cadastros** fica sem esse bloco. Num documento em PDF, como a lista de
+presença, o bloco mostra o formato *PDF*, o nome do documento em **Modelo**, o
+que entrou e quantos registros. Para achar quem exportou CPF, escolha
+**Exportações** no filtro **Ação** e digite *CPF* na busca. O que fica e o que
+não fica registrado está em [Exportar planilhas](?topico=exportar-planilhas).
 
 ## Filtrando
 
@@ -39,25 +42,47 @@ Os filtros são **Ação** (criações, edições, exclusões, exportações, lo
 **De** e **Até** (o período), o **IP** e a busca por texto. Os filtros ficam no
 endereço da página — o link pode ser guardado ou enviado a um colega.
 
+No cabeçalho do PDF, na aba *Sobre* da planilha do Excel e na linha *Filtros:*
+do montador, os filtros aparecem em palavras, com o nome da tela, como *Ação:
+Exportações · Tipo: Usuário*. Já a coluna da planilha que traz o tipo se chama
+**Área**.
+
 O botão **Exportar** leva a trilha com esses filtros: veja
 [Exportar a trilha](#exportar-a-trilha).
 
 ### Exportações
 
-Para ver só as exportações, escolha **Exportações** no filtro **Ação**. A frase
-diz o que saiu e em que formato:
+Para ver só as exportações, escolha **Exportações** no filtro **Ação**. Ele
+traz as planilhas, os PDFs e os documentos que o painel gera. A frase diz o que
+saiu e em que formato:
 
-- *Exportou a planilha "Pessoas: 3 registros (todos) · CSV · com CPF"*
-- *Exportou o relatório em PDF "Pessoas: 4 registros (com filtros) · PDF · com CPF"*
+| Frase | O que foi |
+|---|---|
+| *Exportou a planilha "Pessoas: 3 registros (todos) · CSV · com CPF"* | Uma planilha CSV |
+| *Exportou a planilha do Excel "Pessoas: 3 registros (todos) · Excel · com CPF"* | Uma planilha do Excel (.xlsx) |
+| *Exportou o relatório em PDF "Pessoas: 4 registros (com filtros) · PDF · com CPF"* | Um PDF do **Montar relatório…** (baixado ou pelo **Imprimir**) ou do **Relatório em PDF** do menu |
+| *Gerou o documento "Lista de presença: HORTA · 12 registros · com CPF"* | Um documento em PDF que o painel monta: lista de presença, ficha de inscrição, **Imprimir** da agenda, **Baixar PDF** e **Relatório de despesas** do Financeiro, Nota de Empenho, recibo, ou Ficha, Termo de adesão e Contrato da Unimed |
 
-A segunda é o PDF: o do **Montar relatório…** (baixado ou pelo **Imprimir**) e
-o do **Relatório em PDF** do menu. Dois PDFs aparecem como planilha (*CSV*),
-porque são feitos no seu navegador a partir da planilha: o **Relatório em PDF**
-do menu acima de 2.000 linhas e o PDF do **Relatório de cadastros**.
+Na frase do documento, o texto entre aspas diz qual é o documento, o que ele
+cobre (o curso, a pessoa, o período ou o lançamento), quantos registros tem e
+os dados pessoais que leva. Dá para achar pela busca: digite o nome do curso,
+da pessoa ou o Nº do lançamento.
+
+O documento é registrado **antes** de ser gerado. Se o registro falha, o
+documento não sai, e quem tentou vê a mensagem na tela. Por isso, todo documento
+gerado tem a sua linha aqui. Veja
+[Exportar planilhas](?topico=exportar-planilhas).
+
+Dois PDFs aparecem como planilha (*Exportou a planilha "…"*), porque são feitos
+no seu navegador a partir da planilha: o **Relatório em PDF** do menu acima de
+2.000 linhas, nas listas em que ele ainda sai assim, e o PDF do **Relatório de
+cadastros**. Este último aparece como *Exportou a planilha "Relatório de
+cadastros: 850 registros (todos)"*, e não como documento.
 
 Na planilha que você baixa desta tela (botão **Exportar**), a coluna **Ação**
-traz a mesma frase sem o nome: *Exportou uma planilha* ou *Exportou um
-relatório em PDF*.
+traz a mesma frase sem o alvo: *Exportou uma planilha*, *Exportou uma planilha
+do Excel* ou *Exportou um relatório em PDF*. No documento, ela diz qual foi:
+*Gerou o documento "Lista de presença"*.
 
 ### Lançamentos do Financeiro
 
@@ -101,19 +126,26 @@ filtros atuais (N)** quando há filtro. O número é o mesmo da tela.
 
 | Parte do menu | O que sai |
 |---|---|
-| **Planilha CSV (abre no Excel)** | A planilha com as 10 colunas de sempre: Data e hora, Quem, Ação, Área, Alvo, Caminho, IP, Local, Aparelho e Alterações |
+| **Planilha**, com os botões **CSV** e **Excel (.xlsx)** | A planilha com as 10 colunas de sempre: Data e hora, Quem, Ação, Área, Alvo, Caminho, IP, Local, Aparelho e Alterações. Marque o formato antes de clicar em **Todos**; o menu continua aberto ao marcar |
 | **Relatório em PDF (para imprimir)** | Um PDF curto, no modelo **Resumida**: Data e hora, Quem, Ação e Alvo |
 | **Montar relatório…** | Você escolhe as colunas e a ordem. Veja [Como montar um relatório](?topico=montar-relatorio) |
+
+Na planilha do Excel, a **Data e hora** sai como data, para ordenar e filtrar.
+A diferença entre CSV e Excel está em
+[Exportar planilhas](?topico=exportar-planilhas).
 
 Alguns cuidados:
 
 - **No máximo 20.000 linhas.** Quando a trilha passa disso, saem só as 20.000
-  linhas mais recentes, na planilha e no montador. O montador avisa *Saem só as
-  20.000 linhas mais recentes.*, e o botão de baixar conta 20.000. Para levar as
-  mais antigas, filtre por **De** e **Até**.
-- **PDF até 2.000 linhas.** No montador, o PDF aceita até 2.000 linhas. O
-  **Relatório em PDF** do menu, acima disso, sai do jeito antigo: folha deitada
-  e sem a linha de modelo e filtros.
+  linhas mais recentes, na planilha e no montador. O menu avisa antes do
+  clique, embaixo do **Todos**: *Saem só as 20.000 linhas mais recentes.* O
+  montador avisa o mesmo, e o botão de baixar conta 20.000. Para levar as mais
+  antigas, filtre por **De** e **Até**.
+- **PDF até 2.000 linhas.** Acima disso, o **Relatório em PDF** do menu fica
+  desligado, e o menu avisa embaixo: *O PDF aceita até 2.000 linhas. Baixe a
+  planilha ou use um filtro.* No montador vale o mesmo limite. Filtre por
+  período ou baixe a planilha. Se aparecer *Não foi possível montar o PDF agora.
+  Tente de novo ou baixe a planilha.*, espere um instante e clique de novo.
 - **Detalhes da exportação.** No montador, o grupo **Detalhes** tem o campo
   **Detalhes da exportação**, que **não vem no Padrão**: marque-o à mão. Ele
   traz numa coluna o que cada exportação levou, como *Formato: PDF; Modelo: Nome
