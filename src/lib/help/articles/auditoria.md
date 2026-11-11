@@ -5,7 +5,7 @@ grupo: gestao
 ordem: 2
 permissao: READ_AUDIT
 veja: administradores, seguranca, exportar-planilhas, montar-relatorio
-busca: auditoria historico trilha log quem alterou ip navegador retencao guarda exportar exportou o que foi exportado campos cpf modelo formato fechamento de caixa fechou reabriu mes lancamento numero n corrigiu numero financeiro
+busca: auditoria historico trilha log quem alterou ip navegador retencao guarda exportar exportou o que foi exportado exportou a planilha exportou o relatorio em pdf campos cpf modelo formato fechamento de caixa fechou reabriu mes lancamento numero n corrigiu numero financeiro
 ---
 
 **Gestão › Auditoria** é o histórico do painel: quem fez, o que fez e quando.
@@ -39,6 +39,23 @@ Os filtros são **Ação** (criações, edições, exclusões, exportações, lo
 endereço da página — o link pode ser guardado ou enviado a um colega.
 
 Há também **exportação** do resultado.
+
+### Exportações
+
+Para ver só as exportações, escolha **Exportações** no filtro **Ação**. A frase
+diz o que saiu e em que formato:
+
+- *Exportou a planilha "Pessoas: 3 registros (todos) · CSV · com CPF"*
+- *Exportou o relatório em PDF "Pessoas: 4 registros (com filtros) · PDF · com CPF"*
+
+A segunda é o PDF do **Montar relatório…**, baixado ou pelo **Imprimir**. O
+**Relatório em PDF** rápido do menu, sem montar, aparece como planilha (*CSV*),
+porque é feito no seu navegador a partir da planilha. Nas listas que ainda não
+têm o montador, a frase é sempre *Exportou a planilha "…"*.
+
+Na planilha que você baixa desta tela (botão **Exportar**), a coluna **Ação**
+traz a mesma frase sem o nome: *Exportou uma planilha* ou *Exportou um
+relatório em PDF*.
 
 ### Lançamentos do Financeiro
 

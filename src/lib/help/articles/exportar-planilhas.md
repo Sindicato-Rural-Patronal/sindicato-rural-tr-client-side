@@ -4,7 +4,7 @@ resumo: Tirar as listas do painel em planilha (CSV) ou PDF, e o que fica registr
 grupo: dia-a-dia
 ordem: 7
 veja: montar-relatorio, busca-e-filtros, auditoria, usuarios, cursos, financeiro
-busca: exportar csv excel planilha baixar relatorio pdf lista selecionados download montar colunas campos telefone formatado 4,5e+10 auditoria registrado numero n anterior ordem lancamentos financeiro
+busca: exportar csv excel planilha baixar relatorio pdf lista selecionados download montar colunas campos telefone formatado 4,5e+10 padrao como hoje auditoria registrado exportou a planilha exportou o relatorio em pdf numero n anterior ordem lancamentos financeiro
 ---
 
 Toda lista do painel exporta em planilha. O botão **Exportar** fica no topo da
@@ -54,9 +54,11 @@ no PDF, use o **Montar relatório…**.
 
 **O telefone sai como foi digitado no cadastro.** Se ele foi digitado só com
 números, o Excel pode transformá-lo num número como *4,5E+10*. No
-**Montar relatório…** o telefone sai formatado, como *(44) 99999-8888*, mesmo
-no modelo **Padrão (como hoje)**, que tem as mesmas colunas da planilha de
-sempre.
+**Montar relatório…** o telefone sai formatado, como *(44) 99999-8888*, em
+todos os modelos. Isso vale também para o **Padrão (como hoje)**: ele tem as
+mesmas colunas da planilha de sempre, na mesma ordem, mas o telefone sai
+formatado. Se o Excel estragar o telefone da planilha rápida, monte o relatório
+com o **Padrão (como hoje)**.
 
 ## Onde tem
 
@@ -87,9 +89,17 @@ os dados pessoais que saíram, e por isso **a busca da Auditoria por *CPF* acha
 quem exportou CPF**. Nas outras listas, a linha diz só qual lista foi e
 quantos registros.
 
-> Em Pessoas e Inscrições, o **Relatório em PDF** rápido do menu aparece na
-> Auditoria como **Planilha CSV**: ele é montado no seu navegador a partir da
-> planilha. O PDF do **Montar relatório…** aparece como **PDF**.
+Em Pessoas e Inscrições, a frase diz também em que formato a lista saiu:
+
+- planilha: *Exportou a planilha "Pessoas: 3 registros (todos) · CSV · com CPF"*;
+- PDF do **Montar relatório…**, baixado ou pelo **Imprimir**: *Exportou o relatório em PDF "Pessoas: 4 registros (com filtros) · PDF · com CPF"*.
+
+Nas outras listas, a frase é sempre *Exportou a planilha "…"*.
+
+> O **Relatório em PDF** rápido do menu (sem montar) aparece na Auditoria como
+> planilha: *Exportou a planilha "… · CSV"*, com o formato **Planilha CSV**. É
+> que ele é montado no seu navegador a partir da planilha. Só o PDF do
+> **Montar relatório…** aparece como PDF.
 
 **Ainda não ficam registrados:**
 
