@@ -264,8 +264,9 @@ PDF. Alguns exemplos:
 Nos Cursos, a aba sempre aparece, mesmo sem outro filtro. O **Todos** só vira
 **Todos com os filtros atuais** quando há busca ou ano.
 
-O nome do filtro nem sempre é o da coluna. Nos Lançamentos, o filtro aparece
-como *Forma de pagamento*, mas a coluna da planilha se chama **Método**. Na
+O nome do filtro nem sempre é o da coluna. Nos Lançamentos, o filtro se chama
+**Forma de pagamento**, na tela e na linha *Filtros:*, mas a coluna da planilha
+se chama **Método**. Na
 Auditoria, o filtro aparece como *Tipo*, como na tela, e a coluna se chama
 **Área**.
 

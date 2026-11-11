@@ -4,7 +4,7 @@ resumo: Tirar as listas do painel em planilha (CSV ou Excel) ou PDF, e o que fic
 grupo: dia-a-dia
 ordem: 7
 veja: montar-relatorio, busca-e-filtros, auditoria, usuarios, cursos, financeiro
-busca: exportar csv excel xlsx planilha do excel aba sobre baixar relatorio pdf lista selecionados download montar colunas campos telefone formatado 4,5e+10 padrao como hoje auditoria registrado exportou a planilha exportou a planilha do excel exportou o relatorio em pdf gerou o documento documento lista de presenca ficha de inscricao nota de empenho recibo unimed imprimir agenda numero n anterior ordem lancamentos financeiro resumo resumido resumida folha em pe deitada 2.000 linhas 20.000 linhas o pdf aceita ate nao foi possivel montar o pdf aba ano proximos armazenados relatorio de cadastros copiar telefones copiar e-mails muitos documentos seguidos
+busca: exportar csv excel xlsx planilha do excel aba sobre baixar relatorio pdf lista selecionados download montar colunas campos telefone formatado 4,5e+10 padrao como hoje auditoria registrado exportou a planilha exportou a planilha do excel exportou o relatorio em pdf gerou o documento documento lista de presenca ficha de inscricao nota de empenho recibo unimed imprimir agenda numero n anterior ordem lancamentos financeiro resumo resumido resumida folha em pe deitada 2.000 linhas 20.000 linhas o pdf aceita ate nao foi possivel montar o pdf aba ano proximos armazenados relatorio de cadastros copiar telefones copiar e-mails muitos documentos seguidos ficha da pessoa ficha da empresa ficha completa dados da empresa planilha baixada
 ---
 
 Toda lista do painel exporta em planilha. O botão **Exportar** fica no topo da
@@ -47,9 +47,16 @@ No alto do menu **Exportar** fica a linha **Planilha**, com dois botões:
    como **Propriedades dos selecionados** ou **Inscrições de todos os cursos**.
    O arquivo sai no formato marcado.
 
-A escolha fica guardada **neste navegador** e vale para todas as listas: quem
-marca o Excel na lista de Pessoas encontra o Excel marcado também nos Cursos.
-Na primeira vez, o menu começa em **CSV**.
+A escolha fica guardada **neste navegador** e vale para todas as listas e para
+as fichas: quem marca o Excel na lista de Pessoas encontra o Excel marcado
+também nos Cursos e na ficha de uma empresa. Na primeira vez, o menu começa em
+**CSV**.
+
+**Nas fichas de pessoa e de empresa**, o **Exportar** do topo tem a mesma linha
+**Planilha**. **Ficha completa** (na empresa, **Dados da empresa**) e
+**Propriedades (N)** saem no formato marcado. Ao terminar, aparece *Planilha com
+1 registro baixada.* ou, no Excel, *Planilha do Excel com 1 registro baixada.*
+Nas propriedades, o número é o delas: *Planilha com 3 registros baixada.*
 
 Qual escolher:
 
@@ -64,21 +71,19 @@ frente de um CEP pode sumir. Na planilha do Excel isso não acontece: telefone,
 CPF, CNS e CEP vão como texto, do jeito que estão no cadastro.
 
 Se o menu mostra só **Planilha CSV (abre no Excel)**, sem os dois botões, o
-sistema ainda não carregou os campos daquela lista. Feche o menu e abra de
-novo. Se continuar assim, recarregue a página (F5).
+sistema ainda não carregou os campos daquela lista ou ficha. Feche o menu e
+abra de novo. Se continuar assim, recarregue a página (F5).
 
 **Continuam só em CSV:**
 
-- o **Exportar** da ficha de uma pessoa e o da ficha de uma empresa;
 - **Este dia**, **Esta semana** e **Escolher período…**, no **Exportar** da
   agenda das salas;
 - o ícone de download de uma linha (e o **Exportar planilha** do menu
   **Ações**, na Unimed).
 
 Nesses lugares, para ter o Excel, use o montador: o **Montar relatório…** do
-menu (nas fichas, o grupo **Montar relatório (escolher campos)**) tem o formato
-**Planilha do Excel (.xlsx)**. Para um registro só de uma lista, marque a linha
-e use **Selecionados**.
+menu tem o formato **Planilha do Excel (.xlsx)**. Para um registro só de uma
+lista, marque a linha e use **Selecionados**.
 
 ## Escolher as colunas
 

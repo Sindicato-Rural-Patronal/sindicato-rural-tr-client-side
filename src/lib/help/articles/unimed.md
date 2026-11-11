@@ -5,7 +5,7 @@ grupo: dia-a-dia
 ordem: 5
 permissao: READ_USER
 veja: usuarios, exportar-planilhas, montar-relatorio
-busca: unimed plano saude beneficiario cns titular dependente ficha termo contrato movimento exportar planilha montar relatorio nome cpf e plano gerar ficha gerar termo de adesao gerar contrato ciencia e consentimento excel xlsx auditoria gerou o documento documento nao foi gerado muitos documentos seguidos
+busca: unimed plano saude beneficiario cns titular dependente ficha termo contrato movimento exportar planilha montar relatorio nome cpf e plano gerar ficha gerar termo de adesao gerar contrato ciencia e consentimento excel xlsx auditoria gerou o documento documento nao foi gerado muitos documentos seguidos erro ao gerar a ficha erro ao gerar o termo erro ao gerar o contrato
 ---
 
 **Gestão › Unimed** guarda os beneficiários do plano de saúde. É um cadastro de
@@ -60,4 +60,4 @@ Na planilha do Excel, o CNS sai como texto e não vira número. Veja
 | *O documento não foi gerado: não deu para registrar na auditoria. Confira a internet e tente de novo.* | O documento não sai sem ficar na Auditoria, e o registro falhou. Confira a internet e clique de novo |
 | *Muitos documentos seguidos. Aguarde um minuto e tente de novo.* | Passou de 30 documentos num minuto, somando todo mundo que usa a mesma internet. Espere um minuto e clique de novo |
 | *Você não tem permissão para gerar este documento.* | A sua regra não deixa gerar os documentos da Unimed. Fale com quem cuida das regras |
-| *Erro ao gerar o documento (…).*, com o nome do botão entre parênteses | Clique de novo. Se continuar, avise o suporte (veja [Problemas comuns](?topico=problemas-comuns)) |
+| *Erro ao gerar a Ficha.*, *Erro ao gerar o Termo de adesão.* ou *Erro ao gerar o Contrato.* | Clique de novo. Se continuar, avise o suporte (veja [Problemas comuns](?topico=problemas-comuns)) |

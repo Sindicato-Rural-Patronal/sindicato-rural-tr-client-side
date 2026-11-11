@@ -56,8 +56,8 @@ você procura está entre eles.
 
 ### Ordenando a lista
 
-O seletor **Ordenar por**, junto dos filtros (**Caixa**, **Forma**…), tem duas
-opções, e as duas vão **do maior para o menor**:
+O seletor **Ordenar por**, junto dos filtros (**Caixa**, **Forma de
+pagamento**…), tem duas opções, e as duas vão **do maior para o menor**:
 
 - **Data** (o padrão) — o lançamento de data mais nova primeiro;
 - **Nº** — o de número maior primeiro. Lançamento sem número fica por último.
@@ -401,8 +401,9 @@ filtros atuais (N)** quando há filtro. No montador, no cabeçalho do PDF e na
 aba *Sobre* da planilha do Excel, os filtros aparecem em palavras, como
 *Período: 01/10/2026 a 31/10/2026 · Tipo: Saída · Categoria: INSUMOS · Caixa:
 BANCO · Forma de pagamento: PIX · Busca: adubo · Ordem: Nº*. A ordem só aparece
-quando a lista está em **Ordenar por › Nº**. O filtro **Forma** aparece como
-*Forma de pagamento*, mas a coluna da planilha continua se chamando **Método**.
+quando a lista está em **Ordenar por › Nº**. O filtro **Forma de pagamento** tem
+o mesmo nome na tela e nos filtros em palavras, mas a coluna da planilha continua
+se chamando **Método**.
 
 **O PDF aceita até 2.000 lançamentos.** Acima disso, os itens do **Relatório em
 PDF** ficam desligados, e o menu avisa embaixo: *O PDF aceita até 2.000 linhas.

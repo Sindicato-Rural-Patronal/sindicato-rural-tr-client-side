@@ -5,7 +5,7 @@ grupo: gestao
 ordem: 2
 permissao: READ_AUDIT
 veja: administradores, seguranca, exportar-planilhas, montar-relatorio
-busca: auditoria historico trilha log quem alterou ip navegador retencao guarda exportar exportou o que foi exportado exportou a planilha exportou o relatorio em pdf campos cpf modelo formato fechamento de caixa fechou reabriu mes lancamento numero n corrigiu numero financeiro planilha csv montar relatorio resumida detalhes da exportacao 20.000 linhas mais recentes local aparelho dados pessoais excel xlsx exportou a planilha do excel gerou o documento documento lista de presenca ficha de inscricao recibo nota de empenho unimed agenda imprimir tipo area
+busca: auditoria historico trilha log quem alterou ip navegador retencao guarda exportar exportou o que foi exportado exportou a planilha exportou o relatorio em pdf campos cpf modelo formato fechamento de caixa fechou reabriu mes lancamento numero n corrigiu numero financeiro planilha csv montar relatorio resumida detalhes da exportacao 20.000 linhas mais recentes local aparelho dados pessoais excel xlsx exportou a planilha do excel gerou o documento documento lista de presenca ficha de inscricao recibo nota de empenho unimed agenda imprimir tipo area milhar ponto 0 registros nenhum registro
 ---
 
 **Gestão › Auditoria** é o histórico do painel: quem fez, o que fez e quando.
@@ -67,6 +67,13 @@ Na frase do documento, o texto entre aspas diz qual é o documento, o que ele
 cobre (o curso, a pessoa, o período ou o lançamento), quantos registros tem e
 os dados pessoais que leva. Dá para achar pela busca: digite o nome do curso,
 da pessoa ou o Nº do lançamento.
+
+Acima de mil, o número da frase vem com ponto, como na tela: *Exportou a
+planilha "Pessoas: 1.234 registros (todos) · CSV · com CPF"*. Com **0
+registros**, nenhum dado saiu, e a frase não cita os dados pessoais: *Exportou
+a planilha "Empresas: 0 registros (seleção) · CSV"*. Por isso a busca por *CPF*
+não traz essa linha. Os campos escolhidos continuam no bloco **O que foi
+exportado**.
 
 O documento é registrado **antes** de ser gerado. Se o registro falha, o
 documento não sai, e quem tentou vê a mensagem na tela. Por isso, todo documento

@@ -5,7 +5,7 @@ grupo: dia-a-dia
 ordem: 4
 permissao: READ_USER
 veja: como-cadastrar-empresa, usuarios, configuracoes, montar-relatorio
-busca: empresa cnpj razao social nome fantasia socio contador parceira parceiro vinculo propriedade exportar planilha montar relatorio razao social e cnpj dados da empresa propriedades das selecionadas
+busca: empresa cnpj razao social nome fantasia socio contador parceira parceiro vinculo propriedade exportar planilha montar relatorio razao social e cnpj dados da empresa propriedades das selecionadas csv excel xlsx
 ---
 
 Empresa e pessoa são **cadastros separados**. Isso mudou em setembro de 2026: o
@@ -51,6 +51,8 @@ Com empresas marcadas, **Propriedades das selecionadas** (planilha) e **Montar
 relatório: propriedades das selecionadas…** levam as propriedades delas.
 
 Dentro da empresa, o **Exportar** do topo tem **Dados da empresa** e
-**Propriedades (N)** em planilha e, embaixo, no grupo **Montar relatório
-(escolher campos)**, os mesmos dois para escolher as colunas. Veja
+**Propriedades (N)** em planilha, no formato marcado na linha **Planilha**:
+**CSV** ou **Excel (.xlsx)**, a mesma escolha das listas. Embaixo, no grupo
+**Montar relatório (escolher campos)**, estão os mesmos dois, para escolher as
+colunas. Veja [Exportar planilhas](?topico=exportar-planilhas) e
 [Como montar um relatório](?topico=montar-relatorio).
