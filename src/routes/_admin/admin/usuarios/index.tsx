@@ -50,7 +50,7 @@ import { PersonNameCell } from '@/components/cadastro/PersonNameCell'
 import { useAdminCompanies } from '@/hooks/useCompanies'
 import { MEMBER_TYPES } from '@/lib/member-types'
 import { EDUCATION_OPTIONS, ETHNICITY_OPTIONS } from '@/lib/user-form-options'
-import { downloadExport, type ExportDataset, type ExportFormat, type ExportParams } from '@/lib/export'
+import { downloadExport, exportErrorMessage, type ExportDataset, type ExportFormat, type ExportParams } from '@/lib/export'
 import { useRowSelection } from '@/hooks/useRowSelection'
 import { ExportMenu, SelectCheckbox, SelectionInfo } from '@/components/export/ExportMenu'
 import { PersonPicker, type PickedPerson } from '@/components/PersonPicker'
@@ -906,10 +906,15 @@ function RouteComponent() {
   async function baixarRelatorio(formato: ExportFormat) {
     setBaixandoRelatorio(true)
     try {
+      // O PDF é montado aqui do CSV da API: a linha da auditoria é a da planilha
+      // (não chama registrarDocumento, senão seriam duas linhas).
       const n = await downloadExport('cadastros', {}, formato)
-      toast.success(`Relatório de cadastros baixado (${n} registros).`)
+      toast.success(n >= 0
+        ? `Relatório de cadastros baixado (${n.toLocaleString('pt-BR')} registros).`
+        : 'Relatório de cadastros baixado.')
     } catch (e) {
-      toast.error(apiErrorMessage(e, 'Não foi possível gerar o relatório.'))
+      // O 429 ("Muitas exportações seguidas…") com o texto da API.
+      toast.error(exportErrorMessage(e, 'Não foi possível gerar o relatório.'))
     } finally {
       setBaixandoRelatorio(false)
     }
@@ -1011,7 +1016,11 @@ function RouteComponent() {
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-60">
                   <DropdownMenuItem onSelect={() => void baixarRelatorio('csv')}>
-                    <FileSpreadsheet className="size-4" /> Planilha CSV (abre no Excel)
+                    <FileSpreadsheet className="size-4" /> Planilha CSV
+                  </DropdownMenuItem>
+                  {/* Uma aba por seção (Pessoas físicas, Associados em dia, Pessoas jurídicas, Administradores). */}
+                  <DropdownMenuItem onSelect={() => void baixarRelatorio('xlsx')}>
+                    <FileSpreadsheet className="size-4" /> Planilha do Excel (.xlsx)
                   </DropdownMenuItem>
                   <DropdownMenuItem onSelect={() => void baixarRelatorio('pdf')}>
                     <FileText className="size-4" /> Relatório em PDF (para imprimir)
