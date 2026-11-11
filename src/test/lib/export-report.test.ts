@@ -21,7 +21,9 @@ vi.mock('@/lib/relatorio-pdf', () => ({
   saveRelatorioPdf: (...args: unknown[]) => saveRelatorioPdf(...args),
 }))
 
-const { downloadExport, reportBody, lerRelatorioJson } = await import('@/lib/export')
+const { downloadExport, reportBody, lerRelatorioJson, exportErrorMessage } = await import('@/lib/export')
+const { ApiError } = await import('@/lib/api')
+await import('@/i18n')
 
 const JSON_PDF = {
   title: 'Pessoas',
@@ -67,6 +69,19 @@ describe('reportBody', () => {
     expect(reportBody({ courseIds: ['c1'] }, 'pdf', { fields: ['name'], confirmed: true }))
       .toEqual({ courseIds: ['c1'], fields: ['name'], format: 'pdf', confirmed: true })
     expect(reportBody({}, 'csv', { fields: ['name'], confirmed: false })).not.toHaveProperty('confirmed')
+  })
+})
+
+describe('exportErrorMessage', () => {
+  it('o 429 da exportação mostra o texto da API, não o do login', () => {
+    const msg = 'Muitas exportações seguidas. Aguarde um minuto e tente de novo.'
+    expect(exportErrorMessage(new ApiError(429, msg), 'x')).toBe(msg)
+    expect(exportErrorMessage(new ApiError(429, 'Too Many Requests'), 'x')).toMatch(/^Muitas tentativas/)
+  })
+
+  it('os outros erros seguem o apiErrorMessage (o 403 por campo vem como a API mandou)', () => {
+    expect(exportErrorMessage(new ApiError(403, 'Sem permissão para exportar: RG.'), 'x')).toBe('Sem permissão para exportar: RG.')
+    expect(exportErrorMessage(new ApiError(500, 'HTTP 500'), 'Erro ao exportar.')).not.toBe('HTTP 500')
   })
 })
 

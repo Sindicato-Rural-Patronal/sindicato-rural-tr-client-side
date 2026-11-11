@@ -11,8 +11,7 @@ import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Sheet, SheetClose, SheetContent, SheetDescription, SheetTitle } from '@/components/ui/sheet'
 import { useIsMobile } from '@/hooks/use-mobile'
-import { apiErrorMessage } from '@/lib/api-error-message'
-import { downloadExport, type ExportDataset, type ExportParams } from '@/lib/export'
+import { downloadExport, exportErrorMessage, type ExportDataset, type ExportParams } from '@/lib/export'
 import { cn } from '@/lib/utils'
 import { PrivacyBadge, ReportFieldPicker } from '@/components/export/ReportFieldPicker'
 import {
@@ -270,7 +269,7 @@ export function ReportBuilder({
       onOpenChange(false)
     } catch (e) {
       aba?.close()
-      setErro(apiErrorMessage(e, 'Não foi possível gerar o relatório. Tente de novo.'))
+      setErro(exportErrorMessage(e, 'Não foi possível gerar o relatório. Tente de novo.'))
     } finally {
       setBaixando(false)
     }

@@ -1,4 +1,5 @@
-import { apiFetch } from '@/lib/api'
+import { ApiError, apiFetch } from '@/lib/api'
+import { apiErrorMessage } from '@/lib/api-error-message'
 import { saveBlob } from '@/utils/download'
 
 // Exportação (POST /admin/export/:dataset, filtros no corpo). Com `ids` o
@@ -146,6 +147,16 @@ export function reportBody(params: ExportParams, format: ExportFormat, opts: Exp
   }
   if (opts.confirmed) body.confirmed = true
   return body
+}
+
+/**
+ * Mensagem do erro da exportação. O 429 da rota já vem em português ("Muitas
+ * exportações seguidas. Aguarde um minuto…") e é mais certo que o texto genérico
+ * do 429 do login, que o `apiErrorMessage` usaria.
+ */
+export function exportErrorMessage(err: unknown, fallback: string): string {
+  if (err instanceof ApiError && err.status === 429 && /^Muitas /.test(err.message)) return err.message
+  return apiErrorMessage(err, fallback)
 }
 
 /** Abre o PDF para imprimir; se o navegador bloquear a aba, baixa o arquivo. */

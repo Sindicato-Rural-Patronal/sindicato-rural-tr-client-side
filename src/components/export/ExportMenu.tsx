@@ -6,8 +6,7 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { useExportCatalog } from '@/hooks/useExportCatalog'
-import { apiErrorMessage } from '@/lib/api-error-message'
-import { downloadExport, type ExportDataset, type ExportFormat, type ExportParams } from '@/lib/export'
+import { downloadExport, exportErrorMessage, type ExportDataset, type ExportFormat, type ExportParams } from '@/lib/export'
 import { cn } from '@/lib/utils'
 
 // O montador (dnd-kit e companhia) só entra no pacote de quem abre.
@@ -30,7 +29,7 @@ async function runExport(dataset: ExportDataset, params: ExportParams, format: E
           : `${nome} baixado.`,
     )
   } catch (err) {
-    toast.error(apiErrorMessage(err, 'Erro ao exportar.'))
+    toast.error(exportErrorMessage(err, 'Erro ao exportar.'))
   }
 }
 
