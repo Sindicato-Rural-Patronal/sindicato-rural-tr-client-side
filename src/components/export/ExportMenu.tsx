@@ -1,23 +1,19 @@
 import { useState } from 'react'
 import { toast } from 'sonner'
 import { useQueryClient } from '@tanstack/react-query'
-import { DropdownMenu as DropdownMenuPrimitive } from 'radix-ui'
 import { Download, FileSpreadsheet, FileText, Info, Loader2, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import {
-  EXPORT_CATALOG_STALE_TIME, exportCatalogKey, fetchExportCatalog, useExportCatalog,
-} from '@/hooks/useExportCatalog'
+import { EXPORT_CATALOG_STALE_TIME, exportCatalogKey, fetchExportCatalog } from '@/hooks/useExportCatalog'
 import {
   downloadExport, ehLimiteDoPdf, exportErrorMessage, type ExportDataset, type ExportFormat, type ExportOptions,
   type ExportParams,
 } from '@/lib/export'
-import {
-  avisoDoCorte, caminhoDoPdfRapido, guardarFormatoDaPlanilha, lerFormatoDaPlanilha, textoDoBaixado,
-  type FormatoDaPlanilha,
-} from '@/components/export/report-builder'
+import { avisoDoCorte, caminhoDoPdfRapido, textoDoBaixado } from '@/components/export/report-builder'
+import { usePlanilhaDoMenu } from '@/components/export/use-planilha-do-menu'
+import { TituloDaPlanilha } from '@/components/export/EscolhaDaPlanilha'
 import {
   ItensDoMontador, MontadorAberto, type AberturaDoMontador, type FonteDoMontador,
 } from '@/components/export/MontadorDeFontes'
@@ -61,47 +57,6 @@ async function runExport(
 
 const milhar = (n: number) => n.toLocaleString('pt-BR')
 
-/** As duas planilhas, na ordem da escolha. O nome acessível diz o formato inteiro. */
-const OPCOES_DA_PLANILHA: { valor: FormatoDaPlanilha; rotulo: string; nome: string }[] = [
-  { valor: 'csv', rotulo: 'CSV', nome: 'Planilha CSV' },
-  { valor: 'xlsx', rotulo: 'Excel (.xlsx)', nome: 'Planilha do Excel (.xlsx)' },
-]
-
-/**
- * "Planilha: [CSV] [Excel (.xlsx)]" numa linha só, no lugar do título da seção:
- * os itens "Selecionados"/"Todos" de baixo baixam no formato marcado. São itens
- * de rádio do menu (setas e Enter funcionam) que não fecham o menu.
- */
-function EscolhaDaPlanilha({ formato, onEscolher }: {
-  formato: FormatoDaPlanilha
-  onEscolher: (formato: FormatoDaPlanilha) => void
-}) {
-  return (
-    <div className="flex items-center gap-2 px-1.5 py-1">
-      <span className="text-xs text-muted-foreground">Planilha</span>
-      <DropdownMenuPrimitive.RadioGroup
-        value={formato}
-        onValueChange={v => onEscolher(v === 'xlsx' ? 'xlsx' : 'csv')}
-        aria-label="Formato da planilha"
-        className="flex gap-1"
-      >
-        {OPCOES_DA_PLANILHA.map(op => (
-          <DropdownMenuPrimitive.RadioItem
-            key={op.valor}
-            value={op.valor}
-            aria-label={op.nome}
-            // Escolher o formato não fecha o menu: o clique seguinte é o que baixa.
-            onSelect={e => e.preventDefault()}
-            className="flex h-7 cursor-default items-center rounded-md border border-input px-2.5 text-xs whitespace-nowrap outline-hidden select-none data-highlighted:ring-2 data-highlighted:ring-ring/50 data-[state=checked]:border-primary data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground"
-          >
-            {op.rotulo}
-          </DropdownMenuPrimitive.RadioItem>
-        ))}
-      </DropdownMenuPrimitive.RadioGroup>
-    </div>
-  )
-}
-
 /** Uma linha de aviso dentro do menu (não é item: as setas passam por cima). */
 function AvisoDoMenu({ children }: { children: string }) {
   return (
@@ -136,8 +91,9 @@ function rotuloDoMontadorDoExtra(label: string): string {
  *
  * A planilha rápida sai em CSV ou no Excel (SR-106): com o catálogo da fonte (a
  * API nova), o título da seção vira a escolha "Planilha: [CSV] [Excel (.xlsx)]",
- * lembrada no navegador para todas as listas (`sr:planilha`). Assim o Excel
- * entra sem dobrar os itens do menu. Sem o catálogo, só CSV, como antes.
+ * lembrada no navegador para todas as listas e fichas (`sr:planilha`,
+ * `usePlanilhaDoMenu`). Assim o Excel entra sem dobrar os itens do menu. Sem o
+ * catálogo, só CSV, como antes.
  */
 export function ExportMenu({
   dataset, filters = {}, selectedIds, total, filtered = false, extra = [], className, label = 'Exportar', size,
@@ -168,16 +124,10 @@ export function ExportMenu({
   // Cada abertura do montador começa do zero (padrão ou último usado).
   const [montador, setMontador] = useState<AberturaDoMontador>({ aberto: false, vez: 0, alvo: 0 })
   const queryClient = useQueryClient()
-  // O mesmo catálogo que o montador já pede (a mesma consulta): diz se a API
-  // gera o Excel e os limites de linhas.
-  const { data: catalogo } = useExportCatalog(dataset)
-  const [planilhaEscolhida, setPlanilhaEscolhida] = useState<FormatoDaPlanilha>(lerFormatoDaPlanilha)
-  const planilha: FormatoDaPlanilha = catalogo ? planilhaEscolhida : 'csv'
-
-  function escolherPlanilha(formato: FormatoDaPlanilha) {
-    setPlanilhaEscolhida(formato)
-    guardarFormatoDaPlanilha(formato)
-  }
+  // A escolha CSV/Excel e o catálogo da fonte (diz se a API gera o Excel e os limites de linhas).
+  const escolhaDaPlanilha = usePlanilhaDoMenu(dataset)
+  const { catalogo } = escolhaDaPlanilha
+  const planilha = escolhaDaPlanilha.formato
 
   async function run(ds: ExportDataset, params: ExportParams, format: ExportFormat = 'csv') {
     setBusy(true)
@@ -243,7 +193,7 @@ export function ExportMenu({
 
   return (
     <>
-      <DropdownMenu modal={false} onOpenChange={aberto => { if (aberto) setPlanilhaEscolhida(lerFormatoDaPlanilha()) }}>
+      <DropdownMenu modal={false} onOpenChange={aberto => { if (aberto) escolhaDaPlanilha.reler() }}>
         <DropdownMenuTrigger asChild>
           <Button variant="outline" size={size} className={cn('gap-2', className)} disabled={busy}>
             {busy ? <Loader2 className="size-4 animate-spin" /> : <Download className="size-4" />}
@@ -257,11 +207,7 @@ export function ExportMenu({
           collisionPadding={8}
           className="w-max min-w-64 max-w-[min(22rem,calc(100vw-1rem))]"
         >
-          {catalogo ? (
-            <EscolhaDaPlanilha formato={planilha} onEscolher={escolherPlanilha} />
-          ) : (
-            <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">Planilha CSV (abre no Excel)</DropdownMenuLabel>
-          )}
+          <TituloDaPlanilha planilha={escolhaDaPlanilha} />
           {temSelecao && (
             <DropdownMenuItem disabled={n === 0} onSelect={() => run(dataset, { ids }, planilha)}>
               <FileSpreadsheet className="size-4" />
