@@ -251,8 +251,12 @@ export function ExportMenu({
           </Button>
         </DropdownMenuTrigger>
         {/* Da largura do texto mais comprido ("Todos com os filtros atuais (20.000)"
-            numa linha só), sem passar da tela do celular. */}
-        <DropdownMenuContent align="end" className="w-max min-w-64 max-w-[min(22rem,calc(100vw-1rem))]">
+            numa linha só), sem passar da tela do celular e sem encostar na borda. */}
+        <DropdownMenuContent
+          align="end"
+          collisionPadding={8}
+          className="w-max min-w-64 max-w-[min(22rem,calc(100vw-1rem))]"
+        >
           {catalogo ? (
             <EscolhaDaPlanilha formato={planilha} onEscolher={escolherPlanilha} />
           ) : (
