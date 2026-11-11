@@ -457,10 +457,13 @@ export function ReportBuilder({
   )
 
   // O "?" da Ajuda: 44 px no celular; no computador, do tamanho do título.
+  // Abre em outra aba: na mesma, a tela trocava e as colunas montadas sem
+  // baixar se perdiam. Aqui o montador fica aberto como estava.
   const ajuda = (
     <AjudaLink
       topico="montar-relatorio"
       titulo="Montar relatório"
+      novaAba
       className="md:size-7"
     />
   )

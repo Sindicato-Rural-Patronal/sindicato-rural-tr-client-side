@@ -301,10 +301,27 @@ describe('avisos, Ajuda e botão de fechar', () => {
 
   it('o título tem o "?" da Ajuda e o botão de fechar diz "Fechar"', () => {
     abrir()
-    expect(screen.getByRole('link', { name: 'Ajuda sobre Montar relatório' }))
+    expect(screen.getByRole('link', { name: 'Ajuda sobre Montar relatório (abre em outra aba)' }))
       .toHaveAttribute('href', '/admin/ajuda?topico=montar-relatorio')
     expect(screen.getByRole('button', { name: 'Fechar' })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Close' })).not.toBeInTheDocument()
+  })
+
+  it('o "?" abre a Ajuda em outra aba e o montador fica aberto com as colunas', async () => {
+    abrir()
+    await userEvent.click(screen.getByRole('button', { name: 'Tirar CPF' }))
+    const antes = colunas()
+    const ajuda = screen.getByRole('link', { name: 'Ajuda sobre Montar relatório (abre em outra aba)' })
+    expect(ajuda).toHaveAttribute('target', '_blank')
+    expect(ajuda).toHaveAttribute('rel', 'noopener noreferrer')
+    expect(ajuda).toHaveAttribute('title', 'Como usar esta tela (abre em outra aba)')
+    // O jsdom não abre abas: o clique só não pode fechar o montador.
+    ajuda.addEventListener('click', e => e.preventDefault(), { once: true })
+    await userEvent.click(ajuda)
+    expect(onOpenChange).not.toHaveBeenCalled()
+    expect(screen.getByRole('dialog', { name: 'Montar relatório · Pessoas' })).toBeInTheDocument()
+    expect(colunas()).toEqual(antes)
+    expect(antes).toEqual(['name', 'nickname', 'birthDate', 'email', 'phone'])
   })
 })
 
@@ -319,7 +336,8 @@ describe('montador no celular', () => {
     expect(screen.queryByRole('button', { name: /Arrastar/ })).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Subir CPF' })).toHaveClass('size-11')
     expect(screen.getByRole('button', { name: 'Fechar' })).toHaveClass('size-11')
-    expect(screen.getByRole('link', { name: 'Ajuda sobre Montar relatório' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Ajuda sobre Montar relatório (abre em outra aba)' }))
+      .toHaveAttribute('target', '_blank')
   })
 
   it('a folha tem a altura toda (o h-auto do ui/sheet não ganha)', () => {
