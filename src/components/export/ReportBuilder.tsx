@@ -19,9 +19,9 @@ import { cn } from '@/lib/utils'
 import { PrivacyBadge, ReportFieldPicker } from '@/components/export/ReportFieldPicker'
 import {
   AVISO_COLUNAS_PDF, TEXTO_NENHUM_REGISTRO, TEXTO_NENHUMA_CONFIRMADA, aplicarModelo, avisoDadosPessoais, avisoDoCorte,
-  camposDoCatalogo, contagem, estadoInicial, filtrosEmPalavras, formatoNaTela, guardarUltimo, lerUltimo, marcarCampo,
-  modeloParaApi, modelosDe, moverCampo, moverPara, nomeDoModelo, problemaParaBaixar, quantosVaoSair, textoDoBotao,
-  tirarCampo, totalComCorte,
+  camposDoCatalogo, contagem, ehPdf, estadoInicial, filtrosEmPalavras, formatoDaApi, formatoNaTela, guardarUltimo,
+  lerUltimo, marcarCampo, modeloParaApi, modelosDe, moverCampo, moverPara, nomeDoModelo, problemaParaBaixar,
+  quantosVaoSair, textoDoBaixado, textoDoBotao, tirarCampo, totalComCorte,
   type CampoComGrupo, type ExportCatalog, type ReportFormat, type ReportState,
 } from '@/components/export/report-builder'
 
@@ -205,7 +205,7 @@ export function ReportBuilder({
   const modeloEscolhido = modelos.find(m => m.id === estado.modeloId)
   const alterado = !!modeloEscolhido && nomeModelo !== modeloEscolhido.name
   const filtrosTexto = filtrosEmPalavras(filters, catalog.filterLabels, { textos: filterTexts })
-  const muitasColunas = formato !== 'csv' && estado.fields.length >= AVISO_COLUNAS_PDF
+  const muitasColunas = ehPdf(formato) && estado.fields.length >= AVISO_COLUNAS_PDF
   const escolhidos = estado.fields.map(k => campos.get(k)).filter((c): c is CampoComGrupo => !!c)
 
   function mudar(fn: (s: ReportState) => ReportState) {
@@ -278,7 +278,7 @@ export function ReportBuilder({
     setBaixando(true)
     try {
       const params: ExportParams = estado.scope === 'selected' ? { ids: selectedIds ?? [] } : filters
-      const { count, abriuAba } = await exportarRelatorio(dataset, params, formato === 'csv' ? 'csv' : 'pdf', {
+      const { count, abriuAba } = await exportarRelatorio(dataset, params, formatoDaApi(formato), {
         fields: estado.fields,
         modelo: modeloParaApi(estado, catalog),
         confirmed: estado.confirmed,
@@ -289,14 +289,12 @@ export function ReportBuilder({
         recusarVazio: true,
       })
       guardarUltimo(dataset, { fields: estado.fields, format: estado.format })
-      const registros = count === 1 ? '1 registro' : count >= 0 ? `${count} registros` : null
       toast.success(
         imprimir
           ? abriuAba
             ? 'Relatório aberto em outra aba para imprimir.'
             : 'O navegador não abriu outra aba: o relatório foi baixado. Abra o arquivo para imprimir.'
-          : formato === 'csv' ? `Planilha${registros ? ` com ${registros}` : ''} baixada.`
-            : `Relatório${registros ? ` com ${registros}` : ''} baixado.`,
+          : textoDoBaixado(formatoDaApi(formato), count),
       )
       onOpenChange(false)
     } catch (e) {
@@ -392,7 +390,7 @@ export function ReportBuilder({
                 checked={estado.scope === 'selected'} disabled={selecionados === 0}
                 onChange={() => mudar(s => ({ ...s, scope: 'selected' }))}
               />
-              {selecionados > 0 ? `Selecionados (${selecionados})` : 'Selecionados (marque na lista)'}
+              {selecionados > 0 ? `Selecionados (${selecionados.toLocaleString('pt-BR')})` : 'Selecionados (marque na lista)'}
             </label>
           )}
         </div>
@@ -413,8 +411,10 @@ export function ReportBuilder({
     </fieldset>
   )
 
+  // O Excel aparece também no celular; só o "Imprimir" fica de fora lá.
   const opcoesDeFormato: { valor: ReportFormat; rotulo: string }[] = [
     { valor: 'csv', rotulo: 'Planilha CSV' },
+    { valor: 'xlsx', rotulo: 'Planilha do Excel (.xlsx)' },
     { valor: 'pdf', rotulo: 'PDF' },
     ...(celular ? [] : [{ valor: 'print' as const, rotulo: 'Imprimir' }]),
   ]

@@ -146,6 +146,42 @@ describe('montador no computador', () => {
     await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false))
   })
 
+  it('Excel (SR-106): ao lado da planilha CSV; baixa .xlsx com os campos, sem o limite do PDF, e lembra', async () => {
+    exportarRelatorio.mockResolvedValue({ count: 2500, abriuAba: false })
+    abrir({ total: 2500 })
+    const formatos = within(screen.getByRole('group', { name: 'Formato' })).getAllByRole('radio').map(r => r.getAttribute('aria-label') ?? r.parentElement?.textContent)
+    expect(formatos).toEqual(['Planilha CSV', 'Planilha do Excel (.xlsx)', 'PDF', 'Imprimir'])
+    await userEvent.selectOptions(screen.getByLabelText('Modelo'), 'nome-cpf')
+    await userEvent.click(screen.getByRole('radio', { name: 'Planilha do Excel (.xlsx)' }))
+    // 2.500 linhas passam do PDF, não da planilha.
+    expect(screen.queryByText(/O PDF aceita/)).not.toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: 'Baixar planilha do Excel (2.500)' }))
+
+    expect(exportarRelatorio).toHaveBeenCalledWith(
+      'people', { search: 'silva', activeMember: true }, 'xlsx',
+      expect.objectContaining({ fields: ['name', 'cpf'], modelo: 'Nome e CPF', print: false }),
+    )
+    expect(JSON.parse(localStorage.getItem('sr:relatorio:people')!)).toEqual({ fields: ['name', 'cpf'], format: 'xlsx' })
+    const { toast } = await import('sonner')
+    await waitFor(() => expect(toast.success).toHaveBeenCalledWith('Planilha do Excel com 2.500 registros baixada.'))
+  })
+
+  it('reabre no Excel quando foi o último formato', () => {
+    localStorage.setItem('sr:relatorio:people', JSON.stringify({ fields: ['name'], format: 'xlsx' }))
+    abrir()
+    expect(screen.getByRole('radio', { name: 'Planilha do Excel (.xlsx)' })).toBeChecked()
+    expect(screen.getByRole('button', { name: 'Baixar planilha do Excel (123)' })).toBeEnabled()
+  })
+
+  it('o aviso de letra pequena (9 colunas ou mais) é só do PDF, não do Excel', async () => {
+    const nove = ['name', 'nickname', 'birthDate', 'age', 'ethnicity', 'cpf', 'email', 'phone', 'addressCity']
+    localStorage.setItem('sr:relatorio:people', JSON.stringify({ fields: nove, format: 'xlsx' }))
+    abrir()
+    expect(screen.queryByText(/sai deitado e com letra menor/)).not.toBeInTheDocument()
+    await userEvent.click(screen.getByRole('radio', { name: 'PDF' }))
+    expect(screen.getByText(/Com 9 colunas o PDF sai deitado e com letra menor/)).toBeInTheDocument()
+  })
+
   it('reabre no último usado, com o nome do modelo', () => {
     localStorage.setItem('sr:relatorio:people', JSON.stringify({ fields: ['name', 'email'], format: 'pdf' }))
     abrir()
@@ -165,6 +201,11 @@ describe('montador no computador', () => {
     expect(aba.opener).toBeNull()
     expect(exportarRelatorio).toHaveBeenCalledWith('people', expect.anything(), 'pdf', expect.objectContaining({ print: true, printWindow: aba }))
     open.mockRestore()
+  })
+
+  it('"Selecionados" com milhar', () => {
+    abrir({ selectedIds: Array.from({ length: 1500 }, (_, i) => `p${i}`) })
+    expect(screen.getByRole('radio', { name: 'Selecionados (1.500)' })).toBeChecked()
   })
 
   it('com seleção na lista, começa em "Selecionados" e manda os ids', async () => {
@@ -333,6 +374,8 @@ describe('montador no celular', () => {
     expect(screen.getByRole('dialog', { name: 'Montar relatório · Pessoas' })).toBeInTheDocument()
     expect(screen.queryByRole('radio', { name: 'Imprimir' })).not.toBeInTheDocument()
     expect(screen.getByRole('radio', { name: 'PDF' })).toBeInTheDocument()
+    // O Excel aparece também no celular (SR-106).
+    expect(screen.getByRole('radio', { name: 'Planilha do Excel (.xlsx)' })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /Arrastar/ })).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Subir CPF' })).toHaveClass('size-11')
     expect(screen.getByRole('button', { name: 'Fechar' })).toHaveClass('size-11')
