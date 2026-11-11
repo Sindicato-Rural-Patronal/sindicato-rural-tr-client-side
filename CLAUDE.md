@@ -25,7 +25,7 @@ Este arquivo tem as regras e o mapa para quem vai implementar. **O histórico de
 | React Markdown + remark-gfm | 10.x | Renderização markdown (notícias, ajuda) |
 | react-i18next | 17.x | Parte dos textos em pt-BR (`t()`); sem troca de idioma |
 | @react-pdf/renderer | 4.x | Todos os PDFs (carregado só no clique) |
-| @dnd-kit | 6.x / 10.x | Arrastar blocos do Painel Geral |
+| @dnd-kit | 6.x / 10.x | Arrastar blocos do Painel Geral e as colunas do montador de relatórios |
 | sonner | 2.x | Toasts |
 | react-day-picker | 10.x | Calendário do DatePicker |
 | react-easy-crop | 6.x | Recorte de imagem |
@@ -99,7 +99,7 @@ docker compose -f docker-compose.prod.yml --env-file .env.production up -d --bui
 /admin/convenios            → _admin/admin/convenios/index.tsx (lista de convênios)
 /admin/convenios/novo       → _admin/admin/convenios/novo.tsx (editor, criação)
 /admin/convenios/$id        → _admin/admin/convenios/$id.tsx (editor com pré-visualização)
-/admin/auditoria            → _admin/admin/auditoria/index.tsx (trilha; linha abre IP, local, navegador e "O que mudou";
+/admin/auditoria            → _admin/admin/auditoria/index.tsx (trilha; linha abre IP, local, navegador, "O que foi exportado" e "O que mudou";
                               filtros na URL, inclusive ?ip=; "Configurações da trilha" só com UPDATE_AUDIT)
 /admin/financeiro           → _admin/admin/financeiro/index.tsx (?tab=dashboard|lancamentos|recorrentes|categorias|
                               caixas|formas|fechamento; nos lançamentos também ?q, ?ord=number, ?page e os filtros)
@@ -181,7 +181,7 @@ src/
 │   │                                #   imprimir, nova reserva, ocupação), AgendaItem, WeekAgenda, RoomOccupancy (lista escrita
 │   │                                #   até 640px, faixa 07:00–22:00 acima — `@container`, não a largura da tela), BookingDialog,
 │   │                                #   DeleteBookingDialog (só esta / esta e as próximas), KindBadge, OnSiteBadge
-│   ├── auditoria/                   # AuditRowDetails (IP, local, navegador, "O que mudou"), AuditRetentionPanel (tempo de
+│   ├── auditoria/                   # AuditRowDetails (IP, local, navegador, "O que foi exportado", "O que mudou"), AuditRetentionPanel (tempo de
 │   │                                #   guarda: o select só aparece com o ajuste carregado)
 │   ├── cadastro/                    # person-form-fields.tsx: CADA CAMPO do cadastro de pessoa, desenhado UMA vez
 │   │                                #   (PersonField + FieldRow + SelectField); CameraDialog (foto pela câmera no cadastro);
@@ -207,8 +207,13 @@ src/
 │   │                                #   EditModeBar + EditableBlock (modo de organizar), dashboard-prefs.ts (ordem/largura/
 │   │                                #   escondidos), dashboard-drag.ts (prévia do arrasto, pura e testada), quotes-notice.ts,
 │   │                                #   course-capacity.ts (vagas), month-range.ts (mês atual em Brasília)
-│   ├── export/                      # ExportMenu (selecionados / todos com filtros / extras; CSV ou PDF), ExportOneButton,
-│   │                                #   SelectCheckbox, SelectionInfo; BulkDeleteButton (exclusão em massa)
+│   ├── export/                      # ExportMenu (selecionados / todos com filtros / extras; CSV ou PDF; `label`; sem
+│   │                                #   `selectedIds` some "Selecionados"; "Montar relatório…" só com o catálogo), ExportOneButton,
+│   │                                #   SelectCheckbox, SelectionInfo; BulkDeleteButton (exclusão em massa);
+│   │                                #   montador de relatórios (decisão 006, ver "Montador de relatórios"): ReportBuilder
+│   │                                #   (diálogo/folha, carregado só no clique), ReportFieldPicker (campos agrupados com busca),
+│   │                                #   report-builder.ts (o estado, PURO e testado; tipos do catálogo), export-details.ts
+│   │                                #   ("O que foi exportado" da Auditoria)
 │   ├── financeiro/                  # Abas que saíram do arquivo da rota: ClosingTab (fechamento, "Reabrir mês"),
 │   │                                #   RecurringTab (reativar pede confirmação), PaymentMethodsTab, PaymentMethodSelect
 │   │                                #   (select com "+ Nova forma"); ClosedMonth (selo "Mês fechado", aviso do formulário,
@@ -242,10 +247,13 @@ src/
 │   ├── query-retry.ts               # shouldRetryQuery (até 2x em rede/5xx, nunca 4xx) + errorStatus
 │   ├── command-palette.ts           # NAV_ITEMS e openCommandPalette()
 │   ├── schemas.ts                   # courseBaseSchema (usado); pessoaSchema e roomSchema (sem uso)
-│   ├── export.ts                    # downloadExport(dataset, params, 'csv'|'pdf') → POST /admin/export/:dataset
-│   ├── relatorio-pdf.tsx            # PDF da exportação: a MESMA planilha do CSV, montada para o papel
+│   ├── export.ts                    # downloadExport(dataset, params, 'csv'|'pdf', { fields, modelo, confirmed, print,
+│   │                                #   printWindow }) → POST /admin/export/:dataset; reportBody, lerRelatorioJson, RelatorioJson
+│   ├── relatorio-pdf.tsx            # PDF da exportação: RelatorioDocument (itens rápidos: a MESMA planilha do CSV) e
+│   │                                #   RelatorioJsonDocument (montador: o JSON da API; layoutDoPdf = em pé até 5 colunas,
+│   │                                #   letra 8/7/6 pt)
 │   ├── bulk-delete.ts               # "Excluir selecionados": apaga em lotes e conta o que deu certo
-│   ├── csv-parse.ts                 # Lê o CSV do backend de volta (o PDF da exportação sai dele)
+│   ├── csv-parse.ts                 # Lê o CSV do backend de volta (o PDF rápido do menu sai dele; sai na fase 2 da decisão 006)
 │   ├── person-fields.ts             # Campos de pessoa como DADO: PERSON_LABELS, PERSON_FIELD_NAMES, READ_MODE_FIELD
 │   ├── person-validation.ts         # validatePersonFields (mesmas regras do backend), firstInvalidField, focusFieldById
 │   ├── user-form-options.ts         # Opções dos selects do cadastro de pessoa
@@ -342,6 +350,14 @@ O porquê de cada uma está em `docs/HISTORICO.md`.
   - **Avisos**: lançamento novo → "Lançamento registrado: Nº 128" (a resposta do POST é a linha); transferência (sempre automática, sem campo) → "Transferência registrada: Nº 130 e 131" (`transactions: [saída, entrada]`).
   - **"Nº anterior"**: o antigo "Nº empenho" (`empenho.numero`, texto livre, continua no JSON) virou "Nº anterior (sistema antigo ou nota em papel)", numa linha inteira da seção Nota de Empenho do formulário (o rótulo é comprido). Lançamento do sistema antigo recebe o próximo Nº automático e o número de lá vai aqui; o "Repetir" limpa o campo.
   - **Nota de Empenho em PDF**: o `number` fica no quadro "IDENTIFICAÇÃO" (onde ficava o "Nº empenho", alinhado à data); o "Nº anterior: X" vai embaixo, em letra menor (6,1 pt, encolhe se for comprido), só quando há; o arquivo é `nota-empenho-<Nº>.pdf` (sem Nº, `nota-empenho.pdf`; o Nº anterior não entra no nome). **Relatório de despesas**: a coluna "Nº" é o `number` ("—" sem número) e, no mesmo dia, as linhas seguem o número (numérico: 9 antes de 10; sem número por último). **Recibo**: usa o `number` (quadro e nome do arquivo). **Auditoria**: o campo `number` tem o rótulo "Nº" e sai sem separador de milhar ("1234", não "1.234").
+- **Montador de relatórios (SR-089, decisão 006 em `../orquestracao/decisoes/006-relatorios-dinamicos.md`)**: quem exporta escolhe os campos e a ordem das colunas. **O back é o único lugar que define campos, modelos e permissões**: o front lê o catálogo (`useExportCatalog`) e só guarda as chaves escolhidas, na ordem; nunca escreva lista de campos no front. Fase 1: só `people` e `registrations` têm catálogo (as outras fontes respondem 404 e o item não aparece).
+  - **Onde**: item "Montar relatório…" no fim do `ExportMenu`, só quando o catálogo carrega (as telas não mudam); recebe o `filters`, o `selectedIds` e o `total` que o menu já recebe. Na janela do curso, o "Planilha" das Inscrições é `<ExportMenu dataset="registrations" label="Planilha">` (sem seleção: só "Todos").
+  - **Estado** (`report-builder.ts`, puro e testado): marcar põe no fim; ↑↓ e arrastar ordenam; o seletor "Modelo" tem o "Padrão (como hoje)" (o `padrao` do catálogo) primeiro e os de fábrica depois; mexer depois de escolher mostra "Nome e CPF (alterado)" (o select fica num item à parte para escolher o mesmo modelo de novo funcionar). Campo sem permissão (`allowed: false`) aparece desligado com o `reason`; num modelo ou no último usado, ele e o campo que sumiu do catálogo saem com aviso. "Só confirmadas" só em `registrations` (o modelo com `confirmed: true` liga). Com seleção na lista, "O que entra" começa em "Selecionados".
+  - **Abre** no Padrão na primeira vez; depois, no último relatório montado naquela fonte: `localStorage` `sr:relatorio:<dataset>` = `{ fields, format }`, gravado ao baixar, lido e gravado sempre em `try/catch`; o nome do modelo volta quando as colunas batem com um.
+  - **Limites antes de pedir** (a API confere de novo): pelo menos 1 campo, até 80; até 20.000 linhas; PDF até 2.000 linhas; com "Só confirmadas" o total da tela é só teto e quem decide é a API. A partir de 9 colunas em PDF, aviso de letra pequena. "Leva dados pessoais: CPF, …" lista os campos `pessoal` e `sensivel`: é aviso, não pede confirmação. Erro da API (403 "Sem permissão para exportar: RG." etc.) aparece dentro do montador, que fica aberto.
+  - **Formatos**: CSV (baixa como hoje), PDF (a API devolve JSON e o `RelatorioJsonDocument` desenha: em pé até 5 colunas, deitado com mais; letra de 8 pt até 8 colunas, 7 até 12, 6 acima; cabeçalho da tabela em toda página; com coluna "Assinatura" (`blank`) a linha fica alta para assinar) e Imprimir (o mesmo PDF numa aba nova, **aberta no clique** com "Gerando o relatório…" porque a aberta depois da espera é bloqueada; sem aba, baixa). O `modelo` mandado à API é o nome da tela ("Nome e CPF (alterado)"), até 64 caracteres; montado à mão não manda.
+  - **Tela**: computador = `Dialog` de 880 px, duas colunas (campos com busca sem acento | colunas com alça de arrastar e ↑↓×; o foco fica no botão depois de mover); celular (< 768 px, `useIsMobile`) = `Sheet` de baixo com altura cheia, ↑↓× de 44 px, "+ Adicionar campo" (troca o conteúdo pela lista; "Pronto" volta), sem "Imprimir" (o "Imprimir" guardado vira PDF) e o botão de baixar preso no rodapé. Só usa `ui/dialog`, `ui/sheet`, `ui/button`, `ui/input`, `ui/badge`, `select`/checkbox/rádio nativos e cores por token, que existem também no redesign (nada de `PageHeader`, `FilterBar`, `RowActions`, `SegmentedControl`).
+  - **Os itens rápidos do menu** (Selecionados/Todos em CSV e PDF) continuam iguais: sem `fields`, sai o padrão, e o PDF rápido ainda sai do CSV (`csv-parse.ts`/`pdfColumns`) até a fase 2.
 - **Pessoa**: só o CPF identifica (gravado só com dígitos; exibir com `maskCPF`). E-mail é opcional; e-mail e telefone podem repetir entre pessoas; telefone é obrigatório. RG é opcional (a CIN usa o CPF), mas validado quando preenchido. Onde se DIGITA o número, o rótulo é "CPF / CIN" (`lib/cin.ts`); onde só se exibe, "CPF".
 - **Campos de pessoa num lugar só**: cada campo é desenhado uma vez em `components/cadastro/person-form-fields.tsx`; as duas telas (`usuarios/novo` e `usuarios/$id`) só escolhem quais e em que cartão. `src/test/forms/cadastro-pessoa.test.ts` exige que todo campo do associado esteja nas duas.
 - **Caixa alta**: `upperNoAccents` nos campos de cadastro (nomes, endereços, razão social). Texto que o visitante lê sai **como foi digitado**: título e observações do curso, título da reserva que vai para `/eventos`.
@@ -451,6 +467,7 @@ useSendContactMessage       → POST /contacts/message (público, fetch cru)
 - `useCompanies.ts` — empresas: lista, detalhe, CRUD, vínculos (members; pela pessoa: `useLinkPersonToCompany`/`useUnlinkPersonFromCompany`), propriedades, parceria (`useSetCompanyPartner`, `useReorderPartners`, `useUploadCompanyPartnerLogo`), títulos (`useCompanyMemberTitles`, `COMMON_MEMBER_TITLES`), `companyDisplayName`.
 - `useFinance.ts` — categorias, caixas, lançamentos (+ export CSV, transferência, comprovantes), recorrências, formas de pagamento, fechamentos e `useFinanceSummary`. `useCreateFinanceTransaction` devolve a linha criada (com `number`), `useCreateFinanceTransfer` devolve `{ message, transactions: [saída, entrada] }`, `useFinanceNextNumber` lê o próximo Nº automático, e `TransactionFilters.orderBy` (`date`|`number`) vale na lista e no CSV.
 - `useUnimed.ts` — `useUnimedList`, `useUnimedByPerson`, `useUnimed`, criar/editar/excluir.
+- `useExportCatalog.ts` — `useExportCatalog(dataset)`: `GET /admin/export/:dataset/catalog`, `staleTime` de 30 min. 404 (back velho, ou fonte que ainda não tem montador) e 403 viram `null`; resposta fora do formato também (`lerCatalogo`). Com `null` ou erro, o `ExportMenu` não mostra "Montar relatório…".
 - `useConvenios.ts` — `useConvenioMenu`, `usePublicConvenio` (públicos), admin CRUD e logo.
 - `useGalleries.ts` — `usePublicGalleries` (publicGet), admin CRUD, fotos (upload, legenda, ordem).
 - `useMarketQuotes.ts` — `useMarketQuotes`, `useQuoteHistory` (públicos), `useAdminMarketQuotes`, `useSaveDailyQuotes`, `useUpdateQuoteUnit`.
@@ -554,11 +571,12 @@ Os caminhos abaixo são os que o front chama, relativos a `API_BASE` (`/api` no 
 - `POST /admin/galleries/:id/photos` (multipart; reduzida p/ 1600px) · `PATCH /photos/:photoId` `{ caption }` · `DELETE /photos/:photoId` · `PATCH /photos/reorder`
 
 **Auditoria**
-- `GET /admin/audit-logs` — paginado; `action=create|edit|delete|export|login|login_failed`, `entity`, `actorId`, `ip`, `from`, `to`, `q`. Cada linha traz `summary` (frase pronta, montada no backend), `ip`, `location`, `device`, `userAgent` e `changes` (`[{ field, before, after }]`; senha trocada = "alterada", sem valor). As entidades do filtro "Tipo" vêm do backend (`src/lib/audit-entity.ts` de lá)
+- `GET /admin/audit-logs` — paginado; `action=create|edit|delete|export|login|login_failed`, `entity`, `actorId`, `ip`, `from`, `to`, `q`. Cada linha traz `summary` (frase pronta, montada no backend), `ip`, `location`, `device`, `userAgent` e `changes` (`[{ field, before, after }]`; senha trocada = "alterada", sem valor). As entidades do filtro "Tipo" vêm do backend (`src/lib/audit-entity.ts` de lá). Exportação pelo montador traz `details` `{ formato, modelo, campos: [rótulos], escopo: 'seleção'|'com filtros'|'todos', filtros: [{ nome, valor }], linhas }`, que vira o bloco "O que foi exportado" (`export-details.ts`; linha sem `details` não mostra nada)
 - `GET /admin/audit-settings` (READ_AUDIT) → `{ retentionDays, options, oldestAt, total }` · `PATCH` (UPDATE_AUDIT) `{ retentionDays }` (0 = para sempre). Baixar o prazo apaga na hora os mais antigos
 
-**Exportação** — `POST /admin/export/:dataset` (corpo JSON; `ids` = selecionados ou um só; sem `ids` = mesmos filtros da listagem). O servidor manda sempre CSV (`;` com BOM); o **PDF** ("Relatório", A4 deitado) é montado no front a partir do mesmo CSV (`lib/relatorio-pdf.tsx`). Cada exportação vai para a auditoria
+**Exportação** (contrato da API: `back` CLAUDE.md "Exportação e montador de relatórios", SR-088) — `POST /admin/export/:dataset` (corpo JSON; `ids` = selecionados ou um só, até 5000; sem `ids` = mesmos filtros da listagem). Sem `fields`, o servidor manda o CSV de sempre (`;` com BOM, `Content-Disposition`, `X-Export-Count`), e o **PDF rápido** do menu ("Relatório", A4 deitado) é montado no front a partir dele (`lib/relatorio-pdf.tsx`). Cada exportação vai para a auditoria. 30 exportações por minuto por IP → 429 "Muitas exportações seguidas. Aguarde um minuto e tente de novo." (o front mostra esse texto: `exportErrorMessage`)
 - Datasets: `people`, `companies`, `properties` (`ownerIds`), `unimed` (READ_USER) · `admins`, `cadastros` (relatório dos 4 tipos num arquivo; READ_USER_ADMIN) · `courses`, `registrations` (`courseIds`), `room-bookings` (READ_COURSE) · `contact-messages` (READ_CONTACT) · `audit-logs` (READ_AUDIT)
+- **Montador** (decisão 006; fase 1 só em `people` e `registrations`): `GET /admin/export/:dataset/catalog` (mesma permissão da exportação) → `{ dataset, title, groups: [{ name, fields: [{ key, label, type, privacy: comum|pessoal|sensivel, allowed, reason }] }], padrao: string[], modelos: [{ id, name, fields, confirmed? }] (sem o Padrão), filterLabels, limits: { rows: 20000, pdfRows: 2000, fields: 80 } }`; conjunto sem montador → 404 "Este conjunto ainda não tem o montador.". O corpo da exportação ganha `fields` (chaves, na ordem das colunas), `format` (`csv`|`pdf`), `modelo` (até 64; id de fábrica ou nome) e `confirmed` (só `registrations`). Com `format: 'pdf'` a resposta é JSON `{ title, filename, count, filters ("Busca: silva · …", "Seleção: 8 registros" ou ""), modelo, columns: [{ key, label, type, weight }], rows: string[][] }`, desenhado por `RelatorioJsonDocument`. Erros 400 em português ("Escolha pelo menos um campo.", "O PDF aceita até 2.000 linhas…" etc.) e 403 "Sem permissão para exportar: RG, …" aparecem como vieram. Com `fields`, o telefone sai com máscara; sem `fields`, como gravado (o padrão não muda)
 
 **Financeiro (admin)** — `*_FINANCE`; valores em centavos
 - `GET /admin/finance/categories` (`?all=true` inclui inativas) · `POST` · `PATCH /:id` · `DELETE /:id`; o mesmo para `/accounts` (caixas) e `/payment-methods` (nome em caixa alta, único)
