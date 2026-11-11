@@ -37,16 +37,102 @@ const styles = StyleSheet.create({
   },
 })
 
-/** Larguras proporcionais ao tipo do campo (ver `pesoDaColuna`). */
-function larguras(cabecalhos: string[]): string[] {
+// ---------------------------------------------------------------------------
+// Quebra de palavra nas células
+// ---------------------------------------------------------------------------
+//
+// Sozinho, o react-pdf hifeniza com regras do inglês e quebra palavra que
+// caberia inteira na linha de baixo ("Nº de or-/dem", "CRISTI-/NA"). Sem
+// hifenizar nada (`Font.registerHyphenationCallback(w => [w])`), a palavra que
+// não cabe na coluna (e-mail, nome no PDF de 57 colunas) passa por cima da
+// coluna do lado. Por isso cada coluna decide pela sua largura: a palavra que
+// cabe não se quebra; a que não cabe é hifenizada como antes. E, no montador,
+// cada coluna fica pelo menos da largura da maior palavra do rótulo (e das
+// datas, CPFs e números), para o cabeçalho não sair cortado no meio
+// (`fracoesDasColunas`). Vai em cada <Text> (prop `hyphenationCallback`), e não
+// no `Font` global, para não mudar os outros PDFs do sistema.
+
+/** Larguras da Helvetica e da Helvetica-Bold (AFM, por 1.000 de letra), do espaço (32) ao til (126). */
+const AFM_HELVETICA = (
+  '278 278 355 556 556 889 667 191 333 333 389 584 278 333 278 278 556 556 556 556 556 556 556 556 556 556 '
+  + '278 278 584 584 584 556 1015 667 667 722 722 667 611 778 722 278 500 667 556 833 722 778 667 778 722 667 '
+  + '611 722 667 944 667 667 611 278 278 278 469 556 333 556 556 500 556 556 278 556 556 222 222 500 222 833 '
+  + '556 556 556 556 333 500 278 556 500 722 500 500 500 334 260 334 584'
+).split(' ').map(Number)
+const AFM_HELVETICA_NEGRITO = (
+  '278 333 474 556 556 889 722 238 333 333 389 584 278 333 278 278 556 556 556 556 556 556 556 556 556 556 '
+  + '333 333 584 584 584 611 975 722 722 722 722 667 611 778 722 278 556 722 611 833 722 778 667 778 722 667 '
+  + '611 722 667 944 667 667 611 333 278 333 584 556 333 556 611 556 611 556 333 611 611 278 278 556 278 889 '
+  + '611 611 611 611 389 556 333 611 556 778 556 556 500 389 280 389 584'
+).split(' ').map(Number)
+
+/** Largura da palavra em pt, na Helvetica (a letra dos PDFs). Acento não muda a largura. */
+export function larguraDaPalavra(palavra: string, fontSize: number, negrito = false): number {
+  const tabela = negrito ? AFM_HELVETICA_NEGRITO : AFM_HELVETICA
+  let milesimos = 0
+  for (const letra of palavra.normalize('NFD').replace(/[\u0300-\u036f]/g, '')) {
+    const c = letra.charCodeAt(0)
+    // Fora da tabela: º e ª são estreitos; o resto, uma letra larga, para sobrar.
+    milesimos += c >= 32 && c <= 126 ? tabela[c - 32] : letra === 'º' || letra === 'ª' ? 370 : 722
+  }
+  return (milesimos * fontSize) / 1000
+}
+
+/** A maior palavra do texto, em pt. */
+function maiorPalavra(texto: string, fontSize: number, negrito = false): number {
+  return texto.split(/\s+/).reduce((maior, p) => Math.max(maior, larguraDaPalavra(p, fontSize, negrito)), 0)
+}
+
+/** Como o react-pdf passa a hifenização dele (2º argumento, que o tipo não declara). */
+type Hifenizar = (palavra: string) => string[]
+
+/**
+ * A quebra de palavra de uma coluna com `larguraUtil` pt de texto: a palavra
+ * que cabe fica inteira; a que não cabe é hifenizada pelo react-pdf, como antes.
+ */
+export function quebraDaColuna(larguraUtil: number, fontSize: number, negrito = false) {
+  return (palavra: string, hifenizar?: Hifenizar): string[] =>
+    larguraDaPalavra(palavra, fontSize, negrito) <= larguraUtil || typeof hifenizar !== 'function'
+      ? [palavra]
+      : hifenizar(palavra)
+}
+
+/** Largura do A4 em pt e as margens da página e da célula (as de `styles`). */
+const A4 = { portrait: 595.28, landscape: 841.89 }
+const MARGEM_DA_PAGINA = 24
+const MARGEM_DA_CELULA = 4
+
+/** Largura da tabela (a página menos as margens). */
+function larguraDaTabela(orientation: 'portrait' | 'landscape'): number {
+  return A4[orientation] - 2 * MARGEM_DA_PAGINA
+}
+
+/** Quanto de texto cabe numa coluna que ocupa `fracao` da largura da tabela. */
+export function larguraUtilDaColuna(fracao: number, orientation: 'portrait' | 'landscape'): number {
+  return fracao * larguraDaTabela(orientation) - 2 * MARGEM_DA_CELULA
+}
+
+/** A quebra de cada coluna, para o cabeçalho (negrito) e para as linhas. */
+function quebrasDasColunas(fracoes: number[], orientation: 'portrait' | 'landscape', fontSize: number) {
+  return fracoes.map(f => {
+    const util = larguraUtilDaColuna(f, orientation)
+    return { cabecalho: quebraDaColuna(util, fontSize, true), linha: quebraDaColuna(util, fontSize) }
+  })
+}
+
+const emPorcento = (fracao: number) => `${fracao * 100}%`
+
+/** Frações da largura proporcionais ao tipo do campo (ver `pesoDaColuna`). */
+function fracoesDoCsv(cabecalhos: string[]): number[] {
   const pesos = cabecalhos.map(pesoDaColuna)
   const soma = pesos.reduce((a, b) => a + b, 0)
-  return pesos.map(p => `${(p / soma) * 100}%`)
+  return pesos.map(p => p / soma)
 }
 
 function Tabela({ secao }: { secao: CsvSection }) {
   const colunas = pdfColumns(secao.header)
-  const larguraDe = larguras(colunas.map(c => secao.header[c]))
+  const fracoes = fracoesDoCsv(colunas.map(c => secao.header[c]))
+  const quebras = quebrasDasColunas(fracoes, 'landscape', 8)
 
   return (
     <View>
@@ -58,7 +144,11 @@ function Tabela({ secao }: { secao: CsvSection }) {
           {/* `fixed` repete o cabeçalho quando a tabela vira a página. */}
           <View style={styles.linhaCabecalho} fixed>
             {colunas.map((c, i) => (
-              <Text key={c} style={[styles.celulaCabecalho, { width: larguraDe[i] }]}>
+              <Text
+                key={c}
+                style={[styles.celulaCabecalho, { width: emPorcento(fracoes[i]) }]}
+                hyphenationCallback={quebras[i].cabecalho}
+              >
                 {secao.header[c]}
               </Text>
             ))}
@@ -66,7 +156,11 @@ function Tabela({ secao }: { secao: CsvSection }) {
           {secao.rows.map((linha, n) => (
             <View key={n} style={styles.linha} wrap={false}>
               {colunas.map((c, i) => (
-                <Text key={c} style={[styles.celula, { width: larguraDe[i] }]}>
+                <Text
+                  key={c}
+                  style={[styles.celula, { width: emPorcento(fracoes[i]) }]}
+                  hyphenationCallback={quebras[i].linha}
+                >
                   {linha[c] ?? ''}
                 </Text>
               ))}
@@ -154,11 +248,66 @@ const PESO_DO_TIPO: Record<string, number> = {
   boolean: 0.8,
 }
 
-/** Larguras em %: o `weight` da coluna ou o peso do tipo. */
-export function largurasDasColunas(columns: RelatorioColuna[]): string[] {
+/** Fração da largura de cada coluna só pelos pesos: o `weight` dela ou o peso do tipo. */
+function fracoesPelosPesos(columns: RelatorioColuna[]): number[] {
   const pesos = columns.map(c => c.weight ?? PESO_DO_TIPO[c.type] ?? 2)
   const soma = pesos.reduce((a, b) => a + b, 0) || 1
-  return pesos.map(p => `${(p / soma) * 100}%`)
+  return pesos.map(p => p / soma)
+}
+
+/** Larguras em %: o `weight` da coluna ou o peso do tipo. */
+export function largurasDasColunas(columns: RelatorioColuna[]): string[] {
+  return fracoesPelosPesos(columns).map(emPorcento)
+}
+
+/** Tipos cujo valor não se quebra bem (data, CPF, número…): a coluna precisa caber o maior deles. */
+const VALOR_INTEIRO = new Set(['cpf', 'cnpj', 'cns', 'cep', 'phone', 'date', 'datetime', 'wallclock', 'number', 'money', 'boolean'])
+
+/** Um respiro, para a conta da largura não ficar no limite. */
+const FOLGA = 0.5
+
+/**
+ * Largura mínima de cada coluna, em pt: a maior palavra do rótulo (em negrito)
+ * e, nos tipos de `VALOR_INTEIRO`, a maior palavra dos valores; mais a margem.
+ */
+export function minimosDasColunas(columns: RelatorioColuna[], rows: string[][], fontSize: number): number[] {
+  return columns.map((c, i) => {
+    let maior = maiorPalavra(c.label, fontSize, true)
+    if (VALOR_INTEIRO.has(c.type)) {
+      for (const linha of rows) maior = Math.max(maior, maiorPalavra(linha[i] ?? '', fontSize))
+    }
+    return maior + 2 * MARGEM_DA_CELULA + FOLGA
+  })
+}
+
+/**
+ * Fração da largura de cada coluna: pelos pesos, mas nenhuma abaixo do seu
+ * mínimo (`minimosDasColunas`). A que ficaria estreita demais fica no mínimo e
+ * as outras dividem o resto pelos pesos. Se nem os mínimos cabem na folha (o
+ * Padrão de pessoas, com 57 colunas), fica só pelos pesos, como antes.
+ */
+export function fracoesDasColunas(
+  columns: RelatorioColuna[],
+  rows: string[][],
+  { orientation, fontSize }: LayoutDoPdf,
+): number[] {
+  const pesos = fracoesPelosPesos(columns)
+  const total = larguraDaTabela(orientation)
+  const minimos = minimosDasColunas(columns, rows, fontSize)
+  const somaDosMinimos = minimos.reduce((a, b) => a + b, 0)
+  if (somaDosMinimos > total) return pesos
+  const noMinimo = columns.map(() => false)
+  for (;;) {
+    const livre = total - minimos.reduce((s, m, i) => s + (noMinimo[i] ? m : 0), 0)
+    const somaDosPesos = pesos.reduce((s, p, i) => s + (noMinimo[i] ? 0 : p), 0)
+    if (somaDosPesos <= 0) break
+    const larguras = pesos.map((p, i) => (noMinimo[i] ? minimos[i] : (p / somaDosPesos) * livre))
+    const estreitas = larguras.map((l, i) => !noMinimo[i] && l < minimos[i])
+    if (!estreitas.some(Boolean)) return larguras.map(l => l / total)
+    estreitas.forEach((e, i) => { if (e) noMinimo[i] = true })
+  }
+  // Todas no mínimo: a sobra vai para elas, na proporção do mínimo.
+  return minimos.map(m => m / somaDosMinimos)
 }
 
 /**
@@ -177,7 +326,9 @@ const ALINHA_DIREITA = new Set(['number', 'money'])
 
 export function RelatorioJsonDocument({ data, geradoEm }: { data: RelatorioJson; geradoEm: string }) {
   const { orientation, fontSize } = layoutDoPdf(data.columns.length)
-  const largura = largurasDasColunas(data.columns)
+  const fracoes = fracoesDasColunas(data.columns, data.rows, { orientation, fontSize })
+  const largura = fracoes.map(emPorcento)
+  const quebras = quebrasDasColunas(fracoes, orientation, fontSize)
   const modeloEFiltros = linhaDoModeloEFiltros(data)
   // Coluna de assinatura (tipo "blank"): a linha precisa de altura para assinar.
   const comAssinatura = data.columns.some(c => c.type === 'blank')
@@ -204,6 +355,7 @@ export function RelatorioJsonDocument({ data, geradoEm }: { data: RelatorioJson;
                 <Text
                   key={c.key}
                   style={[styles.celulaCabecalho, { width: largura[i], fontSize }, ALINHA_DIREITA.has(c.type) ? { textAlign: 'right' } : {}]}
+                  hyphenationCallback={quebras[i].cabecalho}
                 >
                   {c.label}
                 </Text>
@@ -215,6 +367,7 @@ export function RelatorioJsonDocument({ data, geradoEm }: { data: RelatorioJson;
                   <Text
                     key={c.key}
                     style={[styles.celula, { width: largura[i] }, ALINHA_DIREITA.has(c.type) ? { textAlign: 'right' } : {}]}
+                    hyphenationCallback={quebras[i].linha}
                   >
                     {linha[i] ?? ''}
                   </Text>
