@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { parseCsv, parseCsvSections, pdfColumns, pesoDaColuna } from '@/lib/csv-parse'
+import { COLUNAS_DO_NOME, parseCsv, parseCsvSections, pdfColumns, pesoDaColuna } from '@/lib/csv-parse'
 
 // O backend gera: BOM, separador ";", CRLF e toda célula entre aspas.
 const csv = (linhas: string[]) => `\ufeff${linhas.join('\r\n')}\r\n`
@@ -124,6 +124,18 @@ describe('pdfColumns', () => {
     expect(pdfColumns(header, ['Sumiu'])).toEqual(pdfColumns(header))
     expect(pdfColumns(header, [])).toEqual(pdfColumns(header))
   })
+
+  it('o nome do registro da fonte (`COLUNAS_DO_NOME`) entra junto, na ordem da planilha (SR-111)', () => {
+    const cursos = ['Curso', 'Nº do evento', 'Status', 'Início', 'Término', 'Descrição', 'Criado em']
+    expect(pdfColumns(cursos).map(i => cursos[i])).toEqual(['Nº do evento', 'Início', 'Descrição'])
+    expect(pdfColumns(cursos, undefined, COLUNAS_DO_NOME.courses).map(i => cursos[i]))
+      .toEqual(['Curso', 'Nº do evento', 'Início', 'Descrição'])
+    const propriedades = ['Propriedade', 'Matrícula', 'Dono', 'Nome do dono', 'CPF/CNPJ', 'Rua', 'Cidade', 'UF']
+    expect(pdfColumns(propriedades, undefined, COLUNAS_DO_NOME.properties).map(i => propriedades[i]))
+      .toEqual(['Propriedade', 'Matrícula', 'Nome do dono', 'Cidade'])
+    // Os rótulos pedidos (PDF do CSV acima do limite) continuam valendo sozinhos.
+    expect(pdfColumns(propriedades, ['Cidade'], COLUNAS_DO_NOME.properties)).toEqual([6])
+  })
 })
 
 describe('pesoDaColuna', () => {
@@ -132,6 +144,10 @@ describe('pesoDaColuna', () => {
     expect(pesoDaColuna('Nome')).toBeGreaterThan(pesoDaColuna('CPF'))
     expect(pesoDaColuna('Razão social')).toBeGreaterThan(pesoDaColuna('CNPJ'))
     expect(pesoDaColuna('E-mail')).toBeGreaterThan(pesoDaColuna('Telefone'))
+    // O nome do curso, da propriedade e do dono pesam como "Nome" (o PDF do CSV acima do limite).
+    expect(pesoDaColuna('Curso')).toBe(pesoDaColuna('Nome'))
+    expect(pesoDaColuna('Propriedade')).toBe(pesoDaColuna('Nome'))
+    expect(pesoDaColuna('Nome do dono')).toBe(pesoDaColuna('Nome'))
   })
 
   it('coluna desconhecida fica no meio termo', () => {

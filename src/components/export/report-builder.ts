@@ -10,7 +10,7 @@ import {
 } from '@/lib/user-form-options'
 import { MEMBER_STATUS, MEMBER_TYPES } from '@/lib/member-types'
 import { COURSE_VIEW_LABEL } from '@/lib/course-views'
-import { pdfColumns } from '@/lib/csv-parse'
+import { COLUNAS_DO_NOME, pdfColumns } from '@/lib/csv-parse'
 
 // ---------------------------------------------------------------------------
 // Contrato do catálogo (decisão 006, seção 3)
@@ -286,16 +286,18 @@ export function caminhoDoPdfRapido(
 /**
  * As colunas do PDF rápido do menu ("Relatório em PDF › Todos"): as mesmas que
  * ele mostrava quando era montado do CSV, escolhidas do Padrão pelos nomes
- * preferidos de `pdfColumns` (até 7, na ordem do Padrão). Vão como `fields`, e a
- * API devolve o JSON do PDF e registra na auditoria que saiu um PDF e com quais
- * campos. Campo do Padrão sem permissão fica de fora (a API recusaria).
+ * preferidos de `pdfColumns` (até 7, na ordem do Padrão), mais o nome do
+ * registro onde a coluna não se chama "Nome" (o curso; a propriedade e o dono:
+ * `COLUNAS_DO_NOME`, SR-111). Vão como `fields`, e a API devolve o JSON do PDF e
+ * registra na auditoria que saiu um PDF e com quais campos. Campo do Padrão sem
+ * permissão fica de fora (a API recusaria).
  */
 export function camposDoResumo(catalog: ExportCatalog): string[] {
   const mapa = camposDoCatalogo(catalog)
   const padrao = catalog.padrao
     .map(k => mapa.get(k))
     .filter((c): c is CampoComGrupo => !!c && c.allowed)
-  return pdfColumns(padrao.map(c => c.label)).map(i => padrao[i].key)
+  return pdfColumns(padrao.map(c => c.label), undefined, COLUNAS_DO_NOME[catalog.dataset]).map(i => padrao[i].key)
 }
 
 export type CamposLimpos = {

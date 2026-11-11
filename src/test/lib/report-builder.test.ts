@@ -423,6 +423,51 @@ describe('PDF rápido do menu: as colunas de sempre (SR-101)', () => {
     })!
     expect(camposDoResumo(c)).toEqual(['k0', 'k1', 'k2', 'k3', 'k4', 'k5', 'k6'])
   })
+
+  /** Catálogo com o Padrão da API, na ordem dela (chave e rótulo). */
+  function catalogoDe(dataset: string, padrao: [string, string][]) {
+    return lerCatalogo({
+      dataset,
+      groups: [{ name: 'G', fields: padrao.map(([key, label]) => ({ key, label })) }],
+      padrao: padrao.map(([key]) => key),
+    })!
+  }
+
+  it('Cursos e Propriedades levam o nome do registro, em pé (até 5 colunas) (SR-111)', () => {
+    // O Padrão de cada fonte, como a API manda (back 123334f).
+    const cursos = catalogoDe('courses', [
+      ['name', 'Curso'], ['eventNumber', 'Nº do evento'], ['status', 'Status'], ['startTime', 'Início'],
+      ['endTime', 'Término'], ['registrationDeadline', 'Inscrições até'], ['room', 'Sala'],
+      ['roomCapacity', 'Capacidade da sala'], ['instructors', 'Instrutores'], ['workloadHours', 'Carga horária (h)'],
+      ['price', 'Valor (R$)'], ['minStudents', 'Mínimo de alunos'], ['enrolled', 'Inscritos'],
+      ['confirmedCount', 'Confirmados'], ['preEnrolled', 'Pré-inscritos'], ['waitlist', 'Lista de espera'],
+      ['description', 'Descrição'], ['observations', 'Observações'], ['createdAt', 'Criado em'],
+    ])
+    expect(camposDoResumo(cursos)).toEqual(['name', 'eventNumber', 'startTime', 'description'])
+    expect(pdfRapido(cursos)?.rotulos).toEqual(['Curso', 'Nº do evento', 'Início', 'Descrição'])
+
+    const propriedades = catalogoDe('properties', [
+      ['name', 'Propriedade'], ['registration', 'Matrícula'], ['ownerKind', 'Dono'], ['ownerName', 'Nome do dono'],
+      ['ownerDocument', 'CPF/CNPJ'], ['isPrimary', 'Principal'], ['addressType', 'Tipo'], ['addressStreet', 'Rua'],
+      ['addressNumber', 'Número'], ['addressComplement', 'Complemento'], ['addressNeighborhood', 'Bairro'],
+      ['addressLocality', 'Localidade'], ['addressRoad', 'Estrada'], ['addressKm', 'Km'], ['addressLot', 'Lote'],
+      ['addressSection', 'Seção'], ['addressCity', 'Cidade'], ['addressState', 'UF'], ['addressZipCode', 'CEP'],
+      ['addressNotes', 'Observações do endereço'], ['createdAt', 'Cadastrada em'],
+    ])
+    expect(camposDoResumo(propriedades)).toEqual(['name', 'registration', 'ownerName', 'addressCity'])
+    // Acima de 2.000 linhas o PDF sai do CSV com os mesmos rótulos.
+    expect(caminhoDoPdfRapido('properties', propriedades, 2001)).toEqual({
+      via: 'csv', colunasDoPdf: ['Propriedade', 'Matrícula', 'Nome do dono', 'Cidade'],
+    })
+  })
+
+  it('"Curso" só entra no PDF de Cursos: nas inscrições o PDF já é de um curso só', () => {
+    const inscricoes = catalogoDe('registrations', [
+      ['course', 'Curso'], ['eventNumber', 'Nº do evento'], ['courseStart', 'Início do curso'], ['name', 'Nome'],
+      ['cpf', 'CPF'], ['email', 'E-mail'], ['phone', 'Telefone'],
+    ])
+    expect(camposDoResumo(inscricoes)).toEqual(['eventNumber', 'name', 'cpf', 'email', 'phone'])
+  })
 })
 
 describe('fase 2, parte B: período, Financeiro e Auditoria (SR-103)', () => {
