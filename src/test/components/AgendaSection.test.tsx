@@ -82,6 +82,7 @@ vi.mock('@/components/export/MontadorDeFontes', () => ({
 const { AgendaSection } = await import('@/components/agenda/AgendaSection')
 const { ApiError } = await import('@/lib/api')
 const { toast } = await import('sonner')
+const { downloadExport } = await import('@/lib/export')
 
 function renderSection(props: Partial<Parameters<typeof AgendaSection>[0]> = {}) {
   const onOpenCourse = vi.fn()
@@ -228,6 +229,14 @@ describe('AgendaSection', () => {
     await userEvent.click(screen.getByRole('button', { name: /Exportar/ }))
     await userEvent.click(await screen.findByRole('menuitem', { name: 'Montar relatório…' }))
     expect(screen.getByRole('dialog', { name: 'Montador das reservas' })).toBeInTheDocument()
+  })
+
+  it('a planilha avisa quantas reservas baixou, com ponto de milhar (SR-111)', async () => {
+    vi.mocked(downloadExport).mockResolvedValueOnce(2500)
+    renderSection()
+    await userEvent.click(screen.getByRole('button', { name: /Exportar/ }))
+    await userEvent.click(await screen.findByRole('menuitem', { name: 'Este dia (05/10/2026)' }))
+    await waitFor(() => expect(toast.success).toHaveBeenCalledWith('Planilha com 2.500 reservas baixada.'))
   })
 
   it('na semana, o montador leva a semana inteira', () => {

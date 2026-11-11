@@ -169,7 +169,8 @@ export function AgendaSection({
         type: bookingType,
         search: search || undefined,
       })
-      toast.success(count === 1 ? 'Planilha com 1 reserva baixada.' : count >= 0 ? `Planilha com ${count} reservas baixada.` : 'Planilha baixada.')
+      toast.success(count === 1 ? 'Planilha com 1 reserva baixada.'
+        : count >= 0 ? `Planilha com ${count.toLocaleString('pt-BR')} reservas baixada.` : 'Planilha baixada.')
     } catch (err) {
       toast.error(apiErrorMessage(err, 'Erro ao exportar.'))
     }
