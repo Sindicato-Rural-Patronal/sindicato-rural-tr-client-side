@@ -25,8 +25,9 @@ As outras listas (Empresas, Administradores, Unimed, Cursos, Mensagens,
 Auditoria, agenda e Financeiro) continuam só com a planilha de sempre. O
 montador chega a elas numa próxima atualização.
 
-Com o montador aberto, o **?** ao lado do título abre este artigo. O montador
-fecha, e o que você mexeu sem baixar não fica guardado.
+Com o montador aberto, o **?** ao lado do título abre este artigo em outra aba
+do navegador. O montador continua aberto na aba do painel, com o que você já
+montou.
 
 ## Antes de começar
 
