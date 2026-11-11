@@ -18,8 +18,8 @@ import { maskCPF, maskPhone } from '@/utils/masks'
 import { whatsappUrl, telHref, uniqueContactLines, phoneKey } from '@/lib/contact-links'
 import { copyText } from '@/lib/copy-text'
 import { cn } from '@/lib/utils'
-import { downloadExport } from '@/lib/export'
-import { CheckCheck, CheckCircle2, CircleCheckBig, Circle, ClipboardList, Eye, FileDown, FileSpreadsheet, Loader2, Mail, Paperclip, Phone, PlayCircle, UserCheck, UserPlus, UserRoundCheck, UserRoundX, UserX, X } from 'lucide-react'
+import { ExportMenu } from '@/components/export/ExportMenu'
+import { CheckCheck, CheckCircle2, CircleCheckBig, Circle, ClipboardList, Eye, FileDown, Loader2, Mail, Paperclip, Phone, PlayCircle, UserCheck, UserPlus, UserRoundCheck, UserRoundX, UserX, X } from 'lucide-react'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
@@ -179,7 +179,6 @@ export function RegistrationsTab({
   const [copying, setCopying] = useState<'phones' | 'emails' | null>(null)
   const [fichaId, setFichaId] = useState<string | null>(null)
   const [exportingAll, setExportingAll] = useState(false)
-  const [exportingCsv, setExportingCsv] = useState(false)
   const [startOpen, setStartOpen] = useState(false)
   const setAttendance = useSetRegistrationAttendance(courseId)
   const markAllPresent = useMarkUnmarkedAttendance(courseId)
@@ -422,20 +421,6 @@ export function RegistrationsTab({
     }
   }
 
-  // Planilha das inscrições gerada no servidor (/admin/export/registrations).
-  async function exportCsv() {
-    setExportingCsv(true)
-    try {
-      const count = await downloadExport('registrations', { courseIds: [courseId] })
-      toast.success(count === 1 ? 'Planilha com 1 inscrição baixada.' : count >= 0 ? `Planilha com ${count} inscrições baixada.` : 'Planilha baixada.')
-    } catch (e) {
-      toast.error(apiErrorMessage(e, 'Erro ao exportar planilha.'))
-    } finally {
-      setExportingCsv(false)
-    }
-  }
-
-
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-col gap-2">
@@ -501,10 +486,16 @@ export function RegistrationsTab({
               {exportingAll ? <Loader2 className="size-3.5 animate-spin" /> : <FileDown className="size-3.5" />}
               {t('admin.courses.exportAllFichas')}
             </Button>
-            <Button size="sm" variant="outline" className="h-8 gap-1.5" disabled={exportingCsv} onClick={exportCsv} title="Exportar inscrições (CSV)">
-              {exportingCsv ? <Loader2 className="size-3.5 animate-spin" /> : <FileSpreadsheet className="size-3.5" />}
-              Planilha
-            </Button>
+            {/* Planilha (CSV ou PDF) das inscrições, gerada no servidor; com o
+                catálogo, também "Montar relatório…" (decisão 006). */}
+            <ExportMenu
+              dataset="registrations"
+              label="Planilha"
+              size="sm"
+              className="h-8 gap-1.5"
+              filters={{ courseIds: [courseId] }}
+              total={total}
+            />
             <Button size="sm" variant="outline" className="h-8 gap-1.5" disabled={exportingLista} onClick={downloadListaPresenca} title="Lista de presença para imprimir (inscrições confirmadas)">
               {exportingLista ? <Loader2 className="size-3.5 animate-spin" /> : <ClipboardList className="size-3.5" />}
               Lista de presença
