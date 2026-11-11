@@ -78,9 +78,12 @@ function RowAction({ label, className, motivo, ...props }: { label: string; moti
             />
           </span>
         </TooltipTrigger>
+        {/* Duas linhas: o que o botão faz e por que está desligado. */}
         <TooltipContent>
-          <span className="block">{label}</span>
-          <span className="block">{motivo}</span>
+          <span className="flex flex-col">
+            <span>{label}</span>
+            <span>{motivo}</span>
+          </span>
         </TooltipContent>
       </Tooltip>
     )
