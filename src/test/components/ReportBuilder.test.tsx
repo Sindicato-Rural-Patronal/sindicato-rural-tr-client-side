@@ -2,9 +2,10 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import type { ReactNode } from 'react'
 import { render, screen, within, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { ApiError } from '@/lib/api'
 import { RelatorioVazioError } from '@/lib/export'
-import { catalogoInscricoes, catalogoPessoas } from '../lib/export-catalog.fixture'
+import { catalogoInscricoes, catalogoPessoas, modeloDaEquipeCru } from '../lib/export-catalog.fixture'
 import type { ReportBuilderProps } from '@/components/export/ReportBuilder'
 import '@/i18n'
 
@@ -19,6 +20,12 @@ vi.mock('@/lib/export', async importOriginal => ({
   ...(await importOriginal<typeof import('@/lib/export')>()),
   exportarRelatorio: (...args: unknown[]) => exportarRelatorio(...args),
 }))
+// A API dos modelos da equipe (fase 3, SR-114): a lista e salvar/mudar/excluir.
+const apiFetch = vi.fn()
+vi.mock('@/lib/api', async importOriginal => ({
+  ...(await importOriginal<typeof import('@/lib/api')>()),
+  apiFetch: (...args: unknown[]) => apiFetch(...args),
+}))
 // O "?" da Ajuda é um Link do roteador.
 vi.mock('@tanstack/react-router', () => ({
   Link: ({ children, to, search, ...props }: { children: ReactNode; to: string; search?: { topico?: string } }) =>
@@ -30,19 +37,66 @@ const { ReportBuilder } = await import('@/components/export/ReportBuilder')
 const onOpenChange = vi.fn()
 
 function abrir(over: Partial<ReportBuilderProps> = {}) {
+  const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(
-    <ReportBuilder
-      open
-      onOpenChange={onOpenChange}
-      dataset="people"
-      catalog={catalogoPessoas()}
-      filters={{ search: 'silva', activeMember: true }}
-      selectedIds={[]}
-      total={123}
-      filtered
-      {...over}
-    />,
+    <QueryClientProvider client={qc}>
+      <ReportBuilder
+        open
+        onOpenChange={onOpenChange}
+        dataset="people"
+        catalog={catalogoPessoas()}
+        filters={{ search: 'silva', activeMember: true }}
+        selectedIds={[]}
+        total={123}
+        filtered
+        {...over}
+      />
+    </QueryClientProvider>,
   )
+}
+
+/** Resposta do `apiFetch` com corpo JSON. */
+function json(data: unknown) {
+  return Promise.resolve({ json: () => Promise.resolve(data) })
+}
+
+type Pedido = { metodo: string; path: string; body: Record<string, unknown> | null }
+
+type ModeloCru = { id: string; name: string } & Record<string, unknown>
+
+/**
+ * A API dos modelos, como o servidor: `lista` responde o GET (ou um erro), e
+ * `mudanca` responde POST, PATCH e DELETE. O que der certo muda a lista (o
+ * montador pede a lista de novo depois de salvar). Devolve os pedidos que
+ * mudam algo, na ordem.
+ */
+function simularModelos(
+  lista: ModeloCru[] | Error = [],
+  mudanca: (p: Pedido) => Promise<unknown> = () => Promise.reject(new Error('inesperado')),
+): Pedido[] {
+  const pedidos: Pedido[] = []
+  let atual = lista
+  apiFetch.mockImplementation(async (path: string, init?: RequestInit) => {
+    const metodo = init?.method ?? 'GET'
+    if (!path.startsWith('/admin/report-templates/')) throw new Error(`inesperado: ${path}`)
+    if (metodo === 'GET') {
+      if (atual instanceof Error) throw atual
+      return json(atual)
+    }
+    const pedido = { metodo, path, body: init?.body ? JSON.parse(init.body as string) : null }
+    pedidos.push(pedido)
+    const resposta = await mudanca(pedido)
+    if (Array.isArray(atual)) {
+      const id = path.split('/')[4]
+      if (metodo === 'DELETE') atual = atual.filter(t => t.id !== id)
+      else {
+        const modelo = await (resposta as { json: () => Promise<ModeloCru> }).json()
+        atual = [...atual.filter(t => t.id !== modelo.id), modelo]
+      }
+    }
+    return resposta
+  })
+  return pedidos
 }
 
 /** Rótulos das colunas escolhidas, na ordem. */
@@ -62,6 +116,7 @@ beforeEach(() => {
   localStorage.clear()
   celular = false
   exportarRelatorio.mockResolvedValue({ count: 123, abriuAba: false })
+  simularModelos()
 })
 
 describe('montador no computador', () => {
@@ -142,7 +197,9 @@ describe('montador no computador', () => {
       'pdf',
       expect.objectContaining({ fields: ['name', 'cpf'], modelo: 'Nome e CPF', print: false, printWindow: null }),
     )
-    expect(JSON.parse(localStorage.getItem('sr:relatorio:people')!)).toEqual({ fields: ['name', 'cpf'], format: 'pdf' })
+    // O modelo aberto vai junto (SR-115), para reabrir com ele.
+    expect(JSON.parse(localStorage.getItem('sr:relatorio:people')!))
+      .toEqual({ fields: ['name', 'cpf'], format: 'pdf', modelo: 'nome-cpf', alterado: false })
     await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false))
   })
 
@@ -161,7 +218,8 @@ describe('montador no computador', () => {
       'people', { search: 'silva', activeMember: true }, 'xlsx',
       expect.objectContaining({ fields: ['name', 'cpf'], modelo: 'Nome e CPF', print: false }),
     )
-    expect(JSON.parse(localStorage.getItem('sr:relatorio:people')!)).toEqual({ fields: ['name', 'cpf'], format: 'xlsx' })
+    expect(JSON.parse(localStorage.getItem('sr:relatorio:people')!))
+      .toEqual({ fields: ['name', 'cpf'], format: 'xlsx', modelo: 'nome-cpf', alterado: false })
     const { toast } = await import('sonner')
     await waitFor(() => expect(toast.success).toHaveBeenCalledWith('Planilha do Excel com 2.500 registros baixada.'))
   })
@@ -417,5 +475,353 @@ describe('montador no celular', () => {
     await userEvent.click(screen.getByRole('checkbox', { name: /Telefone/ }))
     await userEvent.click(screen.getByRole('button', { name: 'Pronto (3 colunas)' }))
     expect(colunas()).toEqual(['name', 'cpf', 'phone'])
+  })
+})
+
+describe('modelos da equipe (fase 3, SR-115)', () => {
+  const modelo = modeloDaEquipeCru
+
+  /** As opções do seletor, na ordem, com o grupo de cada uma ("grupo|nome"). */
+  function opcoesDoSeletor() {
+    return within(screen.getByLabelText('Modelo')).getAllByRole('option')
+      .filter(o => !(o as HTMLOptionElement).disabled)
+      .map(o => `${(o.parentElement as HTMLOptGroupElement).label ?? ''}|${o.textContent}`)
+  }
+
+  async function abrirModeloDaEquipe(nome = 'Telefones da equipe') {
+    await userEvent.selectOptions(screen.getByLabelText('Modelo'), await screen.findByRole('option', { name: nome }))
+  }
+
+  it('o seletor tem o grupo "Modelos da equipe" depois dos de fábrica, com o Padrão primeiro', async () => {
+    simularModelos([modelo({ id: 't2', name: 'Aniversariantes' }), modelo()])
+    abrir()
+    expect(await screen.findByRole('option', { name: 'Telefones da equipe' })).toBeInTheDocument()
+    expect(opcoesDoSeletor()).toEqual([
+      'Modelos de fábrica|Padrão (como hoje)',
+      'Modelos de fábrica|Nome e CPF',
+      'Modelos de fábrica|Nome e e-mail',
+      'Modelos de fábrica|Lista de presença',
+      'Modelos de fábrica|Com campo que sumiu',
+      'Modelos da equipe|Aniversariantes',
+      'Modelos da equipe|Telefones da equipe',
+    ])
+    expect(apiFetch).toHaveBeenCalledWith('/admin/report-templates/people')
+  })
+
+  it('sem modelo da equipe, o seletor fica como antes, sem grupos', async () => {
+    abrir()
+    await waitFor(() => expect(apiFetch).toHaveBeenCalledWith('/admin/report-templates/people'))
+    expect(screen.queryByRole('group', { name: 'Modelos da equipe' })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Salvar como modelo…' })).toBeInTheDocument()
+  })
+
+  it('com o montador fechado a lista não é buscada', () => {
+    abrir({ open: false })
+    expect(apiFetch).not.toHaveBeenCalled()
+  })
+
+  it('abrir um modelo da equipe aplica as colunas e o formato, e diz quem criou e quem editou', async () => {
+    simularModelos([modelo({ updatedBy: { id: 'a2', username: 'bali' }, updatedAt: '2026-11-11T22:30:00.000Z' })])
+    abrir()
+    await abrirModeloDaEquipe()
+    expect(colunas()).toEqual(['name', 'phone'])
+    expect(screen.getByRole('radio', { name: 'PDF' })).toBeChecked()
+    // 22h30 em UTC ainda é dia 11 em Brasília.
+    expect(screen.getByText('Modelo da equipe, criado por gestor em 10/11/2026 e editado por bali em 11/11/2026.'))
+      .toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Renomear o modelo "Telefones da equipe"' })).toBeEnabled()
+    expect(screen.getByRole('button', { name: 'Excluir o modelo "Telefones da equipe"' })).toBeEnabled()
+    // Sem mudança, não oferece salvar por cima.
+    expect(screen.queryByRole('button', { name: 'Salvar alterações no modelo' })).not.toBeInTheDocument()
+  })
+
+  it('campo sem permissão sai com aviso, e renomear e excluir ficam desligados com o motivo', async () => {
+    simularModelos([modelo({ fields: ['name', 'rg', 'phone'] })])
+    abrir()
+    await abrirModeloDaEquipe()
+    expect(colunas()).toEqual(['name', 'phone'])
+    expect(screen.getByText(/Ficaram de fora campos do modelo que você não pode exportar: RG\./)).toBeInTheDocument()
+    // O que saiu por permissão não conta como mudança: é o modelo possível.
+    expect(screen.getByLabelText('Modelo')).toHaveValue('equipe:t1')
+    const motivo = 'Você não pode mudar nem excluir este modelo, porque ele tem campos que você não pode exportar: RG.'
+    expect(screen.getByText(motivo)).toBeInTheDocument()
+    const renomear = screen.getByRole('button', { name: 'Renomear o modelo "Telefones da equipe"' })
+    expect(renomear).toBeDisabled()
+    expect(renomear.parentElement).toHaveAttribute('title', motivo)
+    expect(screen.getByRole('button', { name: 'Excluir o modelo "Telefones da equipe"' })).toBeDisabled()
+    // Nem oferece salvar por cima depois de mexer.
+    await userEvent.click(screen.getByRole('button', { name: 'Tirar Nome' }))
+    expect(screen.queryByRole('button', { name: 'Salvar alterações no modelo' })).not.toBeInTheDocument()
+  })
+
+  it('campo que saiu do catálogo: avisa e abre sem ele', async () => {
+    simularModelos([modelo({ fields: ['name'], missingFields: ['campoAntigo'] })])
+    abrir()
+    await abrirModeloDaEquipe()
+    expect(colunas()).toEqual(['name'])
+    expect(screen.getByText(/1 campo do modelo não existe mais e saiu\./)).toBeInTheDocument()
+    expect(screen.getByLabelText('Modelo')).toHaveValue('equipe:t1')
+  })
+
+  it('mexer mostra "(alterado)" e oferece salvar por cima, que manda as colunas e o formato', async () => {
+    const pedidos = simularModelos([modelo()], p => json(modelo({
+      fields: p.body!.fields, format: p.body!.format, updatedBy: { id: 'a2', username: 'bali' },
+    })))
+    abrir()
+    await abrirModeloDaEquipe()
+    await abrirGrupo('Contato')
+    await userEvent.click(screen.getByRole('checkbox', { name: /E-mail/ }))
+    expect(screen.getByRole('option', { name: 'Telefones da equipe (alterado)' })).toBeInTheDocument()
+
+    await userEvent.click(screen.getByRole('button', { name: 'Salvar alterações no modelo' }))
+    expect(screen.getByText('Salvar no modelo "Telefones da equipe" as colunas e o formato de agora? Ele muda para toda a equipe.'))
+      .toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: 'Salvar no modelo' }))
+
+    expect(pedidos).toEqual([{
+      metodo: 'PATCH', path: '/admin/report-templates/people/t1', body: { fields: ['name', 'phone', 'email'], format: 'pdf' },
+    }])
+    const { toast } = await import('sonner')
+    await waitFor(() => expect(toast.success).toHaveBeenCalledWith('Modelo "Telefones da equipe" atualizado.'))
+    // A lista guardada já tem o modelo novo: não está mais "(alterado)".
+    await waitFor(() => expect(screen.getByLabelText('Modelo')).toHaveValue('equipe:t1'))
+    expect(screen.queryByRole('button', { name: 'Salvar alterações no modelo' })).not.toBeInTheDocument()
+  })
+
+  it('trocar só o formato também oferece salvar por cima, sem "(alterado)"', async () => {
+    simularModelos([modelo()])
+    abrir()
+    await abrirModeloDaEquipe()
+    await userEvent.click(screen.getByRole('radio', { name: 'Planilha CSV' }))
+    expect(screen.getByLabelText('Modelo')).toHaveValue('equipe:t1')
+    expect(screen.getByRole('button', { name: 'Salvar alterações no modelo' })).toBeInTheDocument()
+    // "Imprimir" é o mesmo PDF do modelo: não conta como mudança.
+    await userEvent.click(screen.getByRole('radio', { name: 'Imprimir' }))
+    expect(screen.queryByRole('button', { name: 'Salvar alterações no modelo' })).not.toBeInTheDocument()
+  })
+
+  it('"Salvar como modelo…" manda o nome, as colunas e o formato, e o modelo novo fica aberto', async () => {
+    const pedidos = simularModelos([], p => json(modelo({
+      id: 'novo', name: p.body!.name, fields: p.body!.fields, format: p.body!.format,
+    })))
+    abrir()
+    await userEvent.selectOptions(screen.getByLabelText('Modelo'), 'nome-cpf')
+    await userEvent.click(screen.getByRole('button', { name: 'Salvar como modelo…' }))
+    expect(screen.getByText('O modelo fica para toda a equipe, com as colunas e o formato de agora.')).toBeInTheDocument()
+    const nome = screen.getByLabelText('Nome do modelo')
+    expect(nome).toHaveFocus()
+    expect(nome).toHaveAttribute('maxLength', '64')
+    await userEvent.type(nome, '  CPFs   da diretoria ')
+    await userEvent.click(screen.getByRole('button', { name: 'Salvar modelo' }))
+
+    expect(pedidos).toEqual([{
+      metodo: 'POST', path: '/admin/report-templates/people',
+      body: { name: 'CPFs da diretoria', fields: ['name', 'cpf'], format: 'csv' },
+    }])
+    const { toast } = await import('sonner')
+    await waitFor(() => expect(toast.success).toHaveBeenCalledWith('Modelo "CPFs da diretoria" salvo para a equipe.'))
+    expect(screen.getByLabelText('Modelo')).toHaveValue('equipe:novo')
+    expect(screen.getByRole('group', { name: 'Modelos da equipe' })).toBeInTheDocument()
+    expect(screen.queryByLabelText('Nome do modelo')).not.toBeInTheDocument()
+  })
+
+  it('nome vazio não chega à API', async () => {
+    const pedidos = simularModelos()
+    abrir()
+    await userEvent.click(screen.getByRole('button', { name: 'Salvar como modelo…' }))
+    await userEvent.type(screen.getByLabelText('Nome do modelo'), '   ')
+    await userEvent.click(screen.getByRole('button', { name: 'Salvar modelo' }))
+    expect(screen.getByRole('alert')).toHaveTextContent('Informe o nome do modelo.')
+    expect(pedidos).toEqual([])
+  })
+
+  it.each([
+    [409, 'Já existe um modelo da equipe com esse nome.'],
+    [409, 'Já existe um modelo de fábrica com esse nome.'],
+    [409, 'Este relatório já tem 100 modelos da equipe. Exclua um antes de salvar outro.'],
+    [403, 'Sem permissão para exportar: RG.'],
+    [400, 'No máximo 80 campos por relatório.'],
+  ])('o %i da API ao salvar aparece como veio, e o montador continua aberto (%s)', async (status, mensagem) => {
+    simularModelos([], () => Promise.reject(new ApiError(status, mensagem)))
+    abrir()
+    await userEvent.click(screen.getByRole('button', { name: 'Salvar como modelo…' }))
+    await userEvent.type(screen.getByLabelText('Nome do modelo'), 'Nome e CPF')
+    await userEvent.click(screen.getByRole('button', { name: 'Salvar modelo' }))
+    expect(await screen.findByRole('alert')).toHaveTextContent(mensagem)
+    expect(screen.getByLabelText('Nome do modelo')).toHaveValue('Nome e CPF')
+    expect(onOpenChange).not.toHaveBeenCalled()
+  })
+
+  it('Esc com o painel aberto fecha só o painel', async () => {
+    abrir()
+    await userEvent.click(screen.getByRole('button', { name: 'Salvar como modelo…' }))
+    await userEvent.keyboard('{Escape}')
+    expect(screen.queryByLabelText('Nome do modelo')).not.toBeInTheDocument()
+    expect(onOpenChange).not.toHaveBeenCalled()
+    expect(screen.getByRole('dialog', { name: 'Montar relatório · Pessoas' })).toBeInTheDocument()
+  })
+
+  it('renomear manda só o nome', async () => {
+    const pedidos = simularModelos([modelo()], p => json(modelo({ name: p.body!.name })))
+    abrir()
+    await abrirModeloDaEquipe()
+    await userEvent.click(screen.getByRole('button', { name: 'Renomear o modelo "Telefones da equipe"' }))
+    const nome = screen.getByLabelText('Novo nome do modelo')
+    expect(nome).toHaveValue('Telefones da equipe')
+    await userEvent.clear(nome)
+    await userEvent.type(nome, 'Telefones{Enter}')
+    expect(pedidos).toEqual([{ metodo: 'PATCH', path: '/admin/report-templates/people/t1', body: { name: 'Telefones' } }])
+    const { toast } = await import('sonner')
+    await waitFor(() => expect(toast.success).toHaveBeenCalledWith('Modelo renomeado para "Telefones".'))
+    expect(await screen.findByRole('option', { name: 'Telefones' })).toBeInTheDocument()
+  })
+
+  it('renomear com o mesmo nome não chama a API', async () => {
+    const pedidos = simularModelos([modelo()])
+    abrir()
+    await abrirModeloDaEquipe()
+    await userEvent.click(screen.getByRole('button', { name: 'Renomear o modelo "Telefones da equipe"' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Renomear' }))
+    expect(pedidos).toEqual([])
+    expect(screen.queryByLabelText('Novo nome do modelo')).not.toBeInTheDocument()
+  })
+
+  it('excluir pede confirmação sem dizer que é para sempre; as colunas ficam', async () => {
+    const pedidos = simularModelos([modelo()], () => Promise.resolve({ status: 204 }))
+    abrir()
+    await abrirModeloDaEquipe()
+    await userEvent.click(screen.getByRole('button', { name: 'Excluir o modelo "Telefones da equipe"' }))
+    const painel = screen.getByRole('group', { name: 'Excluir o modelo' })
+    const pergunta = within(painel).getByText('Excluir o modelo "Telefones da equipe"? Ele sai da lista de modelos para toda a equipe.')
+    expect(pergunta.textContent).not.toMatch(/sempre|definitiv|desfazer/i)
+    // O foco começa em "Cancelar": excluir pede o clique de propósito.
+    expect(within(painel).getByRole('button', { name: 'Cancelar' })).toHaveFocus()
+    await userEvent.click(within(painel).getByRole('button', { name: 'Excluir modelo' }))
+
+    expect(pedidos).toEqual([{ metodo: 'DELETE', path: '/admin/report-templates/people/t1', body: null }])
+    const { toast } = await import('sonner')
+    await waitFor(() => expect(toast.success).toHaveBeenCalledWith('Modelo "Telefones da equipe" excluído.'))
+    expect(colunas()).toEqual(['name', 'phone'])
+    expect(screen.getByRole('option', { name: 'Montado à mão' })).toBeInTheDocument()
+    expect(screen.queryByRole('option', { name: 'Telefones da equipe' })).not.toBeInTheDocument()
+  })
+
+  it('o 403 de quem não pode mexer no modelo aparece como veio', async () => {
+    simularModelos([modelo()], () => Promise.reject(new ApiError(403, 'Este modelo tem campos que você não pode exportar: RG.')))
+    abrir()
+    await abrirModeloDaEquipe()
+    await userEvent.click(screen.getByRole('button', { name: 'Excluir o modelo "Telefones da equipe"' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Excluir modelo' }))
+    expect(await screen.findByRole('alert')).toHaveTextContent('Este modelo tem campos que você não pode exportar: RG.')
+  })
+
+  it('exportar com o modelo da equipe manda o nome dele, com "(alterado)" se mudou, e lembra o modelo', async () => {
+    simularModelos([modelo()])
+    abrir()
+    await abrirModeloDaEquipe()
+    await userEvent.click(screen.getByRole('button', { name: 'Tirar Telefone' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Baixar PDF (123)' }))
+    expect(exportarRelatorio).toHaveBeenCalledWith(
+      'people', { search: 'silva', activeMember: true }, 'pdf',
+      expect.objectContaining({ fields: ['name'], modelo: 'Telefones da equipe (alterado)' }),
+    )
+    expect(JSON.parse(localStorage.getItem('sr:relatorio:people')!))
+      .toEqual({ fields: ['name'], format: 'pdf', modelo: 'equipe:t1', alterado: true })
+  })
+
+  it('o último usado, sem mexer, reabre o modelo da equipe como ele está agora', async () => {
+    localStorage.setItem('sr:relatorio:people', JSON.stringify({
+      fields: ['name', 'phone'], format: 'csv', modelo: 'equipe:t1', alterado: false,
+    }))
+    // Alguém da equipe pôs o e-mail no modelo depois.
+    simularModelos([modelo({ fields: ['name', 'phone', 'email'] })])
+    abrir()
+    await waitFor(() => expect(colunas()).toEqual(['name', 'phone', 'email']))
+    expect(screen.getByLabelText('Modelo')).toHaveValue('equipe:t1')
+    expect(screen.getByRole('radio', { name: 'Planilha CSV' })).toBeChecked()
+  })
+
+  it('o último usado com mudança reabre as colunas guardadas, como "(alterado)"', async () => {
+    localStorage.setItem('sr:relatorio:people', JSON.stringify({
+      fields: ['phone', 'name'], format: 'pdf', modelo: 'equipe:t1', alterado: true,
+    }))
+    simularModelos([modelo()])
+    abrir()
+    expect(await screen.findByRole('option', { name: 'Telefones da equipe (alterado)' })).toBeInTheDocument()
+    expect(colunas()).toEqual(['phone', 'name'])
+  })
+
+  it('o último usado de um modelo da equipe excluído abre com as colunas guardadas, sem quebrar', async () => {
+    localStorage.setItem('sr:relatorio:people', JSON.stringify({
+      fields: ['phone', 'email'], format: 'pdf', modelo: 'equipe:excluido', alterado: false,
+    }))
+    simularModelos([modelo()])
+    abrir()
+    await screen.findByRole('option', { name: 'Telefones da equipe' })
+    expect(screen.getByRole('option', { name: 'Montado à mão' })).toBeInTheDocument()
+    expect(colunas()).toEqual(['phone', 'email'])
+    expect(screen.getByRole('button', { name: 'Baixar PDF (123)' })).toBeEnabled()
+  })
+
+  it('back velho ou sem a permissão da fonte (404/403): só os de fábrica e nada de salvar', async () => {
+    simularModelos(new ApiError(404, 'Route GET:/admin/report-templates/people not found'))
+    abrir()
+    await waitFor(() => expect(screen.queryByRole('button', { name: 'Salvar como modelo…' })).not.toBeInTheDocument())
+    expect(screen.queryByRole('group', { name: 'Modelos da equipe' })).not.toBeInTheDocument()
+    expect(screen.queryByText(/não carregaram/)).not.toBeInTheDocument()
+  })
+
+  it('a lista que não carrega deixa só os de fábrica e oferece tentar de novo', async () => {
+    simularModelos(new ApiError(500, 'HTTP 500'))
+    abrir()
+    expect(await screen.findByText(/Os modelos da equipe não carregaram\./)).toBeInTheDocument()
+    expect(screen.getByLabelText('Modelo')).toHaveValue('padrao')
+    simularModelos([modelo()])
+    await userEvent.click(screen.getByRole('button', { name: 'Tentar de novo' }))
+    expect(await screen.findByRole('option', { name: 'Telefones da equipe' })).toBeInTheDocument()
+    expect(screen.queryByText(/não carregaram/)).not.toBeInTheDocument()
+  })
+
+  it('inscrições: o modelo da equipe liga "Só confirmadas", e salvar manda o confirmed', async () => {
+    const pedidos = simularModelos(
+      [modelo({ dataset: 'registrations', name: 'Presença', fields: ['ordinal', 'name'], confirmed: true, format: null })],
+      p => json(modelo({
+        id: 'novo', dataset: 'registrations', name: p.body!.name, fields: p.body!.fields, confirmed: p.body!.confirmed,
+      })),
+    )
+    abrir({
+      dataset: 'registrations', catalog: catalogoInscricoes(), selectedIds: undefined,
+      filters: { courseIds: ['c1'] }, total: 12, filtered: false,
+    })
+    await abrirModeloDaEquipe('Presença')
+    const confirmadas = screen.getByRole('checkbox', { name: 'Só confirmadas' })
+    expect(confirmadas).toBeChecked()
+    // Sem formato no modelo, o formato não muda.
+    expect(screen.getByRole('radio', { name: 'Planilha CSV' })).toBeChecked()
+    // Desmarcar "Só confirmadas" é mudança do modelo.
+    await userEvent.click(confirmadas)
+    expect(screen.getByRole('button', { name: 'Salvar alterações no modelo' })).toBeInTheDocument()
+
+    await userEvent.click(screen.getByRole('button', { name: 'Salvar como modelo…' }))
+    expect(screen.getByText('O modelo fica para toda a equipe, com as colunas, o formato e o "Só confirmadas" de agora.'))
+      .toBeInTheDocument()
+    await userEvent.type(screen.getByLabelText('Nome do modelo'), 'Todas as inscrições{Enter}')
+    expect(pedidos[0]).toEqual({
+      metodo: 'POST', path: '/admin/report-templates/registrations',
+      body: { name: 'Todas as inscrições', fields: ['ordinal', 'name'], format: 'csv', confirmed: false },
+    })
+  })
+
+  it('no celular: grupo da equipe, autoria e botões de 44 px', async () => {
+    celular = true
+    simularModelos([modelo()])
+    abrir()
+    await abrirModeloDaEquipe()
+    expect(screen.getByRole('button', { name: 'Salvar como modelo…' })).toHaveClass('h-11')
+    expect(screen.getByRole('button', { name: 'Renomear o modelo "Telefones da equipe"' })).toHaveClass('size-11')
+    expect(screen.getByRole('button', { name: 'Excluir o modelo "Telefones da equipe"' })).toHaveClass('size-11')
+    expect(screen.getByText('Modelo da equipe, criado por gestor em 10/11/2026.')).toBeInTheDocument()
+    // O "Imprimir" não existe no celular: o PDF do modelo fica marcado.
+    expect(screen.getByRole('radio', { name: 'PDF' })).toBeChecked()
   })
 })

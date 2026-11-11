@@ -6,23 +6,30 @@ import {
 } from '@dnd-kit/core'
 import { SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { ArrowDown, ArrowLeft, ArrowUp, GripVertical, Info, Loader2, Plus, ShieldAlert, X } from 'lucide-react'
+import {
+  ArrowDown, ArrowLeft, ArrowUp, GripVertical, Info, Loader2, Pencil, Plus, Save, ShieldAlert, Trash2, X,
+} from 'lucide-react'
 import { AjudaLink } from '@/components/ajuda/AjudaLink'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
 import { Sheet, SheetClose, SheetContent, SheetDescription, SheetTitle } from '@/components/ui/sheet'
 import { useIsMobile } from '@/hooks/use-mobile'
+import { useReportTemplateMutations, useReportTemplates } from '@/hooks/useReportTemplates'
+import { apiErrorMessage } from '@/lib/api-error-message'
 import {
   RelatorioVazioError, exportErrorMessage, exportarRelatorio, type ExportDataset, type ExportParams,
 } from '@/lib/export'
 import { cn } from '@/lib/utils'
 import { PrivacyBadge, ReportFieldPicker } from '@/components/export/ReportFieldPicker'
 import {
-  AVISO_COLUNAS_PDF, TEXTO_NENHUM_REGISTRO, TEXTO_NENHUMA_CONFIRMADA, aplicarModelo, avisoDadosPessoais, avisoDoCorte,
-  camposDoCatalogo, contagem, ehPdf, estadoInicial, filtrosEmPalavras, formatoDaApi, formatoNaTela, guardarUltimo,
-  lerUltimo, marcarCampo, modeloParaApi, modelosDe, moverCampo, moverPara, nomeDoModelo, problemaParaBaixar,
-  quantosVaoSair, textoDoBaixado, textoDoBotao, tirarCampo, totalComCorte,
-  type CampoComGrupo, type ExportCatalog, type ReportFormat, type ReportState,
+  AVISO_COLUNAS_PDF, NOME_DO_MODELO_MAX, TEXTO_NENHUM_REGISTRO, TEXTO_NENHUMA_CONFIRMADA, aplicarModelo, autoriaDoModelo,
+  avisoDadosPessoais, avisoDoCorte, camposDoCatalogo, contagem, corpoDoModelo, ehDaEquipe, ehPdf, estadoInicial,
+  filtrosEmPalavras, formatoNaTela, formatoDaApi, guardarUltimo, idDaEquipe, lerUltimo, marcarCampo, modeloParaApi,
+  modeloQueBate, modelosDe, moverCampo, moverPara, mudouDoModelo, nomeDoModelo, normalizarNome, problemaDoNome,
+  problemaParaBaixar, quantosVaoSair, semModelo, textoDoBaixado, textoDoBotao, tirarCampo, totalComCorte, travaDoModelo,
+  ultimoDoEstado,
+  type CampoComGrupo, type ExportCatalog, type ModeloDaEquipe, type ReportFormat, type ReportState,
 } from '@/components/export/report-builder'
 
 // "Montar relatório" (decisão 006, SR-089). Quem exporta escolhe os campos e a
@@ -37,6 +44,12 @@ import {
 //
 // Só usa o que existe na staging e no redesign (ui/dialog, ui/sheet,
 // ui/button, ui/input, ui/badge, inputs nativos e cores por token).
+//
+// Modelos da equipe (fase 3, SR-115): o seletor tem o grupo "Modelos da
+// equipe" (a lista vem da API com o montador aberto). "Salvar como modelo…",
+// "Salvar alterações no modelo", renomear e excluir abrem um painel embaixo do
+// seletor, dentro do montador: nada de diálogo dentro do diálogo, e as colunas
+// montadas não se perdem.
 
 export type ReportBuilderProps = {
   open: boolean
@@ -91,6 +104,26 @@ function avisosDoLeitor(rotulo: Rotulo, posicao: (id: string | number) => number
 }
 
 type Acao = 'subir' | 'descer' | 'tirar'
+
+/** O painel embaixo do seletor de modelo (um de cada vez). */
+type Painel =
+  | { tipo: 'salvar' | 'renomear'; nome: string }
+  | { tipo: 'atualizar' | 'excluir' }
+
+/** O nome do painel para o leitor de tela. */
+const TITULO_DO_PAINEL: Record<Painel['tipo'], string> = {
+  salvar: 'Salvar como modelo',
+  atualizar: 'Salvar alterações no modelo',
+  renomear: 'Renomear o modelo',
+  excluir: 'Excluir o modelo',
+}
+
+const ERRO_DO_PAINEL: Record<Painel['tipo'], string> = {
+  salvar: 'Não foi possível salvar o modelo. Tente de novo.',
+  atualizar: 'Não foi possível salvar o modelo. Tente de novo.',
+  renomear: 'Não foi possível renomear o modelo. Tente de novo.',
+  excluir: 'Não foi possível excluir o modelo. Tente de novo.',
+}
 
 function LinhaDaColuna({
   campo, posicao, total, grande, onMover, onTirar, alca, refLinha, estilo, arrastando = false,
@@ -181,19 +214,48 @@ export function ReportBuilder({
   const celular = useIsMobile()
   const temSelecao = !escopo && selectedIds !== undefined
   const selecionados = temSelecao ? (selectedIds?.length ?? 0) : 0
+
+  // Os modelos da equipe: buscados só com o montador aberto. `listaConhecida`:
+  // undefined enquanto carrega; null sem a rota ou a permissão (404/403) ou se
+  // não carregou; a lista quando chegou.
+  const listaDaEquipe = useReportTemplates(dataset, { enabled: open })
+  const listaConhecida: ModeloDaEquipe[] | null | undefined = listaDaEquipe.data !== undefined
+    ? listaDaEquipe.data
+    : listaDaEquipe.isError ? null : undefined
+  const equipe = useMemo(() => listaDaEquipe.data ?? [], [listaDaEquipe.data])
+  const operacoes = useReportTemplateMutations(dataset)
+  const enviando = operacoes.salvar.isPending || operacoes.mudar.isPending || operacoes.excluir.isPending
+
+  const [ultimo] = useState(() => lerUltimo(dataset))
   const [estado, setEstado] = useState<ReportState>(
-    () => estadoInicial(catalog, { ultimo: lerUltimo(dataset), selecionados }),
+    () => estadoInicial(catalog, { ultimo, selecionados, equipe: listaConhecida }),
   )
+  // O último apontava para um modelo da equipe e a lista ainda não tinha
+  // chegado: quando ela chega, e se a pessoa ainda não mexeu, o montador abre
+  // de novo com ela (o modelo como está agora, ou as colunas guardadas se ele
+  // foi excluído).
+  const [mexeu, setMexeu] = useState(false)
+  const [listaChegou, setListaChegou] = useState(listaConhecida !== undefined)
+  if (!listaChegou && listaConhecida !== undefined) {
+    setListaChegou(true)
+    if (!mexeu && ehDaEquipe(ultimo?.modelo)) {
+      setEstado(estadoInicial(catalog, { ultimo, selecionados, equipe: listaConhecida }))
+    }
+  }
+
   const [busca, setBusca] = useState('')
   const [tela, setTela] = useState<'colunas' | 'campos'>('colunas')
   const [baixando, setBaixando] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
+  const [painel, setPainel] = useState<Painel | null>(null)
+  const [erroDoPainel, setErroDoPainel] = useState<string | null>(null)
   const listaRef = useRef<HTMLOListElement>(null)
+  const seletorRef = useRef<HTMLSelectElement>(null)
   const focoPendente = useRef<{ key: string; acao: Acao } | null>(null)
   const ids = useId()
 
   const campos = useMemo(() => camposDoCatalogo(catalog), [catalog])
-  const modelos = useMemo(() => modelosDe(catalog), [catalog])
+  const modelos = useMemo(() => modelosDe(catalog, equipe), [catalog, equipe])
   const formato = formatoNaTela(estado.format, celular)
   // O que sai de verdade (a Auditoria corta nas mais recentes); o "Todos" mostra o total da tela.
   const contagens = { total: totalComCorte(total, catalog, cortaNoLimite), selecionados, totalConfirmadas }
@@ -201,16 +263,78 @@ export function ReportBuilder({
   const quantos = quantosVaoSair(estado, contagens)
   const problema = problemaParaBaixar(estado, catalog, { ...contagens, celular })
   const dadosPessoais = avisoDadosPessoais(estado, catalog)
-  const nomeModelo = nomeDoModelo(estado, catalog)
+  const nomeModelo = nomeDoModelo(estado, catalog, equipe)
   const modeloEscolhido = modelos.find(m => m.id === estado.modeloId)
   const alterado = !!modeloEscolhido && nomeModelo !== modeloEscolhido.name
   const filtrosTexto = filtrosEmPalavras(filters, catalog.filterLabels, { textos: filterTexts })
   const muitasColunas = ehPdf(formato) && estado.fields.length >= AVISO_COLUNAS_PDF
   const escolhidos = estado.fields.map(k => campos.get(k)).filter((c): c is CampoComGrupo => !!c)
 
+  // O modelo da equipe aberto: quem criou e mudou, se a pessoa pode mudá-lo e se a tela está diferente dele.
+  const daEquipe = modeloEscolhido?.daEquipe ?? null
+  const trava = daEquipe ? travaDoModelo(catalog, daEquipe) : null
+  const oferecerAtualizar = !!modeloEscolhido && !!daEquipe && !trava && mudouDoModelo(estado, catalog, modeloEscolhido, dataset)
+  // 404/403: a fonte não tem modelos da equipe para quem pede; não há o que salvar.
+  const salvaModelos = listaDaEquipe.data !== null
+  const carregandoModelo = ehDaEquipe(estado.modeloId) && !modeloEscolhido && listaConhecida === undefined
+  const comConfirmadas = dataset === 'registrations'
+
   function mudar(fn: (s: ReportState) => ReportState) {
     setEstado(fn)
     setErro(null)
+    setMexeu(true)
+  }
+
+  function abrirPainel(novo: Painel) {
+    setPainel(novo)
+    setErroDoPainel(null)
+  }
+
+  function fecharPainel() {
+    setPainel(null)
+    setErroDoPainel(null)
+    seletorRef.current?.focus()
+  }
+
+  /** Esc com o painel aberto fecha só o painel; o montador e as colunas ficam. */
+  function fecharSoOPainel(e: KeyboardEvent) {
+    if (!painel) return
+    e.preventDefault()
+    fecharPainel()
+  }
+
+  /** O botão do painel: salva, renomeia, salva por cima ou exclui o modelo da equipe. */
+  async function confirmarPainel() {
+    if (!painel || enviando) return
+    setErroDoPainel(null)
+    try {
+      if (painel.tipo === 'salvar' || painel.tipo === 'renomear') {
+        const motivo = problemaDoNome(painel.nome)
+        if (motivo) { setErroDoPainel(motivo); return }
+        const nome = normalizarNome(painel.nome)
+        if (painel.tipo === 'salvar') {
+          const novo = await operacoes.salvar.mutateAsync({ name: nome, ...corpoDoModelo(estado, dataset) })
+          setEstado(s => ({ ...s, modeloId: idDaEquipe(novo.id), avisos: [] }))
+          toast.success(`Modelo "${novo.name}" salvo para a equipe.`)
+        } else if (daEquipe && nome !== daEquipe.name) {
+          const mudado = await operacoes.mudar.mutateAsync({ id: daEquipe.id, body: { name: nome } })
+          toast.success(`Modelo renomeado para "${mudado.name}".`)
+        }
+      } else if (painel.tipo === 'atualizar' && daEquipe) {
+        const mudado = await operacoes.mudar.mutateAsync({ id: daEquipe.id, body: corpoDoModelo(estado, dataset) })
+        setEstado(s => ({ ...s, avisos: [] }))
+        toast.success(`Modelo "${mudado.name}" atualizado.`)
+      } else if (painel.tipo === 'excluir' && daEquipe) {
+        await operacoes.excluir.mutateAsync(daEquipe.id)
+        // As colunas ficam; o nome passa a ser o de um modelo que bata com elas, ou nenhum.
+        const restantes = semModelo(equipe, daEquipe.id)
+        setEstado(s => ({ ...s, modeloId: modeloQueBate(catalog, s.fields, restantes)?.id ?? null }))
+        toast.success(`Modelo "${daEquipe.name}" excluído.`)
+      }
+      fecharPainel()
+    } catch (e) {
+      setErroDoPainel(apiErrorMessage(e, ERRO_DO_PAINEL[painel.tipo]))
+    }
   }
 
   // Depois de ↑↓ (ou de tirar), o foco continua no mesmo lugar para quem usa o
@@ -280,7 +404,8 @@ export function ReportBuilder({
       const params: ExportParams = estado.scope === 'selected' ? { ids: selectedIds ?? [] } : filters
       const { count, abriuAba } = await exportarRelatorio(dataset, params, formatoDaApi(formato), {
         fields: estado.fields,
-        modelo: modeloParaApi(estado, catalog),
+        // O nome do modelo (de fábrica ou da equipe), com "(alterado)" se mudou: vai para o PDF, o Excel e a auditoria.
+        modelo: modeloParaApi(estado, catalog, equipe),
         confirmed: estado.confirmed,
         print: imprimir,
         printWindow: aba,
@@ -288,7 +413,7 @@ export function ReportBuilder({
         // arquivo vazio, o aviso aparece aqui.
         recusarVazio: true,
       })
-      guardarUltimo(dataset, { fields: estado.fields, format: estado.format })
+      guardarUltimo(dataset, ultimoDoEstado(estado, catalog, equipe))
       toast.success(
         imprimir
           ? abriuAba
@@ -313,23 +438,207 @@ export function ReportBuilder({
 
   // ---- pedaços que as duas telas usam ----
 
-  const seletorDeModelo = (
-    <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-      <label htmlFor={`${ids}-modelo`} className="text-sm text-muted-foreground">Modelo</label>
-      <select
-        id={`${ids}-modelo`}
-        // Alterado (ou montado à mão) mostra o texto à parte, para escolher o
-        // mesmo modelo de novo funcionar (o select não avisa troca para o mesmo valor).
-        value={alterado || !modeloEscolhido ? '' : modeloEscolhido.id}
-        onChange={e => { if (e.target.value) mudar(s => aplicarModelo(s, catalog, e.target.value)) }}
-        className={cn(
-          'min-w-0 flex-1 rounded-lg border border-input bg-background px-2 text-sm text-foreground outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 sm:max-w-xs',
-          celular ? 'h-11' : 'h-8',
-        )}
+  const deFabrica = modelos.filter(m => !m.daEquipe)
+  const modelosDaEquipe = modelos.filter(m => m.daEquipe)
+  const opcao = (m: (typeof modelos)[number]) => <option key={m.id} value={m.id}>{m.name}</option>
+
+  const seletor = (
+    <select
+      id={`${ids}-modelo`}
+      ref={seletorRef}
+      // Alterado (ou montado à mão) mostra o texto à parte, para escolher o
+      // mesmo modelo de novo funcionar (o select não avisa troca para o mesmo valor).
+      value={alterado || !modeloEscolhido ? '' : modeloEscolhido.id}
+      onChange={e => {
+        const id = e.target.value
+        if (!id) return
+        setPainel(null)
+        setErroDoPainel(null)
+        mudar(s => aplicarModelo(s, catalog, id, equipe))
+      }}
+      className={cn(
+        'min-w-0 flex-1 rounded-lg border border-input bg-background px-2 text-sm text-foreground outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 sm:max-w-xs',
+        celular ? 'h-11' : 'h-8',
+      )}
+    >
+      {(alterado || !modeloEscolhido) && (
+        <option value="" disabled>{carregandoModelo ? 'Carregando o modelo…' : (nomeModelo ?? 'Montado à mão')}</option>
+      )}
+      {modelosDaEquipe.length > 0 ? (
+        <>
+          <optgroup label="Modelos de fábrica">{deFabrica.map(opcao)}</optgroup>
+          <optgroup label="Modelos da equipe">{modelosDaEquipe.map(opcao)}</optgroup>
+        </>
+      ) : deFabrica.map(opcao)}
+    </select>
+  )
+
+  // Renomear e excluir: só no modelo da equipe aberto. Com campo que a pessoa
+  // não pode exportar, ficam desligados, com o motivo (a API daria 403).
+  const tamanhoDoBotao = celular ? 'size-11' : 'size-8'
+  const botoesDoModelo = daEquipe && (
+    <span className="flex shrink-0 items-center" title={trava ?? undefined}>
+      <Button
+        type="button" variant="ghost" size="icon" className={tamanhoDoBotao}
+        aria-label={`Renomear o modelo "${daEquipe.name}"`} title={trava ? undefined : 'Renomear'}
+        disabled={!!trava || enviando}
+        onClick={() => abrirPainel({ tipo: 'renomear', nome: daEquipe.name })}
       >
-        {(alterado || !modeloEscolhido) && <option value="" disabled>{nomeModelo ?? 'Montado à mão'}</option>}
-        {modelos.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
-      </select>
+        <Pencil />
+      </Button>
+      <Button
+        type="button" variant="ghost" size="icon" className={tamanhoDoBotao}
+        aria-label={`Excluir o modelo "${daEquipe.name}"`} title={trava ? undefined : 'Excluir'}
+        disabled={!!trava || enviando}
+        onClick={() => abrirPainel({ tipo: 'excluir' })}
+      >
+        <Trash2 />
+      </Button>
+    </span>
+  )
+
+  const botaoSalvarComo = salvaModelos && (
+    <Button
+      type="button" variant="outline" className={cn('gap-1.5', celular ? 'h-11' : 'ml-auto')}
+      disabled={estado.fields.length === 0 || enviando}
+      onClick={() => abrirPainel({ tipo: 'salvar', nome: '' })}
+    >
+      <Save /> Salvar como modelo…
+    </Button>
+  )
+
+  const textoDoPainel = !painel || !daEquipe ? null
+    : painel.tipo === 'atualizar'
+      ? `Salvar no modelo "${daEquipe.name}" as colunas${comConfirmadas ? ', o formato e o "Só confirmadas"' : ' e o formato'} de agora? Ele muda para toda a equipe.`
+      : painel.tipo === 'excluir'
+        ? `Excluir o modelo "${daEquipe.name}"? Ele sai da lista de modelos para toda a equipe.`
+        : null
+
+  const erroNaTela = erroDoPainel && (
+    <p id={`${ids}-erro-modelo`} role="alert" className="text-sm text-destructive">{erroDoPainel}</p>
+  )
+
+  const painelDoModelo = !painel || (painel.tipo !== 'salvar' && !daEquipe) ? null : (
+    <div role="group" aria-label={TITULO_DO_PAINEL[painel.tipo]} className="flex flex-col gap-2 rounded-lg border border-border bg-muted/40 p-3">
+      {painel.tipo === 'salvar' || painel.tipo === 'renomear' ? (
+        <form
+          className="flex flex-col gap-2"
+          onSubmit={e => { e.preventDefault(); void confirmarPainel() }}
+        >
+          <label htmlFor={`${ids}-nome`} className="text-sm font-medium text-foreground">
+            {painel.tipo === 'salvar' ? 'Nome do modelo' : 'Novo nome do modelo'}
+          </label>
+          <div className="flex flex-wrap gap-2">
+            <Input
+              id={`${ids}-nome`}
+              value={painel.nome}
+              maxLength={NOME_DO_MODELO_MAX}
+              autoFocus
+              autoComplete="off"
+              placeholder="Ex.: Telefones dos associados"
+              aria-invalid={erroDoPainel ? true : undefined}
+              aria-describedby={erroDoPainel ? `${ids}-erro-modelo` : undefined}
+              onChange={e => { const nome = e.target.value; setPainel(p => (p && 'nome' in p ? { ...p, nome } : p)) }}
+              className={cn('min-w-0 flex-1 basis-48', celular && 'h-11')}
+            />
+            <div className="flex gap-2">
+              <Button type="submit" className={cn('gap-2', celular && 'h-11')} disabled={enviando}>
+                {enviando && <Loader2 className="size-4 animate-spin" aria-hidden />}
+                {painel.tipo === 'salvar' ? 'Salvar modelo' : 'Renomear'}
+              </Button>
+              <Button type="button" variant="outline" className={cn(celular && 'h-11')} onClick={fecharPainel}>Cancelar</Button>
+            </div>
+          </div>
+          {painel.tipo === 'salvar' && (
+            <p className="text-xs text-muted-foreground">
+              {comConfirmadas
+                ? 'O modelo fica para toda a equipe, com as colunas, o formato e o "Só confirmadas" de agora.'
+                : 'O modelo fica para toda a equipe, com as colunas e o formato de agora.'}
+            </p>
+          )}
+          {erroNaTela}
+        </form>
+      ) : (
+        <>
+          <p className="text-sm text-foreground">{textoDoPainel}</p>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              type="button"
+              variant={painel.tipo === 'excluir' ? 'destructive' : 'default'}
+              className={cn('gap-2', celular && 'h-11')}
+              disabled={enviando}
+              autoFocus={painel.tipo === 'atualizar'}
+              onClick={() => void confirmarPainel()}
+            >
+              {enviando && <Loader2 className="size-4 animate-spin" aria-hidden />}
+              {painel.tipo === 'excluir' ? 'Excluir modelo' : 'Salvar no modelo'}
+            </Button>
+            <Button
+              type="button" variant="outline" className={cn(celular && 'h-11')}
+              autoFocus={painel.tipo === 'excluir'}
+              onClick={fecharPainel}
+            >
+              Cancelar
+            </Button>
+          </div>
+          {erroNaTela}
+        </>
+      )}
+    </div>
+  )
+
+  const seletorDeModelo = (
+    <div className="flex flex-col gap-2">
+      {celular ? (
+        <>
+          <div className="flex items-center gap-2">
+            <label htmlFor={`${ids}-modelo`} className="text-sm text-muted-foreground">Modelo</label>
+            {seletor}
+          </div>
+          {(botaoSalvarComo || botoesDoModelo) && (
+            <div className="flex flex-wrap items-center gap-1">
+              {botaoSalvarComo}
+              {botoesDoModelo}
+            </div>
+          )}
+        </>
+      ) : (
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+          <label htmlFor={`${ids}-modelo`} className="text-sm text-muted-foreground">Modelo</label>
+          {seletor}
+          {botoesDoModelo}
+          {botaoSalvarComo}
+        </div>
+      )}
+      {daEquipe && (
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+          <p className="min-w-0 flex-1 text-xs text-muted-foreground">{autoriaDoModelo(daEquipe)}</p>
+          {oferecerAtualizar && painel?.tipo !== 'atualizar' && (
+            <Button
+              type="button" variant="outline" size={celular ? 'default' : 'sm'} className={cn('gap-1.5', celular && 'h-11')}
+              disabled={enviando}
+              onClick={() => abrirPainel({ tipo: 'atualizar' })}
+            >
+              <Save /> Salvar alterações no modelo
+            </Button>
+          )}
+        </div>
+      )}
+      {trava && <p className="text-xs text-muted-foreground">{trava}</p>}
+      {listaDaEquipe.isError && listaDaEquipe.data === undefined && (
+        <p className="flex flex-wrap items-center gap-x-2 text-xs text-muted-foreground">
+          Os modelos da equipe não carregaram.
+          <Button
+            type="button" variant="link" size="sm" className="h-auto p-0 text-xs"
+            onClick={() => void listaDaEquipe.refetch()}
+          >
+            Tentar de novo
+          </Button>
+        </p>
+      )}
+      {painelDoModelo}
+      {/* Sem o painel (o modelo sumiu da lista: 404 de quem excluiu antes), o erro fica aqui. */}
+      {!painelDoModelo && erroNaTela}
     </div>
   )
 
@@ -491,7 +800,10 @@ export function ReportBuilder({
       <Sheet open={open} onOpenChange={onOpenChange}>
         {/* A altura vai no mesmo seletor do ui/sheet (data-[side=bottom]:h-auto),
             senão ele ganha: a folha encolhia e a busca pulava enquanto se digitava. */}
-        <SheetContent side="bottom" showCloseButton={false} className="max-h-dvh gap-0 p-0 data-[side=bottom]:h-dvh">
+        <SheetContent
+          side="bottom" showCloseButton={false} className="max-h-dvh gap-0 p-0 data-[side=bottom]:h-dvh"
+          onEscapeKeyDown={fecharSoOPainel}
+        >
           <div className="flex items-center gap-1 border-b border-border px-1 py-1">
             {tela === 'campos' && (
               <Button type="button" variant="ghost" size="icon" className="size-11" aria-label="Voltar às colunas" onClick={() => setTela('colunas')}>
@@ -554,7 +866,7 @@ export function ReportBuilder({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="flex h-[min(760px,92dvh)] flex-col gap-3 sm:max-w-[880px]">
+      <DialogContent className="flex h-[min(760px,92dvh)] flex-col gap-3 sm:max-w-[880px]" onEscapeKeyDown={fecharSoOPainel}>
         <DialogHeader className="pr-8">
           <div className="flex items-center gap-1">
             <DialogTitle>{titulo}</DialogTitle>
