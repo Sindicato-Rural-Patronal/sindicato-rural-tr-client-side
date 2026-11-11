@@ -4,8 +4,8 @@ resumo: Beneficiários do plano de saúde, movimentos e documentos.
 grupo: dia-a-dia
 ordem: 5
 permissao: READ_USER
-veja: usuarios, exportar-planilhas
-busca: unimed plano saude beneficiario cns titular dependente ficha termo contrato movimento
+veja: usuarios, exportar-planilhas, montar-relatorio
+busca: unimed plano saude beneficiario cns titular dependente ficha termo contrato movimento exportar planilha montar relatorio nome cpf e plano
 ---
 
 **Gestão › Unimed** guarda os beneficiários do plano de saúde. É um cadastro de
@@ -31,3 +31,11 @@ Cada linha tem o menu **Ações**, com os rótulos escritos, que baixa em PDF:
 
 Os mesmos documentos estão na aba **Unimed** da ficha da pessoa — é o mesmo
 lugar, visto de dois caminhos.
+
+## Exportar
+
+O botão **Exportar**, no topo, leva os beneficiários da busca, ou só os
+marcados, em planilha ou PDF. No fim do menu, o **Montar relatório…** deixa
+escolher as colunas: o modelo **Nome, CPF e plano** leva só essas três. O
+**Plano** e o **CNS** são dados sensíveis, porque falam de saúde: o montador
+avisa antes de baixar. Veja [Como montar um relatório](?topico=montar-relatorio).

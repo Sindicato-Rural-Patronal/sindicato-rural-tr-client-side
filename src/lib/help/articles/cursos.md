@@ -5,7 +5,7 @@ grupo: dia-a-dia
 ordem: 1
 permissao: READ_COURSE
 veja: como-criar-curso, como-inscrever-alguem, salas-e-agenda, usuarios, exportar-planilhas, montar-relatorio, fotos-e-imagens
-busca: curso aula turma inscricao inscritos aluno presenca lista certificado faep vagas cpf telefone 4 ultimos digitos site nao deixa inscrever apagar campo vazio proximos armazenados aba arquivo sumiu ordem de chegada inscrito em data hora concluido
+busca: curso aula turma inscricao inscritos aluno presenca lista certificado faep vagas cpf telefone 4 ultimos digitos site nao deixa inscrever apagar campo vazio proximos armazenados aba arquivo sumiu ordem de chegada inscrito em data hora concluido exportar planilha montar relatorio calendario ano inscricoes de todos os cursos
 ---
 
 Tudo de curso acontece em **Gestão › Cursos**. A lista mostra cada curso com o
@@ -38,6 +38,28 @@ excluir, para você não mexer num curso que nem está à vista.
 > Se a aba estiver vazia, a tela diz **Nenhum curso próximo** ou **Nenhum curso
 > armazenado**. Isso quer dizer que a aba não tem curso — ele pode estar na
 > outra.
+
+## Exportar a lista
+
+O botão **Exportar**, no topo da lista, leva **a aba aberta, a busca e o Ano**:
+o **Todos (N)** do menu é o mesmo número de cursos que a tela mostra. Com busca
+ou ano, o item vira **Todos com os filtros atuais (N)**. Na aba
+**Armazenados**, a planilha sai do curso mais recente para o mais antigo, como
+a aba. Para levar só alguns cursos, marque-os na lista e use **Selecionados**.
+
+O menu tem também:
+
+- **Inscrições dos cursos selecionados** e **Inscrições de todos os cursos**,
+  em planilha;
+- **Montar relatório…**, para escolher as colunas dos cursos. O modelo
+  **Calendário** leva Curso, Início, Término, Sala e Instrutores;
+- **Montar relatório: inscrições dos cursos selecionados…** e **Montar
+  relatório: inscrições de todos os cursos…**, para escolher as colunas das
+  inscrições.
+
+**Inscrições de todos os cursos** não olha a aba, a busca nem o ano: leva as
+inscrições de todos os cursos. O passo a passo do montador está em
+[Como montar um relatório](?topico=montar-relatorio).
 
 ## Criando um curso
 
@@ -195,4 +217,4 @@ você quer: se o curso não vai mais acontecer, mude a situação para **Rascunh
 |---|---|
 | O curso sumiu da lista | Olhe na aba **Armazenados**. No dia do início, o curso sai de **Próximos** sozinho. Se não estiver lá, tire a busca e o filtro de **Ano** |
 | A aba diz *Nenhum curso próximo* ou *Nenhum curso armazenado* | A aba está vazia, mas o curso pode estar na outra |
-| O botão **Exportar** levou mais cursos do que a aba mostra | A planilha de cursos respeita a busca, mas **não a aba nem o ano**. Para levar só alguns cursos, marque-os e use **Selecionados** |
+| O **Exportar** não levou um curso que eu queria | Ele leva só a aba aberta, com a busca e o ano. Troque de aba ou tire os filtros e exporte de novo, ou marque os cursos e use **Selecionados** |

@@ -4,8 +4,8 @@ resumo: Marcar curso, evento ou reunião nas salas sem bater horário.
 grupo: dia-a-dia
 ordem: 2
 permissao: READ_COURSE
-veja: como-criar-reserva, como-criar-evento, cursos, eventos-no-site, painel-geral
-busca: sala reserva agenda calendario reuniao evento auditorio cozinha ocupacao horario imprimir
+veja: como-criar-reserva, como-criar-evento, cursos, eventos-no-site, painel-geral, montar-relatorio
+busca: sala reserva agenda calendario reuniao evento auditorio cozinha ocupacao horario imprimir exportar planilha montar relatorio este dia esta semana escolher periodo responsavel
 ---
 
 A agenda das salas **não tem tela própria**: ela fica dentro do
@@ -55,8 +55,23 @@ livre.
 - **Dia / Semana** — a semana vai de segunda a domingo
 - **Busca** por título ou responsável — atenção: a busca cobre **eventos e
   reuniões**, não cursos (a própria tela avisa)
-- **Exportar** — CSV do período visível ou de um período escolhido (sem cursos)
+- **Exportar** — a planilha CSV das reservas: **Este dia** ou **Esta semana**
+  (o período da tela), ou **Escolher período…**. Os cursos não entram
 - **Imprimir** — PDF da agenda do dia ou da semana
+
+No fim do menu **Exportar**, o **Montar relatório…** deixa escolher as colunas
+das reservas. Ele leva o período da tela (o dia, em **Dia**, ou a semana, em
+**Semana**), com a sala, o tipo e a busca. Para outro período, mude o dia ou a
+semana na agenda antes de abrir. Alguns detalhes:
+
+- só há o modelo **Padrão (como hoje)**, com as colunas da planilha. **No
+  site** e **Texto no site** ficam fora dele: marque-os em **Campos** se
+  precisar;
+- os cursos também não entram, só os eventos e as reuniões;
+- o montador avisa *Leva dados pessoais: Responsável.*, porque o responsável
+  é uma pessoa.
+
+O passo a passo está em [Como montar um relatório](?topico=montar-relatorio).
 
 ## As salas em si
 

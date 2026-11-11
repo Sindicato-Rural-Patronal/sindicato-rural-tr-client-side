@@ -4,8 +4,8 @@ resumo: Lançamentos de caixa com número e recibo, recorrentes, categorias, cai
 grupo: gestao
 ordem: 1
 permissao: READ_FINANCE
-veja: como-registrar-lancamento, como-emitir-recibo, exportar-planilhas, busca-e-filtros, auditoria
-busca: financeiro caixa lancamento entrada saida saldo categoria comprovante recorrente fechamento fechar reabrir mes fechado trava cadeado transferencia relatorio pdf nome razao social fornecedor nome fantasia empenho cnpj cpf coluna buscar planilha pausar reativar ativar visao geral numero n anterior numeracao sequencia automatico proximo salto corrigir ordenar ordem recibo recibos gerar recibo receber pagador despesas
+veja: como-registrar-lancamento, como-emitir-recibo, exportar-planilhas, montar-relatorio, busca-e-filtros, auditoria
+busca: financeiro caixa lancamento entrada saida saldo categoria comprovante recorrente fechamento fechar reabrir mes fechado trava cadeado transferencia relatorio pdf nome razao social fornecedor nome fantasia empenho cnpj cpf coluna buscar planilha pausar reativar ativar visao geral numero n anterior numeracao sequencia automatico proximo salto corrigir ordenar ordem recibo recibos gerar recibo receber pagador despesas exportar exportar csv montar relatorio resumido
 ---
 
 **Financeiro** tem sete abas: **Visão geral**, **Lançamentos**, **Recorrentes**,
@@ -63,7 +63,7 @@ opções, e as duas vão **do maior para o menor**:
 - **Nº** — o de número maior primeiro. Lançamento sem número fica por último.
 
 A ordem vai no endereço da página, como os filtros, e é a mesma da planilha do
-**Exportar CSV**.
+botão **Exportar**.
 
 ### Atalhos
 
@@ -104,7 +104,7 @@ do 1.
 - na busca e na ordem da lista, que você viu acima;
 - na **Nota de Empenho**, no [recibo](#recibo-de-entrada) e no **Relatório de
   despesas**;
-- na planilha do **Exportar CSV**, na primeira coluna;
+- na planilha e no PDF do botão **Exportar**, na primeira coluna;
 - na [Auditoria](?topico=auditoria), na frase do lançamento: *Criou o lançamento
   "nº 123 — Compra de adubo"*.
 
@@ -380,10 +380,30 @@ anexar passa pelo **Editar**, que está desligado. Por isso vale anexar tudo
 
 ## Relatórios
 
-Há a **exportação em CSV** (botão **Exportar CSV**, na aba **Lançamentos**, com
-os filtros atuais) e, na aba **Visão geral**, o **relatório em PDF** do período
-(**Baixar PDF**) e o **Relatório de despesas**, no formato que o Sindicato já
-usa em papel.
+Na aba **Lançamentos**, o botão **Exportar** leva os lançamentos **com os
+filtros e a ordem da tela**. O menu tem três partes:
+
+| Parte do menu | O que sai |
+|---|---|
+| **Planilha CSV (abre no Excel)** | A planilha de sempre, com todas as colunas (veja abaixo) |
+| **Relatório em PDF (para imprimir)** | Um PDF curto, no modelo **Resumido**: Nº, Data, Descrição, Nome / Razão social e Valor (R$) |
+| **Montar relatório…** | Você escolhe as colunas e a ordem. Dá para levar o que a planilha não tem, como o desconto e o endereço, o telefone e o banco da Nota de Empenho. Veja [Como montar um relatório](?topico=montar-relatorio) |
+
+A lista não tem seleção: o menu leva sempre **Todos (N)**, ou **Todos com os
+filtros atuais (N)** quando há filtro. No montador e no cabeçalho do PDF, os
+filtros aparecem em palavras, como *Período: 01/10/2026 a 31/10/2026 · Tipo:
+Saída · Categoria: INSUMOS · Caixa: BANCO · Método: PIX · Busca: adubo · Ordem:
+Nº*. A ordem só aparece quando a lista está em **Ordenar por › Nº**.
+
+Acima de 2.000 lançamentos, o **Relatório em PDF** sai do jeito antigo, com a
+folha deitada. Veja [Exportar planilhas](?topico=exportar-planilhas).
+
+**A planilha e o PDF agora ficam na [Auditoria](?topico=auditoria)**, como os
+das outras listas: quem baixou, quando e o que levou.
+
+Na aba **Visão geral** ficam o **relatório em PDF** do período (**Baixar PDF**)
+e o **Relatório de despesas**, no formato que o Sindicato já usa em papel. Eles
+não mudaram e ainda não ficam na Auditoria, como a Nota de Empenho e o recibo.
 
 A planilha dos lançamentos tem as colunas Nº (a primeira), Data, Tipo, Caixa,
 Categoria, Descrição, **Nome / Razão social**, **CNPJ / CPF**, **Nº anterior**,

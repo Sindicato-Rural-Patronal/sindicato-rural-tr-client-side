@@ -4,8 +4,8 @@ resumo: As mensagens enviadas pelo formulário do site e como responder.
 grupo: dia-a-dia
 ordem: 6
 permissao: READ_CONTACT
-veja: configuracoes, notificacoes
-busca: mensagem contato formulario email whatsapp responder nao lida
+veja: configuracoes, notificacoes, montar-relatorio
+busca: mensagem contato formulario email whatsapp responder nao lida exportar planilha montar relatorio
 ---
 
 Quando alguém preenche o formulário de **Contato** no site, a mensagem chega em
@@ -28,3 +28,11 @@ de mensagens **não lidas** — ele atualiza sozinho mais ou menos a cada minuto
 Vale combinar internamente quem cuida da caixa, porque o contador de não lidas é
 o mesmo para todo mundo: se uma pessoa abre a mensagem, ela some do contador de
 todos.
+
+## Exportar
+
+O botão **Exportar** leva as mensagens da busca e do filtro (**Todas**, **Não
+lidas** ou **Lidas**), ou só as marcadas. No fim do menu, o **Montar
+relatório…** deixa escolher as colunas: o modelo **Contato** leva só Nome,
+E-mail e Telefone. O texto da mensagem também é dado pessoal: leve só se
+precisar. Veja [Como montar um relatório](?topico=montar-relatorio).
