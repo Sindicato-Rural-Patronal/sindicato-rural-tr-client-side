@@ -57,6 +57,29 @@ describe('auditoria: correção do Nº do lançamento', () => {
   })
 })
 
+describe('auditoria: modelo de relatório da equipe (SR-115)', () => {
+  // PATCH e DELETE de /admin/report-templates/:dataset/:id guardam o que mudou
+  // (back: reportTemplateAuditSnapshot e AUDIT_FIELD_LABELS, SR-114).
+  const mudanca = [
+    { field: 'name', before: 'Contatos', after: 'Telefones da equipe' },
+    { field: 'fields', before: 'Nome, Telefone', after: 'Nome, Telefone, E-mail' },
+    { field: 'format', before: 'CSV', after: 'Excel' },
+    { field: 'onlyConfirmed', before: false, after: true },
+  ]
+
+  it('os campos com o mesmo nome da planilha da auditoria', () => {
+    expect(auditChanges(mudanca).map(c => auditFieldLabel(c.field))).toEqual(['Nome', 'Campos', 'Formato', 'Só confirmadas'])
+  })
+
+  it('os valores saem como vieram (rótulos e o nome do formato); "Só confirmadas" em sim/não', () => {
+    expect(formatAuditValue('fields', 'Nome, Telefone, E-mail')).toBe('Nome, Telefone, E-mail')
+    expect(formatAuditValue('format', 'Excel')).toBe('Excel')
+    expect(formatAuditValue('format', null)).toBe('—')
+    expect(formatAuditValue('onlyConfirmed', true)).toBe('Sim')
+    expect(formatAuditValue('onlyConfirmed', false)).toBe('Não')
+  })
+})
+
 describe('auditoria: reabrir o mês (Fechamento de caixa)', () => {
   // DELETE /admin/finance/closings/:id apaga o fechamento; a trilha guarda o que
   // estava fechado em `changes` (back: audit-snapshot.ts + removedSnapshot).
