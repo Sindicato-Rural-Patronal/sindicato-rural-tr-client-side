@@ -109,7 +109,7 @@ export const CATALOGO_LANCAMENTOS_CRU = {
   padrao: ['number', 'date', 'type', 'account', 'category', 'description', 'payeeName', 'payeeDocument', 'method', 'amount'],
   modelos: [{ id: 'resumido', name: 'Resumido', fields: ['number', 'date', 'description', 'payeeName', 'amount'] }],
   filterLabels: {
-    from: 'De', to: 'Até', type: 'Tipo', categoryId: 'Categoria', accountId: 'Caixa', method: 'Método', search: 'Busca', orderBy: 'Ordem',
+    from: 'De', to: 'Até', type: 'Tipo', categoryId: 'Categoria', accountId: 'Caixa', method: 'Forma de pagamento', search: 'Busca', orderBy: 'Ordem',
   },
   limits: { rows: 20000, pdfRows: 2000, fields: 80 },
 }
@@ -140,7 +140,7 @@ export const CATALOGO_AUDITORIA_CRU = {
   ],
   padrao: ['createdAt', 'actor', 'action', 'entity', 'target', 'path', 'ip', 'location', 'device', 'changes'],
   modelos: [{ id: 'resumida', name: 'Resumida', fields: ['createdAt', 'actor', 'action', 'target'] }],
-  filterLabels: { action: 'Ação', entity: 'Área', actorId: 'Quem', ip: 'IP', from: 'De', to: 'Até', q: 'Busca' },
+  filterLabels: { action: 'Ação', entity: 'Tipo', actorId: 'Quem', ip: 'IP', from: 'De', to: 'Até', q: 'Busca' },
   limits: { rows: 20000, pdfRows: 2000, fields: 80 },
 }
 

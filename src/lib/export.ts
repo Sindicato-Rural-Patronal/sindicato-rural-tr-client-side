@@ -11,6 +11,10 @@ import { saveBlob } from '@/utils/download'
 // modelo "Resumo") mandam também `fields` (as chaves do catálogo, na ordem das
 // colunas), `format` e `modelo`; com `format: 'pdf'` a API devolve JSON e o PDF
 // é desenhado aqui (`lib/relatorio-pdf.tsx`).
+//
+// `format: 'xlsx'` (SR-104/SR-106): a planilha do Excel, gerada na API, com ou
+// sem `fields` (o `cadastros` também, uma aba por seção). Baixa como o CSV, com
+// o nome do `Content-Disposition`.
 
 export type ExportDataset =
   | 'people'
@@ -82,7 +86,11 @@ const TITULO: Record<ExportDataset, string> = {
   cadastros: 'Relatório de cadastros',
 }
 
-export type ExportFormat = 'csv' | 'pdf'
+/** `xlsx` = a planilha do Excel, gerada na API (o mesmo limite do CSV). */
+export type ExportFormat = 'csv' | 'xlsx' | 'pdf'
+
+/** Extensão do arquivo quando a resposta não diz o nome. */
+const EXTENSAO: Record<ExportFormat, string> = { csv: 'csv', xlsx: 'xlsx', pdf: 'pdf' }
 
 /** O que o montador de relatórios manda além dos filtros (decisão 006). */
 export type ExportOptions = {
@@ -172,25 +180,36 @@ export function lerRelatorioJson(data: unknown, fallbackTitle: string, fallbackF
   }
 }
 
-/** Corpo do pedido: os filtros da tela (ou `ids`) mais o que o montador escolheu. */
+/**
+ * Corpo do pedido: os filtros da tela (ou `ids`) mais o que o montador escolheu.
+ * O Excel sempre leva `format` (com ou sem `fields`); o PDF sem `fields` não leva,
+ * porque é montado aqui a partir do CSV.
+ */
 export function reportBody(params: ExportParams, format: ExportFormat, opts: ExportOptions = {}): Record<string, unknown> {
   const body: Record<string, unknown> = exportBody(params)
   if (opts.fields) {
     body.fields = opts.fields
     body.format = format
     if (opts.modelo) body.modelo = opts.modelo
+  } else if (format === 'xlsx') {
+    body.format = format
   }
   if (opts.confirmed) body.confirmed = true
   return body
 }
 
 /**
- * Mensagem do erro da exportação. O 429 da rota já vem em português ("Muitas
- * exportações seguidas. Aguarde um minuto…") e é mais certo que o texto genérico
- * do 429 do login, que o `apiErrorMessage` usaria.
+ * O 429 das rotas de exportação já vem em português ("Muitas exportações
+ * seguidas. Aguarde um minuto…", "Muitos documentos seguidos. …") e é mais certo
+ * que o texto genérico do 429 do login, que o `apiErrorMessage` usaria.
  */
+export function ehLimiteDeExportacoes(err: unknown): err is ApiError {
+  return err instanceof ApiError && err.status === 429 && /^Muit[ao]s /.test(err.message)
+}
+
+/** Mensagem do erro da exportação: o 429 com o texto da rota, o resto pelo `apiErrorMessage`. */
 export function exportErrorMessage(err: unknown, fallback: string): string {
-  if (err instanceof ApiError && err.status === 429 && /^Muitas /.test(err.message)) return err.message
+  if (ehLimiteDeExportacoes(err)) return err.message
   return apiErrorMessage(err, fallback)
 }
 
@@ -238,7 +257,12 @@ function contagemDoCabecalho(res: Response): number {
  * o servidor manda CSV e o PDF é montado aqui a partir dele, com as colunas que
  * cabem no papel (ou as de `colunasDoPdf`): é o caminho do "Relatório de
  * cadastros" (4 tabelas num arquivo), das fontes sem catálogo (back velho) e do
- * PDF rápido acima do limite de linhas do PDF da API (SR-103).
+ * PDF rápido acima do limite de linhas do PDF da API (SR-103). Esse PDF do CSV
+ * NÃO chama `registrarDocumento`: o CSV que ele busca já deixa a linha da
+ * planilha na auditoria (uma chamada a mais daria duas linhas).
+ *
+ * O Excel (`xlsx`) e o CSV baixam o arquivo como veio, com o nome do
+ * `Content-Disposition`.
  */
 export async function exportarRelatorio(
   dataset: ExportDataset,
@@ -267,7 +291,9 @@ export async function exportarRelatorio(
   if (opts.recusarVazio && count === 0) throw new RelatorioVazioError()
   const blob = await res.blob()
   const disposition = res.headers.get('Content-Disposition') ?? ''
-  const filename = disposition.match(/filename="([^"]+)"/)?.[1] ?? `${FALLBACK_NAME[dataset]}-${today}.csv`
+  // O PDF montado aqui sai do CSV: o nome que a API dá é o da planilha.
+  const extensao = EXTENSAO[format === 'pdf' ? 'csv' : format]
+  const filename = disposition.match(/filename="([^"]+)"/)?.[1] ?? `${FALLBACK_NAME[dataset]}-${today}.${extensao}`
 
   if (format === 'pdf') {
     const { saveRelatorioPdf } = await import('@/lib/relatorio-pdf')

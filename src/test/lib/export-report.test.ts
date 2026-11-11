@@ -67,6 +67,12 @@ describe('reportBody', () => {
       .toEqual({ ids: ['a'], fields: ['cpf', 'name'], format: 'csv', modelo: 'Nome e CPF' })
   })
 
+  it('Excel: o formato vai sempre, com ou sem fields (a planilha rápida e o cadastros)', () => {
+    expect(reportBody({ search: 'ana' }, 'xlsx')).toEqual({ search: 'ana', format: 'xlsx' })
+    expect(reportBody({}, 'xlsx', { fields: ['name'], modelo: 'Nome' }))
+      .toEqual({ fields: ['name'], format: 'xlsx', modelo: 'Nome' })
+  })
+
   it('"Só confirmadas" vai como booleano; desligado não vai', () => {
     expect(reportBody({ courseIds: ['c1'] }, 'pdf', { fields: ['name'], confirmed: true }))
       .toEqual({ courseIds: ['c1'], fields: ['name'], format: 'pdf', confirmed: true })
@@ -79,6 +85,8 @@ describe('exportErrorMessage', () => {
     const msg = 'Muitas exportações seguidas. Aguarde um minuto e tente de novo.'
     expect(exportErrorMessage(new ApiError(429, msg), 'x')).toBe(msg)
     expect(exportErrorMessage(new ApiError(429, 'Too Many Requests'), 'x')).toMatch(/^Muitas tentativas/)
+    const docs = 'Muitos documentos seguidos. Aguarde um minuto e tente de novo.'
+    expect(exportErrorMessage(new ApiError(429, docs), 'x')).toBe(docs)
   })
 
   it('os outros erros seguem o apiErrorMessage (o 403 por campo vem como a API mandou)', () => {
@@ -126,6 +134,25 @@ describe('downloadExport do montador', () => {
     expect(saveBlob).toHaveBeenCalledWith(expect.any(Blob), 'pessoas-2026-11-11.csv')
     expect(relatorioJsonPdf).not.toHaveBeenCalled()
     expect(n).toBe(7)
+  })
+
+  it('Excel: baixa o arquivo da API com o nome do Content-Disposition, sem desenhar nada', async () => {
+    apiFetch.mockResolvedValue(respostaCsv('PK', {
+      'Content-Disposition': 'attachment; filename="pessoas-2026-11-11.xlsx"', 'X-Export-Count': '2500',
+    }))
+    const n = await downloadExport('people', { search: 'silva' }, 'xlsx')
+    expect(corpoEnviado()).toEqual({ search: 'silva', format: 'xlsx' })
+    expect(saveBlob).toHaveBeenCalledWith(expect.any(Blob), 'pessoas-2026-11-11.xlsx')
+    expect(saveRelatorioPdf).not.toHaveBeenCalled()
+    expect(relatorioJsonPdf).not.toHaveBeenCalled()
+    expect(n).toBe(2500)
+  })
+
+  it('Excel sem Content-Disposition: o nome de sempre, com .xlsx', async () => {
+    apiFetch.mockResolvedValue(respostaCsv('PK', { 'X-Export-Count': '4' }))
+    await downloadExport('cadastros', {}, 'xlsx')
+    expect(corpoEnviado()).toEqual({ format: 'xlsx' })
+    expect(saveBlob).toHaveBeenCalledWith(expect.any(Blob), expect.stringMatching(/^relatorio-de-cadastros-\d{4}-\d{2}-\d{2}\.xlsx$/))
   })
 
   it('Imprimir: o PDF vai para a aba aberta no clique, sem baixar', async () => {

@@ -1,10 +1,12 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import {
-  aplicarModelo, avisoDadosPessoais, avisoDoCorte, camposDoResumo, chaveDoUltimo, contagem, estadoInicial, filtrarGrupos,
-  filtrosEmPalavras, formatoNaTela, guardarUltimo, lerCatalogo, lerUltimo, limparCampos, marcarCampo, modeloParaApi,
-  modelosDe, moverCampo, moverPara, nomeDoModelo, pdfRapido, pdfRapidoPelaApi, periodoEmPalavras, problemaParaBaixar,
-  quantosVaoSair, textoDoBotao, tirarCampo, totalComCorte,
-  MODELO_RESUMO, PADRAO_ID, PADRAO_NOME, TEXTO_NENHUMA_CONFIRMADA, type ReportState,
+  aplicarModelo, avisoDadosPessoais, avisoDoCorte, camposDoResumo, caminhoDoPdfRapido, chaveDoUltimo, contagem, ehPdf,
+  estadoInicial, filtrarGrupos, filtrosEmPalavras, formatoDaApi, formatoNaTela, guardarFormatoDaPlanilha, guardarUltimo,
+  lerCatalogo, lerFormatoDaPlanilha, lerUltimo, limparCampos, marcarCampo, modeloParaApi, modelosDe, moverCampo,
+  moverPara, nomeDoModelo, pdfRapido, pdfRapidoPelaApi, periodoEmPalavras, problemaParaBaixar, quantosVaoSair,
+  temPdfDoCsv, textoDoBaixado, textoDoBotao, textoDoLimiteDoPdf, tirarCampo, totalComCorte,
+  CHAVE_DA_PLANILHA, MODELO_RESUMO, PADRAO_ID, PADRAO_NOME, TEXTO_NENHUMA_CONFIRMADA, TEXTO_PDF_SEM_CATALOGO,
+  type ReportState,
 } from '@/components/export/report-builder'
 import {
   CATALOGO_PESSOAS_CRU, catalogoAuditoria, catalogoInscricoes, catalogoLancamentos, catalogoPessoas,
@@ -440,7 +442,7 @@ describe('fase 2, parte B: período, Financeiro e Auditoria (SR-103)', () => {
       { action: 'export', entity: 'Usuário', actorId: 'a1', ip: undefined, from: '2026-01-01', to: '2026-01-31', q: 'joão' },
       auditoria,
       { textos: { action: 'Ação: Exportações', actorId: 'Quem: bali' } },
-    )).toEqual(['Ação: Exportações', 'Área: Usuário', 'Quem: bali', 'Período: 01/01/2026 a 31/01/2026', 'Busca: joão'])
+    )).toEqual(['Ação: Exportações', 'Tipo: Usuário', 'Quem: bali', 'Período: 01/01/2026 a 31/01/2026', 'Busca: joão'])
     expect(filtrosEmPalavras({ from: undefined, to: '2026-01-31' }, auditoria)).toEqual(['Até: 31/01/2026'])
     expect(filtrosEmPalavras({ to: '2026-10-05', from: '2026-10-05' }, { from: 'De', to: 'Até', roomId: 'Sala' }))
       .toEqual(['Dia: 05/10/2026'])
@@ -452,7 +454,7 @@ describe('fase 2, parte B: período, Financeiro e Auditoria (SR-103)', () => {
       catalogoLancamentos().filterLabels,
       { textos: { type: 'Tipo: Saída', categoryId: 'Categoria: INSUMOS', accountId: 'Caixa: BANCO', orderBy: 'Ordem: Nº' } },
     )).toEqual([
-      'Período: 01/10/2026 a 31/10/2026', 'Tipo: Saída', 'Categoria: INSUMOS', 'Caixa: BANCO', 'Método: PIX', 'Busca: coop', 'Ordem: Nº',
+      'Período: 01/10/2026 a 31/10/2026', 'Tipo: Saída', 'Categoria: INSUMOS', 'Caixa: BANCO', 'Forma de pagamento: PIX', 'Busca: coop', 'Ordem: Nº',
     ])
   })
 
@@ -493,11 +495,94 @@ describe('fase 2, parte B: período, Financeiro e Auditoria (SR-103)', () => {
     expect(avisoDoCorte(25000, aud, true)).toBe('Saem só as 20.000 linhas mais recentes.')
     expect(avisoDoCorte(20000, aud, true)).toBeNull()
     expect(avisoDoCorte(25000, aud, false)).toBeNull()
+    // No menu Exportar, antes de o catálogo chegar: o limite da API.
+    expect(avisoDoCorte(25000, null, true)).toBe('Saem só as 20.000 linhas mais recentes.')
+    expect(avisoDoCorte(20000, null, true)).toBeNull()
     // Com o total cortado, a planilha baixa; o PDF continua com o limite de 2.000.
     const csv = estado({ fields: ['createdAt'], modeloId: null })
     expect(problemaParaBaixar(csv, aud, { total: totalComCorte(25000, aud, true), selecionados: 0 })).toBeNull()
     expect(problemaParaBaixar({ ...csv, format: 'pdf' }, aud, { total: totalComCorte(25000, aud, true), selecionados: 0 }))
       .toMatch(/O PDF aceita/)
+  })
+})
+
+describe('Excel (SR-106)', () => {
+  it('o formato da API: Imprimir é o PDF; Excel e CSV vão como são', () => {
+    expect(formatoDaApi('csv')).toBe('csv')
+    expect(formatoDaApi('xlsx')).toBe('xlsx')
+    expect(formatoDaApi('pdf')).toBe('pdf')
+    expect(formatoDaApi('print')).toBe('pdf')
+    expect([ehPdf('csv'), ehPdf('xlsx'), ehPdf('pdf'), ehPdf('print')]).toEqual([false, false, true, true])
+  })
+
+  it('o Excel tem o limite da planilha (20.000), não o do PDF', () => {
+    const xlsx = estado({ format: 'xlsx' })
+    expect(problemaParaBaixar(xlsx, cat, { total: 5000, selecionados: 0 })).toBeNull()
+    expect(problemaParaBaixar(xlsx, cat, { total: 20001, selecionados: 0 })).toMatch(/passa de 20.000 linhas/)
+    expect(problemaParaBaixar(estado({ format: 'pdf' }), cat, { total: 5000, selecionados: 0 }))
+      .toBe('O PDF aceita até 2.000 linhas. Baixe a planilha ou use um filtro.')
+  })
+
+  it('o botão e o aviso depois de baixar dizem "do Excel", com milhar', () => {
+    expect(textoDoBotao('xlsx', { n: 2500, teto: false })).toBe('Baixar planilha do Excel (2.500)')
+    expect(textoDoBotao('csv', { n: 2500, teto: false })).toBe('Baixar planilha (2.500)')
+    expect(textoDoBaixado('xlsx', 2500)).toBe('Planilha do Excel com 2.500 registros baixada.')
+    expect(textoDoBaixado('xlsx', 1)).toBe('Planilha do Excel com 1 registro baixada.')
+    expect(textoDoBaixado('csv', -1)).toBe('Planilha baixada.')
+    expect(textoDoBaixado('pdf', 3)).toBe('Relatório com 3 registros baixado.')
+  })
+
+  it('o último relatório lembra o Excel', () => {
+    localStorage.clear()
+    guardarUltimo('people', { fields: ['name'], format: 'xlsx' })
+    expect(lerUltimo('people')).toEqual({ fields: ['name'], format: 'xlsx' })
+    expect(estadoInicial(cat, { ultimo: lerUltimo('people') }).format).toBe('xlsx')
+  })
+
+  it('a planilha rápida do menu: CSV até a pessoa escolher o Excel, lembrado para todas as listas', () => {
+    localStorage.clear()
+    expect(lerFormatoDaPlanilha()).toBe('csv')
+    guardarFormatoDaPlanilha('xlsx')
+    expect(localStorage.getItem(CHAVE_DA_PLANILHA)).toBe('xlsx')
+    expect(lerFormatoDaPlanilha()).toBe('xlsx')
+    localStorage.setItem(CHAVE_DA_PLANILHA, 'ods')
+    expect(lerFormatoDaPlanilha()).toBe('csv')
+  })
+})
+
+describe('PDF rápido: por onde sai (SR-106)', () => {
+  const resumoPessoas = ['Nome', 'CPF', 'E-mail', 'Telefone']
+
+  it('só as fontes que já tinham PDF voltam ao PDF do CSV', () => {
+    expect(temPdfDoCsv('people')).toBe(true)
+    expect(temPdfDoCsv('room-bookings')).toBe(true)
+    expect(temPdfDoCsv('finance-transactions')).toBe(false)
+    expect(temPdfDoCsv('audit-logs')).toBe(false)
+  })
+
+  it('até o limite (ou sem saber quantos): pela API; o pedido de novo do CSV só onde já havia PDF', () => {
+    expect(caminhoDoPdfRapido('people', cat, 2000)).toEqual({
+      via: 'api', fields: ['name', 'cpf', 'email', 'phone'], modelo: 'Resumo', doCsv: { colunasDoPdf: resumoPessoas },
+    })
+    expect(caminhoDoPdfRapido('people', cat, undefined)).toMatchObject({ via: 'api' })
+    const lanc = caminhoDoPdfRapido('finance-transactions', catalogoLancamentos(), undefined)
+    expect(lanc).toEqual({ via: 'api', fields: ['number', 'date', 'description', 'payeeName', 'amount'], modelo: 'Resumido' })
+  })
+
+  it('acima do limite: PDF do CSV onde já havia PDF; aviso da API no Financeiro e na Auditoria', () => {
+    expect(caminhoDoPdfRapido('people', cat, 2001)).toEqual({ via: 'csv', colunasDoPdf: resumoPessoas })
+    expect(caminhoDoPdfRapido('finance-transactions', catalogoLancamentos(), 2500)).toEqual({
+      via: 'aviso', mensagem: 'O PDF aceita até 2.000 linhas. Baixe a planilha ou use um filtro.',
+    })
+    expect(caminhoDoPdfRapido('audit-logs', catalogoAuditoria(), 25000)).toMatchObject({ via: 'aviso' })
+    expect(textoDoLimiteDoPdf(500)).toBe('O PDF aceita até 500 linhas. Baixe a planilha ou use um filtro.')
+  })
+
+  it('sem catálogo: PDF do CSV onde já havia PDF; no Financeiro e na Auditoria, nada de desenhar sem saber as colunas', () => {
+    expect(caminhoDoPdfRapido('people', null, 10)).toEqual({ via: 'csv' })
+    expect(caminhoDoPdfRapido('people', null, 2500)).toEqual({ via: 'csv' })
+    expect(caminhoDoPdfRapido('audit-logs', null, 10)).toEqual({ via: 'aviso', mensagem: TEXTO_PDF_SEM_CATALOGO })
+    expect(caminhoDoPdfRapido('finance-transactions', null, 2500)).toMatchObject({ via: 'aviso', mensagem: /2\.000 linhas/ })
   })
 })
 

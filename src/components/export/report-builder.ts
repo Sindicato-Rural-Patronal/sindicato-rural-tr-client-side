@@ -188,6 +188,24 @@ const MODELO_DO_PDF_RAPIDO: Record<string, string> = {
   'audit-logs': 'resumida',
 }
 
+/**
+ * A fonte já tinha PDF antes da decisão 006 (montado do CSV)? Só nelas o PDF
+ * rápido acima do limite de linhas volta ao PDF do CSV (SR-103). O Financeiro e
+ * a Auditoria nunca tiveram PDF: lá isso desenharia até 20.000 linhas no
+ * navegador, então acima do limite vale o aviso da API (SR-106).
+ */
+export function temPdfDoCsv(dataset: string): boolean {
+  return !(dataset in MODELO_DO_PDF_RAPIDO)
+}
+
+/** O limite do PDF da API quando o catálogo não carregou (o mesmo número dela). */
+export const LIMITE_DO_PDF_PADRAO = 2_000
+
+/** O aviso da API para PDF acima do limite ("O PDF aceita até 2.000 linhas. …"). */
+export function textoDoLimiteDoPdf(limite: number): string {
+  return `O PDF aceita até ${limite.toLocaleString('pt-BR')} linhas. Baixe a planilha ou use um filtro.`
+}
+
 export type PdfRapido = {
   /** Chaves do catálogo, na ordem das colunas. */
   fields: string[]
@@ -224,6 +242,45 @@ export function pdfRapido(catalog: ExportCatalog): PdfRapido | null {
  */
 export function pdfRapidoPelaApi(catalog: ExportCatalog, quantos: number | undefined): boolean {
   return quantos == null || quantos <= catalog.limits.pdfRows
+}
+
+/**
+ * Por onde sai o PDF rápido do menu ("Relatório em PDF › Todos/Selecionados"):
+ * - `api`: o JSON da API com as colunas do resumo; `doCsv` (só nas fontes que já
+ *   tinham PDF) é o pedido de novo, do CSV, se a API recusar pelo limite de linhas
+ *   quando a tela não sabia quantas eram;
+ * - `csv`: o PDF montado do CSV (acima do limite ou sem catálogo, nas fontes que já
+ *   tinham PDF), com as mesmas colunas que o da API mostraria;
+ * - `aviso`: não pede nada e mostra o texto (Financeiro e Auditoria acima do limite,
+ *   ou sem o catálogo para saber as colunas).
+ */
+export type CaminhoDoPdfRapido =
+  | { via: 'api'; fields: string[]; modelo: string; doCsv?: { colunasDoPdf: string[] } }
+  | { via: 'csv'; colunasDoPdf?: string[] }
+  | { via: 'aviso'; mensagem: string }
+
+export const TEXTO_PDF_SEM_CATALOGO = 'Não foi possível montar o PDF agora. Tente de novo ou baixe a planilha.'
+
+/** `quantos`: quantos registros a tela sabe que vão sair (o total ou os selecionados); undefined = não sabe. */
+export function caminhoDoPdfRapido(
+  dataset: string,
+  catalog: ExportCatalog | null,
+  quantos: number | undefined,
+): CaminhoDoPdfRapido {
+  const resumo = catalog ? pdfRapido(catalog) : null
+  const doCsv = temPdfDoCsv(dataset)
+  const limite = catalog?.limits.pdfRows ?? LIMITE_DO_PDF_PADRAO
+  if (quantos != null && quantos > limite) {
+    if (!doCsv) return { via: 'aviso', mensagem: textoDoLimiteDoPdf(limite) }
+    return resumo ? { via: 'csv', colunasDoPdf: resumo.rotulos } : { via: 'csv' }
+  }
+  if (resumo) {
+    return {
+      via: 'api', fields: resumo.fields, modelo: resumo.modelo,
+      ...(doCsv ? { doCsv: { colunasDoPdf: resumo.rotulos } } : {}),
+    }
+  }
+  return doCsv ? { via: 'csv' } : { via: 'aviso', mensagem: TEXTO_PDF_SEM_CATALOGO }
 }
 
 /**
@@ -297,8 +354,20 @@ function avisosDaLimpeza(limpos: CamposLimpos, origem: 'modelo' | 'ultimo'): str
 // O estado do montador
 // ---------------------------------------------------------------------------
 
-/** "print" é o mesmo PDF, aberto numa aba nova para imprimir. */
-export type ReportFormat = 'csv' | 'pdf' | 'print'
+/** "print" é o mesmo PDF, aberto numa aba nova para imprimir; "xlsx" é a planilha do Excel. */
+export type ReportFormat = 'csv' | 'xlsx' | 'pdf' | 'print'
+
+/** O formato que vai para a API: o "Imprimir" é o PDF. */
+export function formatoDaApi(format: ReportFormat): 'csv' | 'xlsx' | 'pdf' {
+  return format === 'print' ? 'pdf' : format
+}
+
+/** PDF ou Imprimir: valem o limite de linhas do PDF e o aviso de letra pequena. */
+export function ehPdf(format: ReportFormat): boolean {
+  return format === 'pdf' || format === 'print'
+}
+
+const FORMATOS_GUARDADOS: readonly ReportFormat[] = ['csv', 'xlsx', 'pdf', 'print']
 export type ReportScope = 'all' | 'selected'
 
 export type ReportState = {
@@ -536,9 +605,7 @@ export function problemaParaBaixar(
     return `O relatório passa de ${milhar(catalog.limits.rows)} linhas. Use um filtro para diminuir.`
   }
   const formato = formatoNaTela(state.format, celular)
-  if (formato !== 'csv' && n > catalog.limits.pdfRows) {
-    return `O PDF aceita até ${milhar(catalog.limits.pdfRows)} linhas. Baixe a planilha ou use um filtro.`
-  }
+  if (ehPdf(formato) && n > catalog.limits.pdfRows) return textoDoLimiteDoPdf(catalog.limits.pdfRows)
   return null
 }
 
@@ -551,17 +618,35 @@ export function totalComCorte(total: number | undefined, catalog: ExportCatalog,
   return cortaNoLimite && total != null ? Math.min(total, catalog.limits.rows) : total
 }
 
-/** O aviso do corte, quando a lista passa do limite (null = não corta nada). */
-export function avisoDoCorte(total: number | undefined, catalog: ExportCatalog, cortaNoLimite = false): string | null {
-  if (!cortaNoLimite || total == null || total <= catalog.limits.rows) return null
-  return `Saem só as ${milhar(catalog.limits.rows)} linhas mais recentes.`
+/**
+ * O aviso do corte, quando a lista passa do limite (null = não corta nada). Vale
+ * no montador e no menu Exportar (SR-106), antes do clique; sem o catálogo, o
+ * limite é o da API (20.000).
+ */
+export function avisoDoCorte(
+  total: number | undefined, catalog: Pick<ExportCatalog, 'limits'> | null, cortaNoLimite = false,
+): string | null {
+  const limite = catalog?.limits.rows ?? LIMITES_PADRAO.rows
+  if (!cortaNoLimite || total == null || total <= limite) return null
+  return `Saem só as ${milhar(limite)} linhas mais recentes.`
 }
 
 export function textoDoBotao(format: ReportFormat, quantos: Quantos): string {
   const numero = contagem(quantos)
   if (format === 'print') return `Imprimir${numero}`
   if (format === 'pdf') return `Baixar PDF${numero}`
+  if (format === 'xlsx') return `Baixar planilha do Excel${numero}`
   return `Baixar planilha${numero}`
+}
+
+/** O aviso depois de baixar: "Planilha do Excel com 3 registros baixada." (milhar com ponto). */
+export function textoDoBaixado(format: 'csv' | 'xlsx' | 'pdf', count: number): string {
+  const [nome, fim] = format === 'pdf' ? ['Relatório', 'baixado']
+    : format === 'xlsx' ? ['Planilha do Excel', 'baixada']
+      : ['Planilha', 'baixada']
+  if (count === 1) return `${nome} com 1 registro ${fim}.`
+  if (count >= 0) return `${nome} com ${milhar(count)} registros ${fim}.`
+  return `${nome} ${fim}.`
 }
 
 type ValorDeFiltro = string | number | boolean | string[] | null | undefined
@@ -680,7 +765,9 @@ export function lerUltimo(dataset: string): UltimoRelatorio | null {
     const dado = JSON.parse(bruto) as Record<string, unknown> | null
     if (!dado || typeof dado !== 'object') return null
     const fields = listaDeTextos(dado.fields)
-    const format: ReportFormat = dado.format === 'pdf' || dado.format === 'print' ? dado.format : 'csv'
+    const format: ReportFormat = FORMATOS_GUARDADOS.includes(dado.format as ReportFormat)
+      ? dado.format as ReportFormat
+      : 'csv'
     return fields.length ? { fields, format } : null
   } catch {
     return null
@@ -692,5 +779,30 @@ export function guardarUltimo(dataset: string, ultimo: UltimoRelatorio): void {
     localStorage.setItem(chaveDoUltimo(dataset), JSON.stringify({ fields: ultimo.fields, format: ultimo.format }))
   } catch {
     // Navegador sem storage (aba anônima, cota cheia): só não lembra.
+  }
+}
+
+// ---------------------------------------------------------------------------
+// A planilha rápida do menu Exportar: CSV ou Excel, lembrado no navegador
+// ---------------------------------------------------------------------------
+
+export type FormatoDaPlanilha = 'csv' | 'xlsx'
+
+/** Um só para todas as listas: quem prefere o Excel prefere em todas. */
+export const CHAVE_DA_PLANILHA = 'sr:planilha'
+
+export function lerFormatoDaPlanilha(): FormatoDaPlanilha {
+  try {
+    return localStorage.getItem(CHAVE_DA_PLANILHA) === 'xlsx' ? 'xlsx' : 'csv'
+  } catch {
+    return 'csv'
+  }
+}
+
+export function guardarFormatoDaPlanilha(formato: FormatoDaPlanilha): void {
+  try {
+    localStorage.setItem(CHAVE_DA_PLANILHA, formato)
+  } catch {
+    // Navegador sem storage: só não lembra.
   }
 }

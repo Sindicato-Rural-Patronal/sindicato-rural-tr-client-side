@@ -1,8 +1,9 @@
 // Como cada tela diz os filtros que mandam id ou código (SR-103), para a linha
 // "Filtros:" do montador dizer o mesmo que a API escreve no PDF, sem id:
 // "Caixa: BANCO", não "Caixa: 6f1c…". Vão no `filterTexts` do `ExportMenu`.
-// O período (`from`/`to`) e os filtros de texto (busca, IP, método, área) o
-// próprio montador já diz (`filtrosEmPalavras`).
+// O período (`from`/`to`) e os filtros de texto (busca, IP, forma de pagamento,
+// tipo da Auditoria) o próprio montador já diz (`filtrosEmPalavras`), com os
+// nomes do catálogo ("Forma de pagamento: PIX", "Tipo: Usuário", SR-107).
 
 /** Os nomes da API para o tipo do lançamento e o da reserva. */
 const TIPO_DO_LANCAMENTO: Record<string, string> = { IN: 'Entrada', OUT: 'Saída' }
@@ -53,7 +54,7 @@ export function textosDoFinanceiro({ type, categoryId, categoria, accountId, cai
 
 /**
  * Auditoria: a ação com o nome do filtro da tela ("Ação: Exportações") e quem
- * pelo usuário ("Quem: bali"). A área já é o nome ("Área: Usuário").
+ * pelo usuário ("Quem: bali"). O tipo (`entity`) já é o nome ("Tipo: Usuário").
  */
 export function textosDaAuditoria({ action, acoes, actorId, quem }: {
   action?: string | null
