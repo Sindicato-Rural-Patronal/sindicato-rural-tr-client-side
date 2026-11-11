@@ -32,6 +32,16 @@ vi.mock('@tanstack/react-router', () => ({
   Link: ({ children, to, search, ...props }: { children: ReactNode; to: string; search?: { topico?: string } }) =>
     <a href={`${to}?topico=${search?.topico ?? ''}`} {...props}>{children}</a>,
 }))
+// jsdom não tem ResizeObserver, e a dica (Tooltip) dos botões de cada inscrição mede
+// a setinha com ele ao abrir. O clique passa o mouse no botão antes, e a dica abre
+// num setTimeout: se ela abrisse antes do clique chegar, o React derrubava a tela
+// inteira ("ResizeObserver is not defined") e o clique se perdia (SR-108).
+class ResizeObserverFalso {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+}
+vi.stubGlobal('ResizeObserver', ResizeObserverFalso)
 
 const { RegistrationsTab } = await import('@/components/courses/RegistrationsTab')
 const { ApiError } = await import('@/lib/api')
