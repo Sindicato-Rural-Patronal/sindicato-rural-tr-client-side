@@ -9,7 +9,12 @@ import {
   type ReportState,
 } from '@/components/export/report-builder'
 import {
-  CATALOGO_PESSOAS_CRU, catalogoAuditoria, catalogoInscricoes, catalogoLancamentos, catalogoPessoas,
+  autoriaDoModelo, comModelo, corpoDoModelo, ehDaEquipe, idDaEquipe, lerModeloDaEquipe, lerModelosDaEquipe,
+  modeloAlterado, modeloAtual, mudouDoModelo, normalizarNome, problemaDoNome, semModelo, travaDoModelo,
+  ultimoDoEstado, type ModeloDaEquipe,
+} from '@/components/export/report-builder'
+import {
+  CATALOGO_PESSOAS_CRU, catalogoAuditoria, catalogoInscricoes, catalogoLancamentos, catalogoPessoas, modeloDaEquipeCru,
 } from './export-catalog.fixture'
 
 // O estado do montador de relatórios (decisão 006): puro, sem React. Os
@@ -659,5 +664,227 @@ describe('último relatório no navegador', () => {
     vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => { throw new Error('QuotaExceededError') })
     expect(lerUltimo('people')).toBeNull()
     expect(() => guardarUltimo('people', { fields: ['name'], format: 'csv' })).not.toThrow()
+  })
+})
+
+describe('modelos da equipe (fase 3, SR-115)', () => {
+  const t = (over: Record<string, unknown> = {}): ModeloDaEquipe => lerModeloDaEquipe(modeloDaEquipeCru(over))!
+  const equipe = [t()]
+  const ID = idDaEquipe('t1')
+
+  describe('lerModelosDaEquipe', () => {
+    it('lê a resposta da API e deixa de fora o que não é modelo', () => {
+      const lista = lerModelosDaEquipe([modeloDaEquipeCru(), { id: 'x' }, null, 'lixo'])
+      expect(lista).toEqual([{
+        id: 't1', dataset: 'people', name: 'Telefones da equipe', fields: ['name', 'phone'], missingFields: [],
+        format: 'pdf', confirmed: null, createdAt: '2026-11-10T13:00:00.000Z', updatedAt: '2026-11-10T13:00:00.000Z',
+        createdBy: { id: 'a1', username: 'gestor' }, updatedBy: null,
+      }])
+      expect(lerModelosDaEquipe({ error: 'Forbidden' })).toEqual([])
+    })
+
+    it('formato desconhecido vira "sem preferência" e usuário vazio vira null', () => {
+      const m = t({ format: 'docx', createdBy: { id: 'a1', username: '' }, updatedBy: { id: 'a2', username: null } })
+      expect(m.format).toBeNull()
+      expect(m.createdBy).toEqual({ id: 'a1', username: null })
+      expect(m.updatedBy).toEqual({ id: 'a2', username: null })
+    })
+  })
+
+  describe('no seletor', () => {
+    it('vêm depois dos de fábrica, com id próprio e as chaves que saíram do catálogo', () => {
+      const m = modelosDe(cat, [t({ missingFields: ['velho'] })])
+      expect(m[0].id).toBe(PADRAO_ID)
+      const ultimo = m.at(-1)!
+      expect(ultimo).toMatchObject({ id: 'equipe:t1', name: 'Telefones da equipe', fields: ['name', 'phone', 'velho'], format: 'pdf' })
+      expect(ultimo.daEquipe?.id).toBe('t1')
+      expect(ehDaEquipe(ultimo.id)).toBe(true)
+      expect(ehDaEquipe('nome-cpf')).toBe(false)
+      expect(ehDaEquipe(null)).toBe(false)
+    })
+
+    it('id de fábrica igual ao do modelo da equipe não se confunde', () => {
+      const m = modelosDe(cat, [t({ id: 'nome-cpf', name: 'Outro' })])
+      expect(m.filter(x => x.id === 'nome-cpf').map(x => x.name)).toEqual(['Nome e CPF'])
+    })
+  })
+
+  describe('aplicar', () => {
+    it('aplica as colunas e o formato do modelo', () => {
+      const s = aplicarModelo(estado({ format: 'csv' }), cat, ID, equipe)
+      expect(s).toMatchObject({ fields: ['name', 'phone'], modeloId: ID, format: 'pdf', avisos: [] })
+      expect(nomeDoModelo(s, cat, equipe)).toBe('Telefones da equipe')
+    })
+
+    it('"Imprimir" continua quando o modelo é PDF; sem formato, o formato não muda', () => {
+      expect(aplicarModelo(estado({ format: 'print' }), cat, ID, equipe).format).toBe('print')
+      expect(aplicarModelo(estado({ format: 'xlsx' }), cat, ID, [t({ format: null })]).format).toBe('xlsx')
+    })
+
+    it('campo sem permissão e campo que saiu do catálogo ficam de fora, com aviso', () => {
+      const s = aplicarModelo(estado(), cat, ID, [t({ fields: ['name', 'rg'], missingFields: ['velho'] })])
+      expect(s.fields).toEqual(['name'])
+      expect(s.avisos).toEqual([
+        'Ficaram de fora campos do modelo que você não pode exportar: RG.',
+        '1 campo do modelo não existe mais e saiu.',
+      ])
+      expect(nomeDoModelo(s, cat, [t({ fields: ['name', 'rg'], missingFields: ['velho'] })])).toBe('Telefones da equipe')
+    })
+
+    it('"Só confirmadas" segue o modelo da equipe nas inscrições', () => {
+      const insc = catalogoInscricoes()
+      const presenca = [t({ dataset: 'registrations', fields: ['name', 'cpf'], confirmed: true })]
+      expect(aplicarModelo(estado(), insc, ID, presenca).confirmed).toBe(true)
+      expect(aplicarModelo(estado({ confirmed: true }), insc, ID, [t({ fields: ['name'], confirmed: false })]).confirmed).toBe(false)
+    })
+
+    it('sem a lista (ainda carregando ou não carregou), o modelo da equipe não existe', () => {
+      const s = estado({ modeloId: ID, fields: ['name', 'phone'] })
+      expect(aplicarModelo(estado(), cat, ID)).toEqual(estado())
+      expect(modeloAtual(s, cat)).toBeNull()
+      expect(nomeDoModelo(s, cat)).toBeNull()
+      expect(modeloParaApi(s, cat)).toBeUndefined()
+    })
+  })
+
+  describe('mudouDoModelo (oferece salvar por cima)', () => {
+    const modelo = modelosDe(cat, equipe).at(-1)!
+    const aberto = estado({ fields: ['name', 'phone'], modeloId: ID, format: 'pdf' })
+
+    it('igual ao modelo, não', () => {
+      expect(mudouDoModelo(aberto, cat, modelo, 'people')).toBe(false)
+      // Imprimir é o mesmo PDF.
+      expect(mudouDoModelo({ ...aberto, format: 'print' }, cat, modelo, 'people')).toBe(false)
+    })
+
+    it('colunas, formato ou "Só confirmadas" diferentes, sim', () => {
+      expect(mudouDoModelo({ ...aberto, fields: ['phone', 'name'] }, cat, modelo, 'people')).toBe(true)
+      expect(mudouDoModelo({ ...aberto, format: 'xlsx' }, cat, modelo, 'people')).toBe(true)
+      expect(mudouDoModelo({ ...aberto, confirmed: true }, cat, modelo, 'registrations')).toBe(true)
+      // Fora das inscrições o "Só confirmadas" não existe.
+      expect(mudouDoModelo({ ...aberto, confirmed: true }, cat, modelo, 'people')).toBe(false)
+    })
+
+    it('modelo sem formato: o formato da tela não conta', () => {
+      const semFormato = modelosDe(cat, [t({ format: null })]).at(-1)!
+      expect(mudouDoModelo({ ...aberto, format: 'csv' }, cat, semFormato, 'people')).toBe(false)
+    })
+  })
+
+  it('travaDoModelo: campo que a pessoa não pode exportar trava mudar e excluir; o que saiu do catálogo não', () => {
+    expect(travaDoModelo(cat, t())).toBeNull()
+    expect(travaDoModelo(cat, t({ missingFields: ['velho'] }))).toBeNull()
+    expect(travaDoModelo(cat, t({ fields: ['name', 'rg'] })))
+      .toBe('Você não pode mudar nem excluir este modelo, porque ele tem campos que você não pode exportar: RG.')
+  })
+
+  it('autoriaDoModelo: quem criou e quem editou, no dia de Brasília', () => {
+    expect(autoriaDoModelo(t())).toBe('Modelo da equipe, criado por gestor em 10/11/2026.')
+    // 01h UTC do dia 12 ainda é dia 11 em Brasília.
+    expect(autoriaDoModelo(t({ updatedBy: { id: 'a2', username: 'bali' }, updatedAt: '2026-11-12T01:00:00.000Z' })))
+      .toBe('Modelo da equipe, criado por gestor em 10/11/2026 e editado por bali em 11/11/2026.')
+    expect(autoriaDoModelo(t({ createdBy: { id: 'a1', username: null } }))).toBe('Modelo da equipe, criado em 10/11/2026.')
+  })
+
+  it('o nome: espaços juntados, vazio e comprido recusados como a API', () => {
+    expect(normalizarNome('  CPFs \t da\n diretoria ')).toBe('CPFs da diretoria')
+    expect(problemaDoNome('   ')).toBe('Informe o nome do modelo.')
+    expect(problemaDoNome('x'.repeat(65))).toBe('O nome do modelo pode ter até 64 caracteres.')
+    expect(problemaDoNome(` ${'x'.repeat(64)} `)).toBeNull()
+  })
+
+  it('corpoDoModelo: colunas e formato de agora ("Imprimir" vira PDF); "Só confirmadas" só nas inscrições', () => {
+    const s = estado({ fields: ['name'], format: 'print', confirmed: true })
+    expect(corpoDoModelo(s, 'people')).toEqual({ fields: ['name'], format: 'pdf' })
+    expect(corpoDoModelo(s, 'registrations')).toEqual({ fields: ['name'], format: 'pdf', confirmed: true })
+  })
+
+  it('comModelo e semModelo: a lista na ordem da API, pelo nome', () => {
+    const lista = [t({ id: 'b', name: 'beta' }), t({ id: 'z', name: 'Zeta' })]
+    expect(comModelo(lista, t({ id: 'a', name: 'Álcool' })).map(m => m.name)).toEqual(['Álcool', 'beta', 'Zeta'])
+    expect(comModelo(lista, t({ id: 'z', name: 'Abc' })).map(m => m.id)).toEqual(['z', 'b'])
+    expect(semModelo(lista, 'b').map(m => m.id)).toEqual(['z'])
+  })
+
+  describe('modeloParaApi', () => {
+    it('o nome do modelo da equipe, com "(alterado)" se mudou', () => {
+      const s = aplicarModelo(estado(), cat, ID, equipe)
+      expect(modeloParaApi(s, cat, equipe)).toBe('Telefones da equipe')
+      expect(modeloParaApi(tirarCampo(s, 'phone'), cat, equipe)).toBe('Telefones da equipe (alterado)')
+    })
+
+    it('nome de 64 com "(alterado)": encurta o nome e não perde o "(alterado)"', () => {
+      const longo = [t({ name: 'x'.repeat(64) })]
+      const s = tirarCampo(aplicarModelo(estado(), cat, ID, longo), 'phone')
+      const enviado = modeloParaApi(s, cat, longo)!
+      expect(enviado).toHaveLength(64)
+      expect(enviado.endsWith('… (alterado)')).toBe(true)
+      expect(modeloParaApi(aplicarModelo(estado(), cat, ID, longo), cat, longo)).toBe('x'.repeat(64))
+    })
+  })
+
+  describe('o último usado com o modelo', () => {
+    beforeEach(() => {
+      // O teste do navegador sem storage, acima, deixa o setItem quebrado.
+      vi.restoreAllMocks()
+      localStorage.clear()
+    })
+
+    it('guarda o modelo aberto e se as colunas mudaram dele', () => {
+      const s = aplicarModelo(estado(), cat, ID, equipe)
+      expect(ultimoDoEstado(s, cat, equipe)).toEqual({ fields: ['name', 'phone'], format: 'pdf', modelo: ID, alterado: false })
+      const mexido = tirarCampo(s, 'phone')
+      expect(modeloAlterado(mexido, cat, equipe)).toBe(true)
+      guardarUltimo('people', ultimoDoEstado(mexido, cat, equipe))
+      expect(lerUltimo('people')).toEqual({ fields: ['name'], format: 'pdf', modelo: ID, alterado: true })
+      // Montado à mão: sem modelo.
+      expect(ultimoDoEstado(estado({ modeloId: null }), cat)).toEqual({ fields: ['name', 'cpf'], format: 'csv' })
+    })
+
+    it('modelo da equipe usado sem mexer: abre como ele está agora', () => {
+      const s = estadoInicial(cat, {
+        ultimo: { fields: ['name', 'phone'], format: 'csv', modelo: ID, alterado: false },
+        equipe: [t({ fields: ['name', 'phone', 'email'] })],
+      })
+      expect(s).toMatchObject({ fields: ['name', 'phone', 'email'], modeloId: ID, format: 'csv' })
+    })
+
+    it('modelo da equipe usado com mudança: abre as colunas guardadas, como "(alterado)"', () => {
+      const s = estadoInicial(cat, { ultimo: { fields: ['phone'], format: 'pdf', modelo: ID, alterado: true }, equipe })
+      expect(s).toMatchObject({ fields: ['phone'], modeloId: ID })
+      expect(nomeDoModelo(s, cat, equipe)).toBe('Telefones da equipe (alterado)')
+    })
+
+    it('modelo da equipe excluído: abre as colunas guardadas, sem o nome', () => {
+      const s = estadoInicial(cat, { ultimo: { fields: ['phone', 'email'], format: 'pdf', modelo: idDaEquipe('foi'), alterado: false }, equipe })
+      expect(s).toMatchObject({ fields: ['phone', 'email'], modeloId: null, format: 'pdf' })
+      // Se as colunas batem com outro modelo, abre com o nome dele.
+      const bate = estadoInicial(cat, { ultimo: { fields: ['name', 'cpf'], format: 'pdf', modelo: idDaEquipe('foi') }, equipe: [] })
+      expect(bate.modeloId).toBe('nome-cpf')
+    })
+
+    it('lista ainda carregando: as colunas guardadas e o id à espera da lista', () => {
+      const s = estadoInicial(cat, { ultimo: { fields: ['phone'], format: 'pdf', modelo: ID, alterado: false } })
+      expect(s).toMatchObject({ fields: ['phone'], modeloId: ID })
+      expect(nomeDoModelo(s, cat)).toBeNull()
+    })
+
+    it('modelo de fábrica guardado com mudança volta como "(alterado)"', () => {
+      const s = estadoInicial(cat, { ultimo: { fields: ['name', 'cpf', 'email'], format: 'csv', modelo: 'nome-cpf', alterado: true } })
+      expect(nomeDoModelo(s, cat)).toBe('Nome e CPF (alterado)')
+    })
+
+    it('o "Só confirmadas" volta com o modelo da equipe das inscrições', () => {
+      const insc = catalogoInscricoes()
+      const presenca = [t({ dataset: 'registrations', fields: ['name', 'cpf'], confirmed: true })]
+      const s = estadoInicial(insc, { ultimo: { fields: ['name', 'cpf'], format: 'pdf', modelo: ID, alterado: false }, equipe: presenca })
+      expect(s.confirmed).toBe(true)
+    })
+
+    it('o que foi guardado antes da SR-115 (sem modelo) continua valendo', () => {
+      localStorage.setItem('sr:relatorio:people', JSON.stringify({ fields: ['name', 'email'], format: 'pdf' }))
+      expect(lerUltimo('people')).toEqual({ fields: ['name', 'email'], format: 'pdf' })
+      expect(estadoInicial(cat, { ultimo: lerUltimo('people'), equipe }).modeloId).toBe('nome-email')
+    })
   })
 })

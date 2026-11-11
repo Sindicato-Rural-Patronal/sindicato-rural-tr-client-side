@@ -45,6 +45,10 @@ export type CatalogModelo = {
   fields: string[]
   /** Liga "Só confirmadas" (Inscrições › Lista de presença). */
   confirmed?: boolean
+  /** Formato preferido do modelo da equipe (os de fábrica não têm). */
+  format?: FormatoDoModelo
+  /** O modelo da equipe como a API devolve (só nos modelos da equipe). */
+  daEquipe?: ModeloDaEquipe
 }
 
 export type ExportCatalog = {
@@ -164,14 +168,194 @@ export function camposDoCatalogo(catalog: ExportCatalog): Map<string, CampoComGr
 export const PADRAO_ID = 'padrao'
 export const PADRAO_NOME = 'Padrão (como hoje)'
 
-/** Os modelos do seletor: o Padrão sempre em primeiro, depois os de fábrica. */
-export function modelosDe(catalog: ExportCatalog): CatalogModelo[] {
+/**
+ * Os modelos do seletor: o Padrão sempre em primeiro, depois os de fábrica e,
+ * por último, os da equipe (fase 3), com o id `equipe:<id>` para nunca bater
+ * com o de um modelo de fábrica. O modelo da equipe leva também as chaves que
+ * saíram do catálogo (`missingFields`): `limparCampos` as tira e avisa.
+ */
+export function modelosDe(catalog: ExportCatalog, equipe: ModeloDaEquipe[] = []): CatalogModelo[] {
   const deFabrica = catalog.modelos.filter(m => m.id !== PADRAO_ID)
   const padraoDoCatalogo = catalog.modelos.find(m => m.id === PADRAO_ID)
   return [
     { id: PADRAO_ID, name: PADRAO_NOME, fields: catalog.padrao, ...(padraoDoCatalogo?.confirmed ? { confirmed: true } : {}) },
     ...deFabrica,
+    ...equipe.map(t => ({
+      id: idDaEquipe(t.id),
+      name: t.name,
+      fields: [...t.fields, ...t.missingFields],
+      ...(t.confirmed ? { confirmed: true } : {}),
+      ...(t.format ? { format: t.format } : {}),
+      daEquipe: t,
+    })),
   ]
+}
+
+// ---------------------------------------------------------------------------
+// Modelos da equipe (decisão 006, fase 3; contrato da SR-114)
+// ---------------------------------------------------------------------------
+
+/** O formato que um modelo da equipe guarda (o "Imprimir" é guardado como PDF). */
+export type FormatoDoModelo = 'csv' | 'pdf' | 'xlsx'
+
+export type AutorDoModelo = { id: string; username: string | null }
+
+/** Um modelo da equipe, como `GET /admin/report-templates/:dataset` devolve. */
+export type ModeloDaEquipe = {
+  id: string
+  dataset: string
+  name: string
+  /** As chaves que ainda existem no catálogo, na ordem das colunas. */
+  fields: string[]
+  /** As chaves gravadas que saíram do catálogo. */
+  missingFields: string[]
+  format: FormatoDoModelo | null
+  /** Só em `registrations` ("Só confirmadas"); null nos outros. */
+  confirmed: boolean | null
+  createdAt: string
+  updatedAt: string
+  createdBy: AutorDoModelo
+  updatedBy: AutorDoModelo | null
+}
+
+/** O nome do modelo vai no `modelo` da exportação, que aceita até 64. */
+export const NOME_DO_MODELO_MAX = 64
+
+const PREFIXO_DA_EQUIPE = 'equipe:'
+
+/** O id do modelo da equipe no seletor e no estado. */
+export function idDaEquipe(id: string): string {
+  return `${PREFIXO_DA_EQUIPE}${id}`
+}
+
+export function ehDaEquipe(modeloId: string | null | undefined): modeloId is string {
+  return !!modeloId && modeloId.startsWith(PREFIXO_DA_EQUIPE)
+}
+
+const FORMATOS_DO_MODELO: readonly FormatoDoModelo[] = ['csv', 'pdf', 'xlsx']
+
+function lerAutor(v: unknown): AutorDoModelo | null {
+  if (!v || typeof v !== 'object') return null
+  const a = v as Record<string, unknown>
+  if (!ehTexto(a.id)) return null
+  return { id: a.id, username: ehTexto(a.username) && a.username ? a.username : null }
+}
+
+/** Um modelo da resposta da API; fora do formato, null. */
+export function lerModeloDaEquipe(data: unknown): ModeloDaEquipe | null {
+  if (!data || typeof data !== 'object') return null
+  const t = data as Record<string, unknown>
+  if (!ehTexto(t.id) || !ehTexto(t.name) || !Array.isArray(t.fields)) return null
+  return {
+    id: t.id,
+    dataset: ehTexto(t.dataset) ? t.dataset : '',
+    name: t.name,
+    fields: listaDeTextos(t.fields),
+    missingFields: listaDeTextos(t.missingFields),
+    format: FORMATOS_DO_MODELO.includes(t.format as FormatoDoModelo) ? t.format as FormatoDoModelo : null,
+    confirmed: typeof t.confirmed === 'boolean' ? t.confirmed : null,
+    createdAt: ehTexto(t.createdAt) ? t.createdAt : '',
+    updatedAt: ehTexto(t.updatedAt) ? t.updatedAt : '',
+    createdBy: lerAutor(t.createdBy) ?? { id: '', username: null },
+    updatedBy: lerAutor(t.updatedBy),
+  }
+}
+
+/** A lista da API (array). Resposta que não é lista = nenhum modelo. */
+export function lerModelosDaEquipe(data: unknown): ModeloDaEquipe[] {
+  if (!Array.isArray(data)) return []
+  return data.map(lerModeloDaEquipe).filter((t): t is ModeloDaEquipe => !!t)
+}
+
+/** A mesma ordem da API: pelo nome, sem diferenciar maiúscula nem acento. */
+function porNome(a: ModeloDaEquipe, b: ModeloDaEquipe): number {
+  return a.name.localeCompare(b.name, 'pt-BR', { sensitivity: 'base' })
+}
+
+/** A lista com o modelo novo ou mudado no lugar certo (antes de a API responder a lista de novo). */
+export function comModelo(lista: ModeloDaEquipe[], modelo: ModeloDaEquipe): ModeloDaEquipe[] {
+  return [...lista.filter(t => t.id !== modelo.id), modelo].sort(porNome)
+}
+
+export function semModelo(lista: ModeloDaEquipe[], id: string): ModeloDaEquipe[] {
+  return lista.filter(t => t.id !== id)
+}
+
+/** O nome como a API grava: sem caractere de controle e com os espaços juntados. */
+export function normalizarNome(nome: string): string {
+  return nome.replace(/[\p{Cc}\s]+/gu, ' ').trim()
+}
+
+/** O mesmo que a API confere no nome (400), para não pedir à toa. null = pode. */
+export function problemaDoNome(nome: string): string | null {
+  const limpo = normalizarNome(nome)
+  if (!limpo) return 'Informe o nome do modelo.'
+  if (limpo.length > NOME_DO_MODELO_MAX) return `O nome do modelo pode ter até ${NOME_DO_MODELO_MAX} caracteres.`
+  return null
+}
+
+/**
+ * Quem não pode exportar um campo do modelo não o muda nem o exclui (a API
+ * responde 403 "Este modelo tem campos que você não pode exportar: RG."). O
+ * motivo, para os botões desligados; null = pode. Campo que saiu do catálogo
+ * não conta, como na API.
+ */
+export function travaDoModelo(catalog: ExportCatalog, modelo: ModeloDaEquipe): string | null {
+  const mapa = camposDoCatalogo(catalog)
+  const negados = modelo.fields.map(k => mapa.get(k)).filter((c): c is CampoComGrupo => !!c && !c.allowed)
+  if (negados.length === 0) return null
+  const rotulos = [...new Set(negados.map(c => c.label))].join(', ')
+  return `Você não pode mudar nem excluir este modelo, porque ele tem campos que você não pode exportar: ${rotulos}.`
+}
+
+const DIA_BRASILIA = new Intl.DateTimeFormat('pt-BR', {
+  timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', year: 'numeric',
+})
+
+function diaBrasilia(iso: string): string | null {
+  const data = new Date(iso)
+  return iso && !Number.isNaN(data.getTime()) ? DIA_BRASILIA.format(data) : null
+}
+
+/**
+ * Quem criou e quem mudou por último, numa frase: "Modelo da equipe, criado por
+ * gestor em 10/11/2026 e editado por bali em 11/11/2026." Sem o usuário
+ * (administrador que não existe mais), só a data. "Editado", e não "alterado",
+ * para não confundir com o "(alterado)" do seletor, que é a tela diferente do
+ * modelo.
+ */
+export function autoriaDoModelo(modelo: ModeloDaEquipe): string {
+  const parte = (verbo: string, autor: AutorDoModelo | null, iso: string) => {
+    const dia = diaBrasilia(iso)
+    const quem = autor?.username ? ` por ${autor.username}` : ''
+    return dia ? `${verbo}${quem} em ${dia}` : `${verbo}${quem}`
+  }
+  const criado = parte('criado', modelo.createdBy, modelo.createdAt)
+  const editado = modelo.updatedBy ? ` e ${parte('editado', modelo.updatedBy, modelo.updatedAt)}` : ''
+  return `Modelo da equipe, ${criado}${editado}.`
+}
+
+/** O corpo do "Salvar como modelo" e do "Salvar alterações no modelo": o relatório de agora. */
+export function corpoDoModelo(
+  state: ReportState, dataset: string,
+): { fields: string[]; format: FormatoDoModelo; confirmed?: boolean } {
+  return {
+    fields: state.fields,
+    format: formatoDaApi(state.format),
+    ...(dataset === 'registrations' ? { confirmed: state.confirmed } : {}),
+  }
+}
+
+/**
+ * O relatório na tela está diferente do modelo da equipe aberto? Aí o montador
+ * oferece salvar por cima. Contam as colunas (como no "(alterado)"), o formato
+ * (quando o modelo tem um; "Imprimir" é o PDF) e, nas inscrições, o "Só
+ * confirmadas".
+ */
+export function mudouDoModelo(state: ReportState, catalog: ExportCatalog, modelo: CatalogModelo, dataset: string): boolean {
+  if (!mesmaLista(limparCampos(catalog, modelo.fields).campos, state.fields)) return true
+  if (modelo.format && modelo.format !== formatoDaApi(state.format)) return true
+  return dataset === 'registrations' && state.confirmed !== (modelo.confirmed === true)
 }
 
 /** Modelo do PDF rápido do menu: vai para o cabeçalho do PDF e para a auditoria. */
@@ -385,34 +569,74 @@ export type ReportState = {
   avisos: string[]
 }
 
-export type UltimoRelatorio = { fields: string[]; format: ReportFormat }
+/**
+ * O último relatório da fonte, no navegador. `modelo` é o id do modelo que
+ * estava aberto (de fábrica ou `equipe:<id>`) e `alterado` diz se as colunas
+ * tinham mudado dele. Os dois faltam no que foi guardado antes da SR-115.
+ */
+export type UltimoRelatorio = { fields: string[]; format: ReportFormat; modelo?: string; alterado?: boolean }
 
 function mesmaLista(a: string[], b: string[]): boolean {
   return a.length === b.length && a.every((k, i) => k === b[i])
 }
 
 /** O modelo cujas colunas são exatamente estas (para reabrir com o nome dele). */
-export function modeloQueBate(catalog: ExportCatalog, campos: string[]): CatalogModelo | null {
-  return modelosDe(catalog).find(m => mesmaLista(limparCampos(catalog, m.fields).campos, campos)) ?? null
+export function modeloQueBate(catalog: ExportCatalog, campos: string[], equipe: ModeloDaEquipe[] = []): CatalogModelo | null {
+  return modelosDe(catalog, equipe).find(m => mesmaLista(limparCampos(catalog, m.fields).campos, campos)) ?? null
+}
+
+/** O modelo aberto no montador (null = montado à mão, ou o modelo da equipe não está mais na lista). */
+export function modeloAtual(state: ReportState, catalog: ExportCatalog, equipe: ModeloDaEquipe[] = []): CatalogModelo | null {
+  if (!state.modeloId) return null
+  return modelosDe(catalog, equipe).find(m => m.id === state.modeloId) ?? null
 }
 
 /**
  * Como o montador abre: na primeira vez, no Padrão (para ninguém se perder);
  * depois, no último relatório montado nesta fonte. Com registros marcados na
  * lista, "O que entra" começa em "Selecionados".
+ *
+ * O último pode apontar para um modelo da equipe (`equipe` = a lista; undefined
+ * enquanto ela carrega):
+ * - usado sem mexer, abre o modelo como ele está agora (alguém da equipe pode
+ *   tê-lo mudado depois);
+ * - usado com mudança, abre as colunas guardadas, como "(alterado)";
+ * - excluído, abre as colunas guardadas, sem o nome dele;
+ * - com a lista ainda carregando, abre as colunas guardadas e guarda o id: o
+ *   montador chama esta função de novo quando a lista chega.
  */
 export function estadoInicial(
   catalog: ExportCatalog,
-  { ultimo, selecionados = 0 }: { ultimo?: UltimoRelatorio | null; selecionados?: number } = {},
+  { ultimo, selecionados = 0, equipe }: {
+    ultimo?: UltimoRelatorio | null
+    selecionados?: number
+    equipe?: ModeloDaEquipe[] | null
+  } = {},
 ): ReportState {
   const scope: ReportScope = selecionados > 0 ? 'selected' : 'all'
   if (ultimo && ultimo.fields.length) {
+    const modelos = modelosDe(catalog, equipe ?? [])
+    const guardado = ultimo.modelo ? modelos.find(m => m.id === ultimo.modelo) : undefined
+    if (guardado?.daEquipe && ultimo.alterado === false) {
+      const doModelo = limparCampos(catalog, guardado.fields)
+      if (doModelo.campos.length) {
+        return {
+          fields: doModelo.campos,
+          modeloId: guardado.id,
+          format: ultimo.format,
+          scope,
+          confirmed: guardado.confirmed === true,
+          avisos: avisosDaLimpeza(doModelo, 'modelo'),
+        }
+      }
+    }
     const limpos = limparCampos(catalog, ultimo.fields)
     if (limpos.campos.length) {
-      const modelo = modeloQueBate(catalog, limpos.campos)
+      const pendente = equipe === undefined && ehDaEquipe(ultimo.modelo) ? ultimo.modelo : null
+      const modelo = guardado ?? (pendente ? null : modeloQueBate(catalog, limpos.campos, equipe ?? []))
       return {
         fields: limpos.campos,
-        modeloId: modelo?.id ?? null,
+        modeloId: modelo?.id ?? pendente,
         format: ultimo.format,
         scope,
         confirmed: modelo?.confirmed === true,
@@ -434,16 +658,21 @@ export function estadoInicial(
 /**
  * O modelo escolhido preenche as colunas e decide "Só confirmadas": liga se ele
  * pede (Lista de presença) e desliga se não pede. Depois a pessoa ainda pode
- * marcar ou desmarcar à mão.
+ * marcar ou desmarcar à mão. O modelo da equipe com formato o aplica também
+ * ("Imprimir" continua, se o modelo é PDF: é o mesmo PDF).
  */
-export function aplicarModelo(state: ReportState, catalog: ExportCatalog, modeloId: string): ReportState {
-  const modelo = modelosDe(catalog).find(m => m.id === modeloId)
+export function aplicarModelo(
+  state: ReportState, catalog: ExportCatalog, modeloId: string, equipe: ModeloDaEquipe[] = [],
+): ReportState {
+  const modelo = modelosDe(catalog, equipe).find(m => m.id === modeloId)
   if (!modelo) return state
   const limpos = limparCampos(catalog, modelo.fields)
+  const format = modelo.format && !(modelo.format === 'pdf' && state.format === 'print') ? modelo.format : state.format
   return {
     ...state,
     fields: limpos.campos,
     modeloId: modelo.id,
+    format,
     confirmed: modelo.confirmed === true,
     avisos: avisosDaLimpeza(limpos, 'modelo'),
   }
@@ -480,16 +709,27 @@ export function moverPara(state: ReportState, de: number, para: number): ReportS
   return { ...state, fields }
 }
 
+const SUFIXO_ALTERADO = ' (alterado)'
+
 /**
  * Nome do modelo para a tela, o cabeçalho do PDF e a auditoria: "Nome e CPF",
  * "Nome e CPF (alterado)" depois de mexer, ou null quando foi montado à mão.
  */
-export function nomeDoModelo(state: ReportState, catalog: ExportCatalog): string | null {
-  if (!state.modeloId) return null
-  const modelo = modelosDe(catalog).find(m => m.id === state.modeloId)
+export function nomeDoModelo(state: ReportState, catalog: ExportCatalog, equipe: ModeloDaEquipe[] = []): string | null {
+  const modelo = modeloAtual(state, catalog, equipe)
   if (!modelo) return null
-  const alterado = !mesmaLista(limparCampos(catalog, modelo.fields).campos, state.fields)
-  return alterado ? `${modelo.name} (alterado)` : modelo.name
+  return colunasAlteradas(state, catalog, modelo) ? `${modelo.name}${SUFIXO_ALTERADO}` : modelo.name
+}
+
+/** As colunas mudaram do modelo? (O que saiu por permissão não conta: é o modelo possível.) */
+function colunasAlteradas(state: ReportState, catalog: ExportCatalog, modelo: CatalogModelo): boolean {
+  return !mesmaLista(limparCampos(catalog, modelo.fields).campos, state.fields)
+}
+
+/** As colunas na tela mudaram do modelo aberto? (Para o último guardado.) */
+export function modeloAlterado(state: ReportState, catalog: ExportCatalog, equipe: ModeloDaEquipe[] = []): boolean {
+  const modelo = modeloAtual(state, catalog, equipe)
+  return !!modelo && colunasAlteradas(state, catalog, modelo)
 }
 
 // ---------------------------------------------------------------------------
@@ -745,10 +985,18 @@ export function filtrosEmPalavras(
   return partes
 }
 
-/** Texto do modelo que vai para a API (até 64 caracteres, só para a auditoria e o PDF). */
-export function modeloParaApi(state: ReportState, catalog: ExportCatalog): string | undefined {
-  const nome = nomeDoModelo(state, catalog)
-  return nome ? nome.slice(0, 64) : undefined
+/**
+ * Texto do modelo que vai para a API (até 64 caracteres, só para a auditoria e
+ * o PDF). Com "(alterado)" e o nome comprido (modelo da equipe de 64), o nome é
+ * que encurta, com "…": o "(alterado)" não pode se perder.
+ */
+export function modeloParaApi(state: ReportState, catalog: ExportCatalog, equipe: ModeloDaEquipe[] = []): string | undefined {
+  const modelo = modeloAtual(state, catalog, equipe)
+  if (!modelo) return undefined
+  if (!colunasAlteradas(state, catalog, modelo)) return modelo.name.slice(0, NOME_DO_MODELO_MAX)
+  const cabe = NOME_DO_MODELO_MAX - SUFIXO_ALTERADO.length
+  const nome = modelo.name.length > cabe ? `${modelo.name.slice(0, cabe - 1).trimEnd()}…` : modelo.name
+  return `${nome}${SUFIXO_ALTERADO}`
 }
 
 // ---------------------------------------------------------------------------
@@ -759,7 +1007,11 @@ export function chaveDoUltimo(dataset: string): string {
   return `sr:relatorio:${dataset}`
 }
 
-/** Lê `{ fields, format }`; qualquer coisa estranha (ou navegador sem storage) = nada salvo. */
+/**
+ * Lê `{ fields, format, modelo?, alterado? }`; qualquer coisa estranha (ou
+ * navegador sem storage) = nada salvo. Sem `modelo` (guardado antes da SR-115),
+ * o nome volta quando as colunas batem com um modelo.
+ */
 export function lerUltimo(dataset: string): UltimoRelatorio | null {
   try {
     const bruto = localStorage.getItem(chaveDoUltimo(dataset))
@@ -770,7 +1022,13 @@ export function lerUltimo(dataset: string): UltimoRelatorio | null {
     const format: ReportFormat = FORMATOS_GUARDADOS.includes(dado.format as ReportFormat)
       ? dado.format as ReportFormat
       : 'csv'
-    return fields.length ? { fields, format } : null
+    if (!fields.length) return null
+    return {
+      fields,
+      format,
+      ...(ehTexto(dado.modelo) && dado.modelo ? { modelo: dado.modelo } : {}),
+      ...(typeof dado.alterado === 'boolean' ? { alterado: dado.alterado } : {}),
+    }
   } catch {
     return null
   }
@@ -778,9 +1036,23 @@ export function lerUltimo(dataset: string): UltimoRelatorio | null {
 
 export function guardarUltimo(dataset: string, ultimo: UltimoRelatorio): void {
   try {
-    localStorage.setItem(chaveDoUltimo(dataset), JSON.stringify({ fields: ultimo.fields, format: ultimo.format }))
+    localStorage.setItem(chaveDoUltimo(dataset), JSON.stringify({
+      fields: ultimo.fields,
+      format: ultimo.format,
+      ...(ultimo.modelo ? { modelo: ultimo.modelo, alterado: ultimo.alterado === true } : {}),
+    }))
   } catch {
     // Navegador sem storage (aba anônima, cota cheia): só não lembra.
+  }
+}
+
+/** O que guardar do relatório que acabou de sair: as colunas, o formato e o modelo aberto (se houver). */
+export function ultimoDoEstado(state: ReportState, catalog: ExportCatalog, equipe: ModeloDaEquipe[] = []): UltimoRelatorio {
+  const modelo = modeloAtual(state, catalog, equipe)
+  return {
+    fields: state.fields,
+    format: state.format,
+    ...(modelo ? { modelo: modelo.id, alterado: colunasAlteradas(state, catalog, modelo) } : {}),
   }
 }
 

@@ -158,6 +158,27 @@ export const CATALOGO_RESERVAS_CRU = {
   limits: { rows: 20000, pdfRows: 2000, fields: 80 },
 }
 
+/**
+ * Um modelo da equipe como `GET /admin/report-templates/:dataset` devolve
+ * (SR-114, back 3019ea4), cru. Criado em 10/11/2026 pelo `gestor`.
+ */
+export function modeloDaEquipeCru(over: Record<string, unknown> = {}) {
+  return {
+    id: 't1',
+    dataset: 'people',
+    name: 'Telefones da equipe',
+    fields: ['name', 'phone'],
+    missingFields: [],
+    format: 'pdf',
+    confirmed: null,
+    createdAt: '2026-11-10T13:00:00.000Z',
+    updatedAt: '2026-11-10T13:00:00.000Z',
+    createdBy: { id: 'a1', username: 'gestor' },
+    updatedBy: null,
+    ...over,
+  }
+}
+
 export function catalogoLancamentos(over: Partial<ExportCatalog> = {}): ExportCatalog {
   return { ...lerCatalogo(CATALOGO_LANCAMENTOS_CRU)!, ...over }
 }
