@@ -1,9 +1,9 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import {
-  aplicarModelo, avisoDadosPessoais, chaveDoUltimo, contagem, estadoInicial, filtrarGrupos, filtrosEmPalavras,
+  aplicarModelo, avisoDadosPessoais, camposDoResumo, chaveDoUltimo, contagem, estadoInicial, filtrarGrupos, filtrosEmPalavras,
   formatoNaTela, guardarUltimo, lerCatalogo, lerUltimo, limparCampos, marcarCampo, modeloParaApi,
   modelosDe, moverCampo, moverPara, nomeDoModelo, problemaParaBaixar, quantosVaoSair, textoDoBotao, tirarCampo,
-  PADRAO_ID, PADRAO_NOME, TEXTO_NENHUMA_CONFIRMADA, type ReportState,
+  MODELO_RESUMO, PADRAO_ID, PADRAO_NOME, TEXTO_NENHUMA_CONFIRMADA, type ReportState,
 } from '@/components/export/report-builder'
 import { CATALOGO_PESSOAS_CRU, catalogoInscricoes, catalogoPessoas } from './export-catalog.fixture'
 
@@ -391,6 +391,32 @@ describe('fase 2: filtros das outras fontes em palavras (SR-101)', () => {
     expect(filtrosEmPalavras({ type: 'PRIVATE' }, { type: 'Tipo' })).toEqual(['Tipo: PRIVATE'])
     expect(filtrosEmPalavras({ type: 'PRIVATE' }, { type: 'Tipo' }, { textos: { type: 'Tipo: Privada' } }))
       .toEqual(['Tipo: Privada'])
+  })
+})
+
+describe('PDF rápido do menu: as colunas de sempre (SR-101)', () => {
+  it('escolhe do Padrão os nomes preferidos, na ordem do Padrão, sem campo sem permissão', () => {
+    // Padrão do recorte: Nome, Apelido, CPF, RG (sem permissão), Nascimento, E-mail, Telefone.
+    expect(camposDoResumo(cat)).toEqual(['name', 'cpf', 'email', 'phone'])
+    expect(camposDoResumo(catalogoInscricoes())).toEqual(['name', 'cpf', 'email', 'phone'])
+    expect(MODELO_RESUMO).toBe('Resumo')
+  })
+
+  it('sem nenhum nome preferido, leva as primeiras colunas do Padrão (até 7), como o PDF do CSV', () => {
+    const c = lerCatalogo({
+      groups: [{ name: 'G', fields: 'abcdefghij'.split('').map(k => ({ key: k, label: k.toUpperCase() })) }],
+      padrao: 'jihgfedcba'.split(''),
+    })!
+    expect(camposDoResumo(c)).toEqual(['j', 'i', 'h', 'g', 'f', 'e', 'd'])
+  })
+
+  it('até 7 colunas', () => {
+    const rotulos = ['Nome', 'CPF', 'Telefone', 'E-mail', 'Situação de associado', 'Associado em dia', 'Associado até', 'Tipo de membro', 'Cidade']
+    const c = lerCatalogo({
+      groups: [{ name: 'G', fields: rotulos.map((label, i) => ({ key: `k${i}`, label })) }],
+      padrao: rotulos.map((_, i) => `k${i}`),
+    })!
+    expect(camposDoResumo(c)).toEqual(['k0', 'k1', 'k2', 'k3', 'k4', 'k5', 'k6'])
   })
 })
 

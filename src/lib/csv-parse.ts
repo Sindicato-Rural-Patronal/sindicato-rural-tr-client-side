@@ -2,6 +2,11 @@
 // tela precise conhecer as colunas de cada relatório. O backend continua sendo
 // a única fonte das colunas: o PDF é outra forma de imprimir a MESMA planilha.
 //
+// Desde a fase 2 da decisão 006 (SR-101), só o "Relatório de cadastros" (4
+// tabelas num arquivo, sem montador) e a fonte sem catálogo (back velho) ainda
+// passam por aqui. O PDF rápido das fontes com montador vem da API, com as
+// colunas que `pdfColumns` escolhe (`camposDoResumo` em report-builder.ts).
+//
 // Formato gerado lá: BOM UTF-8, separador ";", CRLF, toda célula entre aspas e
 // aspas internas dobradas ("").
 

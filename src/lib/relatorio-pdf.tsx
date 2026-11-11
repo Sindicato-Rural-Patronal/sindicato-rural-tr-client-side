@@ -4,12 +4,15 @@ import { parseCsvSections, pdfColumns, pesoDaColuna, type CsvSection } from '@/l
 import type { RelatorioColuna, RelatorioJson } from '@/lib/export'
 
 // Relatório em PDF, de dois jeitos:
-//   • RelatorioDocument (itens rápidos do menu): a MESMA planilha que o CSV
-//     traz, montada para o papel. Deitado (A4 landscape) porque tabela em pé
-//     não cabe, e com só as colunas que identificam o registro — ver `pdfColumns`.
-//   • RelatorioJsonDocument (montador, decisão 006): o JSON da API, só com as
-//     colunas escolhidas, na ordem escolhida. A folha e a letra se ajustam ao
-//     número de colunas (`layoutDoPdf`).
+//   • RelatorioDocument (o "Relatório de cadastros", com 4 tabelas, e o PDF
+//     rápido de fonte sem catálogo, com o back velho): a MESMA planilha que o
+//     CSV traz, montada para o papel. Deitado (A4 landscape) porque tabela em
+//     pé não cabe, e com só as colunas que identificam o registro — ver
+//     `pdfColumns`.
+//   • RelatorioJsonDocument (montador e PDF rápido do menu, decisão 006): o
+//     JSON da API, só com as colunas escolhidas, na ordem escolhida. A folha e
+//     a letra se ajustam ao número de colunas (`layoutDoPdf`). O PDF rápido
+//     pede as colunas que `pdfColumns` escolhia (`camposDoResumo`).
 
 const C = {
   brand: '#1f6e3d',

@@ -7,9 +7,10 @@ import { saveBlob } from '@/utils/download'
 // filtros da listagem. POST porque uma seleção grande estoura o limite da URL.
 //
 // Sem `fields`, sai o modelo padrão (as colunas de sempre, em CSV). O montador
-// de relatórios (decisão 006) manda também `fields` (as chaves do catálogo, na
-// ordem das colunas), `format` e `modelo`; com `format: 'pdf'` a API devolve
-// JSON e o PDF é desenhado aqui (`lib/relatorio-pdf.tsx`).
+// de relatórios (decisão 006) e o PDF rápido do menu (nas fontes com montador,
+// modelo "Resumo") mandam também `fields` (as chaves do catálogo, na ordem das
+// colunas), `format` e `modelo`; com `format: 'pdf'` a API devolve JSON e o PDF
+// é desenhado aqui (`lib/relatorio-pdf.tsx`).
 
 export type ExportDataset =
   | 'people'
@@ -58,7 +59,10 @@ export function exportBody(params: ExportParams): Record<string, string | string
   return body
 }
 
-/** Nome amigável do relatório, para o título dentro do PDF. */
+/**
+ * Nome amigável do relatório, para o título do PDF montado do CSV (Relatório de
+ * cadastros, fonte sem catálogo) e quando o JSON do PDF vem sem título.
+ */
 const TITULO: Record<ExportDataset, string> = {
   people: 'Pessoas',
   companies: 'Empresas',
@@ -213,9 +217,11 @@ function contagemDoCabecalho(res: Response): number {
  * Baixa o relatório (ou abre para imprimir) e diz quantos registros vieram e
  * se a aba de imprimir abriu.
  *
- * Sem `opts.fields` (os itens rápidos do menu), o servidor manda CSV e o PDF é
- * montado aqui a partir dele, com as colunas que cabem no papel. Com
- * `opts.fields` (o montador), o PDF vem como JSON, só com as colunas escolhidas.
+ * Com `opts.fields` (o montador e, nas fontes com montador, o PDF rápido do
+ * menu), o PDF vem como JSON, só com as colunas escolhidas. Sem `opts.fields`,
+ * o servidor manda CSV e o PDF é montado aqui a partir dele, com as colunas que
+ * cabem no papel: é o caminho do "Relatório de cadastros" (4 tabelas num
+ * arquivo) e das fontes sem catálogo (back velho).
  */
 export async function exportarRelatorio(
   dataset: ExportDataset,

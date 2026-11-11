@@ -72,6 +72,11 @@ function simular(catalogos: Record<string, unknown>, exportacao: (path: string) 
   })
 }
 
+const JSON_PDF = {
+  title: 'Pessoas', filename: 'pessoas-2026-11-11.pdf', count: 1, filters: 'Busca: silva', modelo: 'Resumo',
+  columns: [{ key: 'name', label: 'Nome', type: 'text' }], rows: [['ANA']],
+}
+
 /** Corpo do POST da exportação da fonte. */
 function corpoDaExportacao(dataset: string): Record<string, unknown> {
   const chamada = apiFetch.mock.calls.find(c => c[0] === `/admin/export/${dataset}`)
@@ -125,6 +130,60 @@ describe('ExportMenu e o montador', () => {
     abrir({ selectedIds: ['a', 'b'] })
     await userEvent.click(screen.getByRole('button', { name: 'Exportar (2)' }))
     expect(await screen.findAllByRole('menuitem', { name: 'Selecionados (2)' })).toHaveLength(2)
+  })
+})
+
+describe('ExportMenu: PDF rápido pela API (SR-101)', () => {
+  it('fonte com montador: pede format=pdf com as colunas de sempre e o modelo "Resumo"', async () => {
+    simular({ people: CATALOGO_PESSOAS_CRU }, () => ({ json: () => Promise.resolve(JSON_PDF), headers: new Headers() }))
+    abrir()
+    await userEvent.click(screen.getByRole('button', { name: 'Exportar' }))
+    const [, pdf] = await screen.findAllByRole('menuitem', { name: 'Todos (10)' })
+    await userEvent.click(pdf)
+
+    await waitFor(() => expect(relatorioJsonPdf).toHaveBeenCalled())
+    expect(corpoDaExportacao('people')).toEqual({
+      search: 'silva', fields: ['name', 'cpf', 'email', 'phone'], format: 'pdf', modelo: 'Resumo',
+    })
+    expect(saveRelatorioPdf).not.toHaveBeenCalled()
+    expect(saveBlob).toHaveBeenCalledWith(expect.any(Blob), 'pessoas-2026-11-11.pdf')
+  })
+
+  it('"Selecionados" também, com os ids', async () => {
+    simular({ people: CATALOGO_PESSOAS_CRU }, () => ({ json: () => Promise.resolve(JSON_PDF), headers: new Headers() }))
+    abrir({ selectedIds: ['a', 'b'] })
+    await userEvent.click(screen.getByRole('button', { name: 'Exportar (2)' }))
+    const [, pdf] = await screen.findAllByRole('menuitem', { name: 'Selecionados (2)' })
+    await userEvent.click(pdf)
+    await waitFor(() => expect(relatorioJsonPdf).toHaveBeenCalled())
+    expect(corpoDaExportacao('people')).toMatchObject({ ids: ['a', 'b'], format: 'pdf', modelo: 'Resumo' })
+  })
+
+  it('fonte sem montador (back velho): o PDF ainda sai do CSV, sem fields', async () => {
+    simular({}, () => ({
+      blob: () => Promise.resolve(new Blob(['"Nome"'])),
+      headers: new Headers({ 'Content-Disposition': 'attachment; filename="pessoas.csv"', 'X-Export-Count': '1' }),
+    }))
+    abrir()
+    await userEvent.click(screen.getByRole('button', { name: 'Exportar' }))
+    const [, pdf] = await screen.findAllByRole('menuitem', { name: 'Todos (10)' })
+    await userEvent.click(pdf)
+
+    await waitFor(() => expect(saveRelatorioPdf).toHaveBeenCalledWith('"Nome"', 'Pessoas', 'pessoas.pdf'))
+    expect(corpoDaExportacao('people')).toEqual({ search: 'silva' })
+    expect(relatorioJsonPdf).not.toHaveBeenCalled()
+  })
+
+  it('a planilha rápida continua sem fields (o padrão de sempre)', async () => {
+    simular({ people: CATALOGO_PESSOAS_CRU }, () => ({
+      blob: () => Promise.resolve(new Blob(['"Nome"'])), headers: new Headers({ 'X-Export-Count': '1' }),
+    }))
+    abrir()
+    await userEvent.click(screen.getByRole('button', { name: 'Exportar' }))
+    const [csv] = await screen.findAllByRole('menuitem', { name: 'Todos (10)' })
+    await userEvent.click(csv)
+    await waitFor(() => expect(saveBlob).toHaveBeenCalled())
+    expect(corpoDaExportacao('people')).toEqual({ search: 'silva' })
   })
 })
 

@@ -1,11 +1,16 @@
 import { useState } from 'react'
 import { toast } from 'sonner'
+import { useQueryClient } from '@tanstack/react-query'
 import { Download, FileSpreadsheet, FileText, Loader2, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { downloadExport, exportErrorMessage, type ExportDataset, type ExportFormat, type ExportParams } from '@/lib/export'
+import { EXPORT_CATALOG_STALE_TIME, exportCatalogKey, fetchExportCatalog } from '@/hooks/useExportCatalog'
+import {
+  downloadExport, exportErrorMessage, type ExportDataset, type ExportFormat, type ExportOptions, type ExportParams,
+} from '@/lib/export'
+import { MODELO_RESUMO, camposDoResumo } from '@/components/export/report-builder'
 import {
   ItensDoMontador, MontadorAberto, type AberturaDoMontador, type FonteDoMontador,
 } from '@/components/export/MontadorDeFontes'
@@ -23,10 +28,12 @@ export type ExportExtraItem = {
   builder?: boolean
 }
 
-async function runExport(dataset: ExportDataset, params: ExportParams, format: ExportFormat = 'csv') {
+async function runExport(
+  dataset: ExportDataset, params: ExportParams, format: ExportFormat = 'csv', opts: ExportOptions = {},
+) {
   const nome = format === 'pdf' ? 'Relatório' : 'Planilha'
   try {
-    const count = await downloadExport(dataset, params, format)
+    const count = await downloadExport(dataset, params, format, opts)
     toast.success(
       count === 1 ? `${nome} com 1 registro baixado.`
         : count >= 0 ? `${nome} com ${count} registros baixado.`
@@ -51,6 +58,11 @@ function rotuloDoMontadorDoExtra(label: string): string {
  * carrega: o back velho e as fontes sem montador respondem 404 e o menu fica
  * como antes. O montador recebe os mesmos filtros e a mesma seleção. Extra com
  * `builder` ganha o seu "Montar relatório: …".
+ *
+ * O PDF rápido ("Relatório em PDF") da fonte com montador vem da API
+ * (`format: 'pdf'`) com as colunas de sempre (`camposDoResumo`) e o modelo
+ * "Resumo": a auditoria registra um PDF, com os campos. Sem catálogo, o PDF
+ * ainda sai do CSV, como antes.
  */
 export function ExportMenu({
   dataset, filters = {}, selectedIds, total, filtered = false, extra = [], className, label = 'Exportar', size,
@@ -78,10 +90,32 @@ export function ExportMenu({
   const [busy, setBusy] = useState(false)
   // Cada abertura do montador começa do zero (padrão ou último usado).
   const [montador, setMontador] = useState<AberturaDoMontador>({ aberto: false, vez: 0, alvo: 0 })
+  const queryClient = useQueryClient()
 
   async function run(ds: ExportDataset, params: ExportParams, format: ExportFormat = 'csv') {
     setBusy(true)
     await runExport(ds, params, format)
+    setBusy(false)
+  }
+
+  /** O catálogo da fonte (o que a tela já carregou, ou carrega agora); sem montador ou com erro, null. */
+  async function catalogoDa(ds: ExportDataset) {
+    try {
+      return await queryClient.fetchQuery({
+        queryKey: exportCatalogKey(ds),
+        queryFn: () => fetchExportCatalog(ds),
+        staleTime: EXPORT_CATALOG_STALE_TIME,
+      })
+    } catch {
+      return null
+    }
+  }
+
+  async function runPdf(params: ExportParams) {
+    setBusy(true)
+    const catalogo = await catalogoDa(dataset)
+    const fields = catalogo ? camposDoResumo(catalogo) : []
+    await runExport(dataset, params, 'pdf', fields.length ? { fields, modelo: MODELO_RESUMO } : {})
     setBusy(false)
   }
 
@@ -127,17 +161,17 @@ export function ExportMenu({
             {allLabel}
           </DropdownMenuItem>
           <DropdownMenuSeparator />
-          {/* O PDF sai do mesmo dado, com as colunas que cabem no papel. */}
+          {/* As colunas que identificam o registro, do mesmo dado da planilha. */}
           <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">
             Relatório em PDF (para imprimir)
           </DropdownMenuLabel>
           {temSelecao && (
-            <DropdownMenuItem disabled={n === 0} onSelect={() => run(dataset, { ids }, 'pdf')}>
+            <DropdownMenuItem disabled={n === 0} onSelect={() => runPdf({ ids })}>
               <FileText className="size-4" />
               {n > 0 ? `Selecionados (${n})` : 'Selecionados (marque na lista)'}
             </DropdownMenuItem>
           )}
-          <DropdownMenuItem disabled={total === 0} onSelect={() => run(dataset, filters, 'pdf')}>
+          <DropdownMenuItem disabled={total === 0} onSelect={() => runPdf(filters)}>
             <FileText className="size-4" />
             {allLabel}
           </DropdownMenuItem>
