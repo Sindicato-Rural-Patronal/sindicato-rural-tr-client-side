@@ -4,7 +4,7 @@ resumo: Criar um curso, acompanhar inscrições, marcar presença e encerrar.
 grupo: dia-a-dia
 ordem: 1
 permissao: READ_COURSE
-veja: como-criar-curso, como-inscrever-alguem, salas-e-agenda, usuarios, exportar-planilhas, fotos-e-imagens
+veja: como-criar-curso, como-inscrever-alguem, salas-e-agenda, usuarios, exportar-planilhas, montar-relatorio, fotos-e-imagens
 busca: curso aula turma inscricao inscritos aluno presenca lista certificado faep vagas cpf telefone 4 ultimos digitos site nao deixa inscrever apagar campo vazio proximos armazenados aba arquivo sumiu ordem de chegada inscrito em data hora concluido
 ---
 
@@ -158,8 +158,10 @@ serve para montar um grupo ou mandar um aviso a todos.
 - **Baixar ficha de inscrição** — a ficha daquela pessoa, em PDF, para assinar.
 - **Anexar ficha preenchida (PDF)** — depois de assinada, ela volta para dentro
   do sistema, presa à inscrição. É o que evita a pasta de papel.
-- **Exportar inscrições (CSV)** — a lista toda em planilha, com os selos, a
-  presença e os dados de contato.
+- **Planilha** — a lista toda em planilha CSV ou PDF, com os selos, a presença
+  e os dados de contato. No fim do menu, **Montar relatório…** deixa escolher as
+  colunas: só nome e CPF, nome e e-mail, ou uma lista de presença só das
+  confirmadas. Veja [Como montar um relatório](?topico=montar-relatorio).
 
 ## Começar o curso
 
