@@ -16,7 +16,7 @@ vi.mock('@/lib/unimed-ficha-pdf', () => ({ downloadFichaUnimed: (...a: unknown[]
 vi.mock('@/lib/unimed-termo-pdf', () => ({ downloadTermoUnimed: (...a: unknown[]) => downloadTermoUnimed(...a) }))
 vi.mock('@/lib/unimed-contrato-pdf', () => ({ downloadContratoUnimed: (...a: unknown[]) => downloadContratoUnimed(...a) }))
 
-const { baixarFichaUnimed, baixarTermoUnimed, baixarContratoUnimed } = await import('@/lib/unimed-docs')
+const { baixarFichaUnimed, baixarTermoUnimed, baixarContratoUnimed, ERRO_DO_DOCUMENTO_UNIMED } = await import('@/lib/unimed-docs')
 const { ApiError } = await import('@/lib/api')
 const { DocumentoNaoRegistradoError } = await import('@/lib/registrar-documento')
 const { apiErrorMessage } = await import('@/lib/api-error-message')
@@ -72,6 +72,15 @@ describe('documentos da Unimed na auditoria', () => {
     expect(erro).toBeInstanceOf(DocumentoNaoRegistradoError)
     expect(downloadTermoUnimed).not.toHaveBeenCalled()
     // As duas telas mostram com apiErrorMessage(e, fallback): a mensagem passa como está.
-    expect(apiErrorMessage(erro, 'Erro ao gerar o documento (Termo).')).toBe('Você não tem permissão para gerar este documento.')
+    expect(apiErrorMessage(erro, ERRO_DO_DOCUMENTO_UNIMED.termo)).toBe('Você não tem permissão para gerar este documento.')
+  })
+
+  it('erro sem mensagem da API: o nome do documento, sem repetir o "Gerar" do botão (SR-111)', () => {
+    expect(ERRO_DO_DOCUMENTO_UNIMED).toEqual({
+      ficha: 'Erro ao gerar a Ficha.',
+      termo: 'Erro ao gerar o Termo de adesão.',
+      contrato: 'Erro ao gerar o Contrato.',
+    })
+    expect(apiErrorMessage(null, ERRO_DO_DOCUMENTO_UNIMED.ficha)).toBe('Erro ao gerar a Ficha.')
   })
 })

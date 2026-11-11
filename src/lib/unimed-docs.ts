@@ -16,6 +16,19 @@ import type { UserDataDetail } from '@/hooks/useAdmin'
 // Se o registro falhar, o PDF não sai e o erro (`DocumentoNaoRegistradoError`,
 // mensagem pronta) chega a quem chamou, que mostra pelo `apiErrorMessage`.
 
+export type DocumentoUnimed = 'ficha' | 'termo' | 'contrato'
+
+/**
+ * A mensagem de quando um dos três documentos não sai, com o nome dele. As duas
+ * telas usam a mesma: o rótulo dos botões ("Gerar Ficha", "Termo") não serve,
+ * porque "Erro ao gerar o documento (Gerar Ficha)." repetia o "Gerar" (SR-111).
+ */
+export const ERRO_DO_DOCUMENTO_UNIMED: Record<DocumentoUnimed, string> = {
+  ficha: 'Erro ao gerar a Ficha.',
+  termo: 'Erro ao gerar o Termo de adesão.',
+  contrato: 'Erro ao gerar o Contrato.',
+}
+
 async function fetchUnimed(unimedId: string) {
   const unimed = await apiFetch(`/admin/unimed/${unimedId}`).then(r => r.json()) as UnimedDetail
   const user = await apiFetch(`/admin/users/${unimed.userDataId}`).then(r => r.json()) as UserDataDetail
