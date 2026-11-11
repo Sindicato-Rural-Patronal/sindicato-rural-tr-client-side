@@ -200,7 +200,7 @@ describe('ExportMenu: PDF rápido acima do limite de linhas volta ao PDF do CSV 
     simular({ people: CATALOGO_PESSOAS_CRU }, CSV)
     abrir({ total: 2500 })
     await userEvent.click(screen.getByRole('button', { name: 'Exportar' }))
-    const [, pdf] = await screen.findAllByRole('menuitem', { name: 'Todos (2500)' })
+    const [, pdf] = await screen.findAllByRole('menuitem', { name: 'Todos (2.500)' })
     await userEvent.click(pdf)
 
     await waitFor(() => expect(saveRelatorioPdf).toHaveBeenCalledWith(
@@ -215,7 +215,7 @@ describe('ExportMenu: PDF rápido acima do limite de linhas volta ao PDF do CSV 
     simular({ people: CATALOGO_PESSOAS_CRU }, () => ({ json: () => Promise.resolve(JSON_PDF), headers: new Headers() }))
     abrir({ total: 2000 })
     await userEvent.click(screen.getByRole('button', { name: 'Exportar' }))
-    const [, pdf] = await screen.findAllByRole('menuitem', { name: 'Todos (2000)' })
+    const [, pdf] = await screen.findAllByRole('menuitem', { name: 'Todos (2.000)' })
     await userEvent.click(pdf)
     await waitFor(() => expect(relatorioJsonPdf).toHaveBeenCalled())
     expect(saveRelatorioPdf).not.toHaveBeenCalled()
@@ -261,8 +261,8 @@ describe('ExportMenu: PDF rápido acima do limite de linhas volta ao PDF do CSV 
     simular({ people: CATALOGO_PESSOAS_CRU }, CSV)
     const muitos = Array.from({ length: 2001 }, (_, i) => `p${i}`)
     abrir({ selectedIds: muitos, total: 3000 })
-    await userEvent.click(screen.getByRole('button', { name: 'Exportar (2001)' }))
-    const [, pdf] = await screen.findAllByRole('menuitem', { name: 'Selecionados (2001)' })
+    await userEvent.click(screen.getByRole('button', { name: 'Exportar (2.001)' }))
+    const [, pdf] = await screen.findAllByRole('menuitem', { name: 'Selecionados (2.001)' })
     await userEvent.click(pdf)
     await waitFor(() => expect(saveRelatorioPdf).toHaveBeenCalled())
     expect(corpoDaExportacao('people')).toEqual({ ids: muitos })
@@ -358,5 +358,110 @@ describe('ExportMenu: montador nos extras (SR-101)', () => {
       courseIds: ['c1', 'c2'], fields: ['course', 'name', 'cpf', 'email', 'phone', 'confirmed', 'registeredAt'],
       format: 'csv', modelo: 'Padrão (como hoje)',
     })
+  })
+})
+
+describe('ExportMenu: planilha do Excel (SR-106)', () => {
+  const XLSX = () => ({
+    blob: () => Promise.resolve(new Blob(['PK'])),
+    headers: new Headers({ 'Content-Disposition': 'attachment; filename="pessoas-2026-11-11.xlsx"', 'X-Export-Count': '2500' }),
+  })
+
+  it('com o catálogo, a seção vira "Planilha: CSV | Excel"; escolher o Excel não fecha o menu e o Todos baixa .xlsx', async () => {
+    simular({ people: CATALOGO_PESSOAS_CRU }, XLSX)
+    abrir({ total: 2500, filtered: true })
+    await waitFor(() => expect(apiFetch).toHaveBeenCalledWith('/admin/export/people/catalog'))
+    await userEvent.click(screen.getByRole('button', { name: 'Exportar' }))
+    const csv = await screen.findByRole('menuitemradio', { name: 'Planilha CSV' })
+    expect(csv).toHaveAttribute('aria-checked', 'true')
+    await userEvent.click(screen.getByRole('menuitemradio', { name: 'Planilha do Excel (.xlsx)' }))
+    expect(screen.getByRole('menuitemradio', { name: 'Planilha do Excel (.xlsx)' })).toHaveAttribute('aria-checked', 'true')
+    expect(localStorage.getItem('sr:planilha')).toBe('xlsx')
+
+    // O texto inteiro, com milhar.
+    const [planilha] = screen.getAllByRole('menuitem', { name: 'Todos com os filtros atuais (2.500)' })
+    await userEvent.click(planilha)
+    await waitFor(() => expect(saveBlob).toHaveBeenCalledWith(expect.any(Blob), 'pessoas-2026-11-11.xlsx'))
+    expect(corpoDaExportacao('people')).toEqual({ search: 'silva', format: 'xlsx' })
+    expect(toast.success).toHaveBeenCalledWith('Planilha do Excel com 2.500 registros baixada.')
+  })
+
+  it('o Excel escolhido fica lembrado: os Selecionados e os extras saem em .xlsx', async () => {
+    localStorage.setItem('sr:planilha', 'xlsx')
+    simular({ people: CATALOGO_PESSOAS_CRU, properties: CATALOGO_PESSOAS_CRU }, XLSX)
+    abrir({ selectedIds: ['a', 'b'], extra: [{ label: 'Propriedades dos selecionados', dataset: 'properties', params: { ownerIds: ['a', 'b'] } }] })
+    await waitFor(() => expect(apiFetch).toHaveBeenCalledWith('/admin/export/people/catalog'))
+    await userEvent.click(screen.getByRole('button', { name: 'Exportar (2)' }))
+    expect(await screen.findByRole('menuitemradio', { name: 'Planilha do Excel (.xlsx)' })).toHaveAttribute('aria-checked', 'true')
+    const [planilha] = screen.getAllByRole('menuitem', { name: 'Selecionados (2)' })
+    await userEvent.click(planilha)
+    await waitFor(() => expect(saveBlob).toHaveBeenCalled())
+    expect(corpoDaExportacao('people')).toEqual({ ids: ['a', 'b'], format: 'xlsx' })
+
+    await userEvent.click(screen.getByRole('button', { name: 'Exportar (2)' }))
+    await userEvent.click(await screen.findByRole('menuitem', { name: 'Propriedades dos selecionados' }))
+    await waitFor(() => expect(apiFetch.mock.calls.some(c => c[0] === '/admin/export/properties')).toBe(true))
+    expect(corpoDaExportacao('properties')).toEqual({ ownerIds: ['a', 'b'], format: 'xlsx' })
+  })
+
+  it('sem o catálogo (back velho): só CSV, como antes, mesmo com o Excel lembrado', async () => {
+    localStorage.setItem('sr:planilha', 'xlsx')
+    simular({}, () => ({ blob: () => Promise.resolve(new Blob(['"Nome"'])), headers: new Headers({ 'X-Export-Count': '1' }) }))
+    abrir()
+    await waitFor(() => expect(apiFetch).toHaveBeenCalled())
+    await userEvent.click(screen.getByRole('button', { name: 'Exportar' }))
+    expect(await screen.findByText('Planilha CSV (abre no Excel)')).toBeInTheDocument()
+    expect(screen.queryByRole('menuitemradio')).not.toBeInTheDocument()
+    const [planilha] = screen.getAllByRole('menuitem', { name: 'Todos (10)' })
+    await userEvent.click(planilha)
+    await waitFor(() => expect(saveBlob).toHaveBeenCalled())
+    expect(corpoDaExportacao('people')).toEqual({ search: 'silva' })
+  })
+})
+
+describe('ExportMenu: Financeiro e Auditoria acima dos limites (SR-106)', () => {
+  it('lançamentos acima de 2.000: o PDF não volta ao CSV; o menu já diz o aviso da API e não pede nada', async () => {
+    simular({ 'finance-transactions': CATALOGO_LANCAMENTOS_CRU }, () => ({}))
+    abrir({ dataset: 'finance-transactions', selectedIds: undefined, filters: {}, total: 2500 })
+    await waitFor(() => expect(apiFetch).toHaveBeenCalledWith('/admin/export/finance-transactions/catalog'))
+    await userEvent.click(screen.getByRole('button', { name: 'Exportar' }))
+    const [planilha, pdf] = await screen.findAllByRole('menuitem', { name: 'Todos (2.500)' })
+    expect(planilha).not.toHaveAttribute('data-disabled')
+    expect(pdf).toHaveAttribute('data-disabled')
+    expect(screen.getByText('O PDF aceita até 2.000 linhas. Baixe a planilha ou use um filtro.')).toBeInTheDocument()
+    expect(apiFetch.mock.calls.filter(c => c[0] === '/admin/export/finance-transactions')).toHaveLength(0)
+    expect(saveRelatorioPdf).not.toHaveBeenCalled()
+  })
+
+  it('auditoria sem total conhecido: o 400 do limite aparece, sem desenhar o PDF do CSV', async () => {
+    apiFetch.mockImplementation((path: string) => path.endsWith('/catalog')
+      ? Promise.resolve({ json: () => Promise.resolve(CATALOGO_AUDITORIA_CRU) })
+      : Promise.reject(new ApiError(400, 'O PDF aceita até 2.000 linhas. Baixe a planilha ou use um filtro.')))
+    abrir({ dataset: 'audit-logs', selectedIds: undefined, filters: {}, total: undefined, cortaNoLimite: true })
+    await userEvent.click(screen.getByRole('button', { name: 'Exportar' }))
+    const [, pdf] = await screen.findAllByRole('menuitem', { name: 'Todos' })
+    await userEvent.click(pdf)
+    await waitFor(() => expect(toast.error).toHaveBeenCalledWith('O PDF aceita até 2.000 linhas. Baixe a planilha ou use um filtro.'))
+    expect(apiFetch.mock.calls.filter(c => c[0] === '/admin/export/audit-logs')).toHaveLength(1)
+    expect(saveRelatorioPdf).not.toHaveBeenCalled()
+  })
+
+  it('auditoria acima de 20.000: o menu avisa antes do clique que a planilha leva só as mais recentes', async () => {
+    comCatalogo(CATALOGO_AUDITORIA_CRU)
+    abrir({ dataset: 'audit-logs', selectedIds: undefined, filters: {}, total: 25000, cortaNoLimite: true })
+    await waitFor(() => expect(apiFetch).toHaveBeenCalledWith('/admin/export/audit-logs/catalog'))
+    await userEvent.click(screen.getByRole('button', { name: 'Exportar' }))
+    expect(await screen.findAllByRole('menuitem', { name: 'Todos (25.000)' })).toHaveLength(2)
+    expect(screen.getByText('Saem só as 20.000 linhas mais recentes.')).toBeInTheDocument()
+  })
+
+  it('sem corte (até 20.000), nada de aviso', async () => {
+    comCatalogo(CATALOGO_AUDITORIA_CRU)
+    abrir({ dataset: 'audit-logs', selectedIds: undefined, filters: {}, total: 1500, cortaNoLimite: true })
+    await waitFor(() => expect(apiFetch).toHaveBeenCalledWith('/admin/export/audit-logs/catalog'))
+    await userEvent.click(screen.getByRole('button', { name: 'Exportar' }))
+    await screen.findAllByRole('menuitem', { name: 'Todos (1.500)' })
+    expect(screen.queryByText(/Saem só as/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/O PDF aceita/)).not.toBeInTheDocument()
   })
 })

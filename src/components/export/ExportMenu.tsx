@@ -1,17 +1,23 @@
 import { useState } from 'react'
 import { toast } from 'sonner'
 import { useQueryClient } from '@tanstack/react-query'
-import { Download, FileSpreadsheet, FileText, Loader2, X } from 'lucide-react'
+import { DropdownMenu as DropdownMenuPrimitive } from 'radix-ui'
+import { Download, FileSpreadsheet, FileText, Info, Loader2, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { EXPORT_CATALOG_STALE_TIME, exportCatalogKey, fetchExportCatalog } from '@/hooks/useExportCatalog'
+import {
+  EXPORT_CATALOG_STALE_TIME, exportCatalogKey, fetchExportCatalog, useExportCatalog,
+} from '@/hooks/useExportCatalog'
 import {
   downloadExport, ehLimiteDoPdf, exportErrorMessage, type ExportDataset, type ExportFormat, type ExportOptions,
   type ExportParams,
 } from '@/lib/export'
-import { pdfRapido, pdfRapidoPelaApi } from '@/components/export/report-builder'
+import {
+  avisoDoCorte, caminhoDoPdfRapido, guardarFormatoDaPlanilha, lerFormatoDaPlanilha, textoDoBaixado,
+  type FormatoDaPlanilha,
+} from '@/components/export/report-builder'
 import {
   ItensDoMontador, MontadorAberto, type AberturaDoMontador, type FonteDoMontador,
 } from '@/components/export/MontadorDeFontes'
@@ -39,8 +45,6 @@ async function runExport(
   dataset: ExportDataset, params: ExportParams, format: ExportFormat = 'csv', opts: ExportOptions = {},
   doCsv?: ExportOptions,
 ) {
-  const baixado = format === 'pdf' ? 'Relatório' : 'Planilha'
-  const fim = format === 'pdf' ? 'baixado' : 'baixada'
   try {
     let count: number
     try {
@@ -49,14 +53,62 @@ async function runExport(
       if (!doCsv || !ehLimiteDoPdf(err)) throw err
       count = await downloadExport(dataset, params, format, doCsv)
     }
-    toast.success(
-      count === 1 ? `${baixado} com 1 registro ${fim}.`
-        : count >= 0 ? `${baixado} com ${count.toLocaleString('pt-BR')} registros ${fim}.`
-          : `${baixado} ${fim}.`,
-    )
+    toast.success(textoDoBaixado(format, count))
   } catch (err) {
     toast.error(exportErrorMessage(err, 'Erro ao exportar.'))
   }
+}
+
+const milhar = (n: number) => n.toLocaleString('pt-BR')
+
+/** As duas planilhas, na ordem da escolha. O nome acessível diz o formato inteiro. */
+const OPCOES_DA_PLANILHA: { valor: FormatoDaPlanilha; rotulo: string; nome: string }[] = [
+  { valor: 'csv', rotulo: 'CSV', nome: 'Planilha CSV' },
+  { valor: 'xlsx', rotulo: 'Excel (.xlsx)', nome: 'Planilha do Excel (.xlsx)' },
+]
+
+/**
+ * "Planilha: [CSV] [Excel (.xlsx)]" numa linha só, no lugar do título da seção:
+ * os itens "Selecionados"/"Todos" de baixo baixam no formato marcado. São itens
+ * de rádio do menu (setas e Enter funcionam) que não fecham o menu.
+ */
+function EscolhaDaPlanilha({ formato, onEscolher }: {
+  formato: FormatoDaPlanilha
+  onEscolher: (formato: FormatoDaPlanilha) => void
+}) {
+  return (
+    <div className="flex items-center gap-2 px-1.5 py-1">
+      <span className="text-xs text-muted-foreground">Planilha</span>
+      <DropdownMenuPrimitive.RadioGroup
+        value={formato}
+        onValueChange={v => onEscolher(v === 'xlsx' ? 'xlsx' : 'csv')}
+        aria-label="Formato da planilha"
+        className="flex gap-1"
+      >
+        {OPCOES_DA_PLANILHA.map(op => (
+          <DropdownMenuPrimitive.RadioItem
+            key={op.valor}
+            value={op.valor}
+            aria-label={op.nome}
+            // Escolher o formato não fecha o menu: o clique seguinte é o que baixa.
+            onSelect={e => e.preventDefault()}
+            className="flex h-7 cursor-default items-center rounded-md border border-input px-2.5 text-xs whitespace-nowrap outline-hidden select-none data-highlighted:ring-2 data-highlighted:ring-ring/50 data-[state=checked]:border-primary data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground"
+          >
+            {op.rotulo}
+          </DropdownMenuPrimitive.RadioItem>
+        ))}
+      </DropdownMenuPrimitive.RadioGroup>
+    </div>
+  )
+}
+
+/** Uma linha de aviso dentro do menu (não é item: as setas passam por cima). */
+function AvisoDoMenu({ children }: { children: string }) {
+  return (
+    <p className="flex items-start gap-1.5 px-1.5 pb-1 text-xs text-muted-foreground">
+      <Info className="mt-px size-3.5 shrink-0" aria-hidden /> {children}
+    </p>
+  )
 }
 
 /** "Inscrições de todos os cursos" → "Montar relatório: inscrições de todos os cursos…". */
@@ -76,9 +128,16 @@ function rotuloDoMontadorDoExtra(label: string): string {
  *
  * O PDF rápido ("Relatório em PDF") da fonte com montador vem da API
  * (`format: 'pdf'`) com as colunas de sempre e o modelo "Resumo" (`pdfRapido`):
- * a auditoria registra um PDF, com os campos. Sai do CSV, como antes, sem
- * catálogo e acima do limite de linhas do PDF da API (o total conhecido passa
- * de `limits.pdfRows`, ou a API recusa por isso), com as mesmas colunas.
+ * a auditoria registra um PDF, com os campos. Nas fontes que já tinham PDF, sai
+ * do CSV, como antes, sem catálogo e acima do limite de linhas do PDF da API (o
+ * total conhecido passa de `limits.pdfRows`, ou a API recusa por isso), com as
+ * mesmas colunas. No Financeiro e na Auditoria, que nunca tiveram PDF, acima do
+ * limite o menu avisa e não desenha nada (`caminhoDoPdfRapido`, SR-106).
+ *
+ * A planilha rápida sai em CSV ou no Excel (SR-106): com o catálogo da fonte (a
+ * API nova), o título da seção vira a escolha "Planilha: [CSV] [Excel (.xlsx)]",
+ * lembrada no navegador para todas as listas (`sr:planilha`). Assim o Excel
+ * entra sem dobrar os itens do menu. Sem o catálogo, só CSV, como antes.
  */
 export function ExportMenu({
   dataset, filters = {}, selectedIds, total, filtered = false, extra = [], className, label = 'Exportar', size,
@@ -109,6 +168,16 @@ export function ExportMenu({
   // Cada abertura do montador começa do zero (padrão ou último usado).
   const [montador, setMontador] = useState<AberturaDoMontador>({ aberto: false, vez: 0, alvo: 0 })
   const queryClient = useQueryClient()
+  // O mesmo catálogo que o montador já pede (a mesma consulta): diz se a API
+  // gera o Excel e os limites de linhas.
+  const { data: catalogo } = useExportCatalog(dataset)
+  const [planilhaEscolhida, setPlanilhaEscolhida] = useState<FormatoDaPlanilha>(lerFormatoDaPlanilha)
+  const planilha: FormatoDaPlanilha = catalogo ? planilhaEscolhida : 'csv'
+
+  function escolherPlanilha(formato: FormatoDaPlanilha) {
+    setPlanilhaEscolhida(formato)
+    guardarFormatoDaPlanilha(formato)
+  }
 
   async function run(ds: ExportDataset, params: ExportParams, format: ExportFormat = 'csv') {
     setBusy(true)
@@ -132,14 +201,14 @@ export function ExportMenu({
   /** `quantos`: quantos registros a tela sabe que vão sair (o total ou os selecionados). */
   async function runPdf(params: ExportParams, quantos: number | undefined) {
     setBusy(true)
-    const catalogo = await catalogoDa(dataset)
-    const resumo = catalogo ? pdfRapido(catalogo) : null
-    // O PDF do CSV mostra as mesmas colunas que o da API mostraria.
-    const doCsv: ExportOptions = resumo ? { colunasDoPdf: resumo.rotulos } : {}
-    if (catalogo && resumo && pdfRapidoPelaApi(catalogo, quantos)) {
-      await runExport(dataset, params, 'pdf', { fields: resumo.fields, modelo: resumo.modelo }, doCsv)
+    const caminho = caminhoDoPdfRapido(dataset, await catalogoDa(dataset), quantos)
+    if (caminho.via === 'aviso') {
+      toast.error(caminho.mensagem)
+    } else if (caminho.via === 'api') {
+      // O PDF do CSV (se a API recusar pelo limite) mostra as mesmas colunas que o da API mostraria.
+      await runExport(dataset, params, 'pdf', { fields: caminho.fields, modelo: caminho.modelo }, caminho.doCsv)
     } else {
-      await runExport(dataset, params, 'pdf', doCsv)
+      await runExport(dataset, params, 'pdf', caminho.colunasDoPdf ? { colunasDoPdf: caminho.colunasDoPdf } : {})
     }
     setBusy(false)
   }
@@ -147,7 +216,15 @@ export function ExportMenu({
   const temSelecao = selectedIds !== undefined
   const ids = selectedIds ?? []
   const n = ids.length
-  const allLabel = `${filtered ? 'Todos com os filtros atuais' : 'Todos'}${total != null ? ` (${total})` : ''}`
+  const allLabel = `${filtered ? 'Todos com os filtros atuais' : 'Todos'}${total != null ? ` (${milhar(total)})` : ''}`
+  const selecionadosLabel = n > 0 ? `Selecionados (${milhar(n)})` : 'Selecionados (marque na lista)'
+  // Auditoria acima de 20.000: a planilha leva só as mais recentes. Dito antes do clique.
+  const corte = avisoDoCorte(total, catalogo ?? null, cortaNoLimite)
+  // Financeiro e Auditoria (sem PDF do CSV) acima do limite do PDF: o aviso da API, antes do clique.
+  const pdfTodos = total != null && catalogo !== undefined ? caminhoDoPdfRapido(dataset, catalogo, total) : null
+  const pdfSelecionados = n > 0 && catalogo !== undefined ? caminhoDoPdfRapido(dataset, catalogo, n) : null
+  const avisoDoPdf = pdfTodos?.via === 'aviso' ? pdfTodos.mensagem
+    : pdfSelecionados?.via === 'aviso' ? pdfSelecionados.mensagem : null
 
   // O montador da lista e o de cada extra com `builder`, numa lista só.
   const fontes: FonteDoMontador[] = [
@@ -166,43 +243,52 @@ export function ExportMenu({
 
   return (
     <>
-      <DropdownMenu modal={false}>
+      <DropdownMenu modal={false} onOpenChange={aberto => { if (aberto) setPlanilhaEscolhida(lerFormatoDaPlanilha()) }}>
         <DropdownMenuTrigger asChild>
           <Button variant="outline" size={size} className={cn('gap-2', className)} disabled={busy}>
             {busy ? <Loader2 className="size-4 animate-spin" /> : <Download className="size-4" />}
-            {label}{n > 0 ? ` (${n})` : ''}
+            {label}{n > 0 ? ` (${milhar(n)})` : ''}
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-64">
-          <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">Planilha CSV (abre no Excel)</DropdownMenuLabel>
+        {/* Da largura do texto mais comprido ("Todos com os filtros atuais (20.000)"
+            numa linha só), sem passar da tela do celular. */}
+        <DropdownMenuContent align="end" className="w-max min-w-64 max-w-[min(22rem,calc(100vw-1rem))]">
+          {catalogo ? (
+            <EscolhaDaPlanilha formato={planilha} onEscolher={escolherPlanilha} />
+          ) : (
+            <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">Planilha CSV (abre no Excel)</DropdownMenuLabel>
+          )}
           {temSelecao && (
-            <DropdownMenuItem disabled={n === 0} onSelect={() => run(dataset, { ids })}>
+            <DropdownMenuItem disabled={n === 0} onSelect={() => run(dataset, { ids }, planilha)}>
               <FileSpreadsheet className="size-4" />
-              {n > 0 ? `Selecionados (${n})` : 'Selecionados (marque na lista)'}
+              {selecionadosLabel}
             </DropdownMenuItem>
           )}
-          <DropdownMenuItem disabled={total === 0} onSelect={() => run(dataset, filters)}>
+          <DropdownMenuItem disabled={total === 0} onSelect={() => run(dataset, filters, planilha)}>
             <FileSpreadsheet className="size-4" />
             {allLabel}
           </DropdownMenuItem>
+          {corte && <AvisoDoMenu>{corte}</AvisoDoMenu>}
           <DropdownMenuSeparator />
           {/* As colunas que identificam o registro, do mesmo dado da planilha. */}
           <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">
             Relatório em PDF (para imprimir)
           </DropdownMenuLabel>
           {temSelecao && (
-            <DropdownMenuItem disabled={n === 0} onSelect={() => runPdf({ ids }, n)}>
+            <DropdownMenuItem disabled={n === 0 || pdfSelecionados?.via === 'aviso'} onSelect={() => runPdf({ ids }, n)}>
               <FileText className="size-4" />
-              {n > 0 ? `Selecionados (${n})` : 'Selecionados (marque na lista)'}
+              {selecionadosLabel}
             </DropdownMenuItem>
           )}
-          <DropdownMenuItem disabled={total === 0} onSelect={() => runPdf(filters, total)}>
+          <DropdownMenuItem disabled={total === 0 || pdfTodos?.via === 'aviso'} onSelect={() => runPdf(filters, total)}>
             <FileText className="size-4" />
             {allLabel}
           </DropdownMenuItem>
+          {avisoDoPdf && <AvisoDoMenu>{avisoDoPdf}</AvisoDoMenu>}
           {extra.length > 0 && <DropdownMenuSeparator />}
+          {/* Os extras também são planilhas: saem no formato escolhido acima. */}
           {extra.map(item => (
-            <DropdownMenuItem key={item.label} disabled={item.disabled} onSelect={() => run(item.dataset, item.params)}>
+            <DropdownMenuItem key={item.label} disabled={item.disabled} onSelect={() => run(item.dataset, item.params, planilha)}>
               {item.label}
             </DropdownMenuItem>
           ))}
