@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import {
-  RECIBO_TEXTOS, dataPorExtenso, documentoDoPagador, emissorDoRecibo, enderecoDoPagador, montarRecibo,
+  RECIBO_TEXTOS, alvoDoLancamento, dataPorExtenso, documentoDoPagador, emissorDoRecibo, enderecoDoPagador, montarRecibo,
   nomeDoArquivoRecibo, numeroDoRecibo, pagadorDoRecibo, podeGerarRecibo, textoPlano, trechosDoRecibo,
   type ReciboData,
 } from '@/lib/recibo'
@@ -298,5 +298,14 @@ describe('nomeDoArquivoRecibo', () => {
   it('sem nome de quem pagou, o nome curto vem da descrição; sem nenhum dos dois, fica só o número ou a data', () => {
     expect(nomeDoArquivoRecibo({ ...base, empenho: null })).toBe('recibo-2026-10-30-mensalidade-de-outubro.pdf')
     expect(nomeDoArquivoRecibo({ ...base, empenho: null, description: '', number: 5 })).toBe('recibo-5.pdf')
+  })
+})
+
+describe('alvoDoLancamento (auditoria do Recibo e da Nota de Empenho, SR-106)', () => {
+  it('"Nº 128 · <nome>"; sem Nº, só o nome; sem nome, a descrição', () => {
+    expect(alvoDoLancamento({ ...base, number: 128 })).toBe('Nº 128 · COOPERATIVA AGRICOLA LTDA')
+    expect(alvoDoLancamento(base)).toBe('COOPERATIVA AGRICOLA LTDA')
+    expect(alvoDoLancamento({ ...base, number: 5, empenho: null })).toBe('Nº 5 · MENSALIDADE DE OUTUBRO')
+    expect(alvoDoLancamento({ ...base, empenho: { nomeFantasia: 'COOP' } })).toBe('COOP')
   })
 })
