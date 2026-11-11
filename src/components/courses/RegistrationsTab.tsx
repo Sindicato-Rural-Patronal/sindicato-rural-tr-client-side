@@ -10,6 +10,7 @@ import { useCourseRegistrations, useCancelRegistration, useConfirmRegistration, 
 import type { UserDataDetail, Registration } from '@/hooks/useAdmin'
 import { apiErrorMessage } from '@/lib/api-error-message'
 import { apiFetch } from '@/lib/api'
+import { alvoDoDocumento, erroDoDocumento, registrarDocumento } from '@/lib/registrar-documento'
 import { calcAge } from '@/utils/age'
 import { hasCourseStarted } from '@/utils/course-status'
 import { attendanceCounts, attendanceSummary } from '@/utils/course-attendance'
@@ -251,6 +252,12 @@ export function RegistrationsTab({
       const instructors = detail.instructors?.length
         ? detail.instructors.map(i => i.name)
         : [detail.instructorName].filter(Boolean)
+      // Na auditoria antes de gerar; se não registrar, a lista não sai.
+      await registrarDocumento('lista-presenca', {
+        linhas: confirmed.length,
+        alvo: courseTitle,
+        ids: confirmed.map(r => r.id),
+      })
       await downloadListaPresencaPdf(
         {
           title: courseTitle,
@@ -265,8 +272,8 @@ export function RegistrationsTab({
         confirmed.map(r => ({ name: r.userData.name, cpf: r.userData.cpf })),
         `lista-presenca-${courseTitle}`,
       )
-    } catch {
-      toast.error('Erro ao gerar a lista de presença.')
+    } catch (e) {
+      toast.error(erroDoDocumento(e, 'Erro ao gerar a lista de presença.'))
     } finally {
       setExportingLista(false)
     }
@@ -335,14 +342,19 @@ export function RegistrationsTab({
 
   const course = { eventNumber, title: courseTitle }
 
-  async function exportOne(userDataId: string) {
+  async function exportOne(userDataId: string, registrationId: string) {
     setFichaId(userDataId)
     try {
       const { downloadFichaPdf } = await import('@/lib/ficha-inscricao-pdf')
       const user: UserDataDetail = await apiFetch(`/admin/users/${userDataId}`).then(r => r.json())
+      await registrarDocumento('ficha-inscricao', {
+        linhas: 1,
+        alvo: alvoDoDocumento(courseTitle, user.name),
+        ids: [registrationId],
+      })
       await downloadFichaPdf([{ course, user }], `ficha-${user.name}`)
-    } catch {
-      toast.error(t('admin.courses.fichaError'))
+    } catch (e) {
+      toast.error(erroDoDocumento(e, t('admin.courses.fichaError')))
     } finally {
       setFichaId(null)
     }
@@ -410,12 +422,19 @@ export function RegistrationsTab({
       const users: UserDataDetail[] = await mapWithConcurrency(regs, 5, r =>
         apiFetch(`/admin/users/${r.userDataId}`).then(res => res.json()),
       )
+      // Uma linha só na auditoria, com todas as inscrições do curso.
+      await registrarDocumento('ficha-inscricao', {
+        linhas: users.length,
+        alvo: courseTitle,
+        ids: regs.map(r => r.id),
+        escopo: 'todos',
+      })
       await downloadFichaPdf(
         users.map(user => ({ course, user })),
         `fichas-${courseTitle}`,
       )
-    } catch {
-      toast.error(t('admin.courses.fichaError'))
+    } catch (e) {
+      toast.error(erroDoDocumento(e, t('admin.courses.fichaError')))
     } finally {
       setExportingAll(false)
     }
@@ -659,7 +678,7 @@ export function RegistrationsTab({
               <RowAction
                 label="Baixar ficha de inscrição"
                 disabled={fichaId === reg.userDataId}
-                onClick={() => exportOne(reg.userDataId)}
+                onClick={() => exportOne(reg.userDataId, reg.id)}
               >
                 {fichaId === reg.userDataId ? <Loader2 className="size-3.5 animate-spin" /> : <FileDown className="size-3.5" />}
                 <span className="hidden lg:inline">{t('admin.courses.ficha')}</span>

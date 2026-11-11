@@ -26,6 +26,7 @@ import { LoadErrorRetry } from '@/components/LoadErrorRetry'
 import { useRoomBookings, useRoomSchedule, type RoomBooking } from '@/hooks/useRoomBookings'
 import { apiErrorMessage } from '@/lib/api-error-message'
 import { downloadExport } from '@/lib/export'
+import { alvoDoDocumento, periodoDoDocumento, registrarDocumento } from '@/lib/registrar-documento'
 import {
   ItensDoMontador, MontadorAberto, type AberturaDoMontador, type FonteDoMontador,
 } from '@/components/export/MontadorDeFontes'
@@ -180,11 +181,24 @@ export function AgendaSection({
     setPrinting(true)
     try {
       const { printAgendaPdf } = await import('@/lib/agenda-pdf')
-      await printAgendaPdf(perDay, from, to, {
+      const filtros = {
         room: salas?.find(r => r.id === sala)?.name ?? null,
         kind: tipo === 'ALL' ? null : KIND_LABEL[tipo],
         search: search || null,
+      }
+      // Na auditoria antes de gerar ("Agenda: 05/10/2026 a 11/10/2026 · Sala: …");
+      // se não registrar, o PDF não sai (a mensagem vem pelo apiErrorMessage).
+      await registrarDocumento('agenda', {
+        linhas: visiveis.length,
+        alvo: alvoDoDocumento(
+          periodoDoDocumento(from, to),
+          filtros.room && `Sala: ${filtros.room}`,
+          filtros.kind && `Tipo: ${filtros.kind}`,
+          filtros.search && `Busca: ${filtros.search}`,
+        ),
+        escopo: 'com filtros',
       })
+      await printAgendaPdf(perDay, from, to, filtros)
     } catch (err) {
       toast.error(apiErrorMessage(err, 'Não foi possível gerar o PDF da agenda.'))
     }

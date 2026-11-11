@@ -30,7 +30,9 @@ import { useAdminCompanies, companyDisplayName, type CompanyDetail } from '@/hoo
 import { useOrgInfo } from '@/hooks/useSiteSettings'
 import { ORG_CONTACT } from '@/lib/org-contact'
 import { cn } from '@/lib/utils'
-import { fornecedorDoLancamento } from '@/lib/relatorio-empenho'
+import { despesasDoRelatorio, fornecedorDoLancamento } from '@/lib/relatorio-empenho'
+import { alvoDoLancamento } from '@/lib/recibo'
+import { erroDoDocumento, periodoDoDocumento, registrarDocumento } from '@/lib/registrar-documento'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -255,6 +257,12 @@ function DashboardTab({ enabled, onDrill }: {
         import('@/lib/relatorio-empenho-pdf'),
         fetchFinanceTransactionsForRange(range),
       ])
+      // Na auditoria antes de gerar; se não registrar, o relatório não sai.
+      await registrarDocumento('relatorio-despesas', {
+        linhas: despesasDoRelatorio(txns).length,
+        alvo: periodoDoDocumento(range.from, range.to),
+        escopo: 'com filtros',
+      })
       await downloadRelatorioEmpenhoPdf(txns, {
         nome: 'SINDICATO RURAL DE TERRA ROXA / PR',
         cnpj: ORG_CONTACT.cnpj,
@@ -279,6 +287,12 @@ function DashboardTab({ enabled, onDrill }: {
         import('@/lib/finance-report-pdf'),
         fetchFinanceTransactionsForRange(range),
       ])
+      // Os lançamentos que o relatório lista ("só nota" fica de fora, como no PDF).
+      await registrarDocumento('financeiro', {
+        linhas: txns.filter(t => t.type !== null).length,
+        alvo: periodoDoDocumento(range.from, range.to),
+        escopo: 'com filtros',
+      })
       await downloadFinanceReportPdf(data, txns, range)
     } catch (e) {
       toast.error(apiErrorMessage(e, 'Erro ao gerar o PDF.'))
@@ -894,9 +908,16 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
     setNotaBusy(t.id ?? 'preview')
     try {
       const { downloadNotaEmpenho } = await import('@/lib/nota-empenho-pdf')
+      // A prévia do formulário (sem id) também fica na auditoria.
+      await registrarDocumento('nota-empenho', {
+        linhas: 1,
+        alvo: alvoDoLancamento(t),
+        ids: [t.id],
+        escopo: 'seleção',
+      })
       await downloadNotaEmpenho(t)
-    } catch {
-      toast.error('Erro ao gerar a Nota de Empenho.')
+    } catch (e) {
+      toast.error(erroDoDocumento(e, 'Erro ao gerar a Nota de Empenho.'))
     } finally {
       setNotaBusy(null)
     }
