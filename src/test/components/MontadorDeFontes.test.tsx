@@ -101,7 +101,10 @@ describe('montador nas fichas', () => {
     expect(screen.queryByText('Montar relatório (escolher campos)')).not.toBeInTheDocument()
   })
 
-  it('a ficha sai só com o registro dela, sem "Todos" nem "Selecionados"', async () => {
+  // Abre o montador de verdade: na primeira vez o pedaço dele (dnd-kit e companhia) é
+  // carregado. Sozinho leva ~1 s, mas com a suíte inteira em paralelo chegou a passar
+  // dos 5 s do padrão (SR-111); o tempo maior segue o dos testes de formulário.
+  it('a ficha sai só com o registro dela, sem "Todos" nem "Selecionados"', { timeout: 15_000 }, async () => {
     simular()
     abrir()
     await waitFor(() => expect(apiFetch).toHaveBeenCalledWith('/admin/export/people/catalog'))
