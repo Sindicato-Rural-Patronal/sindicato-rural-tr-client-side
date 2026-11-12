@@ -37,9 +37,9 @@ senha. **Você nunca precisa saber a senha de ninguém.**
 
 ## Quando alguém sai do Sindicato
 
-Tire o acesso **no mesmo dia**. Não é desconfiança: é que a sessão continua
-valendo e o histórico continua sendo gravado no nome de quem não trabalha mais
-lá.
+Tire o acesso **no mesmo dia**. Não é desconfiança: enquanto o acesso existe,
+a senha dessa pessoa continua abrindo o painel, e o que for feito com ela fica
+gravado no nome de quem não trabalha mais lá.
 
 ## Dados dos associados
 
@@ -47,8 +47,9 @@ lá.
   [Exportar planilhas](?topico=exportar-planilhas).
 - **Não mande dados de associado por grupo de WhatsApp.** Se precisar tratar de
   um caso, fale da pessoa, não mande a ficha.
-- **Só consulte o que você precisa para o trabalho.** Consultar ficha por
-  curiosidade também fica registrado.
+- **Só consulte o que você precisa para o trabalho.** O que você exporta,
+  imprime, cria, altera ou exclui fica na
+  [Auditoria](?topico=auditoria) com o seu nome, o horário e o IP.
 
 ## No computador do escritório
 
