@@ -2,6 +2,7 @@ import type { Empenho, FinanceType } from '@/hooks/useFinance'
 import type { OrgInfo } from '@/hooks/useSiteSettings'
 import { valorPorExtensoLegado } from '@/lib/extenso-legado'
 import { fornecedorDoLancamento } from '@/lib/relatorio-empenho'
+import { alvoDoDocumento } from '@/lib/registrar-documento'
 import { ORG_CONTACT, orgAddressLines } from '@/lib/org-contact'
 import { fileSlug } from '@/utils/download'
 import { centsToBRL, maskCNPJ, maskCPF } from '@/utils/masks'
@@ -42,6 +43,8 @@ export const RECIBO_TEXTOS = {
  * na SR-064): enquanto ele não vier no objeto, o quadro do número não aparece.
  */
 export type ReciboData = {
+  /** O lançamento: vai para a auditoria do documento (`ids`). */
+  id?: string
   type: FinanceType | null
   transferId?: string | null
   amountCents: number
@@ -210,6 +213,15 @@ export function montarRecibo(t: ReciboData, emissor: Pick<EmissorRecibo, 'cidade
     formaDePagamento: forma ? `${RECIBO_TEXTOS.formaDePagamento}: ${forma}` : null,
     localEData: [emissor.cidade.trim(), dataPorExtenso(t.date)].filter(Boolean).join(', '),
   }
+}
+
+/**
+ * O alvo do documento na auditoria (SR-106): "Nº 128 · COOPERATIVA LTDA". Sem Nº,
+ * só o nome; sem nome de quem pagou, a descrição. Serve ao Recibo e à Nota de Empenho.
+ */
+export function alvoDoLancamento(t: Pick<ReciboData, 'number' | 'empenho' | 'description'>): string {
+  const numero = numeroDoRecibo(t)
+  return alvoDoDocumento(numero && `Nº ${numero}`, fornecedorDoLancamento(t) ?? t.description)
 }
 
 /** "recibo-<número ou data>-<nome curto>.pdf". Sem nome de quem pagou, o nome curto sai da descrição. */

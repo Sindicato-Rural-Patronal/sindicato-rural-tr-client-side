@@ -1,9 +1,56 @@
+import type { ReactNode } from 'react'
 import { Filter } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import type { AuditTrailItem } from '@/hooks/useAuditTrail'
 import { auditChanges, auditFieldLabel, formatAuditValue } from '@/lib/audit-fields'
+import { detalhesDaExportacao, type DetalhesDaExportacao } from '@/components/export/export-details'
 
-// Detalhe de uma linha da auditoria: de onde veio (IP, local, navegador) e o que mudou.
+// Detalhe de uma linha da auditoria: de onde veio (IP, local, navegador), o que
+// mudou e, na exportação, o que foi exportado (formato, modelo, campos, filtros).
+
+function OQueFoiExportado({ detalhes }: { detalhes: DetalhesDaExportacao }) {
+  const linhas: [string, ReactNode][] = []
+  if (detalhes.formato) linhas.push(['Formato', detalhes.formato])
+  if (detalhes.modelo) linhas.push(['Modelo', detalhes.modelo])
+  if (detalhes.escopo) linhas.push(['O que entrou', detalhes.escopo])
+  if (detalhes.linhas != null) {
+    linhas.push(['Registros', detalhes.linhas.toLocaleString('pt-BR')])
+  }
+  if (detalhes.filtros.length) {
+    linhas.push(['Filtros', (
+      <ul className="flex flex-col gap-0.5">
+        {detalhes.filtros.map((f, i) => (
+          <li key={`${f.nome}-${i}`}>{f.valor ? <>{f.nome}: <span className="text-foreground">{f.valor}</span></> : f.nome}</li>
+        ))}
+      </ul>
+    )])
+  }
+  if (detalhes.campos.length) {
+    linhas.push([`Campos (${detalhes.campos.length})`, (
+      <ol className="flex flex-wrap gap-1">
+        {detalhes.campos.map((c, i) => (
+          <li key={`${c}-${i}`} className="rounded-md border border-border bg-card px-1.5 py-0.5 text-xs text-foreground">
+            {c}
+          </li>
+        ))}
+      </ol>
+    )])
+  }
+
+  return (
+    <div className="flex flex-col gap-2">
+      <p className="text-sm font-medium text-foreground">O que foi exportado</p>
+      <dl className="grid grid-cols-1 gap-x-6 gap-y-1 rounded-md border border-border p-3 text-sm sm:grid-cols-[max-content_1fr] sm:gap-y-2">
+        {linhas.map(([rotulo, valor]) => (
+          <div key={rotulo} className="contents">
+            <dt className="text-xs text-muted-foreground sm:text-sm">{rotulo}</dt>
+            <dd className="mb-2 min-w-0 text-foreground sm:mb-0">{valor}</dd>
+          </div>
+        ))}
+      </dl>
+    </div>
+  )
+}
 export function AuditRowDetails({
   row,
   ipFiltered,
@@ -15,6 +62,7 @@ export function AuditRowDetails({
   onFilterIp: (ip: string) => void
 }) {
   const changes = auditChanges(row.changes)
+  const exportado = detalhesDaExportacao(row.details)
 
   return (
     <div className="flex flex-col gap-4 py-1">
@@ -58,6 +106,8 @@ export function AuditRowDetails({
           {row.method} {row.path} · {row.statusCode}
         </dd>
       </dl>
+
+      {exportado && <OQueFoiExportado detalhes={exportado} />}
 
       {changes.length > 0 && (
         <div className="flex flex-col gap-2">

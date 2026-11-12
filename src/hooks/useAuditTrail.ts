@@ -27,6 +27,8 @@ export type AuditTrailItem = {
   device?: string | null
   userAgent?: string | null
   changes?: AuditChange[] | null
+  /** Exportação (decisão 006): formato, modelo, campos, escopo, filtros e linhas. */
+  details?: unknown
 }
 
 export type AuditTrailFilters = {

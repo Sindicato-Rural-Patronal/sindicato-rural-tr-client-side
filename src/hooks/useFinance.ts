@@ -1,7 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { apiFetch, apiUpload } from '@/lib/api'
-import { openBlob, saveBlob } from '@/utils/download'
-import { todayYmd } from '@/utils/dates'
+import { openBlob } from '@/utils/download'
 
 export type FinanceType = 'IN' | 'OUT'
 
@@ -238,7 +237,7 @@ export type TransactionFilters = {
   method?: string
   /** Busca: Nº, "Nº anterior", descrição, nome / razão social ou CNPJ/CPF. */
   search?: string
-  /** `date` (padrão: data, o mais novo primeiro) ou `number` (Nº, o maior primeiro). Vale na lista e no CSV. */
+  /** `date` (padrão: data, o mais novo primeiro) ou `number` (Nº, o maior primeiro). Vale na lista e na exportação. */
   orderBy?: 'date' | 'number'
 }
 
@@ -339,12 +338,24 @@ function buildQuery(filters: TransactionFilters): string {
   return s ? `?${s}` : ''
 }
 
-// Exporta os lançamentos filtrados como CSV (endpoint exige Bearer → download via blob).
-// Sem page/limit: o CSV traz todos os lançamentos que batem com os filtros.
-export async function exportFinanceTransactions(filters: TransactionFilters = {}) {
-  const qs = buildQuery({ ...filters, page: undefined, limit: undefined })
-  const res = await apiFetch(`/admin/finance/transactions/export${qs}`)
-  saveBlob(await res.blob(), `lancamentos-${todayYmd()}.csv`)
+/**
+ * Os filtros da lista de lançamentos para o `ExportMenu` da fonte
+ * `finance-transactions` (SR-103; antes, `GET /admin/finance/transactions/export`):
+ * os mesmos da lista, sem página nem limite (sai tudo o que bate), e a ordem só
+ * quando é por Nº (a por data é a de sempre). A planilha e o PDF saem na ordem
+ * da tela. As chaves vão na ordem em que a API diz os filtros no PDF.
+ */
+export function financeExportFilters(filters: TransactionFilters): Record<string, string | undefined> {
+  return {
+    from: filters.from || undefined,
+    to: filters.to || undefined,
+    type: filters.type || undefined,
+    categoryId: filters.categoryId || undefined,
+    accountId: filters.accountId || undefined,
+    method: filters.method || undefined,
+    search: filters.search || undefined,
+    orderBy: filters.orderBy === 'number' ? 'number' : undefined,
+  }
 }
 
 export function useFinanceTransactions(

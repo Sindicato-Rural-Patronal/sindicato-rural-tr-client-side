@@ -28,7 +28,9 @@ manhã ou à tarde.
 **Financeiro do mês** — entradas, saídas e saldo do mês corrente.
 
 **Calendário e agenda das salas** — o que está marcado nas salas: cursos, eventos
-e reuniões, cada tipo com sua cor. É por aqui que se marca reserva de sala; veja
+e reuniões, cada tipo com sua cor. É por aqui que se marca reserva de sala e
+que se exportam ou imprimem as reservas do dia ou da semana. A planilha e o
+**Imprimir** ficam registrados na Auditoria; veja
 [Salas, reservas e agenda](?topico=salas-e-agenda).
 
 **Cursos públicos** — os cursos no ar, com as vagas no formato `8/40`, mais o

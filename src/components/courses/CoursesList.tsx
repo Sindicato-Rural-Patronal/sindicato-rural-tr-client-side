@@ -192,17 +192,20 @@ export function CoursesList({
               onDone={() => selection.clear()}
               className="h-9"
             />
-            {/* Sem `total`: a planilha de cursos aceita busca e status, não aba nem ano,
-                então "Todos (N)" com o total da aba prometeria menos do que exporta. */}
+            {/* A exportação respeita a aba e o ano, como a lista: "Todos (N)" é o total da tela. */}
             <ExportMenu
               dataset="courses"
               className="h-9"
-              filters={{ search: debouncedSearch.trim() }}
+              filters={{ view, search: debouncedSearch.trim(), year }}
               selectedIds={selection.ids}
-              filtered={!!debouncedSearch.trim()}
+              total={data?.total}
+              filtered={filtrando}
               extra={[
-                { label: 'Inscrições dos cursos selecionados', dataset: 'registrations', params: { courseIds: selection.ids }, disabled: selection.count === 0 },
-                { label: 'Inscrições de todos os cursos', dataset: 'registrations', params: {} },
+                {
+                  label: 'Inscrições dos cursos selecionados', dataset: 'registrations', params: { courseIds: selection.ids },
+                  disabled: selection.count === 0, builder: true,
+                },
+                { label: 'Inscrições de todos os cursos', dataset: 'registrations', params: {}, builder: true },
               ]}
             />
           </div>

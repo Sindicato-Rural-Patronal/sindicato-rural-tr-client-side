@@ -4,8 +4,8 @@ resumo: Cadastrar pessoas, completar fichas e juntar cadastros repetidos.
 grupo: dia-a-dia
 ordem: 3
 permissao: READ_USER
-veja: como-cadastrar-associado, como-juntar-cadastros, empresas, unimed, cursos, exportar-planilhas
-busca: associado selo pessoa fisica juridica abas cadastro cpf ficha foto ampliar propriedade dependente duplicado juntar instrutor incompleto situacao validade associacao
+veja: como-cadastrar-associado, como-juntar-cadastros, empresas, unimed, cursos, exportar-planilhas, montar-relatorio
+busca: associado selo pessoa fisica juridica abas cadastro cpf ficha foto ampliar propriedade dependente duplicado juntar instrutor incompleto situacao validade associacao exportar planilha montar relatorio ficha completa propriedades dos selecionados csv excel xlsx planilha baixada
 ---
 
 **Gestão › Usuários** é o cadastro de pessoas do Sindicato. A tela tem quatro
@@ -17,6 +17,13 @@ abas:
 | **Associados** | Só quem está com o selo **Associado** (veja abaixo) |
 | **Pessoa jurídica** | As empresas, com o botão **Nova empresa** |
 | **Administradores** | Quem tem acesso ao painel, com o botão **Novo admin** |
+
+Cada aba tem o botão **Exportar**, com a planilha, o PDF e, no fim do menu, o
+**Montar relatório…**, para escolher as colunas. Nas abas **Pessoa física** e
+**Associados**, o menu leva também as propriedades das pessoas marcadas:
+**Propriedades dos selecionados**, em planilha, e **Montar relatório:
+propriedades dos selecionados…**. Veja
+[Como montar um relatório](?topico=montar-relatorio).
 
 ## O selo "Associado"
 
@@ -63,8 +70,14 @@ Clicar no nome abre a ficha completa, com:
 - **Relações** — dependentes e cônjuge
 - **Unimed** — quando a pessoa é beneficiária; veja [Unimed](?topico=unimed)
 
-Dá para trocar a **foto** e **Exportar** a ficha completa ou as propriedades em
-planilha CSV.
+Dá para trocar a **foto** e **Exportar** a ficha completa ou as propriedades.
+No menu **Exportar**, do topo da ficha, **Ficha completa** e **Propriedades
+(N)** baixam a planilha no formato marcado na linha **Planilha**: **CSV** ou
+**Excel (.xlsx)**, a mesma escolha das listas. Ao terminar, aparece *Planilha
+com 1 registro baixada.* (no Excel, *Planilha do Excel com 1 registro
+baixada.*). Embaixo, o grupo **Montar relatório (escolher campos)** tem **Ficha
+completa…** e **Propriedades (N)…**, para escolher as colunas. Veja
+[Exportar planilhas](?topico=exportar-planilhas).
 
 ### A foto do cadastro
 

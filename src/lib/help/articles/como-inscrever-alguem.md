@@ -34,7 +34,8 @@ A própria janela de busca tem o atalho para cadastrar. Veja
 
 ## Depois de inscrever
 
-- **Baixar ficha de inscrição** — o PDF para a pessoa assinar.
+- **Baixar ficha de inscrição** — o PDF para a pessoa assinar. Pede também a
+  permissão de ver usuários (veja [Cursos e inscrições](?topico=cursos)).
 - **Anexar ficha preenchida (PDF)** — depois de assinada, ela volta para dentro
   do sistema, presa à inscrição. É o que evita a pasta de papel.
 - **Conversar no WhatsApp** e **Ligar** ficam na linha de cada inscrito.

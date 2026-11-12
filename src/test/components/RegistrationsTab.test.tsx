@@ -1,10 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import type { ReactNode } from 'react'
 import type { Registration } from '@/hooks/useAdmin'
 import { brasiliaToday } from '@/utils/course-status'
 import { TooltipProvider } from '@/components/ui/tooltip'
+import { CATALOGO_INSCRICOES_CRU } from '../lib/export-catalog.fixture'
 import '@/i18n'
 
 // Inscritos do curso: a API entrega da mais antiga para a mais nova (ordem de
@@ -17,8 +19,33 @@ vi.mock('@/lib/api', async importOriginal => ({
   apiFetch: (...args: unknown[]) => apiFetch(...args),
 }))
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
+// Os PDFs montados no navegador: nada de react-pdf no jsdom.
+const downloadListaPresencaPdf = vi.fn()
+vi.mock('@/lib/lista-presenca-pdf', () => ({
+  downloadListaPresencaPdf: (...args: unknown[]) => downloadListaPresencaPdf(...args),
+}))
+const downloadFichaPdf = vi.fn()
+vi.mock('@/lib/ficha-inscricao-pdf', () => ({ downloadFichaPdf: (...args: unknown[]) => downloadFichaPdf(...args) }))
+// O montador de relatórios (menu Planilha) usa o tamanho da tela e o "?" da Ajuda.
+vi.mock('@/hooks/use-mobile', () => ({ useIsMobile: () => false }))
+vi.mock('@tanstack/react-router', () => ({
+  Link: ({ children, to, search, ...props }: { children: ReactNode; to: string; search?: { topico?: string } }) =>
+    <a href={`${to}?topico=${search?.topico ?? ''}`} {...props}>{children}</a>,
+}))
+// jsdom não tem ResizeObserver, e a dica (Tooltip) dos botões de cada inscrição mede
+// a setinha com ele ao abrir. O clique passa o mouse no botão antes, e a dica abre
+// num setTimeout: se ela abrisse antes do clique chegar, o React derrubava a tela
+// inteira ("ResizeObserver is not defined") e o clique se perdia (SR-108).
+class ResizeObserverFalso {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+}
+vi.stubGlobal('ResizeObserver', ResizeObserverFalso)
 
 const { RegistrationsTab } = await import('@/components/courses/RegistrationsTab')
+const { ApiError } = await import('@/lib/api')
+const { toast } = await import('sonner')
 
 function inscricao(id: string, name: string, createdAt: string, over: Partial<Registration> = {}): Registration {
   return {
@@ -41,13 +68,19 @@ const ORDEM_DE_CHEGADA = [
   inscricao('r3', 'Ana Souza', '2026-10-30T17:35:00.000Z'),
 ]
 
-function simular(regs: Registration[], curso: { startDate: string } = { startDate: '2026-12-01' }) {
+function simular(
+  regs: Registration[],
+  curso: { startDate: string } = { startDate: '2026-12-01' },
+  catalogo: unknown = {},
+  permissions: string[] = ['READ_COURSE', 'UPDATE_COURSE', 'READ_USER'],
+) {
   const pagina = { data: regs, total: regs.length, page: 1, limit: 20, totalPages: 1 }
   apiFetch.mockImplementation((path: string) => {
     const corpo = (() => {
-      if (path === '/admin/me') return { permissions: ['READ_COURSE', 'UPDATE_COURSE', 'READ_USER'] }
+      if (path === '/admin/me') return { permissions }
       if (path.startsWith('/admin/courses/c1/registrations')) return pagina
       if (path === '/admin/courses/c1') return { id: 'c1', title: 'Curso de Soja', status: 'PUBLIC', instructors: [], ...curso }
+      if (path === '/admin/export/registrations/catalog') return catalogo
       return {}
     })()
     return Promise.resolve({ json: () => Promise.resolve(corpo) })
@@ -200,5 +233,131 @@ describe('inscritos do curso: presença continua funcionando', () => {
     await waitFor(() => expect(apiFetch.mock.calls.some(c => c[0] === '/admin/courses/c1')).toBe(true))
     expect(screen.queryByRole('button', { name: /Presente/ })).not.toBeInTheDocument()
     expect(screen.queryByText(/Presença:/)).not.toBeInTheDocument()
+  })
+})
+
+describe('inscritos do curso: Montar relatório', () => {
+  it('o montador diz o nome do curso e conta as confirmadas da lista', async () => {
+    simular([
+      ORDEM_DE_CHEGADA[0],
+      { ...ORDEM_DE_CHEGADA[1], confirmed: false },
+      ORDEM_DE_CHEGADA[2],
+    ], undefined, CATALOGO_INSCRICOES_CRU)
+    abrir()
+    await screen.findByText('Zilda Alves')
+    const usuario = userEvent.setup()
+    await usuario.click(screen.getByRole('button', { name: 'Planilha' }))
+    await usuario.click(await screen.findByRole('menuitem', { name: 'Montar relatório…' }))
+    expect(await screen.findByText('Filtros: Curso: Curso de Soja')).toBeInTheDocument()
+    expect(screen.getByRole('radio', { name: 'Todos (3)' })).toBeChecked()
+    await usuario.click(screen.getByRole('checkbox', { name: 'Só confirmadas (2)' }))
+    expect(screen.getByRole('button', { name: 'Baixar planilha (2)' })).toBeEnabled()
+  })
+})
+
+describe('documentos do curso na auditoria antes de gerar (SR-106)', () => {
+  /** A simulação de sempre, mais a ficha da pessoa e o registro do documento (`documento` = a resposta dele). */
+  function comDocumentos(documento: () => Promise<unknown> = () => Promise.resolve({ status: 204 })) {
+    simular(ORDEM_DE_CHEGADA)
+    const base = apiFetch.getMockImplementation()!
+    apiFetch.mockImplementation((path: string, init?: RequestInit) => {
+      if (path.startsWith('/admin/export/documents/')) return documento()
+      const pessoa = path.match(/^\/admin\/users\/u-(r\d)$/)
+      if (pessoa) {
+        const nome = ORDEM_DE_CHEGADA.find(r => r.id === pessoa[1])!.userData.name
+        return Promise.resolve({ json: () => Promise.resolve({ id: `u-${pessoa[1]}`, name: nome }) })
+      }
+      return base(path, init)
+    })
+  }
+
+  function registros(kind: string) {
+    return apiFetch.mock.calls
+      .filter(c => c[0] === `/admin/export/documents/${kind}`)
+      .map(c => JSON.parse((c[1] as RequestInit).body as string))
+  }
+
+  it('lista de presença: uma linha com o curso e as confirmadas, antes do PDF', async () => {
+    const ordem: string[] = []
+    comDocumentos(() => { ordem.push('auditoria'); return Promise.resolve({ status: 204 }) })
+    downloadListaPresencaPdf.mockImplementation(() => { ordem.push('pdf'); return Promise.resolve() })
+    abrir()
+    await screen.findByText('Zilda Alves')
+    await userEvent.click(screen.getByRole('button', { name: /Lista de presença/ }))
+    await waitFor(() => expect(downloadListaPresencaPdf).toHaveBeenCalled())
+    expect(ordem).toEqual(['auditoria', 'pdf'])
+    expect(registros('lista-presenca')).toEqual([{ linhas: 3, alvo: 'Curso de Soja', ids: ['r1', 'r2', 'r3'] }])
+  })
+
+  it('se o registro falhar, a lista não sai e a mensagem aparece', async () => {
+    comDocumentos(() => Promise.reject(new ApiError(429, 'Muitos documentos seguidos. Aguarde um minuto e tente de novo.')))
+    abrir()
+    await screen.findByText('Zilda Alves')
+    await userEvent.click(screen.getByRole('button', { name: /Lista de presença/ }))
+    await waitFor(() => expect(toast.error).toHaveBeenCalledWith('Muitos documentos seguidos. Aguarde um minuto e tente de novo.'))
+    expect(downloadListaPresencaPdf).not.toHaveBeenCalled()
+  })
+
+  it('"Exportar todas": uma chamada só, com todas as inscrições', async () => {
+    comDocumentos()
+    downloadFichaPdf.mockResolvedValue(undefined)
+    abrir()
+    await screen.findByText('Zilda Alves')
+    await userEvent.click(screen.getByRole('button', { name: 'Exportar todas' }))
+    await waitFor(() => expect(downloadFichaPdf).toHaveBeenCalled())
+    expect(registros('ficha-inscricao')).toEqual([
+      { linhas: 3, alvo: 'Curso de Soja', ids: ['r1', 'r2', 'r3'], escopo: 'todos' },
+    ])
+  })
+
+  it('uma ficha: o curso e a pessoa no alvo, a inscrição nos ids', async () => {
+    comDocumentos()
+    downloadFichaPdf.mockResolvedValue(undefined)
+    abrir()
+    await screen.findByText('Zilda Alves')
+    await userEvent.click(screen.getAllByRole('button', { name: 'Baixar ficha de inscrição' })[0])
+    await waitFor(() => expect(downloadFichaPdf).toHaveBeenCalled())
+    expect(registros('ficha-inscricao')).toEqual([{ linhas: 1, alvo: 'Curso de Soja · Zilda Alves', ids: ['r1'] }])
+  })
+
+  it('ficha sem permissão: não gera e diz por quê', async () => {
+    comDocumentos(() => Promise.reject(new ApiError(403, 'Forbidden')))
+    abrir()
+    await screen.findByText('Zilda Alves')
+    await userEvent.click(screen.getAllByRole('button', { name: 'Baixar ficha de inscrição' })[0])
+    await waitFor(() => expect(toast.error).toHaveBeenCalledWith('Você não tem permissão para gerar este documento.'))
+    expect(downloadFichaPdf).not.toHaveBeenCalled()
+  })
+})
+
+describe('ficha de inscrição sem "Visualizar usuários" (SR-111)', () => {
+  it('as fichas ficam desligadas, com o motivo na dica, e nada é pedido à API', async () => {
+    simular(ORDEM_DE_CHEGADA, undefined, {}, ['READ_COURSE', 'UPDATE_COURSE'])
+    abrir()
+    await screen.findByText('Zilda Alves')
+    // As permissões podem chegar depois da lista: até lá, o botão fica ligado.
+    await waitFor(() => expect(screen.getAllByRole('button', { name: 'Baixar ficha de inscrição' })[0]).toBeDisabled())
+    expect(screen.getAllByRole('button', { name: 'Baixar ficha de inscrição' }).every(b => (b as HTMLButtonElement).disabled))
+      .toBe(true)
+    expect(screen.getByRole('button', { name: 'Exportar todas' })).toBeDisabled()
+
+    // O motivo aparece na dica, pelo teclado (o botão desligado não recebe o mouse).
+    act(() => { (screen.getAllByRole('button', { name: 'Baixar ficha de inscrição' })[0].parentElement as HTMLElement).focus() })
+    expect(await screen.findByRole('tooltip')).toHaveTextContent('Baixar ficha de inscriçãoPede a permissão Visualizar usuários')
+
+    expect(apiFetch.mock.calls.some(c => String(c[0]).startsWith('/admin/users/'))).toBe(false)
+    expect(downloadFichaPdf).not.toHaveBeenCalled()
+  })
+
+  it('com a permissão tirada depois de abrir a tela, o 403 da pessoa diz que falta permissão', async () => {
+    simular(ORDEM_DE_CHEGADA)
+    const base = apiFetch.getMockImplementation()!
+    apiFetch.mockImplementation((path: string, init?: RequestInit) =>
+      path.startsWith('/admin/users/') ? Promise.reject(new ApiError(403, 'Forbidden')) : base(path, init))
+    abrir()
+    await screen.findByText('Zilda Alves')
+    await userEvent.click(screen.getAllByRole('button', { name: 'Baixar ficha de inscrição' })[0])
+    await waitFor(() => expect(toast.error).toHaveBeenCalledWith('Você não tem permissão para gerar este documento.'))
+    expect(downloadFichaPdf).not.toHaveBeenCalled()
   })
 })

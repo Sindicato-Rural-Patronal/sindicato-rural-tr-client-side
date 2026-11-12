@@ -1,6 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { apiFetch, API_BASE } from '@/lib/api'
-import { ORG_CONTACT } from '@/lib/org-contact'
 
 /** Configurações do site público (Configurações do site no painel). */
 export type SiteSettings = {
@@ -28,7 +27,7 @@ export type SiteSettingsInput = Partial<Omit<SiteSettings, 'quotesSource'>>
 export function usePublicSiteSettings() {
   return useQuery<SiteSettings>({
     queryKey: ['site-settings', 'public'],
-    // Erro (429/500) lança: `data` fica undefined e quem usa cai nos padrões
+    // Erro (429/500) lança: `data` fica undefined e quem usa não mostra o campo
     queryFn: () => fetch(`${API_BASE}/site-settings`).then(r => {
       if (!r.ok) throw new Error(`HTTP ${r.status}`)
       return r.json()
@@ -88,22 +87,23 @@ function parseHours(text: string): OrgInfo['hours'] {
 }
 
 /**
- * Dados do sindicato para o site. Enquanto as configurações não chegam
- * (carregando ou erro) usa os valores padrão de `org-contact.ts`; depois, o que
- * foi salvo — campo vazio fica vazio e quem exibe não mostra a linha.
+ * Dados do sindicato para o site: o que foi salvo em Configurações. Sem valor
+ * reserva: enquanto as configurações não chegam (carregando ou erro) todos os
+ * campos vêm vazios e quem exibe não mostra a linha, em vez de mostrar contato
+ * inventado. Campo salvo vazio também não aparece.
  */
 export function useOrgInfo(): OrgInfo {
   const { data } = usePublicSiteSettings()
-  const pick = (value: string | undefined, fallback: string) => (data ? (value ?? '').trim() : fallback)
+  const pick = (value: string | undefined) => (value ?? '').trim()
   return {
-    phone: pick(data?.orgPhone, ORG_CONTACT.phone),
-    email: pick(data?.orgEmail, ORG_CONTACT.email),
-    street: pick(data?.orgStreet, ORG_CONTACT.street),
-    district: pick(data?.orgDistrict, ORG_CONTACT.district),
-    city: pick(data?.orgCity, ORG_CONTACT.city),
-    state: pick(data?.orgState, ORG_CONTACT.state),
-    zip: pick(data?.orgZip, ORG_CONTACT.zip),
-    hours: parseHours(pick(data?.orgHours, ORG_CONTACT.hours)),
-    mapQuery: pick(data?.orgMapQuery, ORG_CONTACT.mapQuery),
+    phone: pick(data?.orgPhone),
+    email: pick(data?.orgEmail),
+    street: pick(data?.orgStreet),
+    district: pick(data?.orgDistrict),
+    city: pick(data?.orgCity),
+    state: pick(data?.orgState),
+    zip: pick(data?.orgZip),
+    hours: parseHours(pick(data?.orgHours)),
+    mapQuery: pick(data?.orgMapQuery),
   }
 }

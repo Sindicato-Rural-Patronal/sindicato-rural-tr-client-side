@@ -5,7 +5,7 @@ grupo: como-fazer
 ordem: 13
 permissao: READ_FINANCE
 veja: financeiro, como-registrar-lancamento
-busca: recibo recibos emitir gerar pdf imprimir assinar assinatura entrada recebimento recebemos importancia por extenso pagador quem pagou cnpj cpf endereco nome razao social numero nota de empenho financeiro
+busca: recibo recibos emitir gerar pdf imprimir assinar assinatura entrada recebimento recebemos importancia por extenso pagador quem pagou cnpj cpf endereco nome razao social numero nota de empenho financeiro auditoria gerou o documento documento nao foi gerado muitos documentos seguidos
 ---
 
 O recibo é o papel que o Sindicato entrega a quem pagou. Ele sai do **lançamento
@@ -47,6 +47,12 @@ extenso e o espaço para assinar.
    número é o **Nº** do lançamento). Abra e confira.
 6. Imprima, assine em **Assinatura do responsável** e entregue a quem pagou.
 
+Cada recibo gerado fica registrado na [Auditoria](?topico=auditoria), com o
+**Nº** e o nome de quem pagou: *Gerou o documento "Recibo: Nº 128 · FAZENDA SAO
+JOSE · 1 registro"*. O registro é feito antes de o PDF ser gerado. Se ele
+falhar, o recibo não sai e aparece uma mensagem (veja
+[Se algo der errado](#se-algo-der-errado)).
+
 > O jeito mais rápido de preencher os dados de quem pagou: no formulário, abra
 > **Nota de Empenho**, escolha a aba **Pessoa** ou **Empresa** e busque o
 > cadastro. Nome, documento e endereço vêm sozinhos.
@@ -78,6 +84,9 @@ Se o documento tem 11 números, o recibo diz **CPF**; se tem 14, diz **CNPJ**.
 | Sai o nome, mas falta o CNPJ/CPF ou o endereço | Esses dados ficam na seção **Nota de Empenho** do formulário. Preencha lá e gere de novo. O endereço só aparece quando há nome ou documento |
 | O quadro **Nº** não aparece no recibo | O lançamento não tem número. Avise o suporte (veja [Problemas comuns](?topico=problemas-comuns)) |
 | A data do recibo está errada | O recibo mostra a **Data** do lançamento. Corrija a data no **Editar** e gere de novo |
-| Preciso mudar o valor ou a descrição | O sistema não guarda o PDF: cada clique monta um recibo novo com o que o lançamento tem **agora**. Edite o lançamento e gere de novo. O recibo que já foi impresso não muda sozinho |
+| Preciso mudar o valor ou a descrição | O sistema não guarda o PDF: cada clique monta um recibo novo com o que o lançamento tem **agora** (e cada um fica na Auditoria). Edite o lançamento e gere de novo. O recibo que já foi impresso não muda sozinho |
+| *O documento não foi gerado: não deu para registrar na auditoria. Confira a internet e tente de novo.* | O recibo não sai sem ficar na Auditoria, e o registro falhou. Confira a internet e clique de novo |
+| *Muitos documentos seguidos. Aguarde um minuto e tente de novo.* | Passou de 30 documentos num minuto, somando todo mundo que usa a mesma internet. Espere um minuto e clique de novo |
+| *Você não tem permissão para gerar este documento.* | A sua regra não deixa gerar o recibo. Fale com quem cuida das regras |
 | Aparece *Erro ao gerar o recibo.* | Clique no botão outra vez. Se continuar, avise o suporte |
 | Não acho o arquivo depois de clicar | Ele foi para a pasta de downloads do navegador |

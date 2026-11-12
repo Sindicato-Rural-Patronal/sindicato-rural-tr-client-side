@@ -6,6 +6,7 @@ import type { UnimedListResponse, UnimedRow } from '@/hooks/useUnimed'
 let query: { data?: UnimedListResponse; isLoading: boolean; isError: boolean }
 const refetch = vi.fn()
 const baixarFicha = vi.fn().mockResolvedValue(undefined)
+const baixarTermo = vi.fn().mockResolvedValue(undefined)
 
 vi.mock('@tanstack/react-router', () => ({
   Link: ({ to, children }: { to: string; children: React.ReactNode }) => <a href={to}>{children}</a>,
@@ -16,11 +17,15 @@ vi.mock('@/hooks/useUnimed', async importOriginal => ({
 }))
 vi.mock('@/lib/unimed-docs', () => ({
   baixarFichaUnimed: (id: string) => baixarFicha(id),
-  baixarTermoUnimed: vi.fn(),
+  baixarTermoUnimed: (id: string) => baixarTermo(id),
   baixarContratoUnimed: vi.fn(),
+  // Os textos de verdade são conferidos em unimed-docs.test.ts; aqui, só que a aba usa o do documento.
+  ERRO_DO_DOCUMENTO_UNIMED: { ficha: 'erro da ficha', termo: 'erro do termo', contrato: 'erro do contrato' },
 }))
+vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
 
 const { PersonUnimedTab } = await import('@/components/unimed/PersonUnimedTab')
+const { toast } = await import('sonner')
 
 const PESSOA = 'p1'
 
@@ -85,6 +90,14 @@ describe('PersonUnimedTab', () => {
     render(<PersonUnimedTab userDataId={PESSOA} />)
     fireEvent.click(screen.getByRole('button', { name: 'Ficha' }))
     await waitFor(() => expect(baixarFicha).toHaveBeenCalledWith('u1'))
+  })
+
+  it('documento que não sai: a mensagem com o nome dele, não o rótulo do botão (SR-111)', async () => {
+    baixarTermo.mockRejectedValueOnce(null)
+    setQuery([row()])
+    render(<PersonUnimedTab userDataId={PESSOA} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Termo' }))
+    await waitFor(() => expect(toast.error).toHaveBeenCalledWith('erro do termo'))
   })
 
   it('avisa quando a busca falha, com "Tentar de novo"', () => {

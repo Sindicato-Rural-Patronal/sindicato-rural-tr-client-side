@@ -26,6 +26,11 @@ import { LoadErrorRetry } from '@/components/LoadErrorRetry'
 import { useRoomBookings, useRoomSchedule, type RoomBooking } from '@/hooks/useRoomBookings'
 import { apiErrorMessage } from '@/lib/api-error-message'
 import { downloadExport } from '@/lib/export'
+import { alvoDoDocumento, periodoDoDocumento, registrarDocumento } from '@/lib/registrar-documento'
+import {
+  ItensDoMontador, MontadorAberto, type AberturaDoMontador, type FonteDoMontador,
+} from '@/components/export/MontadorDeFontes'
+import { textosDaAgenda } from '@/components/export/filter-texts'
 import {
   KIND_LABEL, addDays, agendaCountLabel, agendaEntries, formatDateBr, isValidYmd, itemsByDay, itemsOfDay,
   plusOneHour, rangeLabel, visibleRange, weekDays, weekdayLong,
@@ -37,6 +42,8 @@ import { cn } from '@/lib/utils'
 // semana. É por aqui que se marca, edita, exclui, exporta e imprime. Tudo o que
 // aparece vem das MESMAS duas buscas do período visível (uma por período, nunca
 // uma por dia), então a lista, a semana e a faixa de ocupação nunca discordam.
+// O Exportar também tem "Montar relatório…" (decisão 006, SR-103), com o
+// período, a sala, o tipo e a busca da tela.
 
 type DialogState = {
   open: boolean
@@ -84,6 +91,8 @@ export function AgendaSection({
   const [showOccupancy, setShowOccupancy] = useState(!isMobile)
   const [periodOpen, setPeriodOpen] = useState(false)
   const [exporting, setExporting] = useState(false)
+  // Cada abertura do montador começa do zero (padrão ou último usado).
+  const [montador, setMontador] = useState<AberturaDoMontador>({ aberto: false, vez: 0, alvo: 0 })
 
   const search = useDebouncedValue(searchInput, 350).trim()
   const { from, to } = visibleRange(dia, view)
@@ -160,7 +169,8 @@ export function AgendaSection({
         type: bookingType,
         search: search || undefined,
       })
-      toast.success(count === 1 ? 'Planilha com 1 reserva baixada.' : count >= 0 ? `Planilha com ${count} reservas baixada.` : 'Planilha baixada.')
+      toast.success(count === 1 ? 'Planilha com 1 reserva baixada.'
+        : count >= 0 ? `Planilha com ${count.toLocaleString('pt-BR')} reservas baixada.` : 'Planilha baixada.')
     } catch (err) {
       toast.error(apiErrorMessage(err, 'Erro ao exportar.'))
     }
@@ -172,11 +182,24 @@ export function AgendaSection({
     setPrinting(true)
     try {
       const { printAgendaPdf } = await import('@/lib/agenda-pdf')
-      await printAgendaPdf(perDay, from, to, {
+      const filtros = {
         room: salas?.find(r => r.id === sala)?.name ?? null,
         kind: tipo === 'ALL' ? null : KIND_LABEL[tipo],
         search: search || null,
+      }
+      // Na auditoria antes de gerar ("Agenda: 05/10/2026 a 11/10/2026 · Sala: …");
+      // se não registrar, o PDF não sai (a mensagem vem pelo apiErrorMessage).
+      await registrarDocumento('agenda', {
+        linhas: visiveis.length,
+        alvo: alvoDoDocumento(
+          periodoDoDocumento(from, to),
+          filtros.room && `Sala: ${filtros.room}`,
+          filtros.kind && `Tipo: ${filtros.kind}`,
+          filtros.search && `Busca: ${filtros.search}`,
+        ),
+        escopo: 'com filtros',
       })
+      await printAgendaPdf(perDay, from, to, filtros)
     } catch (err) {
       toast.error(apiErrorMessage(err, 'Não foi possível gerar o PDF da agenda.'))
     }
@@ -184,6 +207,22 @@ export function AgendaSection({
   }
 
   const salasDaFaixa = sala ? (salas ?? []).filter(r => r.id === sala) : (salas ?? [])
+
+  // O montador das reservas: o mesmo pedido da planilha "Este dia/Esta semana"
+  // (os cursos não entram). O total é o da lista de reservas da tela, que é
+  // buscada com os mesmos filtros.
+  const montadorDasReservas: FonteDoMontador[] = [{
+    rotulo: 'Montar relatório…',
+    dataset: 'room-bookings',
+    filters: { from, to, roomId: sala || undefined, type: bookingType, search: search || undefined },
+    total: bookings.isError ? undefined : bookings.data?.length,
+    filtered: true,
+    filterTexts: textosDaAgenda({
+      roomId: sala,
+      sala: salas?.find(r => r.id === sala)?.name ?? bookings.data?.find(b => b.roomId === sala)?.roomName,
+      type: bookingType,
+    }),
+  }]
 
   return (
     <Card>
@@ -281,6 +320,10 @@ export function AgendaSection({
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onSelect={() => setPeriodOpen(true)}>Escolher período…</DropdownMenuItem>
+                <ItensDoMontador
+                  fontes={montadorDasReservas}
+                  onAbrir={alvo => setMontador(m => ({ aberto: true, vez: m.vez + 1, alvo }))}
+                />
               </DropdownMenuContent>
             </DropdownMenu>
           )}
@@ -401,6 +444,15 @@ export function AgendaSection({
         canDelete={canDelete}
         onClose={() => setDialog(prev => ({ ...prev, open: false }))}
       />
+
+      {/* Fora do menu (o conteúdo do menu some ao fechar); sem READ_COURSE, nem pede o catálogo. */}
+      {canRead && (
+        <MontadorAberto
+          fontes={montadorDasReservas}
+          abertura={montador}
+          onOpenChange={aberto => setMontador(m => ({ ...m, aberto }))}
+        />
+      )}
 
       <ExportPeriodDialog
         open={periodOpen}

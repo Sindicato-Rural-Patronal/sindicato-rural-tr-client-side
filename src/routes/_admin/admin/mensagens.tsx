@@ -335,6 +335,8 @@ function RouteComponent() {
           selectedIds={selection.ids}
           total={data?.total}
           filtered={!!search.trim() || readFilter !== 'all'}
+          // O montador diz "Só não lidas", como a API no PDF ("Só lidas" vem do catálogo).
+          filterTexts={readParam === false ? { read: 'Só não lidas' } : undefined}
         />
       </div>
 

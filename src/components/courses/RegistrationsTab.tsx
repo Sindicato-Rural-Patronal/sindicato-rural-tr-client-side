@@ -9,7 +9,8 @@ import { useAdminCourse, adminCourseQuery, fetchAllCourseRegistrations, useAllCo
 import { useCourseRegistrations, useCancelRegistration, useConfirmRegistration, useStartCourse, useUploadRegistrationFicha, useDeleteRegistrationFicha, openRegistrationFicha } from '@/hooks/useAdmin'
 import type { UserDataDetail, Registration } from '@/hooks/useAdmin'
 import { apiErrorMessage } from '@/lib/api-error-message'
-import { apiFetch } from '@/lib/api'
+import { ApiError, apiFetch } from '@/lib/api'
+import { alvoDoDocumento, erroDoDocumento, registrarDocumento, TEXTOS_DO_REGISTRO } from '@/lib/registrar-documento'
 import { calcAge } from '@/utils/age'
 import { hasCourseStarted } from '@/utils/course-status'
 import { attendanceCounts, attendanceSummary } from '@/utils/course-attendance'
@@ -18,8 +19,9 @@ import { maskCPF, maskPhone } from '@/utils/masks'
 import { whatsappUrl, telHref, uniqueContactLines, phoneKey } from '@/lib/contact-links'
 import { copyText } from '@/lib/copy-text'
 import { cn } from '@/lib/utils'
-import { downloadExport } from '@/lib/export'
-import { CheckCheck, CheckCircle2, CircleCheckBig, Circle, ClipboardList, Eye, FileDown, FileSpreadsheet, Loader2, Mail, Paperclip, Phone, PlayCircle, UserCheck, UserPlus, UserRoundCheck, UserRoundX, UserX, X } from 'lucide-react'
+import { ExportMenu } from '@/components/export/ExportMenu'
+import { PermissionButton } from '@/components/PermissionButton'
+import { CheckCheck, CheckCircle2, CircleCheckBig, Circle, ClipboardList, Eye, FileDown, Loader2, Mail, Paperclip, Phone, PlayCircle, UserCheck, UserPlus, UserRoundCheck, UserRoundX, UserX, X } from 'lucide-react'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
@@ -37,9 +39,55 @@ import type { PickedPerson } from '@/components/PersonPicker'
 // rota para poder ser testada. A API entrega da mais antiga para a mais nova
 // (ordem de chegada): a tela mostra na ordem recebida, sem reordenar.
 
+/**
+ * A ficha de inscrição (uma e "Exportar todas") lê a ficha completa da pessoa
+ * (`GET /admin/users/:id`), que pede READ_USER além do READ_COURSE da janela do
+ * curso. Sem ela, o botão fica desligado com este motivo (SR-111), como o campo
+ * de pessoa no montador das inscrições.
+ */
+const FICHA_PEDE_LER_USUARIOS = 'Pede a permissão Visualizar usuários'
+
+/**
+ * A mensagem de quando a ficha não sai. O 403 da busca da pessoa (a permissão
+ * tirada depois que a tela carregou) diz que falta permissão, como o 403 do
+ * registro na auditoria, em vez do "Erro ao gerar a ficha de inscrição.".
+ */
+function erroDaFicha(e: unknown, fallback: string): string {
+  if (e instanceof ApiError && e.status === 403) return TEXTOS_DO_REGISTRO.semPermissao
+  return erroDoDocumento(e, fallback)
+}
+
 // Botão pequeno de ação com dica e nome para leitor de tela; o texto ao lado do
-// ícone só aparece em telas largas (no celular fica só o ícone).
-function RowAction({ label, className, ...props }: { label: string } & ComponentProps<typeof Button>) {
+// ícone só aparece em telas largas (no celular fica só o ícone). Com `motivo`, o
+// botão fica desligado e a dica diz por quê (como o PermissionButton: o botão
+// desligado não recebe o mouse, então a dica fica num invólucro que recebe o foco).
+function RowAction({ label, className, motivo, ...props }: { label: string; motivo?: string | null } & ComponentProps<typeof Button>) {
+  if (motivo) {
+    return (
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <span tabIndex={0} className="inline-flex rounded-md focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-hidden">
+            <Button
+              size="sm"
+              variant="ghost"
+              aria-label={label}
+              className={cn('h-9 min-w-9 gap-1 px-2 text-xs lg:h-7 lg:min-w-7', className)}
+              {...props}
+              disabled
+              style={{ pointerEvents: 'none' }}
+            />
+          </span>
+        </TooltipTrigger>
+        {/* Duas linhas: o que o botão faz e por que está desligado. */}
+        <TooltipContent>
+          <span className="flex flex-col">
+            <span>{label}</span>
+            <span>{motivo}</span>
+          </span>
+        </TooltipContent>
+      </Tooltip>
+    )
+  }
   return (
     <Tooltip>
       <TooltipTrigger asChild>
@@ -179,7 +227,6 @@ export function RegistrationsTab({
   const [copying, setCopying] = useState<'phones' | 'emails' | null>(null)
   const [fichaId, setFichaId] = useState<string | null>(null)
   const [exportingAll, setExportingAll] = useState(false)
-  const [exportingCsv, setExportingCsv] = useState(false)
   const [startOpen, setStartOpen] = useState(false)
   const setAttendance = useSetRegistrationAttendance(courseId)
   const markAllPresent = useMarkUnmarkedAttendance(courseId)
@@ -187,8 +234,10 @@ export function RegistrationsTab({
   const [exportingLista, setExportingLista] = useState(false)
   const { data: courseDetail } = useAdminCourse(courseId)
   const queryClient = useQueryClient()
-  const { can } = usePermissions()
+  const { can, isLoading: carregandoPermissoes, isError: semAsPermissoes } = usePermissions()
   const canManage = can('UPDATE_COURSE')
+  // Só depois de saber as permissões: carregando ou com falha, o botão fica ligado e quem decide é a API.
+  const fichaSemPermissao = !carregandoPermissoes && !semAsPermissoes && !can('READ_USER') ? FICHA_PEDE_LER_USUARIOS : null
   const { t } = useTranslation()
 
   const inProgress = courseStatus === 'IN_PROGRESS'
@@ -252,6 +301,12 @@ export function RegistrationsTab({
       const instructors = detail.instructors?.length
         ? detail.instructors.map(i => i.name)
         : [detail.instructorName].filter(Boolean)
+      // Na auditoria antes de gerar; se não registrar, a lista não sai.
+      await registrarDocumento('lista-presenca', {
+        linhas: confirmed.length,
+        alvo: courseTitle,
+        ids: confirmed.map(r => r.id),
+      })
       await downloadListaPresencaPdf(
         {
           title: courseTitle,
@@ -266,8 +321,8 @@ export function RegistrationsTab({
         confirmed.map(r => ({ name: r.userData.name, cpf: r.userData.cpf })),
         `lista-presenca-${courseTitle}`,
       )
-    } catch {
-      toast.error('Erro ao gerar a lista de presença.')
+    } catch (e) {
+      toast.error(erroDoDocumento(e, 'Erro ao gerar a lista de presença.'))
     } finally {
       setExportingLista(false)
     }
@@ -336,14 +391,19 @@ export function RegistrationsTab({
 
   const course = { eventNumber, title: courseTitle }
 
-  async function exportOne(userDataId: string) {
+  async function exportOne(userDataId: string, registrationId: string) {
     setFichaId(userDataId)
     try {
       const { downloadFichaPdf } = await import('@/lib/ficha-inscricao-pdf')
       const user: UserDataDetail = await apiFetch(`/admin/users/${userDataId}`).then(r => r.json())
+      await registrarDocumento('ficha-inscricao', {
+        linhas: 1,
+        alvo: alvoDoDocumento(courseTitle, user.name),
+        ids: [registrationId],
+      })
       await downloadFichaPdf([{ course, user }], `ficha-${user.name}`)
-    } catch {
-      toast.error(t('admin.courses.fichaError'))
+    } catch (e) {
+      toast.error(erroDaFicha(e, t('admin.courses.fichaError')))
     } finally {
       setFichaId(null)
     }
@@ -411,30 +471,23 @@ export function RegistrationsTab({
       const users: UserDataDetail[] = await mapWithConcurrency(regs, 5, r =>
         apiFetch(`/admin/users/${r.userDataId}`).then(res => res.json()),
       )
+      // Uma linha só na auditoria, com todas as inscrições do curso.
+      await registrarDocumento('ficha-inscricao', {
+        linhas: users.length,
+        alvo: courseTitle,
+        ids: regs.map(r => r.id),
+        escopo: 'todos',
+      })
       await downloadFichaPdf(
         users.map(user => ({ course, user })),
         `fichas-${courseTitle}`,
       )
-    } catch {
-      toast.error(t('admin.courses.fichaError'))
+    } catch (e) {
+      toast.error(erroDaFicha(e, t('admin.courses.fichaError')))
     } finally {
       setExportingAll(false)
     }
   }
-
-  // Planilha das inscrições gerada no servidor (/admin/export/registrations).
-  async function exportCsv() {
-    setExportingCsv(true)
-    try {
-      const count = await downloadExport('registrations', { courseIds: [courseId] })
-      toast.success(count === 1 ? 'Planilha com 1 inscrição baixada.' : count >= 0 ? `Planilha com ${count} inscrições baixada.` : 'Planilha baixada.')
-    } catch (e) {
-      toast.error(apiErrorMessage(e, 'Erro ao exportar planilha.'))
-    } finally {
-      setExportingCsv(false)
-    }
-  }
-
 
   return (
     <div className="flex flex-col gap-4">
@@ -497,14 +550,30 @@ export function RegistrationsTab({
               {copying === 'emails' ? <Loader2 className="size-3.5 animate-spin" /> : <Mail className="size-3.5" />}
               Copiar e-mails
             </Button>
-            <Button size="sm" variant="outline" className="h-8 gap-1.5" disabled={exportingAll} onClick={exportAll}>
+            <PermissionButton
+              allowed={!fichaSemPermissao}
+              noPermissionMessage={FICHA_PEDE_LER_USUARIOS}
+              size="sm"
+              variant="outline"
+              className="h-8 gap-1.5"
+              disabled={exportingAll}
+              onClick={exportAll}
+            >
               {exportingAll ? <Loader2 className="size-3.5 animate-spin" /> : <FileDown className="size-3.5" />}
               {t('admin.courses.exportAllFichas')}
-            </Button>
-            <Button size="sm" variant="outline" className="h-8 gap-1.5" disabled={exportingCsv} onClick={exportCsv} title="Exportar inscrições (CSV)">
-              {exportingCsv ? <Loader2 className="size-3.5 animate-spin" /> : <FileSpreadsheet className="size-3.5" />}
-              Planilha
-            </Button>
+            </PermissionButton>
+            {/* Planilha (CSV ou PDF) das inscrições, gerada no servidor; com o
+                catálogo, também "Montar relatório…" (decisão 006). */}
+            <ExportMenu
+              dataset="registrations"
+              label="Planilha"
+              size="sm"
+              className="h-8 gap-1.5"
+              filters={{ courseIds: [courseId] }}
+              total={total}
+              confirmedTotal={allRegs.data ? allRegs.data.length - pendingCount : undefined}
+              filterTexts={{ courseIds: `Curso: ${courseTitle}` }}
+            />
             <Button size="sm" variant="outline" className="h-8 gap-1.5" disabled={exportingLista} onClick={downloadListaPresenca} title="Lista de presença para imprimir (inscrições confirmadas)">
               {exportingLista ? <Loader2 className="size-3.5 animate-spin" /> : <ClipboardList className="size-3.5" />}
               Lista de presença
@@ -665,8 +734,9 @@ export function RegistrationsTab({
               </RowAction>
               <RowAction
                 label="Baixar ficha de inscrição"
+                motivo={fichaSemPermissao}
                 disabled={fichaId === reg.userDataId}
-                onClick={() => exportOne(reg.userDataId)}
+                onClick={() => exportOne(reg.userDataId, reg.id)}
               >
                 {fichaId === reg.userDataId ? <Loader2 className="size-3.5 animate-spin" /> : <FileDown className="size-3.5" />}
                 <span className="hidden lg:inline">{t('admin.courses.ficha')}</span>
