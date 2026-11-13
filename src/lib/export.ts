@@ -182,8 +182,11 @@ export function lerRelatorioJson(data: unknown, fallbackTitle: string, fallbackF
 
 /**
  * Corpo do pedido: os filtros da tela (ou `ids`) mais o que o montador escolheu.
- * O Excel sempre leva `format` (com ou sem `fields`); o PDF sem `fields` não leva,
- * porque é montado aqui a partir do CSV.
+ * O Excel sempre leva `format` (com ou sem `fields`); o PDF sem `fields` não leva
+ * `format`, porque é montado aqui a partir do CSV, mas leva `pdfDoNavegador: true`
+ * (SR-125/SR-126): a resposta continua o MESMO CSV, e a auditoria grava "Exportou o
+ * relatório em PDF" (`details.formato: 'pdf'`) em vez de "planilha". Nunca vai junto com
+ * `format` (a API recusa com 400 "pdfDoNavegador só vale para o CSV.").
  */
 export function reportBody(params: ExportParams, format: ExportFormat, opts: ExportOptions = {}): Record<string, unknown> {
   const body: Record<string, unknown> = exportBody(params)
@@ -193,6 +196,8 @@ export function reportBody(params: ExportParams, format: ExportFormat, opts: Exp
     if (opts.modelo) body.modelo = opts.modelo
   } else if (format === 'xlsx') {
     body.format = format
+  } else if (format === 'pdf') {
+    body.pdfDoNavegador = true
   }
   if (opts.confirmed) body.confirmed = true
   return body

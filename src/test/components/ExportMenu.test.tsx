@@ -173,7 +173,7 @@ describe('ExportMenu: PDF rápido pela API (SR-101)', () => {
     await userEvent.click(pdf)
 
     await waitFor(() => expect(saveRelatorioPdf).toHaveBeenCalledWith('"Nome"', 'Pessoas', 'pessoas.pdf', undefined))
-    expect(corpoDaExportacao('people')).toEqual({ search: 'silva' })
+    expect(corpoDaExportacao('people')).toEqual({ search: 'silva', pdfDoNavegador: true })
     expect(relatorioJsonPdf).not.toHaveBeenCalled()
   })
 
@@ -206,7 +206,7 @@ describe('ExportMenu: PDF rápido acima do limite de linhas volta ao PDF do CSV 
     await waitFor(() => expect(saveRelatorioPdf).toHaveBeenCalledWith(
       '"Nome"', 'Pessoas', 'pessoas.pdf', ['Nome', 'CPF', 'E-mail', 'Telefone'],
     ))
-    expect(corpoDaExportacao('people')).toEqual({ search: 'silva' })
+    expect(corpoDaExportacao('people')).toEqual({ search: 'silva', pdfDoNavegador: true })
     expect(relatorioJsonPdf).not.toHaveBeenCalled()
     expect(toast.success).toHaveBeenCalledWith('Relatório com 2.500 registros baixado.')
   })
@@ -239,7 +239,7 @@ describe('ExportMenu: PDF rápido acima do limite de linhas volta ao PDF do CSV 
     const pedidos = apiFetch.mock.calls.filter(c => c[0] === '/admin/export/people').map(c => JSON.parse(c[1].body as string))
     expect(pedidos).toEqual([
       { search: 'silva', fields: ['name', 'cpf', 'email', 'phone'], format: 'pdf', modelo: 'Resumo' },
-      { search: 'silva' },
+      { search: 'silva', pdfDoNavegador: true },
     ])
     expect(toast.error).not.toHaveBeenCalled()
   })
@@ -265,7 +265,7 @@ describe('ExportMenu: PDF rápido acima do limite de linhas volta ao PDF do CSV 
     const [, pdf] = await screen.findAllByRole('menuitem', { name: 'Selecionados (2.001)' })
     await userEvent.click(pdf)
     await waitFor(() => expect(saveRelatorioPdf).toHaveBeenCalled())
-    expect(corpoDaExportacao('people')).toEqual({ ids: muitos })
+    expect(corpoDaExportacao('people')).toEqual({ ids: muitos, pdfDoNavegador: true })
   })
 })
 
