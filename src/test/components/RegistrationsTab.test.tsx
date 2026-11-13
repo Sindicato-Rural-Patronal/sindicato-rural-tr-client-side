@@ -255,6 +255,17 @@ describe('inscritos do curso: Montar relatório', () => {
   })
 })
 
+/**
+ * O item "Baixar ficha de inscrição" de uma inscrição. No redesign as ações da linha
+ * são o `RowActions`: com telefone, WhatsApp e Ligar ficam à vista e a ficha vai para
+ * o menu "Mais ações" da linha.
+ */
+async function itemDaFicha(usuario: ReturnType<typeof userEvent.setup>, nome = 'Zilda Alves') {
+  const acoes = screen.getByRole('group', { name: `Ações da inscrição de ${nome}` })
+  await usuario.click(within(acoes).getByRole('button', { name: 'Mais ações' }))
+  return screen.findByRole('menuitem', { name: 'Baixar ficha de inscrição' })
+}
+
 describe('documentos do curso na auditoria antes de gerar (SR-106)', () => {
   /** A simulação de sempre, mais a ficha da pessoa e o registro do documento (`documento` = a resposta dele). */
   function comDocumentos(documento: () => Promise<unknown> = () => Promise.resolve({ status: 204 })) {
@@ -315,7 +326,8 @@ describe('documentos do curso na auditoria antes de gerar (SR-106)', () => {
     downloadFichaPdf.mockResolvedValue(undefined)
     abrir()
     await screen.findByText('Zilda Alves')
-    await userEvent.click(screen.getAllByRole('button', { name: 'Baixar ficha de inscrição' })[0])
+    const usuario = userEvent.setup()
+    await usuario.click(await itemDaFicha(usuario))
     await waitFor(() => expect(downloadFichaPdf).toHaveBeenCalled())
     expect(registros('ficha-inscricao')).toEqual([{ linhas: 1, alvo: 'Curso de Soja · Zilda Alves', ids: ['r1'] }])
   })
@@ -324,7 +336,8 @@ describe('documentos do curso na auditoria antes de gerar (SR-106)', () => {
     comDocumentos(() => Promise.reject(new ApiError(403, 'Forbidden')))
     abrir()
     await screen.findByText('Zilda Alves')
-    await userEvent.click(screen.getAllByRole('button', { name: 'Baixar ficha de inscrição' })[0])
+    const usuario = userEvent.setup()
+    await usuario.click(await itemDaFicha(usuario))
     await waitFor(() => expect(toast.error).toHaveBeenCalledWith('Você não tem permissão para gerar este documento.'))
     expect(downloadFichaPdf).not.toHaveBeenCalled()
   })
@@ -335,15 +348,25 @@ describe('ficha de inscrição sem "Visualizar usuários" (SR-111)', () => {
     simular(ORDEM_DE_CHEGADA, undefined, {}, ['READ_COURSE', 'UPDATE_COURSE'])
     abrir()
     await screen.findByText('Zilda Alves')
-    // As permissões podem chegar depois da lista: até lá, o botão fica ligado.
-    await waitFor(() => expect(screen.getAllByRole('button', { name: 'Baixar ficha de inscrição' })[0]).toBeDisabled())
-    expect(screen.getAllByRole('button', { name: 'Baixar ficha de inscrição' }).every(b => (b as HTMLButtonElement).disabled))
-      .toBe(true)
-    expect(screen.getByRole('button', { name: 'Exportar todas' })).toBeDisabled()
+    // As permissões podem chegar depois da lista: até lá, os botões ficam ligados.
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Exportar todas' })).toBeDisabled())
+    const usuario = userEvent.setup()
+    // A ficha de cada inscrição fica no menu "Mais ações", desligada e com o motivo escrito
+    // embaixo do nome (o item desligado não recebe o mouse, então uma dica não apareceria).
+    for (const { userData: { name } } of ORDEM_DE_CHEGADA) {
+      const item = await itemDaFicha(usuario, name)
+      expect(item).toHaveAttribute('aria-disabled', 'true')
+      expect(item).toHaveTextContent('Baixar ficha de inscriçãoPede a permissão Visualizar usuários')
+      expect(item).toHaveAccessibleDescription('Pede a permissão Visualizar usuários')
+      // Clicar no item desligado não faz nada.
+      await usuario.click(item)
+      await usuario.keyboard('{Escape}')
+      await waitFor(() => expect(screen.queryByRole('menuitem', { name: 'Baixar ficha de inscrição' })).not.toBeInTheDocument())
+    }
 
-    // O motivo aparece na dica, pelo teclado (o botão desligado não recebe o mouse).
-    act(() => { (screen.getAllByRole('button', { name: 'Baixar ficha de inscrição' })[0].parentElement as HTMLElement).focus() })
-    expect(await screen.findByRole('tooltip')).toHaveTextContent('Baixar ficha de inscriçãoPede a permissão Visualizar usuários')
+    // No "Exportar todas", o motivo aparece na dica, pelo teclado (o botão desligado não recebe o mouse).
+    act(() => { (screen.getByRole('button', { name: 'Exportar todas' }).parentElement as HTMLElement).focus() })
+    expect(await screen.findByRole('tooltip')).toHaveTextContent('Pede a permissão Visualizar usuários')
 
     expect(apiFetch.mock.calls.some(c => String(c[0]).startsWith('/admin/users/'))).toBe(false)
     expect(downloadFichaPdf).not.toHaveBeenCalled()
@@ -356,7 +379,8 @@ describe('ficha de inscrição sem "Visualizar usuários" (SR-111)', () => {
       path.startsWith('/admin/users/') ? Promise.reject(new ApiError(403, 'Forbidden')) : base(path, init))
     abrir()
     await screen.findByText('Zilda Alves')
-    await userEvent.click(screen.getAllByRole('button', { name: 'Baixar ficha de inscrição' })[0])
+    const usuario = userEvent.setup()
+    await usuario.click(await itemDaFicha(usuario))
     await waitFor(() => expect(toast.error).toHaveBeenCalledWith('Você não tem permissão para gerar este documento.'))
     expect(downloadFichaPdf).not.toHaveBeenCalled()
   })
