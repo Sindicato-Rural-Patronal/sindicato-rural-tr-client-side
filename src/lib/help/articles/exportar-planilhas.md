@@ -229,9 +229,10 @@ Sindicato precisa saber por onde eles andaram.
 A linha da Auditoria mostra também **o que foi exportado**: o formato, o
 modelo, os campos, o que entrou (selecionados ou todos), os filtros e quantos
 registros. A frase da linha cita os dados pessoais que saíram, e por isso **a
-busca da Auditoria por *CPF* acha quem exportou CPF**. Só o **Relatório de
-cadastros** não tem esse detalhe: a linha diz o nome do relatório e quantos
-registros.
+busca da Auditoria por *CPF* acha quem exportou CPF**. Só a planilha
+(CSV ou Excel) do **Relatório de cadastros** não tem esse detalhe: a linha diz o
+nome do relatório e quantos registros. O PDF dele mostra o bloco só com o
+formato, o que entrou e quantos registros.
 
 A frase diz também em que formato a lista saiu:
 
