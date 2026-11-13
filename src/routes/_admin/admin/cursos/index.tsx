@@ -8,12 +8,10 @@ import remarkGfm from 'remark-gfm'
 import { usePermissions } from '@/hooks/usePermissions'
 import { PermissionButton } from '@/components/PermissionButton'
 import { useTranslation } from 'react-i18next'
-import { useAdminCourse, useDeleteCourse, useUploadGalleryPhoto, useAssignInstructor, useRemoveInstructorAssignment, adminCourseQuery, useCompleteCourse } from '@/hooks/useCourse'
+import { useAdminCourse, useDeleteCourse, useUploadGalleryPhoto, useRemoveInstructorAssignment, adminCourseQuery, useCompleteCourse } from '@/hooks/useCourse'
 import type { CourseCardItem } from '@/hooks/useCourse'
-import { useInstructors } from '@/hooks/useAdmin'
 import { formatDateFromString } from '@/utils/format-data-from-string'
 import { formatBRL } from '@/utils/format-currency'
-import { upperNoAccents } from '@/utils/text-format'
 import { copyText } from '@/lib/copy-text'
 import { courseViewFromSlug, courseViewToSlug, parseCourseViewSlug, type CourseViewSlug } from '@/lib/course-views'
 import { Plus, Building2, GraduationCap, BookOpen, Images, ChevronLeft, ChevronRight, X, Pencil, Trash2, ImageUp, ImagePlus, ExternalLink, Link2, CopyPlus, CircleCheckBig } from 'lucide-react'
@@ -21,7 +19,6 @@ import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog'
 import { Tabs, TabsList, TabsTrigger, TabsContent, tabsWrapClass } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
 import type { Course } from '@/@types/course'
 import { cn } from '@/lib/utils'
@@ -29,13 +26,13 @@ import { StatusBadge } from '@/components/StatusBadge'
 import { ErrorAlert } from '@/components/ErrorAlert'
 import { LoadErrorRetry } from '@/components/LoadErrorRetry'
 import { DeleteConfirmDialog } from '@/components/DeleteConfirmDialog'
-import { NativeSelect } from '@/components/ui/native-select'
 import { EmptyState } from '@/components/EmptyState'
 import { InitialsAvatar } from '@/components/InitialsAvatar'
 import { PageContainer, PageHeader } from '@/components/PageHeader'
 import { RowActions } from '@/components/RowActions'
 import { useRowSelection } from '@/hooks/useRowSelection'
 import { ExportOneButton } from '@/components/export/ExportMenu'
+import { AddInstructorForm } from '@/components/courses/AddInstructorForm'
 import { CourseFormDialog } from '@/components/courses/CourseFormDialog'
 import { CoursesList } from '@/components/courses/CoursesList'
 import { RegistrationsTab } from '@/components/courses/RegistrationsTab'
@@ -131,16 +128,11 @@ function ViewDialog({
   onDelete: (id: string, title: string) => void
 }) {
   const [galleryIndex, setGalleryIndex] = useState(0)
-  const [selInstrId, setSelInstrId] = useState('')
-  const [instrTitle, setInstrTitle] = useState('')
-  const [instrCategory, setInstrCategory] = useState('')
   const [removeInstr, setRemoveInstr] = useState<{ id: string; name: string } | null>(null)
   const { t } = useTranslation()
   const { can } = usePermissions()
 
   const { data: detail, isLoading: detailLoading, isError: detailError, isFetching: detailFetching, refetch: refetchDetail } = useAdminCourse(course?.id ?? '')
-  const { data: instructors } = useInstructors()
-  const assignInstructor = useAssignInstructor(course?.id ?? '')
   const removeAssignment = useRemoveInstructorAssignment(course?.id ?? '')
   const completeCourse = useCompleteCourse()
   const [completeOpen, setCompleteOpen] = useState(false)
@@ -154,25 +146,6 @@ function ViewDialog({
       toast.error(apiErrorMessage(e, 'Não foi possível concluir o curso.'))
     } finally {
       setCompleteOpen(false)
-    }
-  }
-
-  async function handleAssignInstructor() {
-    if (!selInstrId) return
-    try {
-      // apiFetch lança em não-2xx, então não há branch !res.ok — o erro real
-      // do backend (ex.: "Instrutor já vinculado") vem no catch.
-      await assignInstructor.mutateAsync({
-        instructorUserDataId: selInstrId,
-        title: instrTitle || undefined,
-        category: instrCategory || undefined,
-      })
-      setSelInstrId('')
-      setInstrTitle('')
-      setInstrCategory('')
-      toast.success('Instrutor adicionado.')
-    } catch (e) {
-      toast.error(apiErrorMessage(e, 'Erro ao adicionar instrutor.'))
     }
   }
 
@@ -456,39 +429,10 @@ function ViewDialog({
                 )}
 
                 {can('UPDATE_COURSE') && (
-                  <div className="flex flex-col gap-3 border-t border-border pt-4">
-                    <p className="text-sm font-semibold text-foreground">Adicionar instrutor</p>
-                    <NativeSelect
-                      value={selInstrId}
-                      onChange={e => setSelInstrId(e.target.value)}
-                    >
-                      <option value="">Selecione um instrutor...</option>
-                      {(instructors ?? [])
-                        .filter(i => !(liveCourse?.instructors ?? []).some(a => a.userDataId === i.userData.id))
-                        .map(i => (
-                          <option key={i.userData.id} value={i.userData.id}>{i.userData.name}</option>
-                        ))
-                      }
-                    </NativeSelect>
-                    <Input
-                      placeholder="Título (ex: Engenheiro Agrônomo)"
-                      value={instrTitle}
-                      onChange={e => setInstrTitle(upperNoAccents(e.target.value))}
-                    />
-                    <Input
-                      placeholder="Categoria (ex: Palestrante)"
-                      value={instrCategory}
-                      onChange={e => setInstrCategory(upperNoAccents(e.target.value))}
-                    />
-                    <Button
-                      size="sm"
-                      disabled={!selInstrId || assignInstructor.isPending}
-                      onClick={handleAssignInstructor}
-                      className="self-end"
-                    >
-                      {assignInstructor.isPending ? 'Adicionando...' : 'Adicionar'}
-                    </Button>
-                  </div>
+                  <AddInstructorForm
+                    courseId={course?.id ?? ''}
+                    assignedUserDataIds={(liveCourse?.instructors ?? []).map(a => a.userDataId)}
+                  />
                 )}
               </div>
             )}
