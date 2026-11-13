@@ -61,7 +61,37 @@ describe('detalhesDaExportacao', () => {
   })
 })
 
+// Relatório de cadastros em PDF (SR-125): o PDF sai do CSV e a API grava `details` sem modelo
+// nem campos (`modelo: null`, `campos: []`, `filtros: []`).
+const DETALHES_CADASTROS_PDF = { formato: 'pdf', modelo: null, campos: [], escopo: 'todos', filtros: [], linhas: 1234 }
+
+describe('detalhesDaExportacao › Relatório de cadastros em PDF', () => {
+  it('sem modelo, campos nem filtros: sobra o formato, o escopo e os registros', () => {
+    expect(detalhesDaExportacao(DETALHES_CADASTROS_PDF)).toEqual({
+      formato: 'PDF', modelo: null, campos: [], escopo: 'Todos', filtros: [], linhas: 1234,
+    })
+  })
+})
+
 describe('AuditRowDetails › O que foi exportado', () => {
+  it('modelo nulo e campos vazios (Relatório de cadastros em PDF): só Formato, O que entrou e Registros', () => {
+    render(<AuditRowDetails row={linha({ details: DETALHES_CADASTROS_PDF })} ipFiltered={false} onFilterIp={() => {}} />)
+    expect(screen.getByText('O que foi exportado')).toBeInTheDocument()
+    expect(screen.getByText('Formato')).toBeInTheDocument()
+    expect(screen.getByText('PDF')).toBeInTheDocument()
+    expect(screen.getByText('O que entrou')).toBeInTheDocument()
+    expect(screen.getByText('Todos')).toBeInTheDocument()
+    expect(screen.getByText('Registros')).toBeInTheDocument()
+    expect(screen.getByText('1.234')).toBeInTheDocument()
+    expect(screen.queryByText('Modelo')).not.toBeInTheDocument()
+    expect(screen.queryByText('Filtros')).not.toBeInTheDocument()
+    expect(screen.queryByText(/^Campos/)).not.toBeInTheDocument()
+    // Nenhuma linha vazia: três linhas, três pares rótulo-valor.
+    const bloco = screen.getByText('O que foi exportado').parentElement!
+    expect(bloco.querySelectorAll('dt')).toHaveLength(3)
+    for (const dd of Array.from(bloco.querySelectorAll('dd'))) expect(dd.textContent?.trim()).not.toBe('')
+  })
+
   it('mostra formato, modelo, campos, filtros e registros', () => {
     render(<AuditRowDetails row={linha({ details: DETALHES })} ipFiltered={false} onFilterIp={() => {}} />)
     expect(screen.getByText('O que foi exportado')).toBeInTheDocument()
