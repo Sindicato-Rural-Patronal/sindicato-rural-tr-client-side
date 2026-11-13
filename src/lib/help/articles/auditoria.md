@@ -29,8 +29,9 @@ Numa exportação, o bloco **O que foi exportado** mostra o **Formato**
 (*Planilha CSV*, *Excel (.xlsx)* ou *PDF*), o **Modelo** (de fábrica ou da
 equipe, com *(alterado)* se a pessoa mexeu nas colunas), **O que entrou**
 (selecionados ou todos), quantos **Registros**, os **Filtros** e os **Campos**,
-na ordem das colunas. Vale para todas as listas; só o **Relatório de
-cadastros** fica sem esse bloco. Num documento em PDF, como a lista de
+na ordem das colunas. Vale para todas as listas; só a planilha do **Relatório de
+cadastros** (CSV ou Excel) fica sem esse bloco, e o PDF dele mostra só o
+**Formato**, **O que entrou** e **Registros**. Num documento em PDF, como a lista de
 presença, o bloco mostra o formato *PDF*, o nome do documento em **Modelo**, o
 que entrou e quantos registros. Para achar quem exportou CPF, escolha
 **Exportações** no filtro **Ação** e digite *CPF* na busca. O que fica e o que
@@ -81,11 +82,10 @@ documento não sai, e quem tentou vê a mensagem na tela. Por isso, todo documen
 gerado tem a sua linha aqui. Veja
 [Exportar planilhas](?topico=exportar-planilhas).
 
-Dois PDFs aparecem como planilha (*Exportou a planilha "…"*), porque são feitos
-no seu navegador a partir da planilha: o **Relatório em PDF** do menu acima de
-2.000 linhas, nas listas em que ele ainda sai assim, e o PDF do **Relatório de
-cadastros**. Este último aparece como *Exportou a planilha "Relatório de
-cadastros: 850 registros (todos)"*, e não como documento.
+Todo PDF de lista aparece como *Exportou o relatório em PDF "…"*, e o nome
+termina em *· PDF*. Isso vale também para o **Relatório de cadastros**, que
+aparece como *Exportou o relatório em PDF "Relatório de cadastros: 850
+registros (todos) · PDF"*.
 
 Na planilha que você baixa desta tela (botão **Exportar**), a coluna **Ação**
 traz a mesma frase sem o alvo: *Exportou uma planilha*, *Exportou uma planilha

@@ -58,8 +58,19 @@ beforeEach(() => {
 })
 
 describe('reportBody', () => {
-  it('sem fields, é o corpo de hoje (sem format nem modelo)', () => {
-    expect(reportBody({ search: 'ana', ids: [] }, 'pdf')).toEqual({ search: 'ana' })
+  it('CSV sem fields, é o corpo de hoje (sem format, modelo nem pdfDoNavegador)', () => {
+    expect(reportBody({ search: 'ana', ids: [] }, 'csv')).toEqual({ search: 'ana' })
+  })
+
+  it('PDF sem fields (montado do CSV): leva pdfDoNavegador e nenhum format (SR-125)', () => {
+    expect(reportBody({ search: 'ana', ids: [] }, 'pdf')).toEqual({ search: 'ana', pdfDoNavegador: true })
+  })
+
+  it('pdfDoNavegador nunca vai com format (xlsx, ou PDF da API com fields)', () => {
+    expect(reportBody({}, 'xlsx')).not.toHaveProperty('pdfDoNavegador')
+    expect(reportBody({}, 'xlsx', { fields: ['name'] })).not.toHaveProperty('pdfDoNavegador')
+    expect(reportBody({}, 'pdf', { fields: ['name'] })).not.toHaveProperty('pdfDoNavegador')
+    expect(reportBody({}, 'csv', { fields: ['name'] })).not.toHaveProperty('pdfDoNavegador')
   })
 
   it('com fields, manda as chaves na ordem, o formato e o modelo', () => {
@@ -198,7 +209,7 @@ describe('downloadExport do montador', () => {
   it('os itens rápidos do menu continuam montando o PDF do CSV', async () => {
     apiFetch.mockResolvedValue(respostaCsv('"Nome"\r\n"ANA"', { 'Content-Disposition': 'attachment; filename="pessoas.csv"' }))
     await downloadExport('people', { ids: ['1'] }, 'pdf')
-    expect(corpoEnviado()).toEqual({ ids: ['1'] })
+    expect(corpoEnviado()).toEqual({ ids: ['1'], pdfDoNavegador: true })
     expect(saveRelatorioPdf).toHaveBeenCalledWith('"Nome"\r\n"ANA"', 'Pessoas', 'pessoas.pdf', undefined)
     expect(relatorioJsonPdf).not.toHaveBeenCalled()
   })
@@ -206,10 +217,31 @@ describe('downloadExport do montador', () => {
   it('PDF do CSV acima do limite: as colunas pedidas vão para o desenho; sem nome no cabeçalho, o da fonte', async () => {
     apiFetch.mockResolvedValue(respostaCsv('"Nº";"Data"', { 'X-Export-Count': '2500' }))
     await downloadExport('finance-transactions', { search: 'coop' }, 'pdf', { colunasDoPdf: ['Nº', 'Data'] })
-    expect(corpoEnviado()).toEqual({ search: 'coop' })
+    expect(corpoEnviado()).toEqual({ search: 'coop', pdfDoNavegador: true })
     expect(saveRelatorioPdf).toHaveBeenCalledWith(
       '"Nº";"Data"', 'Lançamentos', expect.stringMatching(/^lancamentos-\d{4}-\d{2}-\d{2}\.pdf$/), ['Nº', 'Data'],
     )
+  })
+
+  it('Relatório de cadastros: o PDF do CSV leva pdfDoNavegador; a planilha CSV e a do Excel não', async () => {
+    apiFetch.mockResolvedValue(respostaCsv('"Nome"', { 'X-Export-Count': '3' }))
+    await downloadExport('cadastros', {}, 'pdf')
+    expect(corpoEnviado()).toEqual({ pdfDoNavegador: true })
+    expect(saveRelatorioPdf).toHaveBeenCalledTimes(1)
+
+    apiFetch.mockClear()
+    await downloadExport('cadastros', {}, 'csv')
+    expect(corpoEnviado()).toEqual({})
+
+    apiFetch.mockClear()
+    await downloadExport('cadastros', {}, 'xlsx')
+    expect(corpoEnviado()).toEqual({ format: 'xlsx' })
+  })
+
+  it('o PDF rápido da API (com fields) segue pedindo JSON, sem pdfDoNavegador', async () => {
+    apiFetch.mockResolvedValue(respostaJson(JSON_PDF))
+    await downloadExport('people', {}, 'pdf', { fields: ['name'], modelo: 'Resumo' })
+    expect(corpoEnviado()).toEqual({ fields: ['name'], format: 'pdf', modelo: 'Resumo' })
   })
 })
 

@@ -985,7 +985,7 @@ function RouteComponent() {
                   Relatório de cadastros
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-60">
+              <DropdownMenuContent align="end" collisionPadding={8} className="w-60">
                 <DropdownMenuItem onSelect={() => void baixarRelatorio('csv')}>
                   <FileSpreadsheet className="size-4" /> Planilha CSV
                 </DropdownMenuItem>

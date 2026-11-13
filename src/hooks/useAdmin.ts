@@ -771,9 +771,11 @@ export type InstructorItem = {
   }
 }
 
-export function useInstructors() {
+/** `GET /admin/instructors` exige READ_USER: quem não a tem passa `enabled: false`. */
+export function useInstructors({ enabled = true }: { enabled?: boolean } = {}) {
   return useQuery<InstructorItem[]>({
     queryKey: ['admin', 'instructors'],
+    enabled,
     queryFn: () => apiFetch('/admin/instructors').then(r => r.json()).then(d => Array.isArray(d) ? d : (d.data ?? [])),
   })
 }
