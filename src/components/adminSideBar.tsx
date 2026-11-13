@@ -126,7 +126,11 @@ export function AdminSideBar({ ...props }: React.ComponentProps<typeof Sidebar>)
   // ficam fixas no rodapé, sempre à vista (também em 360x640). No menu fixo (lg em diante)
   // continuam na lista, como sempre.
   const pinnedSections = isMobile ? navSections.filter(sec => sec.pinned) : []
-  const listSections = navSections.filter(sec => !pinnedSections.includes(sec))
+  // Seção sem nenhum item permitido não mostra nem o título (enquanto as permissões
+  // carregam ou falham, `can` libera tudo e o menu aparece completo).
+  const listSections = navSections
+    .filter(sec => !pinnedSections.includes(sec))
+    .filter(sec => sec.items.some(allowed))
   const pinnedItems = pinnedSections.flatMap(sec => sec.items).filter(allowed)
 
   return (
