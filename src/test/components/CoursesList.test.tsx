@@ -267,3 +267,19 @@ describe('lista de cursos: vazio e erro por aba', () => {
     expect(screen.queryByText('Nenhum curso armazenado')).not.toBeInTheDocument()
   })
 })
+
+describe('lista de cursos: Exportar segue a aba (SR-101)', () => {
+  it('"Todos" mostra o total da aba e a planilha leva a aba', async () => {
+    simular({ stored: pagina(ARMAZENADOS, { total: 12 }) })
+    abrir('stored')
+    await screen.findByText('Silagem de Milho')
+    await userEvent.click(screen.getByRole('button', { name: 'Exportar' }))
+    const [planilha] = await screen.findAllByRole('menuitem', { name: 'Todos (12)' })
+    await userEvent.click(planilha)
+
+    await waitFor(() => expect(apiFetch.mock.calls.some(c => c[0] === '/admin/export/courses')).toBe(true))
+    const chamada = apiFetch.mock.calls.find(c => c[0] === '/admin/export/courses')!
+    // Busca vazia e "Todos os anos" não vão.
+    expect(JSON.parse(chamada[1].body as string)).toEqual({ view: 'stored' })
+  })
+})

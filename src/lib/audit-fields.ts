@@ -135,6 +135,11 @@ export const AUDIT_FIELD_LABELS: Record<string, string> = {
   countedBalanceCents: 'Saldo contado',
   differenceCents: 'Diferença',
   closedAt: 'Fechado em',
+  // Modelo de relatório da equipe (SR-114/SR-115): o `name` já é "Nome". Os
+  // campos vêm pelos rótulos ("Nome, CPF") e o formato pelo nome ("CSV", "PDF", "Excel").
+  fields: 'Campos',
+  format: 'Formato',
+  onlyConfirmed: 'Só confirmadas',
 }
 
 export function auditFieldLabel(field: string): string {

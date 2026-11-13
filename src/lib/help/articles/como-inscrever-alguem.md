@@ -37,7 +37,8 @@ A própria janela de busca tem o atalho para cadastrar. Veja
 Na linha de cada inscrito, os ícones **Conversar no WhatsApp** e **Ligar**
 ficam à vista. A papelada fica no menu **Mais** (o **⋯** na ponta da linha):
 
-- **Baixar ficha de inscrição** — o PDF para a pessoa assinar.
+- **Baixar ficha de inscrição** — o PDF para a pessoa assinar. Pede também a
+  permissão de ver usuários (veja [Cursos e inscrições](?topico=cursos)).
 - **Anexar ficha preenchida (PDF)** — depois de assinada, ela volta para dentro
   do sistema, presa à inscrição. É o que evita a pasta de papel.
 

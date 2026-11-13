@@ -4,8 +4,8 @@ resumo: Convidar administradores, criar regras e decidir quem vê o quê.
 grupo: gestao
 ordem: 3
 permissao: READ_USER
-veja: como-criar-administrador, seguranca, auditoria, minha-conta
-busca: administrador admin permissao regra convite acesso total senha revogar username
+veja: como-criar-administrador, seguranca, auditoria, minha-conta, montar-relatorio
+busca: administrador admin permissao regra convite acesso total senha revogar username exportar planilha montar relatorio
 ---
 
 Os administradores ficam na aba **Administradores** de **Gestão › Usuários**. Quem
@@ -57,3 +57,15 @@ Alguns cuidados:
 Um administrador pode ter a senha redefinida pela tela de edição (nova senha e
 confirmação, que precisam coincidir). Cada um também troca a própria senha em
 [Minha conta](?topico=minha-conta).
+
+## Exportar a lista
+
+A aba **Administradores** tem o botão **Exportar**, que leva os administradores
+da regra escolhida no filtro (ou de todas as regras), ou só os marcados. No fim
+do menu, o **Montar relatório…** deixa escolher as colunas: o modelo **Contato**
+leva só Nome, Telefone e E-mail.
+
+Quem vê administradores mas não vê usuários exporta o usuário, a regra de
+acesso, a data de criação, o nome, o e-mail, o CPF e o telefone. O resto da
+ficha da pessoa aparece em cinza no montador, com o motivo *Pede a permissão
+Visualizar usuários*. Veja [Como montar um relatório](?topico=montar-relatorio).

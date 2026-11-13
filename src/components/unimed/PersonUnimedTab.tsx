@@ -11,7 +11,9 @@ import { EmptyState } from '@/components/EmptyState'
 import { LoadErrorRetry } from '@/components/LoadErrorRetry'
 import { useUnimedByPerson, type UnimedRow } from '@/hooks/useUnimed'
 import { apiErrorMessage } from '@/lib/api-error-message'
-import { baixarFichaUnimed, baixarTermoUnimed, baixarContratoUnimed } from '@/lib/unimed-docs'
+import {
+  baixarFichaUnimed, baixarTermoUnimed, baixarContratoUnimed, ERRO_DO_DOCUMENTO_UNIMED, type DocumentoUnimed,
+} from '@/lib/unimed-docs'
 import { unimedOptionLabel, UNIMED_DEPENDENCY_DEGREES } from '@/lib/unimed-options'
 import { formatDateFromString } from '@/utils/format-data-from-string'
 import { maskCPF } from '@/utils/masks'
@@ -22,7 +24,7 @@ import { maskCPF } from '@/utils/masks'
 // Permissão: a mesma da tela da Unimed (READ_USER), que já é exigida para abrir
 // a ficha da pessoa.
 
-type DocKind = 'ficha' | 'termo' | 'contrato'
+type DocKind = DocumentoUnimed
 
 const DOCS: { kind: DocKind; label: string; icon: typeof Receipt; run: (id: string) => Promise<void> }[] = [
   { kind: 'ficha', label: 'Ficha', icon: Receipt, run: baixarFichaUnimed },
@@ -47,7 +49,7 @@ function UnimedCard({ row, isOwner }: { row: UnimedRow; isOwner: boolean }) {
     try {
       await doc.run(row.id)
     } catch (e) {
-      toast.error(apiErrorMessage(e, `Erro ao gerar o documento (${doc.label}).`))
+      toast.error(apiErrorMessage(e, ERRO_DO_DOCUMENTO_UNIMED[doc.kind]))
     } finally {
       setBusy(null)
     }

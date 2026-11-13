@@ -4,8 +4,8 @@ resumo: Cadastro de empresas, vínculos com pessoas e parceria.
 grupo: dia-a-dia
 ordem: 4
 permissao: READ_USER
-veja: como-cadastrar-empresa, usuarios, configuracoes
-busca: empresa cnpj razao social nome fantasia socio contador parceira parceiro vinculo propriedade
+veja: como-cadastrar-empresa, usuarios, configuracoes, montar-relatorio
+busca: empresa cnpj razao social nome fantasia socio contador parceira parceiro vinculo propriedade exportar planilha montar relatorio razao social e cnpj dados da empresa propriedades das selecionadas csv excel xlsx
 ---
 
 Empresa e pessoa são **cadastros separados**. Isso mudou em setembro de 2026: o
@@ -39,3 +39,20 @@ escolhe a empresa, o logo, o link e a ordem. Veja
 
 O vínculo com empresa parceira é o que faz o selo **Parceira** aparecer nas
 inscrições de curso.
+
+## Exportar
+
+Na aba **Pessoa jurídica**, o botão **Exportar** leva as empresas da busca e dos
+filtros de tipo e de parceria, ou só as marcadas. No fim do menu, o **Montar
+relatório…** deixa escolher as colunas: o modelo **Razão social e CNPJ** leva
+só essas duas, e o **Contato** leva a razão social, o nome fantasia, os
+telefones, o e-mail e a cidade da sede.
+Com empresas marcadas, **Propriedades das selecionadas** (planilha) e **Montar
+relatório: propriedades das selecionadas…** levam as propriedades delas.
+
+Dentro da empresa, o **Exportar** do topo tem **Dados da empresa** e
+**Propriedades (N)** em planilha, no formato marcado na linha **Planilha**:
+**CSV** ou **Excel (.xlsx)**, a mesma escolha das listas. Embaixo, no grupo
+**Montar relatório (escolher campos)**, estão os mesmos dois, para escolher as
+colunas. Veja [Exportar planilhas](?topico=exportar-planilhas) e
+[Como montar um relatório](?topico=montar-relatorio).

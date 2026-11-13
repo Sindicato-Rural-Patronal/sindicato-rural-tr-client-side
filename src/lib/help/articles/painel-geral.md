@@ -36,8 +36,10 @@ manhã ou à tarde.
 **Agenda das salas** — o bloco principal do painel: o calendário do mês e o que
 está marcado nas salas, com cursos, eventos e reuniões. O tipo aparece num
 **ponto de cor** ao lado do nome, e os botões **Todos**, **Curso**, **Evento** e
-**Reunião**, em cima, filtram a agenda. É por aqui que se marca reserva de sala;
-veja [Salas, reservas e agenda](?topico=salas-e-agenda).
+**Reunião**, em cima, filtram a agenda. É por aqui que se marca reserva de sala
+e que se exportam ou imprimem as reservas do dia ou da semana. A planilha e o
+**Imprimir** ficam registrados na Auditoria; veja
+[Salas, reservas e agenda](?topico=salas-e-agenda).
 
 **Financeiro do mês** (na tela, com o nome do mês: *Financeiro em novembro de
 2026*) — entradas, saídas e saldo do mês corrente.

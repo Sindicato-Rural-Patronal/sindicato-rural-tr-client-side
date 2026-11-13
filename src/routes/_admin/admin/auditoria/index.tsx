@@ -1,17 +1,16 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { Fragment, useCallback, useEffect, useRef, useState } from 'react'
-import { toast } from 'sonner'
 import { useAdminAdmins } from '@/hooks/useAdmin'
 import { useAuditTrail } from '@/hooks/useAuditTrail'
 import type { AuditAction, AuditTrailItem } from '@/hooks/useAuditTrail'
 import { usePermissions } from '@/hooks/usePermissions'
 import {
-  ScrollText, Plus, Pencil, Trash2, Dot, Search, X, Download, Loader2, LogIn, ShieldAlert, ChevronDown,
+  ScrollText, Plus, Pencil, Trash2, Dot, Search, X, Download, LogIn, ShieldAlert, ChevronDown,
 } from 'lucide-react'
 import { AuditRowDetails } from '@/components/auditoria/AuditRowDetails'
 import { AuditRetentionPanel } from '@/components/auditoria/AuditRetentionPanel'
-import { apiErrorMessage } from '@/lib/api-error-message'
-import { downloadExport } from '@/lib/export'
+import { ExportMenu } from '@/components/export/ExportMenu'
+import { textosDaAuditoria } from '@/components/export/filter-texts'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -49,6 +48,8 @@ const ACTION_OPTIONS: [AuditAction, string][] = [
   ['login_failed', 'Falhas de login'],
 ]
 const ACTIONS = ACTION_OPTIONS.map(([a]) => a)
+/** Os nomes do filtro "Ação", para a linha "Filtros:" do montador ("Ação: Exportações"). */
+const NOMES_DAS_ACOES: Record<string, string> = Object.fromEntries(ACTION_OPTIONS)
 function str(v: unknown): string | undefined {
   return typeof v === 'string' && v.trim() ? v : undefined
 }
@@ -74,7 +75,8 @@ export const Route = createFileRoute('/_admin/admin/auditoria/')({
 const ENTITIES = [
   'Administrador', 'Auditoria', 'Banner', 'Beneficiário Unimed', 'Caixa', 'Categoria financeira', 'Comprovante',
   'Configurações do site', 'Contato público', 'Convênio', 'Convite', 'Cotação', 'Curso', 'Empresa',
-  'Endereço', 'Exportação', 'Fechamento de caixa', 'Galeria', 'Inscrição', 'Instrutor', 'Lançamento', 'Login', 'Mensagem', 'Notícia',
+  'Endereço', 'Exportação', 'Fechamento de caixa', 'Galeria', 'Inscrição', 'Instrutor', 'Lançamento', 'Login', 'Mensagem',
+  'Modelo de relatório', 'Notícia',
   'Propriedade', 'Regra', 'Relação', 'Reserva de sala', 'Sala', 'Transferência', 'Usuário',
 ]
 
@@ -150,7 +152,6 @@ function RouteComponent() {
     from: search.from, to: search.to, q: search.q,
   }
   const { data, isLoading, isError, isFetching, refetch } = useAuditTrail({ page, limit: 30, ...filters }, { enabled })
-  const [exporting, setExporting] = useState(false)
   // Linhas abertas (IP, navegador, o que mudou).
   const [expanded, setExpanded] = useState<Set<string>>(() => new Set())
   function toggleRow(id: string) {
@@ -162,17 +163,6 @@ function RouteComponent() {
     })
   }
 
-  async function handleExport() {
-    setExporting(true)
-    try {
-      const count = await downloadExport('audit-logs', filters)
-      toast.success(count === 1 ? 'Planilha com 1 registro baixada.' : count >= 0 ? `Planilha com ${count} registros baixada.` : 'Planilha baixada.')
-    } catch (e) {
-      toast.error(apiErrorMessage(e, 'Erro ao exportar a auditoria.'))
-    } finally {
-      setExporting(false)
-    }
-  }
   const { data: adminsData } = useAdminAdmins({ page: 1, limit: 200 })
   const admins = adminsData?.data ?? []
 
@@ -199,6 +189,14 @@ function RouteComponent() {
   const total = data?.total ?? 0
   const totalPages = data?.totalPages ?? 1
   const hasFilters = !!(search.action || search.entity || search.actorId || search.ip || search.from || search.to || search.q)
+  // A linha "Filtros:" do montador diz a ação e quem pelo nome, como a tela (e a API, no PDF).
+  const textosDosFiltros = textosDaAuditoria({
+    action: search.action,
+    acoes: NOMES_DAS_ACOES,
+    actorId: search.actorId,
+    quem: admins.find(a => a.id === search.actorId)?.username
+      ?? rows.find(r => r.actorId === search.actorId)?.actorName,
+  })
 
   function clearFilters() {
     setSearchInput('')
@@ -222,15 +220,16 @@ function RouteComponent() {
 
       <FilterBar
         actions={
-          <Button
-            variant="outline"
-            disabled={exporting || total === 0}
-            onClick={handleExport}
-            title={hasFilters ? 'Exportar os registros com os filtros atuais (CSV)' : 'Exportar todos os registros (CSV)'}
-          >
-            {exporting ? <Loader2 className="size-4 animate-spin" /> : <Download className="size-4" />}
-            Exportar{total > 0 ? <span className="tabular-nums">{` (${total})`}</span> : ''}
-          </Button>
+          // Planilha, PDF e "Montar relatório…" (decisão 006), sempre com os filtros da tela
+          // (a trilha não tem seleção). A API leva no máximo as 20.000 linhas mais recentes.
+          <ExportMenu
+            dataset="audit-logs"
+            filters={filters}
+            total={data ? total : undefined}
+            filtered={hasFilters}
+            filterTexts={textosDosFiltros}
+            cortaNoLimite
+          />
         }
       >
         <FilterField label="Buscar" htmlFor="audit-busca" className="sm:w-80">

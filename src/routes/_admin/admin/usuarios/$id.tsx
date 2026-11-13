@@ -36,17 +36,15 @@ import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
-  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
-import {
   AlertCircle, ArrowLeft, Camera, CheckCircle2, Save, Plus, Trash2, Building2, Eye,
   User, FileText, Globe, Briefcase, Heart, HeartPulse, TreePine,
-  Pencil, X, GraduationCap, ImageUp, Download, Loader2, Users,
+  Pencil, X, GraduationCap, ImageUp, Users,
 } from 'lucide-react'
 import { maskCPF, maskPhone, maskMoney } from '@/utils/masks'
 import { ApiError } from '@/lib/api'
 import { apiErrorMessage } from '@/lib/api-error-message'
-import { downloadExport, type ExportDataset, type ExportParams } from '@/lib/export'
+import type { FonteDoMontador } from '@/components/export/MontadorDeFontes'
+import { ExportarDaFicha, type PlanilhaDaFicha } from '@/components/export/ExportarDaFicha'
 import {
   validatePersonFields, firstInvalidField, focusFieldById,
   type PersonField as CampoValidado, type PersonFieldErrors,
@@ -943,24 +941,11 @@ function RouteComponent() {
   const [completarPending, setCompletarPending] = useState(completar === 1)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [showMerge, setShowMerge] = useState(false)
-  const [exporting, setExporting] = useState(false)
   const { can } = usePermissions()
   const deleteWorker = useDeleteWorker()
   const navigate = useNavigate()
   // allowLeave do formulário de dados: excluir a pessoa sai sem o aviso de não salvo.
   const allowLeaveRef = useRef<(() => void) | null>(null)
-
-  async function handleExport(dataset: ExportDataset, params: ExportParams) {
-    setExporting(true)
-    try {
-      await downloadExport(dataset, params)
-      toast.success('Planilha baixada.')
-    } catch (e) {
-      toast.error(apiErrorMessage(e, 'Erro ao exportar.'))
-    } finally {
-      setExporting(false)
-    }
-  }
 
   function endCompleteMode() {
     setCompleteMode(false)
@@ -1024,6 +1009,26 @@ function RouteComponent() {
     if (isIncomplete) setCompleteMode(true)
   }
 
+  // Exportar: a planilha (CSV ou Excel, a escolha do menu) e "Montar relatório
+  // (escolher campos)" (decisão 006) da ficha e das propriedades desta pessoa.
+  const planilhasDaFicha: PlanilhaDaFicha[] = [
+    { rotulo: 'Ficha completa', dataset: 'people', params: { ids: [id] } },
+    {
+      rotulo: `Propriedades (${propertiesTotal})`, dataset: 'properties', params: { ownerIds: [id] },
+      disabled: propertiesTotal === 0,
+    },
+  ]
+  const fontesDoMontador: FonteDoMontador[] = [
+    {
+      rotulo: 'Ficha completa…', dataset: 'people', filters: { ids: [id] }, total: 1,
+      escopo: `Só esta pessoa: ${user.name}`,
+    },
+    {
+      rotulo: `Propriedades (${propertiesTotal})…`, dataset: 'properties', filters: { ownerIds: [id] },
+      total: propertiesTotal, escopo: `As propriedades desta pessoa (${propertiesTotal})`, disabled: propertiesTotal === 0,
+    },
+  ]
+
   return (
     <PageContainer>
       {/* Cabeçalho: o "voltar" em cima; nome, selo e dados à esquerda; ações à direita
@@ -1057,21 +1062,7 @@ function RouteComponent() {
               Completar cadastro
             </Button>
           )}
-          <DropdownMenu modal={false}>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" disabled={exporting} aria-label="Exportar" title="Exportar">
-                {exporting ? <Loader2 className="animate-spin" /> : <Download />}
-                <span className="hidden sm:inline">Exportar</span>
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56">
-              <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">Planilha CSV (abre no Excel)</DropdownMenuLabel>
-              <DropdownMenuItem onSelect={() => handleExport('people', { ids: [id] })}>Ficha completa</DropdownMenuItem>
-              <DropdownMenuItem disabled={propertiesTotal === 0} onSelect={() => handleExport('properties', { ownerIds: [id] })}>
-                Propriedades ({propertiesTotal})
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <ExportarDaFicha dataset="people" planilhas={planilhasDaFicha} fontes={fontesDoMontador} textoSoNoComputador />
           {/* Mesma pessoa cadastrada duas vezes (ver "Possíveis duplicados" na lista). */}
           {can('DELETE_USER') && (
             <Button

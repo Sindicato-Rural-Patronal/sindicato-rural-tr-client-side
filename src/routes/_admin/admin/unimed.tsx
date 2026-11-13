@@ -7,7 +7,9 @@ import {
 import { requirePermission } from '@/lib/auth-guard'
 import { apiErrorMessage } from '@/lib/api-error-message'
 import { downloadExport } from '@/lib/export'
-import { baixarFichaUnimed, baixarTermoUnimed, baixarContratoUnimed } from '@/lib/unimed-docs'
+import {
+  baixarFichaUnimed, baixarTermoUnimed, baixarContratoUnimed, ERRO_DO_DOCUMENTO_UNIMED, type DocumentoUnimed,
+} from '@/lib/unimed-docs'
 import { formatDateFromString } from '@/utils/format-data-from-string'
 import { maskCPF } from '@/utils/masks'
 import { STICKY_ACTIONS_CELL, STICKY_ACTIONS_ROW } from '@/lib/table-sticky-actions'
@@ -40,7 +42,7 @@ export const Route = createFileRoute('/_admin/admin/unimed')({
 })
 
 // Documentos do beneficiário, na ordem em que aparecem no menu de ações.
-type DocKind = 'ficha' | 'termo' | 'contrato'
+type DocKind = DocumentoUnimed
 type UnimedDoc = {
   kind: DocKind
   label: string
@@ -105,7 +107,7 @@ function RouteComponent() {
     try {
       await doc.run(row.id)
     } catch (e) {
-      toast.error(apiErrorMessage(e, `Erro ao gerar o documento (${doc.label}).`))
+      toast.error(apiErrorMessage(e, ERRO_DO_DOCUMENTO_UNIMED[doc.kind]))
     } finally {
       setDocBusy(null)
     }

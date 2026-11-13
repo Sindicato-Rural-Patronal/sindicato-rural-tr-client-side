@@ -2,6 +2,12 @@
 // tela precise conhecer as colunas de cada relatório. O backend continua sendo
 // a única fonte das colunas: o PDF é outra forma de imprimir a MESMA planilha.
 //
+// Desde a fase 2 da decisão 006 (SR-101), passam por aqui só o "Relatório de
+// cadastros" (4 tabelas num arquivo, sem montador), a fonte sem catálogo (back
+// velho) e o PDF rápido acima do limite de linhas do PDF da API (SR-103). O PDF
+// rápido das fontes com montador vem da API, com as colunas que `pdfColumns`
+// escolhe (`camposDoResumo` em report-builder.ts).
+//
 // Formato gerado lá: BOM UTF-8, separador ";", CRLF, toda célula entre aspas e
 // aspas internas dobradas ("").
 
@@ -116,6 +122,20 @@ const COLUNAS_PREFERIDAS = [
   'Tipo de membro', 'Regra', 'Cidade', 'Data', 'Início', 'Valor',
 ]
 
+/**
+ * O nome do registro nas fontes em que a coluna não se chama "Nome" (SR-111):
+ * sem ele, o PDF rápido de Cursos saía só com "Nº do evento | Início |
+ * Descrição", sem o curso, e o de Propriedades só com "Matrícula | Cidade".
+ * Fica por fonte, fora de `COLUNAS_PREFERIDAS`, porque "Curso" também é coluna
+ * das inscrições, e lá o PDF já é de um curso só (o nome dele está na linha
+ * "Filtros:"). Entra pelo `camposDoResumo`; o PDF do CSV acima do limite de
+ * linhas pede as mesmas colunas pelos rótulos.
+ */
+export const COLUNAS_DO_NOME: Readonly<Record<string, readonly string[]>> = {
+  courses: ['Curso'],
+  properties: ['Propriedade', 'Nome do dono'],
+}
+
 /** No máximo isto de colunas por tabela: mais que isso não se lê no papel. */
 const MAX_COLUNAS = 7
 
@@ -125,7 +145,7 @@ const MAX_COLUNAS = 7
  * papel com documento e espreme justamente o nome, que é o que se procura.
  */
 const PESO_POR_COLUNA: { termos: string[]; peso: number }[] = [
-  { termos: ['Nome', 'Razão social', 'Nome fantasia', 'Título', 'Descrição'], peso: 3 },
+  { termos: ['Nome', 'Razão social', 'Nome fantasia', 'Título', 'Descrição', 'Curso', 'Propriedade', 'Nome do dono'], peso: 3 },
   { termos: ['E-mail', 'Cidade', 'Observações'], peso: 2 },
   { termos: ['CPF', 'CNPJ', 'Telefone', 'Data', 'Início', 'Valor', 'Nº do evento'], peso: 1 },
 ]
@@ -134,10 +154,19 @@ export function pesoDaColuna(cabecalho: string): number {
   return PESO_POR_COLUNA.find(g => g.termos.includes(cabecalho))?.peso ?? 1.5
 }
 
-export function pdfColumns(header: string[]): number[] {
-  const escolhidas = COLUNAS_PREFERIDAS
+/**
+ * As colunas do PDF montado do CSV. `rotulos` (o PDF rápido acima do limite de
+ * linhas, SR-103) pede as mesmas colunas que o PDF pela API teria, nessa ordem;
+ * sem `rotulos`, ou se nenhum estiver na planilha, vale a escolha de sempre,
+ * mais as `doNome` da fonte (`COLUNAS_DO_NOME`).
+ */
+export function pdfColumns(header: string[], rotulos?: string[], doNome: readonly string[] = []): number[] {
+  const pedidas = (rotulos ?? []).map(r => header.indexOf(r)).filter((i, n, todas) => i >= 0 && todas.indexOf(i) === n)
+  if (pedidas.length > 0) return pedidas
+
+  const escolhidas = [...doNome, ...COLUNAS_PREFERIDAS]
     .map(nome => header.indexOf(nome))
-    .filter(i => i >= 0)
+    .filter((i, n, todas) => i >= 0 && todas.indexOf(i) === n)
     .sort((a, b) => a - b)
     .slice(0, MAX_COLUNAS)
 

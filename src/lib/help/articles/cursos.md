@@ -4,8 +4,8 @@ resumo: Criar um curso, acompanhar inscrições, marcar presença e encerrar.
 grupo: dia-a-dia
 ordem: 1
 permissao: READ_COURSE
-veja: como-criar-curso, como-inscrever-alguem, salas-e-agenda, usuarios, exportar-planilhas, fotos-e-imagens
-busca: curso aula turma inscricao inscritos aluno presenca lista certificado faep vagas cpf telefone 4 ultimos digitos site nao deixa inscrever apagar campo vazio proximos armazenados aba arquivo sumiu ordem de chegada inscrito em data hora concluido
+veja: como-criar-curso, como-inscrever-alguem, salas-e-agenda, usuarios, exportar-planilhas, montar-relatorio, fotos-e-imagens
+busca: curso aula turma inscricao inscritos aluno presenca lista certificado faep vagas cpf telefone 4 ultimos digitos site nao deixa inscrever apagar campo vazio proximos armazenados aba arquivo sumiu ordem de chegada inscrito em data hora concluido exportar planilha montar relatorio calendario ano inscricoes de todos os cursos excel xlsx ficha de inscricao baixar ficha exportar todas auditoria gerou o documento documento nao foi gerado muitos documentos seguidos visualizar usuarios permissao botao desligado relatorio em pdf numero do evento
 ---
 
 Tudo de curso acontece em **Gestão › Cursos**. A lista mostra cada curso num
@@ -41,6 +41,32 @@ excluir, para você não mexer num curso que nem está à vista.
 > Se a aba estiver vazia, a tela diz **Nenhum curso próximo** ou **Nenhum curso
 > armazenado**. Isso quer dizer que a aba não tem curso — ele pode estar na
 > outra.
+
+## Exportar a lista
+
+O botão **Exportar**, no topo da lista, leva **a aba aberta, a busca e o Ano**:
+o **Todos (N)** do menu é o mesmo número de cursos que a tela mostra. Com busca
+ou ano, o item vira **Todos com os filtros atuais (N)**. Na aba
+**Armazenados**, a planilha sai do curso mais recente para o mais antigo, como
+a aba. Para levar só alguns cursos, marque-os na lista e use **Selecionados**.
+No alto do menu, os botões **CSV** e **Excel (.xlsx)** escolhem o formato da
+planilha (veja [Exportar planilhas](?topico=exportar-planilhas)). O
+**Relatório em PDF (para imprimir)** sai com as colunas *Curso*, *Nº do
+evento*, *Início* e *Descrição*, com a folha em pé.
+
+O menu tem também:
+
+- **Inscrições dos cursos selecionados** e **Inscrições de todos os cursos**,
+  em planilha, no formato marcado;
+- **Montar relatório…**, para escolher as colunas dos cursos. O modelo
+  **Calendário** leva Curso, Início, Término, Sala e Instrutores;
+- **Montar relatório: inscrições dos cursos selecionados…** e **Montar
+  relatório: inscrições de todos os cursos…**, para escolher as colunas das
+  inscrições.
+
+**Inscrições de todos os cursos** não olha a aba, a busca nem o ano: leva as
+inscrições de todos os cursos. O passo a passo do montador está em
+[Como montar um relatório](?topico=montar-relatorio).
 
 ## Criando um curso
 
@@ -194,9 +220,26 @@ No menu **Mais** de cada inscrição:
 
 No topo da lista:
 
-- **Exportar todas** — as fichas de todos os inscritos, em PDF.
-- **Planilha** — a lista toda em planilha (CSV), com os selos, a presença e os
-  dados de contato.
+- **Exportar todas** — as fichas de todos os inscritos, num PDF só.
+- **Planilha** — a lista toda em planilha (CSV ou Excel) ou PDF, com os selos,
+  a presença e os dados de contato. No fim do menu, **Montar relatório…** deixa
+  escolher as colunas: só nome e CPF, nome e e-mail, ou uma lista de presença só
+  das confirmadas. Veja [Como montar um relatório](?topico=montar-relatorio).
+- **Lista de presença** — o PDF para assinar no dia, só com as confirmadas.
+
+A ficha de inscrição leva os dados do cadastro da pessoa. Por isso, **Baixar
+ficha de inscrição** e **Exportar todas** pedem também a permissão de ver
+usuários. Sem ela, os dois ficam desligados, e a dica diz *Pede a permissão
+Visualizar usuários*. Para liberar, quem cuida das regras marca **Visualizar**
+em Usuários na sua regra.
+
+**Os documentos ficam na [Auditoria](?topico=auditoria).** A **Lista de
+presença** e as fichas de inscrição (uma ou todas) são registradas antes de o
+PDF ser gerado, com o nome do curso: *Gerou o documento "Lista de presença:
+HORTA · 12 registros · com CPF"*. A planilha também fica. Se o registro falhar,
+o PDF não sai e aparece uma mensagem; o que fazer está em
+[Se algo der errado](#se-algo-der-errado). O **Copiar telefones** e o **Copiar
+e-mails** não ficam registrados.
 
 ## Começar o curso
 
@@ -212,8 +255,8 @@ presentes** e a contagem *X presentes · Y faltas · Z sem marcar*. No dia do
 início o curso já está na aba **Armazenados**: é lá que você o abre para marcar
 a presença.
 
-**Lista de presença** gera o PDF para assinar no dia. A coluna *Presença* também
-vai na planilha CSV.
+**Lista de presença** gera o PDF para assinar no dia, só com as inscrições
+confirmadas. A coluna *Presença* também vai na planilha.
 
 > **O sistema não emite certificado.** Quem emite é a **FAEP**. Não procure o
 > botão: ele não existe, e isso é de propósito.
@@ -230,4 +273,9 @@ você quer: se o curso não vai mais acontecer, mude a situação para **Rascunh
 |---|---|
 | O curso sumiu da lista | Olhe na aba **Armazenados**. No dia do início, o curso sai de **Próximos** sozinho. Se não estiver lá, tire a busca e o filtro de **Ano** |
 | A aba diz *Nenhum curso próximo* ou *Nenhum curso armazenado* | A aba está vazia, mas o curso pode estar na outra |
-| O botão **Exportar** levou mais cursos do que a aba mostra | A planilha de cursos respeita a busca, mas **não a aba nem o ano**. Para levar só alguns cursos, marque-os e use **Selecionados** |
+| O **Exportar** não levou um curso que eu queria | Ele leva só a aba aberta, com a busca e o ano. Troque de aba ou tire os filtros e exporte de novo, ou marque os cursos e use **Selecionados** |
+| *Nenhuma inscrição confirmada para a lista de presença.* | A **Lista de presença** só leva as inscrições confirmadas. Confirme as inscrições e gere de novo |
+| *O documento não foi gerado: não deu para registrar na auditoria. Confira a internet e tente de novo.* | A **Lista de presença** ou a ficha não sai sem ficar na Auditoria, e o registro falhou. Confira a internet e clique de novo |
+| *Muitos documentos seguidos. Aguarde um minuto e tente de novo.* | Passou de 30 documentos num minuto, somando todo mundo que usa a mesma internet. Espere um minuto e clique de novo |
+| *Você não tem permissão para gerar este documento.* | A sua regra não deixa gerar esse documento. Na ficha de inscrição, aparece também quando a permissão de ver usuários saiu da sua regra com a tela aberta. Fale com quem cuida das regras |
+| **Baixar ficha de inscrição** e **Exportar todas** desligados, com a dica *Pede a permissão Visualizar usuários* | A ficha leva os dados do cadastro da pessoa, e a sua regra não deixa ver usuários. Fale com quem cuida das regras: elas marcam **Visualizar** em Usuários |

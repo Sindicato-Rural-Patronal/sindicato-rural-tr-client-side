@@ -1,3 +1,4 @@
+import { useId } from 'react'
 import type { LucideIcon } from 'lucide-react'
 import { Loader2, MoreHorizontal } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -66,8 +67,43 @@ function InlineAction({ action }: { action: RowAction }) {
         {/* O Button desligado não recebe o ponteiro: quem mostra a dica é o invólucro. */}
         {off ? <span tabIndex={0} className="inline-flex rounded-md">{button}</span> : button}
       </TooltipTrigger>
-      <TooltipContent side="top">{action.disabled && action.reason ? action.reason : action.label}</TooltipContent>
+      {/* Desligada com motivo: duas linhas, o que o botão faz e por que está desligado. */}
+      <TooltipContent side="top">
+        {action.disabled && action.reason ? (
+          <span className="flex flex-col">
+            <span>{action.label}</span>
+            <span>{action.reason}</span>
+          </span>
+        ) : action.label}
+      </TooltipContent>
     </Tooltip>
+  )
+}
+
+/**
+ * Item do menu "Mais". Desligado com motivo, o motivo vai escrito embaixo do nome: o item
+ * desligado não recebe o ponteiro, então um `title` não apareceria. O nome acessível
+ * continua só o da ação; o motivo é a descrição.
+ */
+function MenuAction({ action: a }: { action: RowAction }) {
+  const reasonId = useId()
+  const reason = a.disabled && a.reason ? a.reason : null
+  return (
+    <DropdownMenuItem
+      variant={a.destructive ? 'destructive' : undefined}
+      onSelect={() => a.onClick()}
+      disabled={!!a.disabled || !!a.busy}
+      aria-label={a.label}
+      aria-describedby={reason ? reasonId : undefined}
+    >
+      <ActionIcon action={a} />
+      {reason ? (
+        <span className="flex flex-col">
+          <span>{a.label}</span>
+          <span id={reasonId} className="text-xs text-muted-foreground">{reason}</span>
+        </span>
+      ) : a.label}
+    </DropdownMenuItem>
   )
 }
 
@@ -111,30 +147,9 @@ export function RowActions({ actions, visible = 2, label = 'Ações', className 
             <TooltipContent side="top">Mais</TooltipContent>
           </Tooltip>
           <DropdownMenuContent align="end" className="w-auto min-w-48">
-            {menuRegular.map(a => (
-              <DropdownMenuItem
-                key={a.key ?? a.label}
-                onSelect={() => a.onClick()}
-                disabled={!!a.disabled || !!a.busy}
-                title={a.disabled ? a.reason : undefined}
-              >
-                <ActionIcon action={a} />
-                {a.label}
-              </DropdownMenuItem>
-            ))}
+            {menuRegular.map(a => <MenuAction key={a.key ?? a.label} action={a} />)}
             {menuRegular.length > 0 && menuDestructive.length > 0 && <DropdownMenuSeparator />}
-            {menuDestructive.map(a => (
-              <DropdownMenuItem
-                key={a.key ?? a.label}
-                variant="destructive"
-                onSelect={() => a.onClick()}
-                disabled={!!a.disabled || !!a.busy}
-                title={a.disabled ? a.reason : undefined}
-              >
-                <ActionIcon action={a} />
-                {a.label}
-              </DropdownMenuItem>
-            ))}
+            {menuDestructive.map(a => <MenuAction key={a.key ?? a.label} action={a} />)}
           </DropdownMenuContent>
         </DropdownMenu>
       )}

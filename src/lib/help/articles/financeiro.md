@@ -4,8 +4,8 @@ resumo: Lançamentos de caixa com número e recibo, recorrentes, categorias, cai
 grupo: gestao
 ordem: 1
 permissao: READ_FINANCE
-veja: como-registrar-lancamento, como-emitir-recibo, exportar-planilhas, busca-e-filtros, auditoria
-busca: financeiro caixa lancamento entrada saida saldo categoria comprovante recorrente fechamento fechar reabrir mes fechado trava cadeado transferencia relatorio pdf nome razao social fornecedor nome fantasia empenho cnpj cpf coluna buscar planilha pausar reativar ativar visao geral numero n anterior numeracao sequencia automatico proximo salto corrigir ordenar ordem recibo recibos gerar recibo receber pagador despesas
+veja: como-registrar-lancamento, como-emitir-recibo, exportar-planilhas, montar-relatorio, busca-e-filtros, auditoria
+busca: financeiro caixa lancamento entrada saida saldo categoria comprovante recorrente fechamento fechar reabrir mes fechado trava cadeado transferencia relatorio pdf nome razao social fornecedor nome fantasia empenho cnpj cpf coluna buscar planilha pausar reativar ativar visao geral numero n anterior numeracao sequencia automatico proximo salto corrigir ordenar ordem recibo recibos gerar recibo receber pagador despesas exportar exportar csv montar relatorio resumido excel xlsx planilha do excel forma de pagamento auditoria gerou o documento nota de empenho baixar pdf relatorio de despesas o pdf aceita ate 2.000 linhas
 ---
 
 **Financeiro** tem sete abas: **Visão geral**, **Lançamentos**, **Recorrentes**,
@@ -33,9 +33,9 @@ Cada linha é uma entrada ou uma saída de um caixa. No topo ficam os totais —
 **Entradas, Saídas e Saldo** — sempre **dos filtros que você está usando**, não
 do mês inteiro. Mudou o filtro, mudou o total.
 
-Em cima fica a barra com o campo **Buscar** e os botões **Exportar CSV**,
+Em cima fica a barra com o campo **Buscar** e os botões **Exportar**,
 **Transferir** e **Novo lançamento**. Os filtros (**De**, **Até**, **Tipo**,
-**Categoria**, **Caixa**, **Forma** e **Ordenar por**) ficam numa linha logo
+**Categoria**, **Caixa**, **Forma de pagamento** e **Ordenar por**) ficam numa linha logo
 embaixo dela. No celular, eles aparecem dois por linha.
 
 Os filtros ficam no endereço da página, então **dá para salvar o link nos
@@ -90,14 +90,14 @@ você procura está entre eles.
 
 ### Ordenando a lista
 
-O seletor **Ordenar por**, o último da linha dos filtros, tem duas
-opções, e as duas vão **do maior para o menor**:
+O seletor **Ordenar por**, o último da linha dos filtros (**Caixa**, **Forma de
+pagamento**…), tem duas opções, e as duas vão **do maior para o menor**:
 
 - **Data** (o padrão) — o lançamento de data mais nova primeiro;
 - **Nº** — o de número maior primeiro. Lançamento sem número fica por último.
 
 A ordem vai no endereço da página, como os filtros, e é a mesma da planilha do
-**Exportar CSV**.
+botão **Exportar**.
 
 ### Atalhos
 
@@ -138,7 +138,7 @@ do 1.
 - na busca e na ordem da lista, que você viu acima;
 - na **Nota de Empenho**, no [recibo](#recibo-de-entrada) e no **Relatório de
   despesas**;
-- na planilha do **Exportar CSV**, na primeira coluna;
+- na planilha e no PDF do botão **Exportar**, na primeira coluna;
 - na [Auditoria](?topico=auditoria), na frase do lançamento: *Criou o lançamento
   "nº 123 — Compra de adubo"*.
 
@@ -204,7 +204,8 @@ chama `nota-empenho-128.pdf` (com o Nº do lançamento).
 Todo lançamento de **entrada** gera o **recibo** em PDF. Na linha, abra o menu
 **Mais** (o **⋯**) e clique em **Gerar recibo em PDF**, logo abaixo de **Gerar
 Nota de Empenho**. O arquivo baixa na hora, em folha A4, pronto para imprimir e
-assinar.
+assinar. Cada recibo gerado fica registrado na [Auditoria](?topico=auditoria)
+(veja [Relatórios](#relatorios)).
 
 Só **entrada** tem recibo. Em **Saída**, **Só nota** e transferência entre
 caixas, o item não aparece no menu. Ele funciona também com o **mês fechado**,
@@ -414,10 +415,63 @@ anexar passa pelo **Editar**, que está desligado. Por isso vale anexar tudo
 
 ## Relatórios
 
-Há a **exportação em CSV** (botão **Exportar CSV**, na aba **Lançamentos**, com
-os filtros atuais) e, na aba **Visão geral**, o **relatório em PDF** do período
-(**Baixar PDF**) e o **Relatório de despesas**, no formato que o Sindicato já
-usa em papel.
+Na aba **Lançamentos**, o botão **Exportar** leva os lançamentos **com os
+filtros e a ordem da tela**. O menu tem três partes:
+
+| Parte do menu | O que sai |
+|---|---|
+| **Planilha**, com os botões **CSV** e **Excel (.xlsx)** | A planilha de sempre, com todas as colunas (veja abaixo), no formato que você marcar. Marque o formato e depois clique em **Todos** |
+| **Relatório em PDF (para imprimir)** | Um PDF curto, no modelo **Resumido**: Nº, Data, Descrição, Nome / Razão social e Valor (R$) |
+| **Montar relatório…** | Você escolhe as colunas e a ordem. Dá para levar o que a planilha não tem, como o desconto e o endereço, o telefone e o banco da Nota de Empenho. Veja [Como montar um relatório](?topico=montar-relatorio) |
+
+**Para fazer contas, use o Excel.** Na planilha do Excel, o **Valor (R$)** sai
+como número em reais, pronto para somar, e a **Data** sai como data, para
+ordenar e filtrar por período. O CNPJ / CPF sai como texto, sem virar número. A
+diferença entre CSV e Excel está em
+[Exportar planilhas](?topico=exportar-planilhas).
+
+A lista não tem seleção: o menu leva sempre **Todos (N)**, ou **Todos com os
+filtros atuais (N)** quando há filtro. No montador, no cabeçalho do PDF e na
+aba *Sobre* da planilha do Excel, os filtros aparecem em palavras, como
+*Período: 01/10/2026 a 31/10/2026 · Tipo: Saída · Categoria: INSUMOS · Caixa:
+BANCO · Forma de pagamento: PIX · Busca: adubo · Ordem: Nº*. A ordem só aparece
+quando a lista está em **Ordenar por › Nº**. O filtro **Forma de pagamento** tem
+o mesmo nome na tela e nos filtros em palavras, mas a coluna da planilha continua
+se chamando **Método**.
+
+**O PDF aceita até 2.000 lançamentos.** Acima disso, os itens do **Relatório em
+PDF** ficam desligados, e o menu avisa embaixo: *O PDF aceita até 2.000 linhas.
+Baixe a planilha ou use um filtro.* Escolha um período menor ou baixe a
+planilha.
+
+**A planilha (CSV ou Excel) e o PDF ficam na [Auditoria](?topico=auditoria)**,
+como os das outras listas: quem baixou, quando e o que levou.
+
+### Os PDFs do Financeiro na Auditoria
+
+Na aba **Visão geral** ficam o **relatório em PDF** do período (**Baixar PDF**)
+e o **Relatório de despesas**, no formato que o Sindicato já usa em papel. Na
+aba **Lançamentos** ficam a **Nota de Empenho** e o **recibo** de cada
+lançamento.
+
+Os quatro também ficam na Auditoria. **Antes de gerar o PDF, o painel registra
+o documento**, com o período ou o lançamento:
+
+- *Gerou o documento "Relatório do Financeiro: 01/10/2026 a 31/10/2026 · 45
+  registros"*
+- *Gerou o documento "Recibo: Nº 128 · COOP LTDA · 1 registro"*
+
+A Nota de Empenho gerada de dentro do formulário (botão **Gerar Nota de
+Empenho**), mesmo antes de salvar o lançamento, também fica registrada. **Se o
+registro falhar, o PDF não sai**, e aparece uma destas mensagens:
+
+| O que aparece | O que fazer |
+|---|---|
+| *Você não tem permissão para gerar este documento.* | A sua regra não deixa gerar esse PDF. Fale com quem cuida das regras |
+| *Muitos documentos seguidos. Aguarde um minuto e tente de novo.* | Passou de 30 documentos num minuto, somando todo mundo que usa a mesma internet. Espere um minuto e clique de novo |
+| *O documento não foi gerado: não deu para registrar na auditoria. Confira a internet e tente de novo.* | A internet caiu ou o sistema não respondeu. Confira a conexão e clique de novo |
+
+Veja também [Exportar planilhas](?topico=exportar-planilhas).
 
 A planilha dos lançamentos tem as colunas Nº (a primeira), Data, Tipo, Caixa,
 Categoria, Descrição, **Nome / Razão social**, **CNPJ / CPF**, **Nº anterior**,

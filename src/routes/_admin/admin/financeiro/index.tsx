@@ -9,7 +9,7 @@ import {
   useCreateFinanceCategory, useUpdateFinanceCategory, useDeleteFinanceCategory,
   useFinanceAccounts, useCreateFinanceAccount, useUpdateFinanceAccount, useDeleteFinanceAccount,
   useCreateFinanceTransfer, fetchFinanceTransactionsForRange, useGenerateFinanceRecurrences,
-  useUploadFinanceAttachment, useDeleteFinanceAttachment, openFinanceAttachment, exportFinanceTransactions,
+  useUploadFinanceAttachment, useDeleteFinanceAttachment, openFinanceAttachment, financeExportFilters,
   useFinanceClosings, useFinanceNextNumber,
   type FinanceType, type FinanceCategory, type FinanceAccount, type FinanceTransaction, type TransactionFilters, type Empenho,
   type FinanceAttachment,
@@ -21,7 +21,7 @@ import { todayYmd, toYmd } from '@/utils/dates'
 import {
   Wallet, Plus, Pencil, Trash2, Search,
   Tag, ArrowUpCircle, ArrowDownCircle, Paperclip, FileText, X,
-  Download, Landmark, ArrowLeftRight, FileDown, Receipt, ChevronDown, User, Repeat,
+  Landmark, ArrowLeftRight, FileDown, Receipt, ChevronDown, User, Repeat,
   Building2, HandCoins, Check,
 } from 'lucide-react'
 import { apiFetch, ApiError } from '@/lib/api'
@@ -30,7 +30,9 @@ import { useAdminCompanies, companyDisplayName, type CompanyDetail } from '@/hoo
 import { useOrgInfo } from '@/hooks/useSiteSettings'
 import { ORG_CONTACT } from '@/lib/org-contact'
 import { cn } from '@/lib/utils'
-import { fornecedorDoLancamento } from '@/lib/relatorio-empenho'
+import { despesasDoRelatorio, fornecedorDoLancamento } from '@/lib/relatorio-empenho'
+import { alvoDoLancamento } from '@/lib/recibo'
+import { erroDoDocumento, periodoDoDocumento, registrarDocumento } from '@/lib/registrar-documento'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -58,6 +60,8 @@ import { NumeroField } from '@/components/financeiro/NumeroField'
 import { NumeroSaltoDialog } from '@/components/financeiro/NumeroSaltoDialog'
 import { ClosedMonthBadge, ClosedMonthNotice } from '@/components/financeiro/ClosedMonth'
 import { MonthlyChart } from '@/components/financeiro/MonthlyChart'
+import { ExportMenu } from '@/components/export/ExportMenu'
+import { textosDoFinanceiro } from '@/components/export/filter-texts'
 import { MemberBadge } from '@/components/MemberBadge'
 import { AjudaLink } from '@/components/ajuda/AjudaLink'
 import { PageContainer, PageHeader } from '@/components/PageHeader'
@@ -253,6 +257,12 @@ function DashboardTab({ enabled, onDrill }: {
         import('@/lib/relatorio-empenho-pdf'),
         fetchFinanceTransactionsForRange(range),
       ])
+      // Na auditoria antes de gerar; se não registrar, o relatório não sai.
+      await registrarDocumento('relatorio-despesas', {
+        linhas: despesasDoRelatorio(txns).length,
+        alvo: periodoDoDocumento(range.from, range.to),
+        escopo: 'com filtros',
+      })
       await downloadRelatorioEmpenhoPdf(txns, {
         nome: 'SINDICATO RURAL DE TERRA ROXA / PR',
         cnpj: ORG_CONTACT.cnpj,
@@ -277,6 +287,12 @@ function DashboardTab({ enabled, onDrill }: {
         import('@/lib/finance-report-pdf'),
         fetchFinanceTransactionsForRange(range),
       ])
+      // Os lançamentos que o relatório lista ("só nota" fica de fora, como no PDF).
+      await registrarDocumento('financeiro', {
+        linhas: txns.filter(t => t.type !== null).length,
+        alvo: periodoDoDocumento(range.from, range.to),
+        escopo: 'com filtros',
+      })
       await downloadFinanceReportPdf(data, txns, range)
     } catch (e) {
       toast.error(apiErrorMessage(e, 'Erro ao gerar o PDF.'))
@@ -850,7 +866,6 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
   const cats = categories ?? []
   const accs = accounts ?? []
   const catsForType = form.type ? cats.filter(c => c.type === form.type) : []
-  const [exporting, setExporting] = useState(false)
 
   // ── Mês fechado ──
   // Nome do caixa para o motivo: da lista de caixas ou, se ele foi desativado, do próprio lançamento.
@@ -913,9 +928,16 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
     setNotaBusy(t.id ?? 'preview')
     try {
       const { downloadNotaEmpenho } = await import('@/lib/nota-empenho-pdf')
+      // A prévia do formulário (sem id) também fica na auditoria.
+      await registrarDocumento('nota-empenho', {
+        linhas: 1,
+        alvo: alvoDoLancamento(t),
+        ids: [t.id],
+        escopo: 'seleção',
+      })
       await downloadNotaEmpenho(t)
-    } catch {
-      toast.error('Erro ao gerar a Nota de Empenho.')
+    } catch (e) {
+      toast.error(erroDoDocumento(e, 'Erro ao gerar a Nota de Empenho.'))
     } finally {
       setNotaBusy(null)
     }
@@ -1133,17 +1155,18 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
     if (pendingInputRef.current) pendingInputRef.current.value = ''
   }
 
-  async function handleExport() {
-    setExporting(true)
-    try {
-      await exportFinanceTransactions(filters)
-    } catch (e) {
-      // Resposta da API (ex.: filtro recusado, 400) diz o motivo; sem resposta, o texto genérico.
-      toast.error(e instanceof ApiError ? apiErrorMessage(e, 'Erro ao exportar.') : 'Erro ao exportar.')
-    } finally {
-      setExporting(false)
-    }
-  }
+  // Exportar (SR-103): planilha, PDF e "Montar relatório…" da fonte `finance-transactions`, com os
+  // filtros e a ordem da tela (a lista não tem seleção). A linha "Filtros:" do montador diz o tipo,
+  // a categoria e o caixa pelo nome, como a API no PDF; o período, a forma e a busca ele já diz.
+  const temFiltro = !!(search.from || search.to || search.fType || search.cat || search.acc || search.pm || search.q)
+  const textosDosFiltros = textosDoFinanceiro({
+    type: search.fType,
+    categoryId: search.cat,
+    categoria: cats.find(c => c.id === search.cat)?.name ?? rows.find(r => r.categoryId === search.cat)?.category?.name,
+    accountId: search.acc,
+    caixa: search.acc ? accountNameOf(search.acc) : null,
+    orderBy: search.ord,
+  })
 
   function abrirTransferencia() {
     setTransfer({ fromAccountId: '', toAccountId: '', amount: '', date: todayYmd(), description: '' })
@@ -1188,9 +1211,14 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
     <div className="flex flex-col gap-4">
       <FilterBar
         actions={<>
-          <Button variant="outline" disabled={exporting || rows.length === 0} onClick={handleExport}>
-            <Download className="size-4" /> {exporting ? 'Exportando...' : 'Exportar CSV'}
-          </Button>
+          {/* Exportar (SR-103): planilha, PDF e "Montar relatório…", com os filtros e a ordem da tela. */}
+          <ExportMenu
+            dataset="finance-transactions"
+            filters={financeExportFilters(filters)}
+            total={data?.total}
+            filtered={temFiltro}
+            filterTexts={textosDosFiltros}
+          />
           {canCreate && accs.length >= 2 && (
             <Button variant="outline" onClick={abrirTransferencia}>
               <ArrowLeftRight className="size-4" /> Transferir
@@ -1249,7 +1277,7 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
             {accs.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
           </NativeSelect>
         </FilterField>
-        <FilterField label="Forma">
+        <FilterField label="Forma de pagamento">
           <PaymentMethodSelect
             value={search.pm ?? ''}
             onChange={v => setSearch({ pm: v || undefined, page: undefined })}

@@ -108,7 +108,15 @@ export function CompaniesList() {
             selectedIds={selection.ids}
             total={data?.total}
             filtered={filtering}
-            extra={[{ label: 'Propriedades das selecionadas', dataset: 'properties', params: { ownerIds: selection.ids }, disabled: selection.count === 0 }]}
+            // O montador diz os filtros como a API diz no PDF: "Tipo: Privada", "Só não parceiras".
+            filterTexts={{
+              ...(type ? { type: `Tipo: ${COMPANY_TYPE_LABEL[type]}` } : {}),
+              ...(isPartner === false ? { isPartner: 'Só não parceiras' } : {}),
+            }}
+            extra={[{
+              label: 'Propriedades das selecionadas', dataset: 'properties', params: { ownerIds: selection.ids },
+              disabled: selection.count === 0, builder: true,
+            }]}
           />
         </>}
       >

@@ -9,6 +9,8 @@ import { useGerarRecibo, type OrgDoRecibo } from '@/components/financeiro/use-ge
  * (`podeGerarRecibo`); em saída, "só nota" e transferência entre caixas não aparece nada.
  * Não trava com o mês fechado: o recibo só lê o lançamento. Na lista do Financeiro a ação
  * vai no `RowActions` (com o `useGerarRecibo`); o botão fica para quem precisa dele sozinho.
+ * Antes de gerar, o recibo vai para a auditoria ("Gerou o documento "Recibo: Nº 128 · …"");
+ * se isso falhar, ele não sai (o `useGerarRecibo` cuida dos dois).
  */
 export function ReciboButton({ tx, org, className }: {
   tx: ReciboData

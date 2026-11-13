@@ -4,8 +4,8 @@ resumo: Marcar curso, evento ou reunião nas salas sem bater horário.
 grupo: dia-a-dia
 ordem: 2
 permissao: READ_COURSE
-veja: como-criar-reserva, como-criar-evento, cursos, eventos-no-site, painel-geral
-busca: sala reserva agenda calendario reuniao evento auditorio cozinha ocupacao horario imprimir
+veja: como-criar-reserva, como-criar-evento, cursos, eventos-no-site, painel-geral, montar-relatorio
+busca: sala reserva agenda calendario reuniao evento auditorio cozinha ocupacao horario imprimir exportar planilha montar relatorio este dia esta semana escolher periodo responsavel excel xlsx auditoria gerou o documento documento nao foi gerado muitos documentos seguidos
 ---
 
 A agenda das salas **não tem tela própria**: ela fica dentro do
@@ -63,11 +63,47 @@ está livre. Há dois jeitos de ela aparecer, conforme o espaço:
 - **Dia / Semana** — a semana vai de segunda a domingo
 - **Busca** por título ou responsável — atenção: a busca cobre **eventos e
   reuniões**, não cursos (a própria tela avisa)
-- **Exportar** — CSV do período visível ou de um período escolhido (sem cursos)
+- **Exportar** — a planilha CSV das reservas: **Este dia** ou **Esta semana**
+  (o período da tela), ou **Escolher período…**. Os cursos não entram
 - **Imprimir** — PDF da agenda do dia ou da semana
+
+Esses três itens do **Exportar** saem só em CSV. Para a planilha do Excel, use
+o **Montar relatório…**, logo abaixo.
+
+No fim do menu **Exportar**, o **Montar relatório…** deixa escolher as colunas
+das reservas e o formato, inclusive **Planilha do Excel (.xlsx)**. Ele leva o
+período da tela (o dia, em **Dia**, ou a semana, em **Semana**), com a sala, o
+tipo e a busca. Para outro período, mude o dia ou a semana na agenda antes de
+abrir. Alguns detalhes:
+
+- o único modelo de fábrica é o **Padrão (como hoje)**, com as colunas da
+  planilha. **No site** e **Texto no site** ficam fora dele: marque-os em
+  **Campos** se precisar. A equipe pode salvar os próprios modelos;
+- os cursos também não entram, só os eventos e as reuniões;
+- o montador avisa *Leva dados pessoais: Responsável.*, porque o responsável
+  é uma pessoa.
+
+O passo a passo está em [Como montar um relatório](?topico=montar-relatorio).
+
+### O que fica registrado
+
+A planilha e o **Imprimir** ficam na [Auditoria](?topico=auditoria). O
+**Imprimir** é registrado antes de o PDF ser gerado, com o período e os filtros
+da tela: *Gerou o documento "Agenda: 05/10/2026 a 11/10/2026 · 8 registros ·
+com Responsável"*. Se o registro falhar, o PDF não sai e aparece uma mensagem
+(veja [Se algo der errado](#se-algo-der-errado)).
 
 ## As salas em si
 
 As seis salas quase nunca mudam, então não viraram item de menu: elas ficam em
 **Configurações › Salas**, onde se ajusta nome, descrição e capacidade. A
 capacidade aparece depois, na hora de escolher a sala do curso.
+
+## Se algo der errado
+
+| O que aparece ao clicar em **Imprimir** | O que fazer |
+|---|---|
+| *O documento não foi gerado: não deu para registrar na auditoria. Confira a internet e tente de novo.* | O PDF da agenda não sai sem ficar na Auditoria, e o registro falhou. Confira a internet e clique de novo |
+| *Muitos documentos seguidos. Aguarde um minuto e tente de novo.* | Passou de 30 documentos num minuto, somando todo mundo que usa a mesma internet. Espere um minuto e clique de novo |
+| *Você não tem permissão para gerar este documento.* | A sua regra não deixa gerar o PDF da agenda. Fale com quem cuida das regras |
+| *Não foi possível gerar o PDF da agenda.* | Clique de novo. Se continuar, avise o suporte (veja [Problemas comuns](?topico=problemas-comuns)) |

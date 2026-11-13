@@ -48,7 +48,8 @@ import { DuplicatePeopleList } from '@/components/cadastro/DuplicatePeopleList'
 import { PersonNameCell } from '@/components/cadastro/PersonNameCell'
 import { useAdminCompanies } from '@/hooks/useCompanies'
 import { MEMBER_TYPES } from '@/lib/member-types'
-import { downloadExport, type ExportDataset, type ExportFormat, type ExportParams } from '@/lib/export'
+import { EDUCATION_OPTIONS, ETHNICITY_OPTIONS } from '@/lib/user-form-options'
+import { downloadExport, exportErrorMessage, type ExportDataset, type ExportFormat, type ExportParams } from '@/lib/export'
 import { useRowSelection } from '@/hooks/useRowSelection'
 import { ExportMenu, SelectCheckbox, SelectionInfo } from '@/components/export/ExportMenu'
 import { PersonPicker, type PickedPerson } from '@/components/PersonPicker'
@@ -827,6 +828,7 @@ function RouteComponent() {
     activeMember: activeTab === 'associados' ? true : undefined,
   })
   const { data: regrasData } = useAdminRules()
+  const nomeDaRegraFiltrada = rulesFilter ? regrasData?.data.find(r => r.id === rulesFilter)?.name : undefined
   const { data: adminsData, isLoading: loadingAdmins, isError: errorAdmins, isFetching: fetchingAdmins, refetch: refetchAdmins } = useAdminAdmins({
     page: adminsPage,
     limit,
@@ -884,10 +886,15 @@ function RouteComponent() {
   async function baixarRelatorio(formato: ExportFormat) {
     setBaixandoRelatorio(true)
     try {
+      // O PDF é montado aqui do CSV da API: a linha da auditoria é a da planilha
+      // (não chama registrarDocumento, senão seriam duas linhas).
       const n = await downloadExport('cadastros', {}, formato)
-      toast.success(`Relatório de cadastros baixado (${n} registros).`)
+      toast.success(n >= 0
+        ? `Relatório de cadastros baixado (${n.toLocaleString('pt-BR')} registros).`
+        : 'Relatório de cadastros baixado.')
     } catch (e) {
-      toast.error(apiErrorMessage(e, 'Não foi possível gerar o relatório.'))
+      // O 429 ("Muitas exportações seguidas…") com o texto da API.
+      toast.error(exportErrorMessage(e, 'Não foi possível gerar o relatório.'))
     } finally {
       setBaixandoRelatorio(false)
     }
@@ -980,7 +987,11 @@ function RouteComponent() {
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-60">
                 <DropdownMenuItem onSelect={() => void baixarRelatorio('csv')}>
-                  <FileSpreadsheet className="size-4" /> Planilha CSV (abre no Excel)
+                  <FileSpreadsheet className="size-4" /> Planilha CSV
+                </DropdownMenuItem>
+                {/* Uma aba por seção (Pessoas físicas, Associados em dia, Pessoas jurídicas, Administradores). */}
+                <DropdownMenuItem onSelect={() => void baixarRelatorio('xlsx')}>
+                  <FileSpreadsheet className="size-4" /> Planilha do Excel (.xlsx)
                 </DropdownMenuItem>
                 <DropdownMenuItem onSelect={() => void baixarRelatorio('pdf')}>
                   <FileText className="size-4" /> Relatório em PDF (para imprimir)
@@ -1055,6 +1066,7 @@ function RouteComponent() {
                   dataset: 'properties',
                   params: { ownerIds: userSelection.ids },
                   disabled: userSelection.count === 0,
+                  builder: true,
                 }]}
               />
             </>}
@@ -1150,11 +1162,7 @@ function RouteComponent() {
                   <SelectTrigger id="f-etnia" className="w-full sm:w-36"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">Todos</SelectItem>
-                    <SelectItem value="WHITE">Branco</SelectItem>
-                    <SelectItem value="BLACK">Preto</SelectItem>
-                    <SelectItem value="MIXED">Pardo</SelectItem>
-                    <SelectItem value="ASIAN">Amarelo</SelectItem>
-                    <SelectItem value="INDIGENOUS">Indígena</SelectItem>
+                    {ETHNICITY_OPTIONS.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </FilterField>
@@ -1163,17 +1171,12 @@ function RouteComponent() {
                   value={educationFilter || 'all'}
                   onValueChange={v => { setEducationFilter(v === 'all' ? '' : v); setUsersPage(1) }}
                 >
-                  <SelectTrigger id="f-escolaridade" className="w-full sm:w-48"><SelectValue /></SelectTrigger>
+                  {/* sm:w-56: "Fundamental incompleto" (por extenso desde a SR-111) pede ~160 px em
+                      text-sm; o w-48 deixa 146 e cortava. */}
+                  <SelectTrigger id="f-escolaridade" className="w-full sm:w-56"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">Todas</SelectItem>
-                    <SelectItem value="NO_FORMAL_EDUCATION">Sem escolaridade</SelectItem>
-                    <SelectItem value="INCOMPLETE_PRIMARY">Fund. incompleto</SelectItem>
-                    <SelectItem value="COMPLETE_PRIMARY">Fund. completo</SelectItem>
-                    <SelectItem value="INCOMPLETE_SECONDARY">Médio incompleto</SelectItem>
-                    <SelectItem value="COMPLETE_SECONDARY">Médio completo</SelectItem>
-                    <SelectItem value="INCOMPLETE_HIGHER">Superior incompleto</SelectItem>
-                    <SelectItem value="COMPLETE_HIGHER">Superior completo</SelectItem>
-                    <SelectItem value="POSTGRADUATE">Pós-graduação</SelectItem>
+                    {EDUCATION_OPTIONS.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </FilterField>
@@ -1380,6 +1383,8 @@ function RouteComponent() {
                 selectedIds={adminSelection.ids}
                 total={adminsData?.total}
                 filtered={!!rulesFilter}
+                // O filtro manda o id; o montador diz o nome, como a API no PDF.
+                filterTexts={nomeDaRegraFiltrada ? { rulesId: `Regra de acesso: ${nomeDaRegraFiltrada}` } : undefined}
               />
             </> : undefined}
           >

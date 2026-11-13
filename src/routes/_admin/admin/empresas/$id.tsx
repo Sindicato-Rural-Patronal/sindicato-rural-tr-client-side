@@ -1,10 +1,11 @@
 import { useRef, useState } from 'react'
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
 import { toast } from 'sonner'
-import { ArrowLeft, Building2, Download, Handshake, Loader2, TreePine, Trash2, Users } from 'lucide-react'
+import { ArrowLeft, Building2, Handshake, TreePine, Trash2, Users } from 'lucide-react'
 import { requirePermission } from '@/lib/auth-guard'
 import { apiErrorMessage } from '@/lib/api-error-message'
-import { downloadExport, type ExportDataset, type ExportParams } from '@/lib/export'
+import type { FonteDoMontador } from '@/components/export/MontadorDeFontes'
+import { ExportarDaFicha, type PlanilhaDaFicha } from '@/components/export/ExportarDaFicha'
 import { usePermissions } from '@/hooks/usePermissions'
 import {
   useAdminCompany, useUpdateCompany, useDeleteCompany, useAddCompanyProperty, useRemoveCompanyProperty, useUpdateCompanyProperty,
@@ -19,9 +20,6 @@ import { PageContainer } from '@/components/PageHeader'
 import { errorStatus } from '@/lib/query-retry'
 import { Tabs, TabsList, TabsTrigger, TabsContent, tabsWrapClass } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
-import {
-  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { maskCNPJ } from '@/utils/masks'
@@ -47,7 +45,6 @@ function EmpresaPage() {
   const updateProperty = useUpdateCompanyProperty(id)
   const [tab, setTab] = useState('dados')
   const [confirmDelete, setConfirmDelete] = useState(false)
-  const [exporting, setExporting] = useState(false)
   const readOnly = !can('UPDATE_USER')
   // allowLeave do formulário de dados: excluir a empresa sai sem o aviso de não salvo.
   const allowLeaveRef = useRef<(() => void) | null>(null)
@@ -92,17 +89,26 @@ function EmpresaPage() {
     }
   }
 
-  async function handleExport(dataset: ExportDataset, params: ExportParams) {
-    setExporting(true)
-    try {
-      await downloadExport(dataset, params)
-      toast.success('Planilha baixada.')
-    } catch (e) {
-      toast.error(apiErrorMessage(e, 'Erro ao exportar.'))
-    } finally {
-      setExporting(false)
-    }
-  }
+  // Exportar: a planilha (CSV ou Excel, a escolha do menu) e "Montar relatório
+  // (escolher campos)" (decisão 006) dos dados e das propriedades desta empresa.
+  const nPropriedades = company.properties.length
+  const planilhasDaFicha: PlanilhaDaFicha[] = [
+    { rotulo: 'Dados da empresa', dataset: 'companies', params: { ids: [id] } },
+    {
+      rotulo: `Propriedades (${nPropriedades})`, dataset: 'properties', params: { ownerIds: [id] },
+      disabled: nPropriedades === 0,
+    },
+  ]
+  const fontesDoMontador: FonteDoMontador[] = [
+    {
+      rotulo: 'Dados da empresa…', dataset: 'companies', filters: { ids: [id] }, total: 1,
+      escopo: `Só esta empresa: ${companyDisplayName(company)}`,
+    },
+    {
+      rotulo: `Propriedades (${nPropriedades})…`, dataset: 'properties', filters: { ownerIds: [id] },
+      total: nPropriedades, escopo: `As propriedades desta empresa (${nPropriedades})`, disabled: nPropriedades === 0,
+    },
+  ]
 
   return (
     <PageContainer>
@@ -128,20 +134,7 @@ function EmpresaPage() {
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2 sm:shrink-0 sm:justify-end">
-          <DropdownMenu modal={false}>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" disabled={exporting}>
-                {exporting ? <Loader2 className="animate-spin" /> : <Download />} Exportar
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56">
-              <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">Planilha CSV (abre no Excel)</DropdownMenuLabel>
-              <DropdownMenuItem onSelect={() => handleExport('companies', { ids: [id] })}>Dados da empresa</DropdownMenuItem>
-              <DropdownMenuItem disabled={company.properties.length === 0} onSelect={() => handleExport('properties', { ownerIds: [id] })}>
-                Propriedades ({company.properties.length})
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <ExportarDaFicha dataset="companies" planilhas={planilhasDaFicha} fontes={fontesDoMontador} />
           {can('DELETE_USER') && (
             <Button variant="destructive" onClick={() => setConfirmDelete(true)}>
               <Trash2 /> Excluir
