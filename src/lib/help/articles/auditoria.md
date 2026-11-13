@@ -81,11 +81,10 @@ documento não sai, e quem tentou vê a mensagem na tela. Por isso, todo documen
 gerado tem a sua linha aqui. Veja
 [Exportar planilhas](?topico=exportar-planilhas).
 
-Dois PDFs aparecem como planilha (*Exportou a planilha "…"*), porque são feitos
-no seu navegador a partir da planilha: o **Relatório em PDF** do menu acima de
-2.000 linhas, nas listas em que ele ainda sai assim, e o PDF do **Relatório de
-cadastros**. Este último aparece como *Exportou a planilha "Relatório de
-cadastros: 850 registros (todos)"*, e não como documento.
+Todo PDF de lista aparece como *Exportou o relatório em PDF "…"*, e o nome
+termina em *· PDF*. Isso vale também para o **Relatório de cadastros**, que
+aparece como *Exportou o relatório em PDF "Relatório de cadastros: 850
+registros (todos) · PDF"*.
 
 Na planilha que você baixa desta tela (botão **Exportar**), a coluna **Ação**
 traz a mesma frase sem o alvo: *Exportou uma planilha*, *Exportou uma planilha

@@ -243,11 +243,8 @@ A frase diz também em que formato a lista saiu:
   **Relatório em PDF** do menu: *Exportou o relatório em PDF "Pessoas: 4
   registros (com filtros) · PDF · com CPF"*.
 
-> Dois PDFs aparecem na Auditoria como planilha (*Exportou a planilha "…"*): o
-> **Relatório em PDF** do menu acima de 2.000 linhas, nas listas em que ele sai
-> do jeito antigo, e o PDF do **Relatório de cadastros**. Os dois são montados
-> no seu navegador a partir da planilha, e quem fica registrada é a planilha que
-> eles buscam.
+> Todo PDF de lista aparece na Auditoria como *Exportou o relatório em PDF
+> "…"*, inclusive o do **Relatório de cadastros**. O nome termina em *· PDF*.
 
 **Ainda não ficam registrados** o **Copiar telefones** e o **Copiar e-mails**
 das inscrições de um curso. Eles copiam os contatos para colar em outro lugar,
@@ -287,10 +284,9 @@ ficar na Auditoria. Nesse caso, aparece uma destas mensagens:
 | *Muitos documentos seguidos. Aguarde um minuto e tente de novo.* | Passou de 30 documentos num minuto, somando todo mundo que usa a mesma internet. Espere um minuto e clique de novo |
 | *O documento não foi gerado: não deu para registrar na auditoria. Confira a internet e tente de novo.* | A internet caiu ou o sistema não respondeu. Confira a conexão e clique de novo |
 
-**A exceção é o PDF do Relatório de cadastros.** Ele não aparece como
-documento: é montado a partir da planilha, e quem fica na Auditoria é a
-planilha que ele busca, como *Exportou a planilha "Relatório de cadastros: 850
-registros (todos)"*.
+**O PDF do Relatório de cadastros é uma lista, não um documento.** Ele aparece
+como *Exportou o relatório em PDF "Relatório de cadastros: 850 registros
+(todos) · PDF"*.
 
 ## A planilha é sua responsabilidade
 
