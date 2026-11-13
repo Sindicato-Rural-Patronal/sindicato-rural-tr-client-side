@@ -18,11 +18,13 @@ import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@
 import { NativeSelect } from '@/components/ui/native-select'
 import { DeleteConfirmDialog } from '@/components/DeleteConfirmDialog'
 import { LoadErrorRetry } from '@/components/LoadErrorRetry'
+import { EmptyState } from '@/components/EmptyState'
+import { cn } from '@/lib/utils'
 import { currentMonth, monthLabel, monthNumeric } from '@/lib/finance-month'
 
 /** Classe de cor da diferença: vermelho quando não bate. */
 function diffClass(cents: number): string {
-  return cents === 0 ? 'text-foreground' : 'text-red-600 dark:text-red-400'
+  return cents === 0 ? 'text-foreground' : 'text-destructive'
 }
 
 function diffLabel(cents: number): string {
@@ -75,7 +77,7 @@ export function ClosingTab({ enabled, canCreate, canDelete }: {
         countedBalanceCents: moneyToCents(counted),
         notes: notes.trim() || null,
       })
-      toast.success('Mês fechado!')
+      toast.success('Mês fechado.')
       setCounted('')
       setNotes('')
     } catch (e) {
@@ -132,13 +134,13 @@ export function ClosingTab({ enabled, canCreate, canDelete }: {
       </div>
 
       {/* ── Fechar um mês ─────────────────────────────────────────────────── */}
-      <div className="rounded-lg border border-border bg-card p-4 flex flex-col gap-4">
+      <div className="flex flex-col gap-4 rounded-xl border border-border bg-card p-4 sm:p-5">
         <div className="flex flex-wrap items-end gap-2">
-          <div className="flex flex-col gap-1">
-            <Label className="text-[11px] text-muted-foreground" htmlFor="fech-caixa">Caixa</Label>
+          <div className="flex flex-col gap-1.5">
+            <Label className="text-xs font-medium text-muted-foreground" htmlFor="fech-caixa">Caixa</Label>
             <NativeSelect
               id="fech-caixa"
-              className="h-9 w-[200px]"
+              className="w-[200px]"
               value={effectiveAccountId}
               onChange={e => { setAccountId(e.target.value); setCounted(''); setError(null) }}
             >
@@ -146,12 +148,12 @@ export function ClosingTab({ enabled, canCreate, canDelete }: {
               {accs.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
             </NativeSelect>
           </div>
-          <div className="flex flex-col gap-1">
-            <Label className="text-[11px] text-muted-foreground" htmlFor="fech-mes">Mês</Label>
+          <div className="flex flex-col gap-1.5">
+            <Label className="text-xs font-medium text-muted-foreground" htmlFor="fech-mes">Mês</Label>
             <Input
               id="fech-mes"
               type="month"
-              className="h-9 w-[160px]"
+              className="w-[160px]"
               value={month}
               onChange={e => { setMonth(e.target.value || currentMonth()); setCounted(''); setError(null) }}
             />
@@ -170,27 +172,27 @@ export function ClosingTab({ enabled, canCreate, canDelete }: {
         <div className="grid grid-cols-2 gap-2 lg:grid-cols-5">
           {[
             { label: 'Saldo anterior', value: preview?.openingCents ?? 0, cls: 'text-foreground' },
-            { label: 'Entradas', value: preview?.inCents ?? 0, cls: 'text-emerald-600 dark:text-emerald-400' },
-            { label: 'Saídas', value: preview?.outCents ?? 0, cls: 'text-red-600 dark:text-red-400' },
+            { label: 'Entradas', value: preview?.inCents ?? 0, cls: 'text-success' },
+            { label: 'Saídas', value: preview?.outCents ?? 0, cls: 'text-destructive' },
             { label: 'Saldo esperado', value: expected, cls: 'text-foreground' },
           ].map(i => (
-            <div key={i.label} className="flex min-w-0 flex-col rounded-lg border border-border bg-background px-3 py-2">
+            <div key={i.label} className="flex min-w-0 flex-col rounded-lg bg-muted px-3 py-2">
               <span className="text-xs text-muted-foreground">{i.label}</span>
               {previewLoading ? (
                 <Skeleton className="mt-1 h-6 w-24 max-w-full" />
               ) : (
-                <span className={`truncate text-sm font-semibold tabular-nums sm:text-base ${i.cls}`}>
+                <span className={cn('num truncate text-sm font-semibold sm:text-base', i.cls)}>
                   {centsToBRL(i.value)}
                 </span>
               )}
             </div>
           ))}
-          <div className="flex min-w-0 flex-col rounded-lg border border-border bg-background px-3 py-2">
+          <div className="flex min-w-0 flex-col rounded-lg bg-muted px-3 py-2">
             <span className="text-xs text-muted-foreground">Diferença</span>
             {previewLoading ? (
               <Skeleton className="mt-1 h-6 w-24 max-w-full" />
             ) : (
-              <span className={`truncate text-sm font-semibold tabular-nums sm:text-base ${diffClass(difference)}`}>
+              <span className={cn('num truncate text-sm font-semibold sm:text-base', diffClass(difference))}>
                 {diffLabel(difference)}
               </span>
             )}
@@ -199,12 +201,12 @@ export function ClosingTab({ enabled, canCreate, canDelete }: {
         )}
 
         {alreadyClosed ? (
-          <div className="flex flex-wrap items-center gap-3 rounded-lg border border-border bg-muted/30 px-3 py-2">
-            <Lock className="size-4 text-muted-foreground" />
+          <div className="flex flex-wrap items-center gap-3 rounded-lg border border-warning/30 bg-warning-soft px-3 py-2">
+            <Lock className="size-4 text-warning" aria-hidden />
             <span className="text-sm text-foreground">
               {monthLabel(month)} já está fechado em {accountName(effectiveAccountId)}:
-              contado {centsToBRL(alreadyClosed.countedBalanceCents)},
-              diferença <span className={diffClass(alreadyClosed.differenceCents)}>
+              contado <span className="num">{centsToBRL(alreadyClosed.countedBalanceCents)}</span>,
+              diferença <span className={cn('num', diffClass(alreadyClosed.differenceCents))}>
                 {diffLabel(alreadyClosed.differenceCents)}
               </span>.
             </span>
@@ -221,7 +223,7 @@ export function ClosingTab({ enabled, canCreate, canDelete }: {
               <Input
                 id="fech-contado"
                 inputMode="numeric"
-                className="w-[180px]"
+                className="sm:w-[180px]"
                 placeholder="R$ 0,00"
                 value={counted}
                 onChange={e => setCounted(maskMoney(e.target.value))}
@@ -262,7 +264,7 @@ export function ClosingTab({ enabled, canCreate, canDelete }: {
             retrying={isFetching}
           />
         )}
-        <div className="rounded-lg border border-border bg-card overflow-hidden">
+        <div className="overflow-hidden rounded-xl border border-border bg-card">
           {/* Sem rolagem lateral: tabela fixa. No celular, esperado, contado e diferença
               saem das colunas e viram linhas miúdas embaixo do mês (em 360 px a tabela
               rolava de lado). */}
@@ -285,19 +287,11 @@ export function ClosingTab({ enabled, canCreate, canDelete }: {
                   </TableRow>
                 ))}
                 {!isLoading && !isError && rows.length === 0 && (
-                  <TableRow>
-                    <TableCell colSpan={6} className="py-16 text-center">
-                      {accs.length === 0 ? (
-                        <>
-                          <Landmark className="size-10 text-muted-foreground/30 mx-auto mb-3" />
-                          <p className="text-sm font-medium text-foreground">Cadastre um caixa primeiro</p>
-                        </>
-                      ) : (
-                        <>
-                          <Scale className="size-10 text-muted-foreground/30 mx-auto mb-3" />
-                          <p className="text-sm font-medium text-foreground">Nenhum mês fechado em {year}</p>
-                        </>
-                      )}
+                  <TableRow className="hover:bg-transparent">
+                    <TableCell colSpan={6} className="p-0 whitespace-normal">
+                      {accs.length === 0
+                        ? <EmptyState icon={Landmark} title="Cadastre um caixa primeiro" />
+                        : <EmptyState icon={Scale} title={`Nenhum mês fechado em ${year}`} />}
                     </TableCell>
                   </TableRow>
                 )}
@@ -306,17 +300,17 @@ export function ClosingTab({ enabled, canCreate, canDelete }: {
                     <TableCell className="font-medium text-foreground whitespace-normal align-top">
                       {monthLabel(c.month)}
                       <div className="mt-1 flex flex-col items-start gap-0.5 text-xs font-normal text-muted-foreground sm:hidden">
-                        <span className="tabular-nums">Esperado {centsToBRL(c.expectedBalanceCents)}</span>
-                        <span className="tabular-nums">Contado {centsToBRL(c.countedBalanceCents)}</span>
-                        <Badge variant={c.differenceCents === 0 ? 'secondary' : 'destructive'}>
+                        <span>Esperado <span className="num">{centsToBRL(c.expectedBalanceCents)}</span></span>
+                        <span>Contado <span className="num">{centsToBRL(c.countedBalanceCents)}</span></span>
+                        <Badge variant={c.differenceCents === 0 ? 'neutral' : 'danger'} className="num">
                           {diffLabel(c.differenceCents)}
                         </Badge>
                       </div>
                     </TableCell>
-                    <TableCell className="hidden sm:table-cell text-right tabular-nums align-top">{centsToBRL(c.expectedBalanceCents)}</TableCell>
-                    <TableCell className="hidden sm:table-cell text-right tabular-nums align-top">{centsToBRL(c.countedBalanceCents)}</TableCell>
+                    <TableCell className="num hidden sm:table-cell text-right align-top">{centsToBRL(c.expectedBalanceCents)}</TableCell>
+                    <TableCell className="num hidden sm:table-cell text-right align-top">{centsToBRL(c.countedBalanceCents)}</TableCell>
                     <TableCell className="hidden sm:table-cell align-top">
-                      <Badge variant={c.differenceCents === 0 ? 'secondary' : 'destructive'}>
+                      <Badge variant={c.differenceCents === 0 ? 'neutral' : 'danger'} className="num">
                         {diffLabel(c.differenceCents)}
                       </Badge>
                     </TableCell>
@@ -335,7 +329,7 @@ export function ClosingTab({ enabled, canCreate, canDelete }: {
                           <span className="hidden lg:inline">Reabrir mês</span>
                         </Button>
                       ) : (
-                        <span className="text-xs text-muted-foreground">—</span>
+                        <span className="text-xs text-faint-foreground">—</span>
                       )}
                     </TableCell>
                   </TableRow>

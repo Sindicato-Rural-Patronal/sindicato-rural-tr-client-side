@@ -1,9 +1,6 @@
 import { Link } from '@tanstack/react-router'
+import { ChevronRight } from 'lucide-react'
 import { LoadErrorRetry } from '@/components/LoadErrorRetry'
-import {
-  BookOpen, CalendarClock, GraduationCap, Mail, Users, CalendarX2, ChevronRight,
-} from 'lucide-react'
-import { Card, CardContent } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
 import type { DashboardStats } from '@/hooks/useAdmin'
@@ -11,56 +8,60 @@ import type { DashboardStats } from '@/hooks/useAdmin'
 // Números do painel. Cada cartão leva para a tela onde se resolve aquilo.
 // O que o admin não pode ver não vem do backend — e cartão sem número não é
 // desenhado. Número zero continua na tela, só que apagadinho.
+//
+// Ritmo (fase 3 do PLANO-DESIGN): o que pede atenção agora (pendência com número
+// maior que zero) vem à frente, em cartão maior no tom de aviso; o resto fica numa
+// fileira de cartões compactos. Sem ícone nos cartões: o número é o dado.
 
 type CardDef = {
   key: string
   title: string
   value: number | undefined
   description: string
-  icon: React.ElementType
-  /** Cartão de pendência: acende em âmbar quando tem algo a fazer. */
+  /** Cartão de pendência: vai à frente, no tom de aviso, quando tem algo a fazer. */
   attention?: boolean
   href: '/admin/cursos' | '/admin/mensagens' | '/admin/usuarios'
 }
 
-function StatCard({ card }: { card: CardDef }) {
-  const value = card.value ?? 0
-  const zero = value === 0
-  const acende = !!card.attention && !zero
-  const Icon = card.icon
+const LINK_FOCO = 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
+
+/** Pendência com algo a fazer: maior, no fundo suave do aviso. */
+function AttentionCard({ card }: { card: CardDef }) {
   return (
-    <Card
+    <Link
+      to={card.href}
       className={cn(
-        'transition-colors',
-        zero && 'bg-muted/30',
-        acende && 'border-amber-300 bg-amber-50/60 dark:border-amber-900 dark:bg-amber-950/20',
+        'flex items-center gap-4 rounded-xl border border-warning/30 bg-warning-soft px-4 py-3.5 transition-colors hover:border-warning/60',
+        LINK_FOCO,
       )}
     >
-      <CardContent className="p-0">
-        <Link
-          to={card.href}
-          className="flex items-center gap-3 rounded-xl p-4 transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-        >
-          <Icon
-            className={cn('size-5 shrink-0', acende ? 'text-amber-600 dark:text-amber-400' : 'text-muted-foreground')}
-            aria-hidden
-          />
-          <div className="min-w-0 flex-1">
-            <p className="text-sm font-medium text-muted-foreground">{card.title}</p>
-            <p
-              className={cn(
-                'text-2xl font-bold leading-tight',
-                zero ? 'text-muted-foreground' : acende ? 'text-amber-700 dark:text-amber-300' : 'text-foreground',
-              )}
-            >
-              {value}
-            </p>
-            <p className="truncate text-xs text-muted-foreground">{card.description}</p>
-          </div>
-          <ChevronRight className="size-4 shrink-0 text-muted-foreground" aria-hidden />
-        </Link>
-      </CardContent>
-    </Card>
+      <span className="min-w-10 text-3xl leading-none font-semibold tabular-nums text-warning">{card.value ?? 0}</span>
+      <span className="min-w-0 flex-1">
+        <span className="block text-sm font-medium text-foreground">{card.title}</span>
+        <span className="block truncate text-xs text-muted-foreground">{card.description}</span>
+      </span>
+      <ChevronRight className="size-4 shrink-0 text-warning" aria-hidden />
+    </Link>
+  )
+}
+
+/** O resto: compacto, fundo do cartão; o zero fica apagado. */
+function CompactCard({ card }: { card: CardDef }) {
+  const value = card.value ?? 0
+  return (
+    <Link
+      to={card.href}
+      className={cn(
+        'flex min-w-0 flex-col gap-0.5 rounded-xl border border-border bg-card px-4 py-3 transition-colors hover:bg-muted/50',
+        LINK_FOCO,
+      )}
+    >
+      <span className="text-sm text-muted-foreground">{card.title}</span>
+      <span className={cn('text-xl leading-7 font-semibold tabular-nums', value === 0 ? 'text-faint-foreground' : 'text-foreground')}>
+        {value}
+      </span>
+      <span className="text-xs text-faint-foreground">{card.description}</span>
+    </Link>
   )
 }
 
@@ -74,7 +75,6 @@ function statCards(stats: DashboardStats): CardDef[] {
           title: 'Inscrições a confirmar',
           value: stats.registrations.pendingConfirmation,
           description: 'Aguardando confirmação',
-          icon: GraduationCap,
           attention: true,
           href: '/admin/cursos',
         }
@@ -85,7 +85,6 @@ function statCards(stats: DashboardStats): CardDef[] {
           title: 'Cursos começando',
           value: stats.coursesStartingIn7Days,
           description: 'Começam nos próximos 7 dias',
-          icon: CalendarClock,
           attention: true,
           href: '/admin/cursos',
         }
@@ -96,7 +95,6 @@ function statCards(stats: DashboardStats): CardDef[] {
           title: 'Mensagens não lidas',
           value: stats.unreadMessages,
           description: 'Recebidas pelo site',
-          icon: Mail,
           attention: true,
           href: '/admin/mensagens',
         }
@@ -107,7 +105,6 @@ function statCards(stats: DashboardStats): CardDef[] {
           title: 'Associações vencendo',
           value: stats.membershipsExpiring30Days,
           description: 'Nos próximos 30 dias',
-          icon: CalendarX2,
           attention: true,
           href: '/admin/usuarios',
         }
@@ -118,7 +115,6 @@ function statCards(stats: DashboardStats): CardDef[] {
           title: 'Cursos cadastrados',
           value: stats.courses.total,
           description: `${publicos} publicado${publicos === 1 ? '' : 's'} no site`,
-          icon: BookOpen,
           href: '/admin/cursos',
         }
       : null,
@@ -129,13 +125,17 @@ function statCards(stats: DashboardStats): CardDef[] {
           title: 'Pessoas cadastradas',
           value: stats.totalUsers,
           description: 'Associados e demais cadastros',
-          icon: Users,
           href: '/admin/usuarios',
         }
       : null,
   ]
   return cards.filter((c): c is CardDef => c !== null)
 }
+
+// Cartões que dividem a linha: no celular dois por linha (os compactos) ou um (os de
+// atenção); no computador, quantos couberem, sem sobrar buraco no fim da linha.
+const GRADE_ATENCAO = 'grid gap-3 sm:grid-cols-[repeat(auto-fit,minmax(16rem,1fr))]'
+const GRADE_COMPACTA = 'grid grid-cols-2 gap-3 lg:grid-cols-[repeat(auto-fit,minmax(11rem,1fr))]'
 
 export function StatsRow({
   stats, isLoading, isError, onRetry, retrying,
@@ -151,7 +151,7 @@ export function StatsRow({
     return (
       <LoadErrorRetry
         variant="inline"
-        className="rounded-lg border bg-card px-4 py-3"
+        className="rounded-xl border border-border bg-card px-4 py-3"
         message="Não foi possível carregar os números do painel."
         onRetry={() => onRetry?.()}
         retrying={retrying}
@@ -161,23 +161,20 @@ export function StatsRow({
 
   if (isLoading || !stats) {
     return (
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        {Array.from({ length: 6 }).map((_, i) => (
-          <Card key={i}>
-            <CardContent className="flex items-center gap-3 p-4">
-              <Skeleton className="size-5 rounded" />
-              <div className="flex-1">
-                <Skeleton className="mb-2 h-4 w-28" />
-                <Skeleton className="h-6 w-12" />
-              </div>
-            </CardContent>
-          </Card>
-        ))}
+      <div className="flex flex-col gap-3">
+        <div className={GRADE_ATENCAO}>
+          {Array.from({ length: 2 }).map((_, i) => <Skeleton key={i} className="h-16 rounded-xl" />)}
+        </div>
+        <div className={GRADE_COMPACTA}>
+          {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-[84px] rounded-xl" />)}
+        </div>
       </div>
     )
   }
 
   const cards = statCards(stats)
+  const atencao = cards.filter(c => c.attention && (c.value ?? 0) > 0)
+  const resto = cards.filter(c => !atencao.includes(c))
   // Linha de apoio: números que não pedem ação, mas é bom ter à mão.
   const extras = [
     stats.registrations ? `${stats.registrations.last30Days} inscriç${stats.registrations.last30Days === 1 ? 'ão' : 'ões'} nos últimos 30 dias` : null,
@@ -190,9 +187,16 @@ export function StatsRow({
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        {cards.map(card => <StatCard key={card.key} card={card} />)}
-      </div>
+      {atencao.length > 0 && (
+        <div className={GRADE_ATENCAO}>
+          {atencao.map(card => <AttentionCard key={card.key} card={card} />)}
+        </div>
+      )}
+      {resto.length > 0 && (
+        <div className={GRADE_COMPACTA}>
+          {resto.map(card => <CompactCard key={card.key} card={card} />)}
+        </div>
+      )}
       {extras.length > 0 && (
         <p className="text-xs text-muted-foreground">{extras.join(' · ')}</p>
       )}

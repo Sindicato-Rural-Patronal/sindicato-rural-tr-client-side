@@ -27,6 +27,12 @@ import { Input } from '@/components/ui/input'
 import { AjudaLink } from '@/components/ajuda/AjudaLink'
 import { BulkDeleteButton } from '@/components/export/BulkDeleteButton'
 import { usePermissions } from '@/hooks/usePermissions'
+import { EmptyState } from '@/components/EmptyState'
+import { FilterBar } from '@/components/FilterBar'
+import { PageContainer, PageHeader } from '@/components/PageHeader'
+import { RowActions } from '@/components/RowActions'
+import { SegmentedControl } from '@/components/SegmentedControl'
+import { cn } from '@/lib/utils'
 
 export const Route = createFileRoute('/_admin/admin/mensagens')({
   beforeLoad: () => requirePermission('READ_CONTACT'),
@@ -91,7 +97,7 @@ function MessageDialog({
           <DialogTitle className="flex items-center gap-2 flex-wrap">
             {message?.subject || 'Sem assunto'}
             {message && (
-              <Badge variant={message.read ? 'secondary' : 'default'} className="text-[10px]">
+              <Badge variant={message.read ? 'neutral' : 'warning'}>
                 {message.read ? 'Lida' : 'Não lida'}
               </Badge>
             )}
@@ -101,43 +107,43 @@ function MessageDialog({
         {message && (
           <div className="flex flex-col gap-4">
             {/* Remetente */}
-            <div className="rounded-lg border bg-muted/30 p-4 flex flex-col gap-2 text-sm">
+            <div className="flex flex-col gap-2 rounded-lg bg-muted p-4 text-sm">
               <div className="flex items-center gap-2">
                 <span className="font-semibold text-foreground">{message.name}</span>
               </div>
-              <a href={`mailto:${message.email}`} className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors">
-                <AtSign className="size-3.5" />
+              <a href={`mailto:${message.email}`} className="flex items-center gap-1.5 break-all text-muted-foreground transition-colors hover:text-foreground">
+                <AtSign className="size-3.5 shrink-0" aria-hidden />
                 {message.email}
               </a>
               {message.phone && (
-                <a href={`tel:${message.phone.replace(/\D/g, '')}`} className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors">
-                  <Phone className="size-3.5" />
+                <a href={`tel:${message.phone.replace(/\D/g, '')}`} className="flex items-center gap-1.5 text-muted-foreground tabular-nums transition-colors hover:text-foreground">
+                  <Phone className="size-3.5 shrink-0" aria-hidden />
                   {message.phone}
                 </a>
               )}
-              <span className="text-xs text-muted-foreground mt-1">{formatDate(message.createdAt)}</span>
+              <span className="num mt-1 text-xs text-faint-foreground">{formatDate(message.createdAt)}</span>
             </div>
 
             {/* Mensagem */}
-            <div className="text-sm text-foreground whitespace-pre-wrap leading-relaxed bg-background rounded-lg border p-4 max-h-60 overflow-y-auto">
+            <div className="max-h-60 overflow-y-auto rounded-lg border border-border bg-card p-4 text-sm leading-relaxed whitespace-pre-wrap text-foreground">
               {message.message}
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
-              <Button asChild size="sm" className="gap-1.5">
+              <Button asChild size="sm">
                 <a href={replyMailto(message)}>
                   <Reply className="size-4" /> Responder por e-mail
                 </a>
               </Button>
               {whatsapp && (
-                <Button asChild size="sm" variant="outline" className="gap-1.5">
+                <Button asChild size="sm" variant="outline">
                   <a href={whatsapp} target="_blank" rel="noopener noreferrer">
                     <FaWhatsapp className="size-4" /> Responder no WhatsApp
                   </a>
                 </Button>
               )}
               {message.read && (
-                <Button size="sm" variant="outline" className="gap-1.5" disabled={markUnread.isPending || readPending} onClick={handleMarkUnread}>
+                <Button size="sm" variant="outline" disabled={markUnread.isPending || readPending} onClick={handleMarkUnread}>
                   {markUnread.isPending ? <Loader2 className="size-4 animate-spin" /> : <MailX className="size-4" />}
                   Marcar como não lida
                 </Button>
@@ -273,85 +279,87 @@ function RouteComponent() {
   }
 
   return (
-    <div className="p-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
-            Mensagens de Contato
-            {unreadCount > 0 && (
-              <Badge className="text-xs">{unreadCount} não lida{unreadCount > 1 ? 's' : ''}</Badge>
-            )}
-            <AjudaLink topico="mensagens" titulo="Mensagens de contato" />
-          </h1>
-          <p className="text-sm text-muted-foreground">Mensagens enviadas pelo formulário de contato do site</p>
-        </div>
-      </div>
+    <PageContainer>
+      <PageHeader
+        title={<>
+          Mensagens de contato
+          {unreadCount > 0 && (
+            <Badge variant="warning" className="ml-2 align-middle tabular-nums">
+              {unreadCount} não lida{unreadCount > 1 ? 's' : ''}
+            </Badge>
+          )}
+        </>}
+        description="Mensagens enviadas pelo formulário de contato do site"
+        help={<AjudaLink topico="mensagens" titulo="Mensagens de contato" />}
+      />
 
-      {/* Filtros */}
-      <div className="flex flex-col sm:flex-row gap-3 mb-4">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground pointer-events-none" />
+      <FilterBar
+        actions={<>
+          <BulkDeleteButton
+            ids={selection.ids}
+            singular="mensagem"
+            plural="mensagens"
+            allowed={can('UPDATE_CONTACT')}
+            onDelete={id => deleteMsg.mutateAsync(id)}
+            onDone={() => selection.clear()}
+            className="h-9 shrink-0"
+          />
+          <ExportMenu
+            dataset="contact-messages"
+            className="shrink-0"
+            filters={{ search: search.trim(), read: readParam ?? undefined }}
+            selectedIds={selection.ids}
+            total={data?.total}
+            filtered={!!search.trim() || readFilter !== 'all'}
+            // O montador diz "Só não lidas", como a API no PDF ("Só lidas" vem do catálogo).
+            filterTexts={readParam === false ? { read: 'Só não lidas' } : undefined}
+          />
+        </>}
+      >
+        <div className="relative sm:w-80">
+          <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
           <Input
             placeholder="Buscar por nome, e-mail ou assunto..."
+            aria-label="Buscar por nome, e-mail ou assunto"
             value={searchInput}
             onChange={e => changeSearch(e.target.value)}
-            className="pl-9 pr-9"
+            className="pr-9 pl-9"
           />
           {searchInput && (
             <button
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              type="button"
+              className="absolute top-1/2 right-3 -translate-y-1/2 text-muted-foreground hover:text-foreground"
               onClick={() => changeSearch('')}
+              aria-label="Limpar busca"
             >
               <X className="size-3.5" />
             </button>
           )}
         </div>
-        <div className="flex gap-1 shrink-0">
-          {(['all', 'unread', 'read'] as ReadFilter[]).map(f => (
-            <Button
-              key={f}
-              size="sm"
-              variant={readFilter === f ? 'default' : 'outline'}
-              onClick={() => changeReadFilter(f)}
-              className="text-xs"
-            >
-              {f === 'all' ? 'Todas' : f === 'unread' ? 'Não lidas' : 'Lidas'}
-            </Button>
-          ))}
-        </div>
-        <BulkDeleteButton
-          ids={selection.ids}
-          singular="mensagem"
-          plural="mensagens"
-          allowed={can('UPDATE_CONTACT')}
-          onDelete={id => deleteMsg.mutateAsync(id)}
-          onDone={() => selection.clear()}
-          className="h-9 shrink-0"
+        <SegmentedControl
+          label="Mostrar mensagens"
+          value={readFilter}
+          onChange={changeReadFilter}
+          options={[
+            { value: 'all', label: 'Todas' },
+            { value: 'unread', label: 'Não lidas' },
+            { value: 'read', label: 'Lidas' },
+          ]}
         />
-        <ExportMenu
-          dataset="contact-messages"
-          className="shrink-0"
-          filters={{ search: search.trim(), read: readParam ?? undefined }}
-          selectedIds={selection.ids}
-          total={data?.total}
-          filtered={!!search.trim() || readFilter !== 'all'}
-          // O montador diz "Só não lidas", como a API no PDF ("Só lidas" vem do catálogo).
-          filterTexts={readParam === false ? { read: 'Só não lidas' } : undefined}
-        />
-      </div>
+      </FilterBar>
 
       {!isLoading && messages.length > 0 && (
-        <div className="flex items-center gap-3 mb-3 rounded-lg border border-border bg-muted/30 px-3 py-2">
-          <label className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer select-none">
+        <div className="-mb-3 flex flex-wrap items-center gap-3 rounded-lg bg-muted px-3 py-2">
+          <label className="flex cursor-pointer items-center gap-2 text-sm text-muted-foreground select-none">
             <input type="checkbox" checked={allOnPageSelected} onChange={() => selection.togglePage(pageIds)} className="size-4 accent-primary" aria-label="Selecionar todas nesta página" />
             {selection.count > 0 ? `${selection.count} selecionada${selection.count > 1 ? 's' : ''}` : 'Selecionar tudo'}
           </label>
           {selection.count > 0 && (
-            <div className="ml-auto flex items-center gap-2">
-              <Button size="sm" variant="outline" className="gap-1.5" disabled={bulkBusy} onClick={bulkMarkRead}>
+            <div className="ml-auto flex flex-wrap items-center gap-2">
+              <Button size="sm" variant="outline" disabled={bulkBusy} onClick={bulkMarkRead}>
                 <CheckCheck className="size-4" /> Marcar lidas
               </Button>
-              <Button size="sm" variant="outline" className="gap-1.5 text-destructive hover:text-destructive" disabled={bulkBusy} onClick={() => setBulkDeleteOpen(true)}>
+              <Button size="sm" variant="destructive" disabled={bulkBusy} onClick={() => setBulkDeleteOpen(true)}>
                 <Trash2 className="size-4" /> Excluir
               </Button>
               <Button size="sm" variant="ghost" onClick={selection.clear}>Limpar</Button>
@@ -368,7 +376,7 @@ function RouteComponent() {
 
       {!isLoading && isError && (
         <LoadErrorRetry
-          className="rounded-lg border bg-card"
+          className="rounded-xl border border-border bg-card"
           message="Não foi possível carregar as mensagens."
           onRetry={() => void refetch()}
           retrying={isFetching}
@@ -376,99 +384,83 @@ function RouteComponent() {
       )}
 
       {!isLoading && !isError && messages.length === 0 && (
-        <div className="flex flex-col items-center justify-center py-20 border-2 border-dashed rounded-xl text-center">
-          <Mail className="size-10 text-muted-foreground/30 mb-3" />
-          {search.trim() || readFilter !== 'all' ? (
-            <>
-              <p className="text-sm font-medium">Nenhuma mensagem encontrada</p>
-              <p className="text-xs text-muted-foreground mt-1">Tente outra busca ou mude o filtro.</p>
-            </>
-          ) : (
-            <>
-              <p className="text-sm font-medium">Nenhuma mensagem recebida</p>
-              <p className="text-xs text-muted-foreground mt-1">As mensagens do formulário de contato aparecerão aqui.</p>
-            </>
-          )}
+        search.trim() || readFilter !== 'all' ? (
+          <EmptyState framed icon={Mail} title="Nenhuma mensagem encontrada" description="Tente outra busca ou mude o filtro." />
+        ) : (
+          <EmptyState framed icon={Mail} title="Nenhuma mensagem recebida" description="As mensagens do formulário de contato aparecerão aqui." />
+        )
+      )}
+
+      {messages.length > 0 && (
+        <div className="flex flex-col gap-2">
+          {messages.map(msg => (
+            <div
+              key={msg.id}
+              className={cn(
+                'flex items-center gap-3 rounded-xl border border-border px-4 py-3 transition-colors sm:gap-4',
+                msg.read ? 'bg-card hover:bg-muted/50' : 'bg-secondary hover:bg-accent',
+                selection.isSelected(msg.id) && 'ring-1 ring-primary/40',
+              )}
+            >
+              <input
+                type="checkbox"
+                checked={selection.isSelected(msg.id)}
+                onChange={() => selection.toggle(msg.id)}
+                className="size-4 shrink-0 accent-primary"
+                aria-label={`Selecionar mensagem de ${msg.name}`}
+              />
+              <div className="shrink-0">
+                {msg.read
+                  ? <MailOpen className="size-4 text-faint-foreground" aria-label="Lida" />
+                  : <Mail className="size-4 text-foreground" aria-label="Não lida" />
+                }
+              </div>
+
+              <button
+                type="button"
+                className="min-w-0 flex-1 text-left"
+                onClick={() => openMessage(msg)}
+              >
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className={cn('truncate text-sm text-foreground', msg.read ? 'font-normal' : 'font-semibold')}>
+                    {msg.name}
+                  </span>
+                  {!msg.read && <Badge variant="warning">Nova</Badge>}
+                  {msg.subject && (
+                    <span className="truncate text-xs text-muted-foreground">— {msg.subject}</span>
+                  )}
+                </div>
+                <p className="mt-0.5 truncate text-xs text-muted-foreground">{msg.message}</p>
+                <p className="num mt-0.5 text-xs text-faint-foreground sm:hidden">{formatDate(msg.createdAt)}</p>
+              </button>
+
+              <span className="num hidden shrink-0 text-xs text-faint-foreground sm:block">
+                {formatDate(msg.createdAt)}
+              </span>
+
+              <RowActions
+                className="shrink-0"
+                label={`Ações da mensagem de ${msg.name}`}
+                actions={[
+                  { label: 'Exportar', icon: Download, busy: exportingId === msg.id, onClick: () => void exportOne(msg) },
+                  { label: 'Excluir', icon: Trash2, destructive: true, onClick: () => setDeleteTarget(msg) },
+                ]}
+              />
+            </div>
+          ))}
         </div>
       )}
 
-      <div className="flex flex-col gap-2">
-        {messages.map(msg => (
-          <div
-            key={msg.id}
-            className={`rounded-xl border px-4 py-3 flex items-center gap-4 transition-all hover:shadow-sm hover:border-primary/30 ${
-              selection.isSelected(msg.id) ? 'ring-1 ring-primary/40 ' : ''
-            }${msg.read ? 'bg-card' : 'bg-primary/5 border-primary/20'}`}
-          >
-            <input
-              type="checkbox"
-              checked={selection.isSelected(msg.id)}
-              onChange={() => selection.toggle(msg.id)}
-              className="size-4 accent-primary shrink-0"
-              aria-label={`Selecionar mensagem de ${msg.name}`}
-            />
-            <div className="shrink-0 text-muted-foreground">
-              {msg.read
-                ? <MailOpen className="size-4" />
-                : <Mail className="size-4 text-primary" />
-              }
-            </div>
-
-            <button
-              className="flex-1 min-w-0 text-left"
-              onClick={() => openMessage(msg)}
-            >
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className={`text-sm truncate ${msg.read ? 'font-normal' : 'font-semibold'}`}>
-                  {msg.name}
-                </span>
-                {!msg.read && <Badge className="text-[10px] py-0 h-4 shrink-0">Nova</Badge>}
-                {msg.subject && (
-                  <span className="text-xs text-muted-foreground truncate">— {msg.subject}</span>
-                )}
-              </div>
-              <p className="text-xs text-muted-foreground truncate mt-0.5">{msg.message}</p>
-            </button>
-
-            <span className="text-xs text-muted-foreground shrink-0 hidden sm:block">
-              {formatDate(msg.createdAt)}
-            </span>
-
-            <Button
-              variant="ghost" size="icon"
-              className="size-7 shrink-0 text-muted-foreground hover:text-foreground"
-              disabled={exportingId === msg.id}
-              onClick={e => { e.stopPropagation(); exportOne(msg) }}
-              title="Exportar"
-              aria-label={`Exportar mensagem de ${msg.name}`}
-            >
-              {exportingId === msg.id ? <Loader2 className="size-3.5 animate-spin" /> : <Download className="size-3.5" />}
-            </Button>
-
-            <Button
-              variant="ghost" size="icon"
-              className="size-7 shrink-0 text-destructive/50 hover:text-destructive hover:bg-destructive/10"
-              onClick={e => { e.stopPropagation(); setDeleteTarget(msg) }}
-            >
-              <Trash2 className="size-3.5" />
-            </Button>
-          </div>
-        ))}
-      </div>
-
-      {/* Paginação */}
       {totalPages > 1 && (
-        <div className="mt-6">
-          <Pagination
-            page={page}
-            totalPages={totalPages}
-            total={total}
-            limit={20}
-            onPageChange={changePage}
-            showLimitSelector={false}
-            isLoading={isLoading}
-          />
-        </div>
+        <Pagination
+          page={page}
+          totalPages={totalPages}
+          total={total}
+          limit={20}
+          onPageChange={changePage}
+          showLimitSelector={false}
+          isLoading={isLoading}
+        />
       )}
 
       <MessageDialog message={selected} onClose={() => setSelected(null)} readPending={markRead.isPending} />
@@ -494,6 +486,6 @@ function RouteComponent() {
         confirmLabel="Excluir"
         pendingLabel="Excluindo..."
       />
-    </div>
+    </PageContainer>
   )
 }

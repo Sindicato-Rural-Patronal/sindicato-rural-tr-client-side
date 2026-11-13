@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge'
 /** Selo da linha de um lançamento num mês fechado do caixa dele (o motivo no title). */
 export function ClosedMonthBadge({ reason }: { reason: string }) {
   return (
-    <Badge variant="outline" className="gap-1 text-muted-foreground" title={reason}>
+    <Badge variant="warning" title={reason}>
       <Lock className="size-3" aria-hidden /> Mês fechado
     </Badge>
   )
@@ -20,7 +20,7 @@ export function ClosedMonthNotice({ id, reason }: { id?: string; reason: string 
     <p
       id={id}
       role="status"
-      className="flex items-start gap-1.5 rounded-md border border-amber-300 bg-amber-50 px-2.5 py-1.5 text-xs text-amber-800 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-300"
+      className="flex items-start gap-1.5 rounded-lg border border-warning/30 bg-warning-soft px-2.5 py-1.5 text-xs text-warning"
     >
       <Lock className="mt-0.5 size-3.5 shrink-0" aria-hidden />
       <span className="min-w-0 break-words">{reason}</span>

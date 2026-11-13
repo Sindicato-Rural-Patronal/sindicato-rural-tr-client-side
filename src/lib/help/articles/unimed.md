@@ -23,15 +23,18 @@ apoio: a pessoa já precisa existir em [Usuários](?topico=usuarios).
 
 ## Documentos
 
-Cada linha tem o menu **Ações**, com os rótulos escritos. Os três primeiros
-itens baixam um documento em PDF:
+No fim de cada linha ficam dois ícones à vista: o lápis, **Editar**, e o da
+ficha, **Gerar Ficha**. Passe o mouse sobre o ícone para ver o nome. O resto
+fica no menu **Mais**, o botão **⋯** ao lado deles, com os nomes escritos:
 
-- **Gerar Ficha**
-- **Gerar Termo de adesão**
-- **Gerar Contrato (Ciência e Consentimento)**
+- **Gerar Termo de adesão**;
+- **Gerar Contrato (Ciência e Consentimento)**;
+- **Exportar planilha**, só daquele beneficiário;
+- **Excluir**, por último e em vermelho, separado por uma linha.
 
-Os mesmos documentos estão na aba **Unimed** da ficha da pessoa, nos botões
-**Ficha**, **Termo** e **Contrato** — é o mesmo lugar, visto de dois caminhos.
+Os três documentos baixam em PDF. Eles também estão na aba **Unimed** da ficha
+da pessoa, nos botões **Ficha**, **Termo** e **Contrato** — é o mesmo
+documento, visto de dois caminhos.
 
 **Cada documento fica registrado na [Auditoria](?topico=auditoria)**, com o
 nome da pessoa e os dados que ele leva: *Gerou o documento "Ficha da Unimed:
@@ -49,8 +52,8 @@ essas três. O **Plano** e o **CNS** são dados sensíveis, porque falam de saú
 o montador avisa antes de baixar. Veja
 [Como montar um relatório](?topico=montar-relatorio).
 
-O **Exportar planilha** do menu **Ações** leva só aquele beneficiário, em CSV.
-Na planilha do Excel, o CNS sai como texto e não vira número. Veja
+O **Exportar planilha** do menu **Mais** (o **⋯** da linha) leva só aquele
+beneficiário, em CSV. Na planilha do Excel, o CNS sai como texto e não vira número. Veja
 [Exportar planilhas](?topico=exportar-planilhas).
 
 ## Se algo der errado

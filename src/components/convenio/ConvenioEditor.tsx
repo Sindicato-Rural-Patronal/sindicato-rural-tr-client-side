@@ -5,6 +5,7 @@ import {
   ArrowDown, ArrowLeft, ArrowUp, ExternalLink, Eye, ImagePlus, Loader2, Plus, Save, Trash2, X,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { PageContainer, PageHeader } from '@/components/PageHeader'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
@@ -127,8 +128,8 @@ function moveItem<T>(arr: T[], from: number, to: number): T[] {
 
 function Section({ title, description, children }: { title: string; description?: string; children: React.ReactNode }) {
   return (
-    <section className="rounded-lg border border-border bg-card">
-      <div className="border-b px-5 py-3">
+    <section className="rounded-xl border border-border bg-card">
+      <div className="border-b border-border px-5 py-3">
         <h2 className="font-semibold text-foreground">{title}</h2>
         {description && <p className="text-xs text-muted-foreground">{description}</p>}
       </div>
@@ -330,30 +331,30 @@ export function ConvenioEditor({ id }: { id?: string }) {
 
   if (!isNew && isLoading) {
     return (
-      <div className="p-6 flex flex-col gap-4">
+      <PageContainer>
         <Skeleton className="h-8 w-64" />
-        <Skeleton className="h-48 w-full rounded-lg" />
-        <Skeleton className="h-72 w-full rounded-lg" />
-      </div>
+        <Skeleton className="h-48 w-full rounded-xl" />
+        <Skeleton className="h-72 w-full rounded-xl" />
+      </PageContainer>
     )
   }
   if (!isNew && (isError || !convenio)) {
     return (
-      <div className="p-6 flex flex-col gap-4">
+      <PageContainer>
         {isError && errorStatus(error) !== 404 ? (
           <LoadErrorRetry
-            className="rounded-lg border bg-card"
+            className="rounded-xl border border-border bg-card"
             message="Não foi possível carregar o convênio."
             onRetry={() => void refetch()}
             retrying={isFetching}
           />
         ) : (
-          <p className="rounded-lg border bg-muted/30 px-4 py-3 text-sm text-muted-foreground">Convênio não encontrado.</p>
+          <p className="rounded-xl border border-border bg-card px-4 py-3 text-sm text-muted-foreground">Convênio não encontrado.</p>
         )}
         <Button asChild variant="outline" className="self-start">
-          <Link to="/admin/convenios"><ArrowLeft className="size-4" /> Voltar para convênios</Link>
+          <Link to="/admin/convenios"><ArrowLeft /> Voltar para convênios</Link>
         </Button>
-      </div>
+      </PageContainer>
     )
   }
 
@@ -361,33 +362,31 @@ export function ConvenioEditor({ id }: { id?: string }) {
   const previewData = { ...input, logoUrl: shownLogo }
 
   return (
-    <div className="p-6 flex flex-col gap-6 pb-28">
-      {/* Cabeçalho */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="min-w-0">
-          <Link
-            to="/admin/convenios"
-            className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
-          >
-            <ArrowLeft className="size-4" /> Convênios
-          </Link>
-          <h1 className="mt-1 text-2xl font-bold tracking-tight text-foreground truncate">
-            {isNew ? 'Novo convênio' : form.name || 'Editar convênio'}
-          </h1>
-          {readOnly && <p className="text-sm text-muted-foreground">Somente leitura: você não tem permissão para salvar.</p>}
-        </div>
-        <div className="flex shrink-0 flex-wrap gap-2">
-          <Button type="button" variant="outline" onClick={() => setPreviewOpen(true)}>
-            <Eye className="size-4" /> Pré-visualizar
-          </Button>
-          {!isNew && convenio?.isActive && (
-            <Button asChild variant="outline">
-              <a href={`/convenios/${convenio.slug}`} target="_blank" rel="noreferrer">
-                <ExternalLink className="size-4" /> Ver no site
-              </a>
+    <PageContainer className="pb-28 md:pb-28">
+      {/* Cabeçalho: o "voltar" em cima do PageHeader. */}
+      <div className="flex flex-col gap-1">
+        <Link
+          to="/admin/convenios"
+          className="-ml-0.5 inline-flex min-h-9 w-fit items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
+        >
+          <ArrowLeft className="size-4" /> Convênios
+        </Link>
+        <PageHeader
+          title={<span className="break-words">{isNew ? 'Novo convênio' : form.name || 'Editar convênio'}</span>}
+          description={readOnly ? 'Somente leitura: você não tem permissão para salvar' : undefined}
+          actions={<>
+            <Button type="button" variant="outline" onClick={() => setPreviewOpen(true)}>
+              <Eye className="size-4" /> Pré-visualizar
             </Button>
-          )}
-        </div>
+            {!isNew && convenio?.isActive && (
+              <Button asChild variant="outline">
+                <a href={`/convenios/${convenio.slug}`} target="_blank" rel="noreferrer">
+                  <ExternalLink className="size-4" /> Ver no site
+                </a>
+              </Button>
+            )}
+          </>}
+        />
       </div>
 
       {/* Identificação */}
@@ -398,11 +397,11 @@ export function ConvenioEditor({ id }: { id?: string }) {
               onChange={e => setName(e.target.value)} />
           </Field>
           <Field label="Endereço da página *" htmlFor="convenio-slug" hint="Letras minúsculas, números e hífens. Mudar quebra links antigos.">
-            <div className="flex items-center rounded-lg border border-input transition-colors focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/50">
+            <div className="flex h-9 items-center rounded-lg border border-input bg-card transition-colors focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/50">
               <span className="pl-3 text-sm text-muted-foreground select-none">/convenios/</span>
               <input
                 id="convenio-slug"
-                className="h-8 min-w-0 flex-1 bg-transparent px-1 text-base outline-none disabled:opacity-50 md:text-sm"
+                className="h-full min-w-0 flex-1 bg-transparent px-1 text-base outline-none disabled:opacity-50 md:text-sm"
                 value={form.slug}
                 disabled={readOnly}
                 maxLength={60}
@@ -430,7 +429,8 @@ export function ConvenioEditor({ id }: { id?: string }) {
       {/* Cabeçalho da página */}
       <Section title="Cabeçalho da página">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
-          <div className="flex h-24 w-44 shrink-0 items-center justify-center rounded-lg border bg-white p-2">
+          {/* Fundo branco de propósito: é como o logo aparece no site (PNG transparente pensado para fundo claro). */}
+          <div className="flex h-24 w-44 shrink-0 items-center justify-center rounded-lg border border-border bg-white p-2">
             {shownLogo
               ? <img src={shownLogo} alt="Logo do convênio" className="max-h-full max-w-full object-contain" />
               : <span className="text-xs text-muted-foreground">Sem logo</span>}
@@ -540,10 +540,10 @@ export function ConvenioEditor({ id }: { id?: string }) {
       </Section>
 
       {/* Barra de ações fixa */}
-      <div className="fixed inset-x-0 bottom-0 z-20 border-t bg-background/95 backdrop-blur md:left-(--sidebar-width)"
+      <div className="fixed inset-x-0 bottom-0 z-20 border-t border-border bg-background shadow-[0_-4px_12px_rgba(0,0,0,0.06)] md:left-(--sidebar-width)"
         style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
-        <div className="flex items-center justify-end gap-2 px-6 py-3">
-          {dirty && !readOnly && <span className="mr-auto text-sm text-muted-foreground">Alterações não salvas</span>}
+        <div className="flex items-center justify-end gap-2 px-4 py-3 md:px-6">
+          {dirty && !readOnly && <span className="mr-auto text-sm font-medium text-warning">Alterações não salvas</span>}
           <Button asChild variant="ghost">
             <Link to="/admin/convenios">Cancelar</Link>
           </Button>
@@ -566,6 +566,6 @@ export function ConvenioEditor({ id }: { id?: string }) {
           </div>
         </DialogContent>
       </Dialog>
-    </div>
+    </PageContainer>
   )
 }

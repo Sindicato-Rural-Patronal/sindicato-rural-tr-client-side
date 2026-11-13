@@ -13,9 +13,11 @@ function NotFoundContent({ admin }: { admin: boolean }) {
 
   return (
     <div className="flex flex-col items-center px-4 py-16 text-center md:py-24">
-      <MapPinOff className="size-14 text-muted-foreground/50" aria-hidden />
-      <p className="mt-4 text-sm font-semibold text-muted-foreground">404</p>
-      <h1 className="mt-1 text-2xl font-bold text-foreground md:text-3xl">{t('notFoundPage.title')}</h1>
+      <span className="flex size-12 items-center justify-center rounded-xl bg-muted text-muted-foreground">
+        <MapPinOff className="size-6" aria-hidden />
+      </span>
+      <p className="num mt-4 text-sm font-medium text-faint-foreground">404</p>
+      <h1 className="mt-1 text-2xl font-semibold text-foreground md:text-3xl">{t('notFoundPage.title')}</h1>
       <p className="mt-2 max-w-md text-muted-foreground">{t('notFoundPage.description')}</p>
       <div className="mt-8 flex flex-wrap justify-center gap-3">
         {admin ? (

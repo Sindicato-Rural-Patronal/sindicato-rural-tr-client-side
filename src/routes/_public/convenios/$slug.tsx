@@ -28,10 +28,11 @@ function ConvenioPage() {
   if (isLoading) {
     return (
       <div>
-        <section className="bg-primary py-12 md:py-16">
-          <div className="container mx-auto flex max-w-5xl flex-col gap-3 px-4">
-            <Skeleton className="h-4 w-32 bg-primary-foreground/20" />
-            <Skeleton className="h-9 w-80 max-w-full bg-primary-foreground/20" />
+        <section className="border-b border-border">
+          <div className="container mx-auto flex max-w-5xl flex-col gap-3 px-4 pb-8 pt-10 md:pb-10 md:pt-14">
+            <Skeleton className="h-4 w-32" />
+            <Skeleton className="h-9 w-80 max-w-full" />
+            <Skeleton className="h-5 w-64 max-w-full" />
           </div>
         </section>
         <section className="container mx-auto grid max-w-5xl grid-cols-1 gap-8 px-4 py-10 lg:grid-cols-5">
@@ -47,8 +48,10 @@ function ConvenioPage() {
     return (
       <div className="container mx-auto px-4 py-20">
         <div className="flex flex-col items-center gap-4 text-center">
-          <HeartHandshake className="size-14 text-primary/60" />
-          <h1 className="text-2xl font-bold">
+          <span className="flex size-12 items-center justify-center rounded-xl bg-muted text-muted-foreground">
+            <HeartHandshake className="size-6" aria-hidden />
+          </span>
+          <h1 className="text-2xl font-semibold">
             {notFound ? 'Convênio não encontrado' : 'Não foi possível carregar o convênio'}
           </h1>
           <p className="max-w-md text-muted-foreground">

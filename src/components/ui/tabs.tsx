@@ -4,6 +4,11 @@ import { Tabs as TabsPrimitive } from "radix-ui"
 
 import { cn } from "@/lib/utils"
 
+// Abas (SR-080): um estilo só para o sistema inteiro — texto secundário, a aba ativa em
+// texto principal com uma linha verde embaixo, e uma linha fina sob a barra toda. As
+// variantes antigas ("default", a pílula cinza, e "line", o sublinhado) continuam
+// aceitas e desenham o mesmo.
+
 function Tabs({
   className,
   orientation = "horizontal",
@@ -14,7 +19,7 @@ function Tabs({
       data-slot="tabs"
       data-orientation={orientation}
       className={cn(
-        "group/tabs flex gap-2 data-horizontal:flex-col",
+        "group/tabs flex gap-4 data-horizontal:flex-col",
         className
       )}
       {...props}
@@ -23,12 +28,13 @@ function Tabs({
 }
 
 const tabsListVariants = cva(
-  "group/tabs-list inline-flex w-fit items-center justify-center rounded-lg p-[3px] text-muted-foreground group-data-horizontal/tabs:h-8 group-data-vertical/tabs:h-fit group-data-vertical/tabs:flex-col data-[variant=line]:rounded-none",
+  "group/tabs-list inline-flex items-center justify-start gap-4 text-muted-foreground group-data-horizontal/tabs:h-9 group-data-horizontal/tabs:w-full group-data-horizontal/tabs:border-b group-data-horizontal/tabs:border-border group-data-vertical/tabs:h-fit group-data-vertical/tabs:flex-col group-data-vertical/tabs:items-stretch group-data-vertical/tabs:gap-0.5 group-data-vertical/tabs:border-r group-data-vertical/tabs:border-border",
   {
     variants: {
+      // Apelidos da API antiga: os dois desenham o estilo único.
       variant: {
-        default: "bg-muted",
-        line: "gap-1 bg-transparent",
+        default: "",
+        line: "",
       },
     },
     defaultVariants: {
@@ -61,10 +67,9 @@ function TabsTrigger({
     <TabsPrimitive.Trigger
       data-slot="tabs-trigger"
       className={cn(
-        "relative inline-flex h-[calc(100%-1px)] flex-1 items-center justify-center gap-1.5 rounded-md border border-transparent px-1.5 py-0.5 text-sm font-medium whitespace-nowrap text-foreground/60 transition-all group-data-vertical/tabs:w-full group-data-vertical/tabs:justify-start hover:text-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-1 focus-visible:outline-ring disabled:pointer-events-none disabled:opacity-50 has-data-[icon=inline-end]:pr-1 has-data-[icon=inline-start]:pl-1 dark:text-muted-foreground dark:hover:text-foreground group-data-[variant=default]/tabs-list:data-active:shadow-sm group-data-[variant=line]/tabs-list:data-active:shadow-none [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
-        "group-data-[variant=line]/tabs-list:bg-transparent group-data-[variant=line]/tabs-list:data-active:bg-transparent dark:group-data-[variant=line]/tabs-list:data-active:border-transparent dark:group-data-[variant=line]/tabs-list:data-active:bg-transparent",
-        "data-active:bg-background data-active:text-foreground dark:data-active:border-input dark:data-active:bg-input/30 dark:data-active:text-foreground",
-        "after:absolute after:bg-foreground after:opacity-0 after:transition-opacity group-data-horizontal/tabs:after:inset-x-0 group-data-horizontal/tabs:after:bottom-[-5px] group-data-horizontal/tabs:after:h-0.5 group-data-vertical/tabs:after:inset-y-0 group-data-vertical/tabs:after:-right-1 group-data-vertical/tabs:after:w-0.5 group-data-[variant=line]/tabs-list:data-active:after:opacity-100",
+        "relative inline-flex h-full items-center justify-center gap-1.5 rounded-md px-0.5 text-sm font-medium whitespace-nowrap text-muted-foreground transition-colors outline-none group-data-vertical/tabs:h-9 group-data-vertical/tabs:w-full group-data-vertical/tabs:justify-start group-data-vertical/tabs:px-2 hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/40 disabled:pointer-events-none disabled:opacity-50 data-active:text-foreground [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 data-active:[&_svg]:text-primary",
+        // A linha da aba ativa (verde, 2 px), sobre a linha fina da barra.
+        "after:absolute after:rounded-full after:bg-primary after:opacity-0 after:transition-opacity group-data-horizontal/tabs:after:inset-x-0 group-data-horizontal/tabs:after:-bottom-px group-data-horizontal/tabs:after:h-0.5 group-data-vertical/tabs:after:inset-y-1 group-data-vertical/tabs:after:-right-px group-data-vertical/tabs:after:w-0.5 data-active:after:opacity-100",
         className
       )}
       {...props}
@@ -87,13 +92,11 @@ function TabsContent({
 
 /**
  * Para barras com muitas abas, no celular: as abas quebram de linha e a barra
- * cresce junto. O `TabsList` padrão tem altura fixa (h-8), e a aba que quebra de
- * linha saía da barra e caía por cima do conteúdo. Usa o mesmo prefixo de variante
- * da altura padrão para sobrescrevê-la; com uma linha só a barra continua com 32px.
- * A altura da aba também é fixada (25px, a de sempre): em porcentagem ela dependia da
- * altura da barra, que agora depende da aba.
+ * cresce junto (a altura padrão é fixa, 36 px). Cada aba fica com 36 px, a linha
+ * verde da ativa continua embaixo dela, e a linha fina da barra fica sob a última
+ * fileira. Com uma fileira só, nada muda.
  */
 export const tabsWrapClass =
-  "h-auto max-w-full flex-wrap justify-start gap-y-0.5 group-data-horizontal/tabs:h-auto group-data-horizontal/tabs:min-h-8 [&_[data-slot=tabs-trigger]]:h-[25px]"
+  "max-w-full flex-wrap gap-x-4 gap-y-0 group-data-horizontal/tabs:h-auto group-data-horizontal/tabs:min-h-9 [&_[data-slot=tabs-trigger]]:h-9"
 
 export { Tabs, TabsList, TabsTrigger, TabsContent, tabsListVariants }

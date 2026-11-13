@@ -75,7 +75,7 @@ function PerfilForm({ me }: { me: AdminMe }) {
     try {
       const resized = await resizeToSquare(file)
       await uploadAvatar.mutateAsync(resized)
-      toast.success('Foto atualizada!')
+      toast.success('Foto atualizada.')
     } catch (err) {
       toast.error(apiErrorMessage(err, 'Erro ao enviar a foto.'))
     }
@@ -113,7 +113,7 @@ function PerfilForm({ me }: { me: AdminMe }) {
     if (Object.keys(body).length === 0) { toast.info('Nada para salvar.'); return }
     try {
       await update.mutateAsync(body)
-      toast.success(changingPassword ? 'Senha trocada e dados atualizados!' : 'Dados atualizados!')
+      toast.success(changingPassword ? 'Senha trocada e dados atualizados.' : 'Dados atualizados.')
       setCurrentPassword(''); setPassword(''); setConfirm('')
     } catch (e) {
       const msg = apiErrorMessage(e, 'Erro ao salvar seus dados.')
@@ -137,6 +137,7 @@ function PerfilForm({ me }: { me: AdminMe }) {
           title="Alterar foto"
         >
           <InitialsAvatar name={me.name} avatar={me.avatar ?? undefined} size="lg" />
+          {/* Véu sobre a foto: o preto/branco aqui é sobre a imagem, não sobre a interface. */}
           <span className="absolute inset-0 flex items-center justify-center rounded-full bg-black/40 text-white opacity-0 transition-opacity group-hover:opacity-100">
             <Camera className="size-4" />
           </span>
@@ -144,8 +145,8 @@ function PerfilForm({ me }: { me: AdminMe }) {
         <input ref={avatarInputRef} type="file" accept="image/*" className="hidden" onChange={handleAvatarFile} />
         <div>
           <p className="font-medium text-foreground">{me.name}</p>
-          <Badge variant="outline" className="mt-1 gap-1 text-muted-foreground">
-            <Shield className="size-3" /> {me.ruleName}
+          <Badge variant="outline" className="mt-1">
+            <Shield /> {me.ruleName}
           </Badge>
           <button
             type="button"
@@ -215,7 +216,7 @@ function PerfilForm({ me }: { me: AdminMe }) {
           {passwordMismatch
             ? <p className="text-xs text-destructive">As senhas não coincidem.</p>
             : changingPassword && confirm.trim() !== ''
-              ? <p className="text-xs text-emerald-600 dark:text-emerald-400">As senhas coincidem.</p>
+              ? <p className="text-xs text-success">As senhas coincidem.</p>
               : <p className="text-xs text-muted-foreground">Mínimo {MIN_PASSWORD_LENGTH} caracteres. Repita para confirmar.</p>}
         </div>
       </div>

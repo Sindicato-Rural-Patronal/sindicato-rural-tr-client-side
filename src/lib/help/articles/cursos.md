@@ -8,8 +8,11 @@ veja: como-criar-curso, como-inscrever-alguem, salas-e-agenda, usuarios, exporta
 busca: curso aula turma inscricao inscritos aluno presenca lista certificado faep vagas cpf telefone 4 ultimos digitos site nao deixa inscrever apagar campo vazio proximos armazenados aba arquivo sumiu ordem de chegada inscrito em data hora concluido exportar planilha montar relatorio calendario ano inscricoes de todos os cursos excel xlsx ficha de inscricao baixar ficha exportar todas auditoria gerou o documento documento nao foi gerado muitos documentos seguidos visualizar usuarios permissao botao desligado relatorio em pdf numero do evento
 ---
 
-Tudo de curso acontece em **Gestão › Cursos**. A lista mostra cada curso com o
-número de inscritos e as vagas. O botão **Novo curso** abre o formulário.
+Tudo de curso acontece em **Gestão › Cursos**. A lista mostra cada curso num
+cartão, com o número de inscritos e as vagas (*4 de 100 vagas*). Clique no
+cartão para abrir o curso. O menu **Mais** (o **⋯** no canto do cartão) tem
+**Ver detalhes**, **Editar**, **Duplicar curso** e **Excluir**. O botão
+**Novo curso** abre o formulário.
 
 ## As abas Próximos e Armazenados
 
@@ -69,7 +72,7 @@ inscrições de todos os cursos. O passo a passo do montador está em
 
 O formulário tem três abas:
 
-- **Informações** — título, situação, sala, datas, horários, valor, carga
+- **Informações** — título, **Status** (a situação), sala, datas, horários, valor, carga
   horária, prazo de inscrição, nº do evento e mínimo de alunos.
 - **Descrição** — o texto completo que aparece na página do curso no site.
 - **Imagens** — a capa e a galeria de fotos.
@@ -77,9 +80,10 @@ O formulário tem três abas:
 Campos com **\*** são obrigatórios. A **sala** é obrigatória: é ela que põe o
 curso na agenda e evita que duas coisas sejam marcadas no mesmo horário.
 
-> **Curso parecido com um que já houve?** Use **Duplicar curso**, no menu do
-> card. Ele abre a criação já preenchida, com a capa e os instrutores copiados,
-> e deixa em branco justamente o que muda: datas, prazo e nº do evento. Vem como
+> **Curso parecido com um que já houve?** Use **Duplicar curso**, no menu
+> **Mais** (o **⋯**) do cartão. Ele abre a criação já preenchida, com a capa e
+> os instrutores copiados, e deixa em branco justamente o que muda: datas,
+> prazo e nº do evento. Vem como
 > **Rascunho**, então dá para ajustar com calma antes de publicar. A galeria de
 > fotos não é copiada — aquelas fotos eram do curso passado.
 
@@ -132,9 +136,35 @@ Cada linha também tem selos que ajudam na hora de cobrar (ou não cobrar):
 - **Parceira** — tem vínculo com uma empresa parceira ativa
 - cargo na diretoria e cargo de contato público, quando houver
 
-Uma inscrição precisa ser **confirmada**. Inscrição não confirmada **não impede
-o curso de começar** — ela só fica lá, contando no aviso do painel. Quando está
-tudo certo, **Confirmar todas** resolve a lista inteira de uma vez.
+Uma inscrição precisa ser **confirmada**. Ao lado do nome, a etiqueta diz
+**Confirmado** (em verde) ou **A confirmar** (em âmbar). Na que está a
+confirmar, o botão **Confirmar** fica à vista, embaixo dos dados da pessoa.
+Para desfazer uma confirmação, abra o menu **Mais** (o **⋯**) da linha e clique
+em **Desmarcar confirmação**.
+
+Inscrição não confirmada **não impede o curso de começar** — ela só fica lá,
+contando no aviso do painel. Quando está tudo certo, **Confirmar todas**, no
+topo, resolve a lista inteira de uma vez.
+
+### Os botões de cada inscrição
+
+Embaixo dos dados de cada pessoa ficam os ícones **Conversar no WhatsApp** e
+**Ligar** (só quando ela tem telefone). O resto fica no menu **Mais**, o **⋯**
+na ponta da linha, com os nomes escritos:
+
+- **Baixar ficha de inscrição**;
+- **Baixar termo de autorização do responsável (menor de idade)**, só para
+  quem tem menos de 18 anos;
+- **Anexar ficha preenchida (PDF)** ou, depois de anexada, **Ver ficha
+  anexada**;
+- **Desmarcar confirmação**, nas confirmadas;
+- por último, em vermelho: **Remover ficha anexada** e **Cancelar inscrição**.
+
+Quando a pessoa não tem telefone, os dois primeiros itens do menu sobem para a
+vista, como ícones.
+
+No topo da aba ficam **Confirmar todas**, **Confirmar início** e, por último,
+o botão verde **Inscrever pessoa**.
 
 ### Como a pessoa se inscreve pelo site
 
@@ -166,7 +196,8 @@ atrapalham.
 ### Inscrever alguém pelo painel
 
 Nem todo mundo se inscreve pelo site — muita gente liga ou aparece no balcão.
-Use **Inscrever pessoa**, escolha no cadastro e pronto: entra **já confirmada** e
+Use **Inscrever pessoa**, no topo da aba, escolha no cadastro e clique em
+**Inscrever**. A inscrição entra **já confirmada** e
 **ignora o prazo**, porque quem está inscrevendo é o Sindicato. O que ela não
 ignora é a lotação: curso cheio recusa.
 
@@ -175,20 +206,26 @@ cadastrar.
 
 ### Falar com os inscritos
 
-Cada linha tem **Conversar no WhatsApp** e **Ligar**, já com o telefone da
-pessoa. No topo há **Copiar telefones** e **Copiar e-mails** de toda a lista —
-serve para montar um grupo ou mandar um aviso a todos.
+Cada linha tem os ícones **Conversar no WhatsApp** e **Ligar**, já com o
+telefone da pessoa. No topo há **Copiar telefones** e **Copiar e-mails** de
+toda a lista — serve para montar um grupo ou mandar um aviso a todos.
 
 ### Papelada
 
+No menu **Mais** de cada inscrição:
+
 - **Baixar ficha de inscrição** — a ficha daquela pessoa, em PDF, para assinar.
-- **Exportar todas** — as fichas de todos os inscritos, num PDF só.
 - **Anexar ficha preenchida (PDF)** — depois de assinada, ela volta para dentro
   do sistema, presa à inscrição. É o que evita a pasta de papel.
+
+No topo da lista:
+
+- **Exportar todas** — as fichas de todos os inscritos, num PDF só.
 - **Planilha** — a lista toda em planilha (CSV ou Excel) ou PDF, com os selos,
   a presença e os dados de contato. No fim do menu, **Montar relatório…** deixa
   escolher as colunas: só nome e CPF, nome e e-mail, ou uma lista de presença só
   das confirmadas. Veja [Como montar um relatório](?topico=montar-relatorio).
+- **Lista de presença** — o PDF para assinar no dia, só com as confirmadas.
 
 A ficha de inscrição leva os dados do cadastro da pessoa. Por isso, **Baixar
 ficha de inscrição** e **Exportar todas** pedem também a permissão de ver

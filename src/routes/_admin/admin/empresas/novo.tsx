@@ -6,6 +6,7 @@ import { apiErrorMessage } from '@/lib/api-error-message'
 import { useCreateCompany } from '@/hooks/useCompanies'
 import { CompanyForm } from '@/components/cadastro/CompanyForm'
 import { AjudaLink } from '@/components/ajuda/AjudaLink'
+import { PageContainer, PageHeader } from '@/components/PageHeader'
 
 export const Route = createFileRoute('/_admin/admin/empresas/novo')({
   beforeLoad: () => requirePermission('CREATE_USER'),
@@ -17,18 +18,16 @@ function NovaEmpresaPage() {
   const createM = useCreateCompany()
 
   return (
-    <div className="flex flex-col gap-6 p-6">
-      <div>
-        <Link to="/admin/usuarios" search={{ tab: 'empresas' }} className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
+    <PageContainer>
+      <div className="flex flex-col gap-1">
+        <Link to="/admin/usuarios" search={{ tab: 'empresas' }} className="-ml-0.5 inline-flex min-h-9 w-fit items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground">
           <ArrowLeft className="size-4" /> Empresas
         </Link>
-        <div className="flex items-center gap-1">
-          <h1 className="mt-1 text-2xl font-bold tracking-tight text-foreground">Nova empresa</h1>
-          <AjudaLink topico="empresas" titulo="Nova empresa" />
-        </div>
-        <p className="text-sm text-muted-foreground">
-          Depois de criar, vincule as pessoas e adicione outros endereços.
-        </p>
+        <PageHeader
+          title="Nova empresa"
+          description="Depois de criar, vincule as pessoas e adicione outros endereços"
+          help={<AjudaLink topico="empresas" titulo="Nova empresa" />}
+        />
       </div>
 
       <CompanyForm
@@ -48,6 +47,6 @@ function NovaEmpresaPage() {
           }
         }}
       />
-    </div>
+    </PageContainer>
   )
 }

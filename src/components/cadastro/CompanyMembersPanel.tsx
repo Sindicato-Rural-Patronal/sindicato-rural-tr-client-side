@@ -8,6 +8,8 @@ import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
 import { DeleteConfirmDialog } from '@/components/DeleteConfirmDialog'
+import { EmptyState } from '@/components/EmptyState'
+import { RowActions } from '@/components/RowActions'
 import { PersonPicker, type PickedPerson } from '@/components/PersonPicker'
 import {
   useAddCompanyMember, useUpdateCompanyMember, useRemoveCompanyMember, useCompanyMemberTitles,
@@ -80,8 +82,8 @@ export function CompanyMembersPanel({ companyId, members, readOnly = false }: {
         {suggestions.map(t => <option key={t} value={t} />)}
       </datalist>
 
-      <div className="flex items-center justify-between">
-        <p className="text-sm text-muted-foreground">{members.length} pessoa(s) vinculada(s)</p>
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-sm text-muted-foreground"><span className="tabular-nums">{members.length}</span> pessoa(s) vinculada(s)</p>
         {!readOnly && !adding && (
           <Button size="sm" onClick={() => setAdding(true)}>
             <Plus className="size-4" /> Vincular pessoa
@@ -96,10 +98,10 @@ export function CompanyMembersPanel({ companyId, members, readOnly = false }: {
               <div className="flex flex-col gap-1.5 md:col-span-3">
                 <Label htmlFor="member-person" className="text-xs font-medium text-muted-foreground">Pessoa *</Label>
                 {person ? (
-                  <div className="flex h-9 items-center justify-between rounded-md border bg-muted/40 px-3 text-sm">
+                  <div className="flex h-9 items-center justify-between rounded-lg border border-border bg-muted px-3 text-sm">
                     <span className="truncate font-medium">{person.name}</span>
-                    <Button type="button" variant="ghost" size="sm" className="h-7 px-2" onClick={() => setPerson(null)}>
-                      <X className="size-3.5" /> Trocar
+                    <Button type="button" variant="ghost" size="xs" onClick={() => setPerson(null)}>
+                      <X /> Trocar
                     </Button>
                   </div>
                 ) : (
@@ -108,7 +110,7 @@ export function CompanyMembersPanel({ companyId, members, readOnly = false }: {
               </div>
               <div className="flex flex-col gap-1.5 md:col-span-2">
                 <Label htmlFor="member-title" className="text-xs font-medium text-muted-foreground">Título na empresa *</Label>
-                <Input id="member-title" className="h-9" list="company-title-suggestions" maxLength={80}
+                <Input id="member-title" list="company-title-suggestions" maxLength={80}
                   placeholder="Ex.: SOCIO, GERENTE, CONTADOR" value={title}
                   onChange={e => setTitle(upperNoAccents(e.target.value))} />
               </div>
@@ -126,15 +128,16 @@ export function CompanyMembersPanel({ companyId, members, readOnly = false }: {
       )}
 
       {members.length === 0 && !adding ? (
-        <div className="flex flex-col items-center justify-center rounded-lg border-2 border-dashed py-12 text-center">
-          <Users className="mb-3 size-10 text-muted-foreground/30" />
-          <p className="text-sm font-medium">Nenhuma pessoa vinculada</p>
-          <p className="text-xs text-muted-foreground">Vincule sócios, responsáveis ou funcionários com o título de cada um.</p>
-        </div>
+        <EmptyState
+          framed
+          icon={Users}
+          title="Nenhuma pessoa vinculada"
+          description="Vincule sócios, responsáveis ou funcionários com o título de cada um."
+        />
       ) : (
         <div className="flex flex-col gap-2">
           {members.map(m => (
-            <div key={m.id} className="flex flex-col gap-2 rounded-lg border bg-card p-3 sm:flex-row sm:items-center sm:justify-between">
+            <div key={m.id} className="flex flex-col gap-2 rounded-xl border border-border bg-card p-3 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex min-w-0 items-center gap-3">
                 <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-muted">
                   <UserRound className="size-4 text-muted-foreground" />
@@ -143,7 +146,7 @@ export function CompanyMembersPanel({ companyId, members, readOnly = false }: {
                   <Link to="/admin/usuarios/$id" params={{ id: m.userData.id }} className="block truncate text-sm font-medium hover:underline">
                     {m.userData.name}
                   </Link>
-                  <p className="truncate text-xs text-muted-foreground">
+                  <p className="truncate text-xs tabular-nums text-muted-foreground">
                     {[m.userData.cpf ? maskCPF(m.userData.cpf) : null, m.userData.email].filter(Boolean).join(' · ')}
                   </p>
                 </div>
@@ -155,27 +158,25 @@ export function CompanyMembersPanel({ companyId, members, readOnly = false }: {
                       aria-label={`Título de ${m.userData.name}`} value={editing.title}
                       onChange={e => setEditing({ id: m.id, title: upperNoAccents(e.target.value) })}
                       onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); void handleSaveTitle() } if (e.key === 'Escape') setEditing(null) }} />
-                    <Button size="icon" variant="ghost" className="size-8" onClick={handleSaveTitle} disabled={updateM.isPending} aria-label="Salvar título">
-                      <Check className="size-4" />
-                    </Button>
-                    <Button size="icon" variant="ghost" className="size-8" onClick={() => setEditing(null)} aria-label="Cancelar edição">
-                      <X className="size-4" />
-                    </Button>
+                    <RowActions
+                      label={`Título de ${m.userData.name}`}
+                      actions={[
+                        { label: 'Salvar título', icon: Check, onClick: () => void handleSaveTitle(), disabled: updateM.isPending },
+                        { label: 'Cancelar edição', icon: X, onClick: () => setEditing(null) },
+                      ]}
+                    />
                   </>
                 ) : (
                   <>
-                    <Badge variant="secondary">{m.title}</Badge>
+                    <Badge variant="neutral">{m.title}</Badge>
                     {!readOnly && (
-                      <>
-                        <Button size="icon" variant="ghost" className="size-8" onClick={() => setEditing({ id: m.id, title: m.title })}
-                          aria-label={`Editar título de ${m.userData.name}`} title="Editar título">
-                          <Pencil className="size-3.5" />
-                        </Button>
-                        <Button size="icon" variant="ghost" className="size-8 text-muted-foreground hover:text-destructive"
-                          onClick={() => setRemoveTarget(m)} aria-label={`Desvincular ${m.userData.name}`} title="Desvincular">
-                          <Trash2 className="size-3.5" />
-                        </Button>
-                      </>
+                      <RowActions
+                        label={`Ações de ${m.userData.name}`}
+                        actions={[
+                          { label: 'Editar título', icon: Pencil, onClick: () => setEditing({ id: m.id, title: m.title }) },
+                          { label: 'Desvincular', icon: Trash2, onClick: () => setRemoveTarget(m), destructive: true },
+                        ]}
+                      />
                     )}
                   </>
                 )}

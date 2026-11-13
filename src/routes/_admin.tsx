@@ -6,6 +6,7 @@ import { NotificationBell } from '@/components/notifications/NotificationBell'
 import { SidebarProvider, SidebarInset, SidebarTrigger } from '@/components/ui/sidebar'
 import { useSessionRenewal } from '@/context/AuthContext'
 import { isTokenValid, safeAdminRedirect } from '@/lib/auth-token'
+import { setArea } from '@/lib/area'
 import { syncTheme } from '@/lib/theme'
 import { createFileRoute, Outlet, redirect } from '@tanstack/react-router'
 import { useLayoutEffect } from 'react'
@@ -29,14 +30,17 @@ function AdminLayout() {
   useSessionRenewal()
 
   // Temas Cinza e Verde-claro valem só no painel: liga ao entrar, desliga ao sair, e
-  // acompanha a troca feita em outra aba (evento `storage`).
+  // acompanha a troca feita em outra aba (evento `storage`). As cores neutras do painel
+  // (no lugar das de papel do site) seguem a mesma regra: lib/area.ts.
   useLayoutEffect(() => {
     syncTheme(true)
+    setArea('painel')
     const onStorage = (e: StorageEvent) => { if (e.key === 'theme') syncTheme(true) }
     window.addEventListener('storage', onStorage)
     return () => {
       window.removeEventListener('storage', onStorage)
       syncTheme(false)
+      setArea('site')
     }
   }, [])
 

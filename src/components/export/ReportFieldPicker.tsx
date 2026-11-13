@@ -15,7 +15,7 @@ export function PrivacyBadge({ privacy }: { privacy: CatalogField['privacy'] }) 
   return (
     <Badge
       variant={privacy === 'sensivel' ? 'destructive' : 'outline'}
-      className="h-4 shrink-0 px-1.5 text-[10px] font-normal"
+      className="font-normal"
     >
       {privacy === 'sensivel' ? 'sensível' : 'pessoal'}
     </Badge>

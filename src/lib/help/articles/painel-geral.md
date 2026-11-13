@@ -13,25 +13,36 @@ cartão é um atalho — **clique e você cai na tela do assunto**.
 
 ## Os blocos
 
+Na ordem em que vêm de fábrica:
+
 **Ações rápidas** — os quatro botões do dia a dia: *Novo associado*, *Novo
 curso*, *Nova reserva* e *Lançar cotação*.
 
-**Números que pedem ação** — inscrições a confirmar, cursos começando em 7 dias,
-mensagens não lidas, associações vencendo em 30 dias, além dos totais de cursos e
-pessoas. Número **zero fica apagadinho** de propósito: é o jeito de dizer "não há
-nada esperando por você aqui".
+**Números do sistema** — inscrições a confirmar, cursos começando em 7 dias,
+mensagens não lidas e associações vencendo em 30 dias, além dos totais de
+cursos e pessoas.
 
-**Cotações do dia** — em dia útil, depois das 11h, um aviso âmbar lembra que a
-cotação de hoje ainda não foi lançada. Depois de lançada, ele diz se foi de
+- **O que pede ação vai à frente.** Cada pendência com número maior que zero
+  ganha um cartão maior, em âmbar, com uma seta. Clique e você cai na tela do
+  assunto.
+- O resto fica numa fileira de cartões menores. Número **zero fica
+  apagadinho** de propósito: é o jeito de dizer "não há nada esperando por você
+  aqui".
+
+**Aviso das cotações** — em dia útil, depois das 11h, um aviso âmbar lembra que
+a cotação de hoje ainda não foi lançada. Depois de lançada, ele diz se foi de
 manhã ou à tarde.
 
-**Financeiro do mês** — entradas, saídas e saldo do mês corrente.
-
-**Calendário e agenda das salas** — o que está marcado nas salas: cursos, eventos
-e reuniões, cada tipo com sua cor. É por aqui que se marca reserva de sala e
-que se exportam ou imprimem as reservas do dia ou da semana. A planilha e o
+**Agenda das salas** — o bloco principal do painel: o calendário do mês e o que
+está marcado nas salas, com cursos, eventos e reuniões. O tipo aparece num
+**ponto de cor** ao lado do nome, e os botões **Todos**, **Curso**, **Evento** e
+**Reunião**, em cima, filtram a agenda. É por aqui que se marca reserva de sala
+e que se exportam ou imprimem as reservas do dia ou da semana. A planilha e o
 **Imprimir** ficam registrados na Auditoria; veja
 [Salas, reservas e agenda](?topico=salas-e-agenda).
+
+**Financeiro do mês** (na tela, com o nome do mês: *Financeiro em novembro de
+2026*) — entradas, saídas e saldo do mês corrente.
 
 **Cursos públicos** — os cursos no ar, com as vagas no formato `8/40`, mais o
 aviso de *quase lotado* (a partir de 80%) e *lotado*.
@@ -45,15 +56,20 @@ administrador.
 > Você só vê os blocos que a sua permissão permite. Se um bloco não aparece para
 > você e aparece para um colega, é a permissão — não é defeito.
 
+> Quem já tinha personalizado o painel continua com a ordem que salvou. Para
+> ver a ordem nova de fábrica, use **Personalizar › Restaurar padrão** e
+> **Salvar**.
+
 ## Deixando o painel do seu jeito
 
 O botão **Personalizar**, no topo, congela a tela e deixa você mexer nos blocos.
-São quatro coisas, e só:
+Ali, alguns blocos têm o nome comprido: a **Agenda das salas** aparece como
+*Calendário e agenda das salas*. São quatro coisas, e só:
 
 | O que você quer | Como fazer |
 |---|---|
 | Mudar a ordem | Arraste o cartão inteiro. No celular, **aperte e segure** um instante antes de arrastar |
-| Mudar a largura | Puxe a **alça no canto de baixo à direita**: para a esquerda vira meia linha, para a direita vira linha inteira |
+| Mudar a largura | Puxe a **alça no canto de baixo à direita**. São três larguras: **Meia linha**, **Três quartos da linha** e **Linha inteira**. A alça só aparece em tela de computador |
 | Tirar um bloco | Botão **Remover**, na borda de cima do cartão |
 | Trazer de volta | Área **"Blocos que não estão no painel"**, no fim da tela |
 

@@ -13,10 +13,9 @@ você não cadastra nem remove produto, só informa o preço.
 
 ## Lançando
 
-Para cada produto você põe:
-
-- o **preço**
-- o período: **manhã** ou **tarde**
+No alto do cartão **Lançamento de hoje**, escolha o período: **Manhã** ou
+**Tarde**. Ele já vem escolhido pela hora do dia e vale para todos os preços
+que você salvar. Depois, para cada produto, você põe o **preço**.
 
 A **data é sempre a de hoje** — não há como lançar para outro dia por aqui.
 
@@ -45,8 +44,9 @@ página inicial do site. Leia o aviso antes de clicar.
 ## Onde isso aparece
 
 Na página inicial, com preço, unidade, dia, período e a **fonte** (que você edita
-nesta mesma tela). Clicando ali, o visitante vai para `/cotacoes`, o histórico em
-gráfico e tabela — 30, 90, 180 ou 365 dias.
+nesta mesma tela). Embaixo do quadro, o botão **Ver histórico** leva o
+visitante a `/cotacoes`, o histórico em gráfico e tabela — 30, 90, 180 ou 365
+dias.
 
 > O Painel Geral avisa em âmbar, **em dia útil depois das 11h**, quando a cotação
 > de hoje ainda não foi lançada.

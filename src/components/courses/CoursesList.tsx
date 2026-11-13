@@ -20,6 +20,7 @@ import { LoadErrorRetry } from '@/components/LoadErrorRetry'
 import { SelectCheckbox, SelectionInfo, ExportMenu } from '@/components/export/ExportMenu'
 import { BulkDeleteButton } from '@/components/export/BulkDeleteButton'
 import { AdminCourseCard, CourseCardSkeleton } from '@/components/courses/AdminCourseCard'
+import { FilterBar, FilterField } from '@/components/FilterBar'
 
 // Lista de cursos do painel (/admin/cursos), com as abas "Próximos" e "Armazenados".
 // Fica fora do arquivo da rota para poder ser testada. A aba e o ano moram na URL
@@ -124,55 +125,15 @@ export function CoursesList({
       <TabsContent value={view} className="flex flex-col gap-6">
         <div className="flex flex-col gap-0.5">
           <p className="text-sm text-muted-foreground">{COURSE_VIEW_HINT[view]}</p>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm text-faint-foreground tabular-nums">
             {data ? `${total} curso${total !== 1 ? 's' : ''}` : t('common.loading')}
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="relative flex-1 min-w-48 max-w-sm">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
-            <Input
-              placeholder={t('admin.courses.searchPlaceholder')}
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              className="pl-9"
-            />
-          </div>
-          {/* Ano e busca são controles SEPARADOS: dois cursos com o mesmo nome
-              em anos diferentes não se distinguem por texto. */}
-          <Select
-            value={year ? String(year) : 'all'}
-            onValueChange={v => {
-              onYearChange(v === 'all' ? undefined : Number(v))
-              setPage(1)
-            }}
-          >
-            <SelectTrigger className="h-9 w-36 shrink-0" aria-label="Filtrar por ano">
-              <SelectValue placeholder="Ano" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todos os anos</SelectItem>
-              {(anos ?? []).map(a => <SelectItem key={a} value={String(a)}>{a}</SelectItem>)}
-            </SelectContent>
-          </Select>
-          <div className="flex items-center gap-2 text-sm text-muted-foreground shrink-0">
-            <span className="hidden sm:inline">Itens por página:</span>
-            <Select
-              value={String(limit)}
-              onValueChange={v => { setLimit(Number(v) as typeof LIMIT_OPTIONS[number]); setPage(1) }}
-            >
-              <SelectTrigger className="h-9 w-18">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {LIMIT_OPTIONS.map(n => <SelectItem key={n} value={String(n)}>{n}</SelectItem>)}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="ml-auto flex items-center gap-2">
+        <FilterBar
+          actions={<>
             {visible.length > 0 && (
-              <label className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer select-none">
+              <label className="flex h-9 cursor-pointer items-center gap-2 text-sm text-muted-foreground select-none">
                 <SelectCheckbox
                   checked={pageState === 'all'}
                   indeterminate={pageState === 'some'}
@@ -208,12 +169,53 @@ export function CoursesList({
                 { label: 'Inscrições de todos os cursos', dataset: 'registrations', params: {}, builder: true },
               ]}
             />
+          </>}
+        >
+          <div className="relative sm:w-72">
+            <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
+            <Input
+              placeholder={t('admin.courses.searchPlaceholder')}
+              aria-label={t('admin.courses.searchPlaceholder')}
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              className="pl-9"
+            />
           </div>
-        </div>
+          {/* Ano e busca são controles SEPARADOS: dois cursos com o mesmo nome
+              em anos diferentes não se distinguem por texto. */}
+          <Select
+            value={year ? String(year) : 'all'}
+            onValueChange={v => {
+              onYearChange(v === 'all' ? undefined : Number(v))
+              setPage(1)
+            }}
+          >
+            <SelectTrigger className="sm:w-40" aria-label="Filtrar por ano">
+              <SelectValue placeholder="Ano" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos os anos</SelectItem>
+              {(anos ?? []).map(a => <SelectItem key={a} value={String(a)}>{a}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <FilterField label="Itens por página" className="sm:flex-row sm:items-center sm:gap-2">
+            <Select
+              value={String(limit)}
+              onValueChange={v => { setLimit(Number(v) as typeof LIMIT_OPTIONS[number]); setPage(1) }}
+            >
+              <SelectTrigger className="w-full sm:w-20" aria-label="Itens por página">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {LIMIT_OPTIONS.map(n => <SelectItem key={n} value={String(n)}>{n}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </FilterField>
+        </FilterBar>
 
         {isError && !data && (
           <LoadErrorRetry
-            className="rounded-xl border bg-card"
+            className="rounded-xl border border-border bg-card"
             message={t('courses.error')}
             onRetry={() => void refetch()}
             retrying={isFetching}
@@ -231,6 +233,7 @@ export function CoursesList({
           // dizer "nenhum curso" e oferecer "Novo curso" seria mentira. Sem filtro,
           // quer dizer que ESTA aba está vazia: o curso pode estar na outra.
           <EmptyState
+            framed
             icon={GraduationCap}
             title={filtrando ? t('courses.notFound') : empty.title}
             description={filtrando ? t('courses.notFoundHint') : empty.description}

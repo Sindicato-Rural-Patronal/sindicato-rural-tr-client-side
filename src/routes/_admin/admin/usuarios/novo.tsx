@@ -14,6 +14,7 @@ import { AlertCircle, ArrowLeft, Camera, User, FileText, Globe, MapPin, Briefcas
 import { maskCPF, maskCEP } from '@/utils/masks'
 import { useUnsavedGuard } from '@/hooks/use-unsaved-guard'
 import { AjudaLink } from '@/components/ajuda/AjudaLink'
+import { PageContainer, PageHeader } from '@/components/PageHeader'
 import { CameraDialog } from '@/components/cadastro/CameraDialog'
 import { InitialsAvatar } from '@/components/InitialsAvatar'
 import {
@@ -359,7 +360,7 @@ function RouteComponent() {
     // Novas listagens (associados/instrutores/etc.) precisam refletir o cadastro.
     invalidateUserViews(queryClient)
     if (failed.length === 0) {
-      toast.success('Associado cadastrado com sucesso!')
+      toast.success('Associado cadastrado com sucesso.')
     } else {
       toast.warning(`Associado cadastrado, mas não foi possível salvar: ${failed.join('; ')}. Complete nesta ficha.`, { duration: 20000 })
     }
@@ -388,21 +389,19 @@ function RouteComponent() {
   }
 
   return (
-    <div className="p-6 max-w-4xl mx-auto">
-      <div className="flex items-center gap-3 mb-6">
-        <Button variant="ghost" size="icon" className="size-8" asChild>
-          <Link to="/admin/usuarios" aria-label="Voltar"><ArrowLeft className="size-4" /></Link>
-        </Button>
-        <div>
-          <div className="flex items-center gap-1">
-            <h1 className="text-2xl font-bold tracking-tight text-foreground">Novo associado</h1>
-            <AjudaLink topico="usuarios" titulo="Novo associado" />
-          </div>
-          <p className="text-sm text-muted-foreground">Cadastre a ficha completa de uma vez</p>
-        </div>
+    <PageContainer className="max-w-4xl">
+      <div className="flex flex-col gap-1">
+        <Link to="/admin/usuarios" className="-ml-0.5 inline-flex min-h-9 w-fit items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground">
+          <ArrowLeft className="size-4" /> Usuários
+        </Link>
+        <PageHeader
+          title="Novo associado"
+          description="Cadastre a ficha completa de uma vez"
+          help={<AjudaLink topico="usuarios" titulo="Novo associado" />}
+        />
       </div>
 
-      <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-5">
+      <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-6">
         {/* Foto: no balcão a pessoa está ali na frente, então a hora de tirar
             é agora. Deixar para depois é, na prática, ficar sem foto. */}
         <Card>
@@ -442,7 +441,7 @@ function RouteComponent() {
         {/* Dados pessoais */}
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm flex items-center gap-2"><User className="size-4" /> Dados pessoais</CardTitle>
+            <CardTitle className="text-sm flex items-center gap-2"><User className="size-4 text-muted-foreground" /> Dados pessoais</CardTitle>
           </CardHeader>
           <CardContent className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {/* CPF primeiro: já avisa se a pessoa tem cadastro antes de preencher o resto */}
@@ -467,7 +466,7 @@ function RouteComponent() {
                 <p className="text-xs text-muted-foreground">Verificando se o CPF já tem cadastro…</p>
               )}
               {duplicate && (
-                <div role="alert" className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-md border border-destructive/40 bg-destructive/5 px-3 py-2 text-sm">
+                <div role="alert" className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border border-destructive/30 bg-destructive-soft px-3 py-2 text-sm">
                   <span className="flex items-center gap-1.5 text-destructive">
                     <AlertCircle className="size-4 shrink-0" />
                     Já existe um cadastro com este CPF: <strong>{duplicate.name}</strong>
@@ -501,7 +500,7 @@ function RouteComponent() {
         {/* Documentos */}
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm flex items-center gap-2"><FileText className="size-4" /> Documentos</CardTitle>
+            <CardTitle className="text-sm flex items-center gap-2"><FileText className="size-4 text-muted-foreground" /> Documentos</CardTitle>
           </CardHeader>
           <CardContent className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             <PersonField campo="rg" ctx={campos} />
@@ -515,7 +514,7 @@ function RouteComponent() {
         {/* Perfil social */}
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm flex items-center gap-2"><Globe className="size-4" /> Perfil social</CardTitle>
+            <CardTitle className="text-sm flex items-center gap-2"><Globe className="size-4 text-muted-foreground" /> Perfil social</CardTitle>
           </CardHeader>
           <CardContent className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             <PersonField campo="educationLevel" ctx={campos} />
@@ -529,7 +528,7 @@ function RouteComponent() {
         {/* Propriedade principal (endereço) */}
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm flex items-center gap-2"><MapPin className="size-4" /> Propriedade principal</CardTitle>
+            <CardTitle className="text-sm flex items-center gap-2"><MapPin className="size-4 text-muted-foreground" /> Propriedade principal</CardTitle>
             <p className="text-xs text-muted-foreground">O endereço do associado é registrado como sua propriedade principal.</p>
           </CardHeader>
           <CardContent className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -578,7 +577,7 @@ function RouteComponent() {
         {/* Associação */}
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm flex items-center gap-2"><Briefcase className="size-4" /> Associação</CardTitle>
+            <CardTitle className="text-sm flex items-center gap-2"><Briefcase className="size-4 text-muted-foreground" /> Associação</CardTitle>
           </CardHeader>
           <CardContent className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             <PersonField campo="memberType" ctx={campos} />
@@ -613,6 +612,6 @@ function RouteComponent() {
       </form>
 
       <CameraDialog open={cameraOpen} onClose={() => setCameraOpen(false)} onCapture={f => void usarFoto(f)} />
-    </div>
+    </PageContainer>
   )
 }

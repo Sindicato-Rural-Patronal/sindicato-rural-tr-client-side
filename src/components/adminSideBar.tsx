@@ -11,7 +11,7 @@ import { openCommandPalette } from '@/lib/command-palette'
 import {
   Sidebar, SidebarContent, SidebarFooter, SidebarGroup,
   SidebarGroupContent, SidebarGroupLabel, SidebarHeader,
-  SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarMenuBadge, SidebarSeparator,
+  SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarMenuBadge,
   useSidebar,
 } from '@/components/ui/sidebar'
 
@@ -101,11 +101,11 @@ export function AdminSideBar({ ...props }: React.ComponentProps<typeof Sidebar>)
     const active = location.pathname.startsWith(item.url)
     return (
       <SidebarMenuItem key={item.title}>
+        {/* 36 px; o ativo tem o fundo um tom acima, a linha fina e o ícone verde (ui/sidebar). */}
         <SidebarMenuButton
           isActive={active}
           tooltip={item.title}
           asChild
-          className="h-10 rounded-lg transition-all"
         >
           {/* Na gaveta (abaixo de lg) escolher uma tela fecha o menu. */}
           <Link to={item.url as never} onClick={() => { if (isMobile) setOpenMobile(false) }}>
@@ -114,7 +114,7 @@ export function AdminSideBar({ ...props }: React.ComponentProps<typeof Sidebar>)
           </Link>
         </SidebarMenuButton>
         {item.url === '/admin/mensagens' && unread > 0 && (
-          <SidebarMenuBadge className="bg-primary text-primary-foreground">
+          <SidebarMenuBadge className="bg-primary text-primary-foreground peer-hover/menu-button:text-primary-foreground peer-data-active/menu-button:text-primary-foreground">
             {unread > 99 ? '99+' : unread}
           </SidebarMenuBadge>
         )}
@@ -131,7 +131,7 @@ export function AdminSideBar({ ...props }: React.ComponentProps<typeof Sidebar>)
 
   return (
     <Sidebar collapsible="icon" {...props}>
-      <SidebarHeader className="border-b border-sidebar-border py-3">
+      <SidebarHeader className="border-b border-sidebar-border">
         <SidebarMenu>
           {/* Sino ao lado do logo; com a barra recolhida (só ícones) fica embaixo dele. */}
           <SidebarMenuItem className="flex items-center gap-1 group-data-[collapsible=icon]:flex-col">
@@ -142,7 +142,7 @@ export function AdminSideBar({ ...props }: React.ComponentProps<typeof Sidebar>)
                   alt="Sindicato Rural"
                   className="size-8 rounded object-contain shrink-0"
                 />
-                <div className="grid flex-1 text-left text-sm leading-tight">
+                <div className="grid flex-1 gap-0.5 text-left text-sm leading-tight">
                   <span className="truncate font-semibold">Sindicato Rural</span>
                   <span className="truncate text-xs text-muted-foreground">Terra Roxa – PR</span>
                 </div>
@@ -156,43 +156,40 @@ export function AdminSideBar({ ...props }: React.ComponentProps<typeof Sidebar>)
         </SidebarMenu>
       </SidebarHeader>
 
-      <SidebarContent className="px-2 py-3">
+      {/* Itens de 36 px com 2 px entre eles e as seções separadas só pelo espaço (12 px) e pelo
+          rótulo: no celular (390x844) a gaveta mostra até o Financeiro inteiro, sem rolar. */}
+      <SidebarContent className="p-2">
         {/* Busca de telas (mesma paleta do Ctrl+K). */}
-        <SidebarMenu className="mb-2">
+        <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton
               onClick={openSearch}
               tooltip={`${t('admin.sidebar.search')} (Ctrl+K)`}
-              className="h-10 rounded-lg border border-sidebar-border text-muted-foreground"
+              className="border border-sidebar-border bg-card text-muted-foreground hover:bg-card hover:text-foreground dark:bg-sidebar-accent/60"
             >
               <Search className="size-4" />
               <span>{t('admin.sidebar.search')}</span>
-              <kbd className="ml-auto hidden rounded border border-sidebar-border px-1.5 py-0.5 text-[10px] font-medium md:inline group-data-[collapsible=icon]:hidden">
+              <kbd className="ml-auto hidden rounded-sm border border-sidebar-border px-1.5 text-xs text-faint-foreground md:inline group-data-[collapsible=icon]:hidden">
                 Ctrl K
               </kbd>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
 
-        {listSections.map((section, i) => (
-          <React.Fragment key={section.label}>
-            {i > 0 && <SidebarSeparator className="my-2" />}
-            <SidebarGroup className="p-0">
-              <SidebarGroupLabel className="px-3 text-[11px] font-semibold uppercase tracking-wider text-sidebar-foreground/40 mb-1">
-                {section.label}
-              </SidebarGroupLabel>
-              <SidebarGroupContent>
-                <SidebarMenu>
-                  {section.items.filter(allowed).map(renderItem)}
-                </SidebarMenu>
-              </SidebarGroupContent>
-            </SidebarGroup>
-          </React.Fragment>
+        {listSections.map(section => (
+          <SidebarGroup key={section.label} className="p-0 pt-3">
+            <SidebarGroupLabel className="mb-0.5">{section.label}</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {section.items.filter(allowed).map(renderItem)}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
         ))}
       </SidebarContent>
 
       {/* Na gaveta (celular/tablet) a lista rola por baixo do rodapé: a borda com sombra avisa que há mais itens. */}
-      <SidebarFooter className={cn('flex flex-col gap-2 pb-3', isMobile && 'border-t border-sidebar-border shadow-[0_-8px_8px_-8px_rgba(0,0,0,0.2)]')}>
+      <SidebarFooter className={cn('gap-2', isMobile && 'border-t border-sidebar-border shadow-[0_-8px_8px_-8px_rgba(0,0,0,0.2)]')}>
         {pinnedItems.length > 0 && (
           <SidebarMenu>{pinnedItems.map(renderItem)}</SidebarMenu>
         )}

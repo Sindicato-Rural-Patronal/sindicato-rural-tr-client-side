@@ -1,10 +1,10 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { Building, DoorOpen, Globe, Handshake, Images, Settings, Users } from 'lucide-react'
+import { Building, DoorOpen, Globe, Handshake, Images, Users } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { usePermissions } from '@/hooks/usePermissions'
 import { NoPermission } from '@/components/NoPermission'
+import { PageContainer, PageHeader } from '@/components/PageHeader'
 import { Skeleton } from '@/components/ui/skeleton'
-import { cn } from '@/lib/utils'
 import { Tabs, TabsContent, TabsList, TabsTrigger, tabsWrapClass } from '@/components/ui/tabs'
 import { OrgInfoPanel } from '@/components/site-config/OrgInfoPanel'
 import { SocialLinksPanel } from '@/components/site-config/SocialLinksPanel'
@@ -46,30 +46,26 @@ function ConfiguracoesPage() {
   const current = tab && available[tab] ? tab : visible[0]
 
   if (isLoading) {
-    return <div className="flex flex-col gap-4 p-6"><Skeleton className="h-8 w-72" /><Skeleton className="h-64 w-full" /></div>
+    return <PageContainer><Skeleton className="h-8 w-72" /><Skeleton className="h-64 w-full" /></PageContainer>
   }
   if (!current) return <NoPermission message={t('admin.settings.noPermission')} />
 
   return (
-    <div className="flex flex-col gap-6 p-4 md:p-6">
-      <div>
-        <div className="flex items-center gap-1">
-          <h1 className="flex items-center gap-2 text-2xl font-bold text-foreground">
-            <Settings className="size-6" /> {t('admin.settings.title')}
-          </h1>
-          <AjudaLink topico="configuracoes" titulo="Configurações do site" />
-        </div>
-        <p className="mt-1 text-sm text-muted-foreground">{t('admin.settings.subtitle')}</p>
-      </div>
+    <PageContainer>
+      <PageHeader
+        title={t('admin.settings.title')}
+        description={t('admin.settings.subtitle')}
+        help={<AjudaLink topico="configuracoes" titulo="Configurações do site" />}
+      />
 
       <Tabs value={current} onValueChange={v => navigate({ search: { tab: v as Tab }, replace: true })}>
-        <TabsList className={cn(tabsWrapClass, 'mb-2')}>
-          {available.dados && <TabsTrigger value="dados"><Building className="mr-1.5 size-3.5" /> Dados do sindicato</TabsTrigger>}
-          {available.redes && <TabsTrigger value="redes"><Globe className="mr-1.5 size-3.5" /> Redes sociais</TabsTrigger>}
-          {available.galerias && <TabsTrigger value="galerias"><Images className="mr-1.5 size-3.5" /> Galerias</TabsTrigger>}
-          {available.parceiros && <TabsTrigger value="parceiros"><Handshake className="mr-1.5 size-3.5" /> Parceiros</TabsTrigger>}
-          {available.contatos && <TabsTrigger value="contatos"><Users className="mr-1.5 size-3.5" /> Contatos públicos</TabsTrigger>}
-          {available.salas && <TabsTrigger value="salas"><DoorOpen className="mr-1.5 size-3.5" /> Salas</TabsTrigger>}
+        <TabsList className={tabsWrapClass}>
+          {available.dados && <TabsTrigger value="dados"><Building /> Dados do sindicato</TabsTrigger>}
+          {available.redes && <TabsTrigger value="redes"><Globe /> Redes sociais</TabsTrigger>}
+          {available.galerias && <TabsTrigger value="galerias"><Images /> Galerias</TabsTrigger>}
+          {available.parceiros && <TabsTrigger value="parceiros"><Handshake /> Parceiros</TabsTrigger>}
+          {available.contatos && <TabsTrigger value="contatos"><Users /> Contatos públicos</TabsTrigger>}
+          {available.salas && <TabsTrigger value="salas"><DoorOpen /> Salas</TabsTrigger>}
         </TabsList>
 
         {/* Abas com formulário ficam montadas (só escondidas) para não perder o que foi digitado ao trocar de aba */}
@@ -104,6 +100,6 @@ function ConfiguracoesPage() {
           </TabsContent>
         )}
       </Tabs>
-    </div>
+    </PageContainer>
   )
 }

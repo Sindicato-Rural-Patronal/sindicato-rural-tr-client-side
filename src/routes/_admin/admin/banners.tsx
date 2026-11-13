@@ -25,8 +25,13 @@ import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
+import { NativeSelect } from '@/components/ui/native-select'
 import { DeleteConfirmDialog } from '@/components/DeleteConfirmDialog'
 import { AjudaLink } from '@/components/ajuda/AjudaLink'
+import { EmptyState } from '@/components/EmptyState'
+import { PageContainer, PageHeader } from '@/components/PageHeader'
+import { RowActions } from '@/components/RowActions'
+import type { BadgeTone } from '@/components/ui/badge'
 import {
   Plus, Pencil, Trash2, ChevronUp, ChevronDown, ImageUp, X, ExternalLink,
   Image as ImageIcon, CalendarRange,
@@ -54,45 +59,46 @@ function BtnsEditor({ value, onChange }: { value: BtnDraft[]; onChange: (v: BtnD
   return (
     <div className="flex flex-col gap-3">
       {value.map((btn, i) => (
-        <div key={i} className="rounded-lg border p-3 flex flex-col gap-2 bg-muted/30">
+        <div key={i} className="flex flex-col gap-2 rounded-lg border border-border bg-muted p-3">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-muted-foreground">Botão {i + 1}</span>
-            <Button type="button" variant="ghost" size="icon" className="size-6" onClick={() => remove(i)}>
-              <X className="size-3.5" />
+            <span className="text-xs font-medium text-muted-foreground">Botão {i + 1}</span>
+            <Button type="button" variant="ghost" size="icon-xs" onClick={() => remove(i)} aria-label={`Remover o botão ${i + 1}`}>
+              <X />
             </Button>
           </div>
           <div className="grid grid-cols-2 gap-2">
             <div className="flex flex-col gap-1">
               <Label className="text-xs">Texto *</Label>
-              <Input value={btn.label} onChange={e => update(i, 'label', upperNoAccents(e.target.value))} className="h-8 text-sm" placeholder="Ex: Saiba mais" />
+              <Input value={btn.label} onChange={e => update(i, 'label', upperNoAccents(e.target.value))} placeholder="Ex: Saiba mais" />
             </div>
             <div className="flex flex-col gap-1">
               <Label className="text-xs">URL *</Label>
-              <Input value={btn.url} onChange={e => update(i, 'url', e.target.value)} className="h-8 text-sm" placeholder="/cursos ou https://..." />
+              <Input value={btn.url} onChange={e => update(i, 'url', e.target.value)} placeholder="/cursos ou https://..." />
             </div>
           </div>
-          <div className="flex items-center gap-4 flex-wrap">
-            <label className="flex items-center gap-1.5 text-xs cursor-pointer select-none">
+          <div className="flex flex-wrap items-center gap-4">
+            <label className="flex cursor-pointer items-center gap-1.5 text-xs text-foreground select-none">
               <input type="checkbox" checked={btn.external} onChange={e => update(i, 'external', e.target.checked)} className="accent-primary" />
               Abre em nova aba
             </label>
             <div className="flex items-center gap-1.5">
-              <Label className="text-xs">Estilo:</Label>
-              <select
+              <Label htmlFor={`bn-btn-estilo-${i}`} className="text-xs">Estilo</Label>
+              <NativeSelect
+                id={`bn-btn-estilo-${i}`}
                 value={btn.variant}
                 onChange={e => update(i, 'variant', e.target.value)}
-                className="h-7 rounded border border-input px-2 text-xs bg-background focus:outline-none"
+                className="h-8 text-xs"
               >
                 <option value="primary">Primário (destaque)</option>
                 <option value="secondary">Secundário (outline)</option>
-              </select>
+              </NativeSelect>
             </div>
           </div>
         </div>
       ))}
       {value.length < 2 && (
-        <Button type="button" variant="outline" size="sm" onClick={add} className="gap-1.5 self-start">
-          <Plus className="size-3.5" /> Adicionar botão
+        <Button type="button" variant="outline" size="sm" onClick={add} className="self-start">
+          <Plus /> Adicionar botão
         </Button>
       )}
     </div>
@@ -190,7 +196,7 @@ function BannerSheet({
       const res = await uploadImage.mutateAsync(file)
       const data = await res.json().catch(() => null) as { imageUrl?: string } | null
       if (data?.imageUrl) setImageUrl(data.imageUrl)
-      toast.success('Imagem atualizada!')
+      toast.success('Imagem atualizada.')
     } catch (err) {
       toast.error(apiErrorMessage(err, 'Erro ao enviar a imagem.'))
     }
@@ -219,7 +225,7 @@ function BannerSheet({
     try {
       if (isEdit && banner) {
         await updateBanner.mutateAsync(body)
-        toast.success('Banner atualizado!')
+        toast.success('Banner atualizado.')
       } else {
         const res = await createBanner.mutateAsync(body)
         if (stagedImage) {
@@ -237,7 +243,7 @@ function BannerSheet({
             return
           }
         }
-        toast.success('Banner criado!')
+        toast.success('Banner criado.')
       }
       onClose()
     } catch (err) {
@@ -257,44 +263,44 @@ function BannerSheet({
           {/* Image upload (edit only) */}
           {isEdit && banner && (
             <div className="flex flex-col gap-2">
-              <Label className="text-xs font-semibold">Imagem</Label>
+              <Label>Imagem</Label>
               {imageUrl && (
-                <img src={imageUrl} alt={banner.title} className="w-full h-32 object-cover rounded-lg border" />
+                <img src={imageUrl} alt={banner.title} className="aspect-[12/5] w-full rounded-lg border border-border object-cover" />
               )}
               <div className="flex items-center gap-2 flex-wrap">
                 <input ref={imageInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileSelect} />
                 <Button
-                  type="button" variant="outline" size="sm" className="gap-1.5"
+                  type="button" variant="outline" size="sm"
                   disabled={uploadImage.isPending}
                   onClick={() => imageInputRef.current?.click()}
                 >
-                  <ImageUp className="size-3.5" />
+                  <ImageUp />
                   {uploadImage.isPending ? 'Enviando...' : imageUrl ? 'Trocar imagem' : 'Adicionar imagem'}
                 </Button>
-                <span className="text-[11px] text-muted-foreground">Proporção ideal: 1440 × 600 px</span>
+                <span className="text-xs text-muted-foreground">Proporção ideal: 1440 × 600 px</span>
               </div>
             </div>
           )}
           {!isEdit && (
             <div className="flex flex-col gap-2">
-              <Label className="text-xs font-semibold">Imagem</Label>
+              <Label>Imagem</Label>
               {stagedImage ? (
-                <img src={stagedImage.url} alt="Prévia do banner" className="w-full h-32 object-cover rounded-lg border" />
+                <img src={stagedImage.url} alt="Prévia do banner" className="aspect-[12/5] w-full rounded-lg border border-border object-cover" />
               ) : (
-                <div className="flex h-32 items-center justify-center border-2 border-dashed rounded-lg bg-muted/50 text-muted-foreground">
-                  <ImageUp className="size-8 opacity-40" />
+                <div className="flex aspect-[12/5] w-full items-center justify-center rounded-lg border border-border bg-muted">
+                  <ImageUp className="size-8 text-faint-foreground" aria-hidden />
                 </div>
               )}
               <div className="flex items-center gap-2 flex-wrap">
                 <input ref={imageInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileSelect} />
                 <Button
-                  type="button" variant="outline" size="sm" className="gap-1.5"
+                  type="button" variant="outline" size="sm"
                   onClick={() => imageInputRef.current?.click()}
                 >
-                  <ImageUp className="size-3.5" />
+                  <ImageUp />
                   {stagedImage ? 'Trocar imagem' : 'Adicionar imagem'}
                 </Button>
-                <span className="text-[11px] text-muted-foreground">Proporção ideal: 1440 × 600 px — sobe junto com a criação</span>
+                <span className="text-xs text-muted-foreground">Proporção ideal: 1440 × 600 px — sobe junto com a criação</span>
               </div>
             </div>
           )}
@@ -329,18 +335,18 @@ function BannerSheet({
                 <DatePicker id="bn-end" value={form.endDate} onChange={v => set('endDate', v)} />
               </div>
             </div>
-            <p className="text-[11px] text-muted-foreground">
+            <p className="text-xs text-muted-foreground">
               Horário de Brasília: entra no ar à 0h do início e sai às 23h59 do término.
             </p>
           </div>
 
           <label className="flex items-center gap-2 cursor-pointer select-none">
             <input type="checkbox" checked={form.active} onChange={e => set('active', e.target.checked)} className="accent-primary" />
-            <span className="text-sm font-medium">Banner ativo (visível no site)</span>
+            <span className="text-sm font-medium text-foreground">Banner ativo (visível no site)</span>
           </label>
 
           <div className="flex flex-col gap-2">
-            <Label className="text-xs font-semibold">Botões (máx. 2)</Label>
+            <Label>Botões (máx. 2)</Label>
             <BtnsEditor value={form.buttons} onChange={v => set('buttons', v)} />
           </div>
 
@@ -360,23 +366,17 @@ function BannerSheet({
 
 // ─── Situação no site ─────────────────────────────────────────────────────────
 
-const STATE_BADGE_CLASS: Record<BannerState, string> = {
-  live: 'bg-emerald-600 text-white dark:bg-emerald-500',
-  scheduled: 'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300',
-  expired: 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300',
-  inactive: '',
+// No ar em verde; expirado pede atenção (âmbar); agendado e inativo ficam neutros.
+const STATE_TONE: Record<BannerState, BadgeTone | 'outline'> = {
+  live: 'success',
+  scheduled: 'outline',
+  expired: 'warning',
+  inactive: 'neutral',
 }
 
 // Mesma regra do site (GET /banners): ativo e dentro do período.
 function BannerStateBadge({ state }: { state: BannerState }) {
-  return (
-    <Badge
-      variant={state === 'inactive' ? 'secondary' : 'default'}
-      className={`text-[10px] py-0 shrink-0 ${STATE_BADGE_CLASS[state]}`}
-    >
-      {BANNER_STATE_LABEL[state]}
-    </Badge>
-  )
+  return <Badge variant={STATE_TONE[state]}>{BANNER_STATE_LABEL[state]}</Badge>
 }
 
 // ─── Route component ──────────────────────────────────────────────────────────
@@ -426,19 +426,17 @@ function RouteComponent() {
   }
 
   return (
-    <div className="p-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-6">
-        <div>
-          <div className="flex items-center gap-1">
-            <h1 className="text-2xl font-bold tracking-tight">Banners</h1>
-            <AjudaLink topico="banners" titulo="Banners" />
-          </div>
-          <p className="text-sm text-muted-foreground">Gerencie os banners exibidos na página inicial</p>
-        </div>
-        <Button onClick={() => openSheet({ mode: 'create' })} className="gap-1.5 shrink-0">
-          <Plus className="size-4" /> Novo banner
-        </Button>
-      </div>
+    <PageContainer>
+      <PageHeader
+        title="Banners"
+        description="Gerencie os banners exibidos na página inicial"
+        help={<AjudaLink topico="banners" titulo="Banners" />}
+        actions={
+          <Button onClick={() => openSheet({ mode: 'create' })}>
+            <Plus className="size-4" /> Novo banner
+          </Button>
+        }
+      />
 
       {isLoading && (
         <div className="flex flex-col gap-3">
@@ -448,7 +446,7 @@ function RouteComponent() {
 
       {!isLoading && isError && (
         <LoadErrorRetry
-          className="rounded-lg border bg-card"
+          className="rounded-xl border border-border bg-card"
           message="Não foi possível carregar os banners."
           onRetry={() => void refetch()}
           retrying={isFetching}
@@ -456,94 +454,92 @@ function RouteComponent() {
       )}
 
       {!isLoading && !isError && sorted.length === 0 && (
-        <div className="flex flex-col items-center justify-center py-16 border-2 border-dashed rounded-xl text-center">
-          <ImageIcon className="size-10 text-muted-foreground/30 mb-3" />
-          <p className="text-sm font-medium text-foreground">Nenhum banner cadastrado</p>
-          <p className="text-xs text-muted-foreground mt-1">Clique em "Novo banner" para começar.</p>
-        </div>
+        <EmptyState
+          framed
+          icon={ImageIcon}
+          title="Nenhum banner cadastrado"
+          description='Clique em "Novo banner" para começar.'
+        />
       )}
 
-      <div className="flex flex-col gap-3">
-        {sorted.map((banner, idx) => (
-          <div key={banner.id} className="flex items-center gap-3 rounded-xl border bg-card p-3 shadow-sm">
-            {/* Thumbnail */}
-            <div className="shrink-0 size-16 rounded-lg border overflow-hidden bg-muted flex items-center justify-center">
-              {banner.imageUrl ? (
-                <img src={banner.imageUrl} alt={banner.title} className="size-full object-cover" />
-              ) : (
-                <span className="text-[10px] text-muted-foreground text-center px-1">Sem imagem</span>
-              )}
-            </div>
-
-            {/* Info */}
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 flex-wrap">
-                <p className="font-semibold text-sm truncate">{banner.title}</p>
-                <BannerStateBadge state={bannerState(banner, now)} />
+      {sorted.length > 0 && (
+        <div className="flex flex-col gap-3">
+          {sorted.map((banner, idx) => (
+            // No celular os botões descem para uma linha própria: ao lado, o título sumia.
+            <div key={banner.id} className="flex flex-col gap-2 rounded-xl border border-border bg-card p-3 sm:flex-row sm:items-center sm:gap-3">
+              <div className="flex min-w-0 flex-1 items-center gap-3">
+              {/* Miniatura na proporção do banner (1440 × 600): o cartaz aparece inteiro. */}
+              <div className="flex aspect-[12/5] w-28 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-border bg-muted sm:w-36">
+                {banner.imageUrl ? (
+                  <img src={banner.imageUrl} alt={banner.title} className="size-full object-cover" />
+                ) : (
+                  <span className="px-1 text-center text-xs text-faint-foreground">Sem imagem</span>
+                )}
               </div>
-              {banner.subtitle && (
-                <p className="text-xs text-muted-foreground truncate mt-0.5">{banner.subtitle}</p>
-              )}
-              {bannerPeriodLabel(banner) && (
-                <p className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1">
-                  <CalendarRange className="size-3 shrink-0" /> {bannerPeriodLabel(banner)}
-                </p>
-              )}
-              {banner.buttons.length > 0 && (
-                <div className="flex gap-1 mt-1 flex-wrap">
-                  {banner.buttons.map((btn, i) => (
-                    <span key={i} className="inline-flex items-center gap-0.5 text-[10px] bg-muted rounded px-1.5 py-0.5 text-muted-foreground">
-                      {btn.label}
-                      {btn.external && <ExternalLink className="size-2.5" />}
-                    </span>
-                  ))}
-                </div>
-              )}
-            </div>
 
-            {/* Actions */}
-            <div className="flex items-center gap-1 shrink-0">
-              <div className="flex flex-col gap-0.5">
+              {/* Info */}
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <p className="min-w-0 truncate text-sm font-semibold text-foreground">{banner.title}</p>
+                  <BannerStateBadge state={bannerState(banner, now)} />
+                </div>
+                {banner.subtitle && (
+                  <p className="mt-0.5 truncate text-xs text-muted-foreground">{banner.subtitle}</p>
+                )}
+                {bannerPeriodLabel(banner) && (
+                  <p className="mt-0.5 flex items-center gap-1 text-xs text-muted-foreground">
+                    <CalendarRange className="size-3 shrink-0 text-faint-foreground" aria-hidden />
+                    <span className="tabular-nums">{bannerPeriodLabel(banner)}</span>
+                  </p>
+                )}
+                {banner.buttons.length > 0 && (
+                  <div className="mt-1 flex flex-wrap gap-1">
+                    {banner.buttons.map((btn, i) => (
+                      <Badge key={i} variant="outline" className="text-muted-foreground">
+                        {btn.label}
+                        {btn.external && <ExternalLink aria-label="abre em nova aba" />}
+                      </Badge>
+                    ))}
+                  </div>
+                )}
+              </div>
+              </div>
+
+              <div className="flex shrink-0 items-center justify-end gap-1 border-t border-border pt-2 sm:border-t-0 sm:pt-0">
+              {/* Ordem: subir e descer ficam juntos, à parte das ações. */}
+              <div className="flex shrink-0 gap-0.5 sm:flex-col">
                 <Button
-                  variant="ghost" size="icon" className="size-6"
+                  variant="ghost" size="icon-sm" className="size-11 text-muted-foreground sm:size-8"
                   disabled={idx === 0 || reorder.isPending}
                   onClick={() => move(banner.id, 'up')}
                   aria-label="Mover banner para cima"
                   title="Mover banner para cima"
                 >
-                  <ChevronUp className="size-3.5" />
+                  <ChevronUp />
                 </Button>
                 <Button
-                  variant="ghost" size="icon" className="size-6"
+                  variant="ghost" size="icon-sm" className="size-11 text-muted-foreground sm:size-8"
                   disabled={idx === sorted.length - 1 || reorder.isPending}
                   onClick={() => move(banner.id, 'down')}
                   aria-label="Mover banner para baixo"
                   title="Mover banner para baixo"
                 >
-                  <ChevronDown className="size-3.5" />
+                  <ChevronDown />
                 </Button>
               </div>
-              <Button
-                variant="ghost" size="icon" className="size-8"
-                onClick={() => openSheet({ mode: 'edit', banner })}
-                aria-label="Editar banner"
-                title="Editar banner"
-              >
-                <Pencil className="size-3.5" />
-              </Button>
-              <Button
-                variant="ghost" size="icon"
-                className="size-8 text-destructive/60 hover:text-destructive"
-                onClick={() => setDeleteTarget(banner)}
-                aria-label="Excluir banner"
-                title="Excluir banner"
-              >
-                <Trash2 className="size-3.5" />
-              </Button>
+              <RowActions
+                className="shrink-0"
+                label={`Ações do banner ${banner.title}`}
+                actions={[
+                  { label: 'Editar banner', icon: Pencil, onClick: () => openSheet({ mode: 'edit', banner }) },
+                  { label: 'Excluir banner', icon: Trash2, destructive: true, onClick: () => setDeleteTarget(banner) },
+                ]}
+              />
+              </div>
             </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
 
       <BannerSheet
         key={sheetKey}
@@ -569,6 +565,6 @@ function RouteComponent() {
         confirmLabel="Excluir"
         pendingLabel="Excluindo..."
       />
-    </div>
+    </PageContainer>
   )
 }

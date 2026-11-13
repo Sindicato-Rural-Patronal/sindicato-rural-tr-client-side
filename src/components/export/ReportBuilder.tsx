@@ -148,7 +148,7 @@ function LinhaDaColuna({
       className={cn(
         'flex items-center gap-1 rounded-md border border-border bg-card pr-0.5 pl-1',
         grande ? 'min-h-12' : 'min-h-9',
-        arrastando && 'relative z-10 shadow-md',
+        arrastando && 'relative z-10 shadow-float',
       )}
     >
       {alca}

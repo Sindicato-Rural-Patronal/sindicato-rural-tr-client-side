@@ -13,7 +13,6 @@ import { ExportMenu } from '@/components/export/ExportMenu'
 import { textosDaAuditoria } from '@/components/export/filter-texts'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
   Table, TableHeader, TableBody, TableRow, TableHead, TableCell,
@@ -23,6 +22,11 @@ import { NativeSelect } from '@/components/ui/native-select'
 import { LoadErrorRetry } from '@/components/LoadErrorRetry'
 import { NoPermission } from '@/components/NoPermission'
 import { AjudaLink } from '@/components/ajuda/AjudaLink'
+import { PageContainer, PageHeader } from '@/components/PageHeader'
+import { FilterBar, FilterField } from '@/components/FilterBar'
+import { EmptyState } from '@/components/EmptyState'
+import { DatePicker } from '@/components/ui/date-picker'
+import { cn } from '@/lib/utils'
 import { useDebouncedValue } from '@/hooks/useDebouncedValue'
 
 type AuditSearch = {
@@ -100,14 +104,16 @@ function actionKind(method: string): ActionKind {
 const KIND_ICON = {
   create: Plus, edit: Pencil, delete: Trash2, export: Download, login: LogIn, login_failed: ShieldAlert, other: Dot,
 }
+// O ícone já diz o tipo; cor só no que pede atenção (exclusão e falha de login), no
+// vermelho da terra roxa. O resto fica no tom apagado do texto.
 const KIND_COLOR: Record<ActionKind, string> = {
-  create: 'text-emerald-600 dark:text-emerald-400',
-  edit: 'text-amber-600 dark:text-amber-400',
-  delete: 'text-red-600 dark:text-red-400',
-  export: 'text-blue-600 dark:text-blue-400',
-  login: 'text-sky-600 dark:text-sky-400',
-  login_failed: 'text-red-600 dark:text-red-400',
-  other: 'text-muted-foreground',
+  create: 'text-faint-foreground',
+  edit: 'text-faint-foreground',
+  delete: 'text-destructive',
+  export: 'text-faint-foreground',
+  login: 'text-faint-foreground',
+  login_failed: 'text-destructive',
+  other: 'text-faint-foreground',
 }
 
 /** "Terra Roxa, PR, Brasil · Chrome no Windows" (linhas antigas: vazio). */
@@ -202,133 +208,129 @@ function RouteComponent() {
   }
 
   return (
-    <div className="p-6 flex flex-col gap-5">
-      <div>
-        <div className="flex items-center gap-1">
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">Auditoria</h1>
-          <AjudaLink topico="auditoria" titulo="Auditoria" />
-        </div>
-        <p className="text-sm text-muted-foreground">
-          Registro de criações, edições, exclusões, exportações e tentativas de login, com o IP e o aparelho de origem.
-        </p>
-      </div>
+    <PageContainer>
+      <PageHeader
+        title="Auditoria"
+        description="Registro de criações, edições, exclusões, exportações e tentativas de login, com o IP e o aparelho de origem"
+        help={<AjudaLink topico="auditoria" titulo="Auditoria" />}
+      />
 
       {/* Tempo de guarda dos registros — só para quem pode configurar a trilha. */}
       {can('UPDATE_AUDIT') && <AuditRetentionPanel />}
 
-      {/* Filtros */}
-      <div className="flex flex-col gap-3">
-        <div className="flex flex-wrap items-end gap-2">
-          <div className="flex flex-col gap-1">
-            <Label className="text-[11px] text-muted-foreground">Ação</Label>
-            <NativeSelect
-              className="h-9"
-              value={search.action ?? ''}
-              onChange={e => setSearch({ action: (e.target.value || undefined) as AuditAction | undefined, page: undefined })}
-            >
-              <option value="">Todas</option>
-              {ACTION_OPTIONS.map(([a, lbl]) => <option key={a} value={a}>{lbl}</option>)}
-            </NativeSelect>
-          </div>
-          <div className="flex flex-col gap-1">
-            <Label className="text-[11px] text-muted-foreground">Tipo</Label>
-            <NativeSelect className="h-9" value={search.entity ?? ''} onChange={e => setSearch({ entity: e.target.value || undefined, page: undefined })}>
-              <option value="">Todos</option>
-              {ENTITIES.map(k => <option key={k} value={k}>{k}</option>)}
-            </NativeSelect>
-          </div>
-          <div className="flex flex-col gap-1">
-            <Label className="text-[11px] text-muted-foreground">Quem</Label>
-            <NativeSelect className="h-9" value={search.actorId ?? ''} onChange={e => setSearch({ actorId: e.target.value || undefined, page: undefined })}>
-              <option value="">Todos</option>
-              {admins.map(a => <option key={a.id} value={a.id}>{a.username}</option>)}
-            </NativeSelect>
-          </div>
-          <div className="flex flex-col gap-1">
-            <Label className="text-[11px] text-muted-foreground">De</Label>
-            <Input type="date" className="h-9 w-[150px]" value={search.from ?? ''} onChange={e => setSearch({ from: e.target.value || undefined, page: undefined })} />
-          </div>
-          <div className="flex flex-col gap-1">
-            <Label className="text-[11px] text-muted-foreground">Até</Label>
-            <Input type="date" className="h-9 w-[150px]" value={search.to ?? ''} onChange={e => setSearch({ to: e.target.value || undefined, page: undefined })} />
-          </div>
-          {search.ip && (
-            <div className="flex flex-col gap-1">
-              <Label className="text-[11px] text-muted-foreground">IP</Label>
-              <Button
-                size="sm"
-                variant="secondary"
-                className="h-9 gap-1.5 font-mono"
-                title="Tirar o filtro de IP"
-                onClick={() => setSearch({ ip: undefined, page: undefined })}
-              >
-                {search.ip}
-                <X className="size-3.5" />
-              </Button>
-            </div>
-          )}
-          {hasFilters && (
-            <Button size="sm" variant="ghost" className="h-9 gap-1.5 text-muted-foreground" onClick={clearFilters}>
-              <X className="size-4" /> Limpar
-            </Button>
-          )}
-          {/* Planilha, PDF e "Montar relatório…" (decisão 006), sempre com os filtros da tela
-              (a trilha não tem seleção). A API leva no máximo as 20.000 linhas mais recentes. */}
+      <FilterBar
+        actions={
+          // Planilha, PDF e "Montar relatório…" (decisão 006), sempre com os filtros da tela
+          // (a trilha não tem seleção). A API leva no máximo as 20.000 linhas mais recentes.
           <ExportMenu
             dataset="audit-logs"
-            className="ml-auto h-9"
             filters={filters}
             total={data ? total : undefined}
             filtered={hasFilters}
             filterTexts={textosDosFiltros}
             cortaNoLimite
           />
-        </div>
-        <div className="relative max-w-sm">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
-          <Input placeholder="Buscar por nome do item ou rota..." className="pl-9" value={searchInput} onChange={e => setSearchInput(e.target.value)} />
-        </div>
+        }
+      >
+        <FilterField label="Buscar" htmlFor="audit-busca" className="sm:w-80">
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
+            <Input id="audit-busca" placeholder="Buscar por nome do item ou rota..." className="pl-9" value={searchInput} onChange={e => setSearchInput(e.target.value)} />
+          </div>
+        </FilterField>
+      </FilterBar>
+
+      {/* Os filtros numa linha embaixo da busca, como nos lançamentos do Financeiro; no
+          celular, dois por linha. */}
+      <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-end [&>*]:min-w-0">
+        <FilterField label="Ação" htmlFor="audit-acao">
+          <NativeSelect
+            id="audit-acao"
+            value={search.action ?? ''}
+            onChange={e => setSearch({ action: (e.target.value || undefined) as AuditAction | undefined, page: undefined })}
+          >
+            <option value="">Todas</option>
+            {ACTION_OPTIONS.map(([a, lbl]) => <option key={a} value={a}>{lbl}</option>)}
+          </NativeSelect>
+        </FilterField>
+        <FilterField label="Tipo" htmlFor="audit-tipo">
+          <NativeSelect id="audit-tipo" value={search.entity ?? ''} onChange={e => setSearch({ entity: e.target.value || undefined, page: undefined })}>
+            <option value="">Todos</option>
+            {ENTITIES.map(k => <option key={k} value={k}>{k}</option>)}
+          </NativeSelect>
+        </FilterField>
+        <FilterField label="Quem" htmlFor="audit-quem">
+          <NativeSelect id="audit-quem" value={search.actorId ?? ''} onChange={e => setSearch({ actorId: e.target.value || undefined, page: undefined })}>
+            <option value="">Todos</option>
+            {admins.map(a => <option key={a.id} value={a.id}>{a.username}</option>)}
+          </NativeSelect>
+        </FilterField>
+        <FilterField label="De" htmlFor="audit-de">
+          <DatePicker id="audit-de" className="sm:w-40" value={search.from ?? ''} onChange={v => setSearch({ from: v || undefined, page: undefined })} />
+        </FilterField>
+        <FilterField label="Até" htmlFor="audit-ate">
+          <DatePicker id="audit-ate" className="sm:w-40" value={search.to ?? ''} onChange={v => setSearch({ to: v || undefined, page: undefined })} />
+        </FilterField>
+        {search.ip && (
+          <FilterField label="IP">
+            <Button
+              variant="secondary"
+              className="gap-1.5 font-mono"
+              title="Tirar o filtro de IP"
+              onClick={() => setSearch({ ip: undefined, page: undefined })}
+            >
+              {search.ip}
+              <X className="size-3.5" aria-hidden />
+            </Button>
+          </FilterField>
+        )}
+        {hasFilters && (
+          <Button variant="ghost" className="w-fit text-muted-foreground" onClick={clearFilters}>
+            <X className="size-4" aria-hidden /> Limpar
+          </Button>
+        )}
       </div>
 
       {isError && !data && (
         <LoadErrorRetry
-          className="rounded-lg border border-border bg-card"
+          className="rounded-xl border border-border bg-card"
           message="Não foi possível carregar a auditoria."
           onRetry={() => void refetch()}
           retrying={isFetching}
         />
       )}
 
-      <div className="rounded-lg border border-border bg-card overflow-hidden">
-        <div className="overflow-x-auto">
-          <Table>
+      <div className="overflow-hidden rounded-xl border border-border bg-card">
+        {/* Tabela fixa, sem rolagem lateral: "O que aconteceu" quebra linha e o detalhe
+            técnico (método, rota e status) só entra como coluna onde cabe; no resto, ele
+            está no detalhe da linha. */}
+        <div>
+          <Table className="table-fixed">
             <TableHeader>
               <TableRow>
-                <TableHead>Quando</TableHead>
-                <TableHead>Quem</TableHead>
+                <TableHead className="w-[88px] sm:w-[104px]">Quando</TableHead>
+                <TableHead className="hidden sm:table-cell sm:w-[140px]">Quem</TableHead>
                 <TableHead>O que aconteceu</TableHead>
-                <TableHead className="hidden lg:table-cell">Detalhe técnico</TableHead>
+                <TableHead className="hidden xl:table-cell xl:w-[280px]">Detalhe técnico</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {isLoading && Array.from({ length: 8 }).map((_, i) => (
                 <TableRow key={i}>
-                  <TableCell><Skeleton className="h-4 w-24" /></TableCell>
-                  <TableCell><Skeleton className="h-4 w-24" /></TableCell>
+                  <TableCell><Skeleton className="h-4 w-16" /></TableCell>
+                  <TableCell className="hidden sm:table-cell"><Skeleton className="h-4 w-24" /></TableCell>
                   <TableCell><Skeleton className="h-4 w-44" /></TableCell>
-                  <TableCell className="hidden lg:table-cell"><Skeleton className="h-4 w-40" /></TableCell>
+                  <TableCell className="hidden xl:table-cell"><Skeleton className="h-4 w-40" /></TableCell>
                 </TableRow>
               ))}
               {!isLoading && !isError && rows.length === 0 && (
-                <TableRow>
-                  <TableCell colSpan={4} className="py-16 text-center">
-                    <ScrollText className="size-10 text-muted-foreground/30 mx-auto mb-3" />
-                    <p className="text-sm font-medium text-foreground">
-                      {hasFilters ? 'Nenhum registro com esses filtros' : 'Nenhum registro ainda'}
-                    </p>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      {hasFilters ? 'Ajuste ou limpe os filtros.' : 'As ações administrativas aparecem aqui conforme acontecem.'}
-                    </p>
+                <TableRow className="hover:bg-transparent">
+                  <TableCell colSpan={4} className="p-0 whitespace-normal">
+                    <EmptyState
+                      icon={ScrollText}
+                      title={hasFilters ? 'Nenhum registro com esses filtros' : 'Nenhum registro ainda'}
+                      description={hasFilters ? 'Ajuste ou limpe os filtros.' : 'As ações administrativas aparecem aqui conforme acontecem.'}
+                    />
                   </TableCell>
                 </TableRow>
               )}
@@ -344,20 +346,25 @@ function RouteComponent() {
                       data-state={open ? 'selected' : undefined}
                       onClick={() => toggleRow(r.id)}
                     >
-                      <TableCell className="whitespace-nowrap text-muted-foreground text-xs align-top" title={new Date(r.createdAt).toLocaleString('pt-BR')}>
+                      <TableCell className="whitespace-nowrap text-xs tabular-nums text-muted-foreground align-top pt-3" title={new Date(r.createdAt).toLocaleString('pt-BR')}>
                         {relativeTime(r.createdAt)}
                       </TableCell>
-                      <TableCell className="font-medium text-foreground align-top">{r.actorName}</TableCell>
-                      <TableCell className="align-top">
+                      <TableCell className="hidden truncate font-medium text-foreground align-top pt-3 sm:table-cell" title={r.actorName}>{r.actorName}</TableCell>
+                      <TableCell className="whitespace-normal align-top pt-3">
                         <div className="flex items-start gap-2">
-                          <Icon className={`size-4 shrink-0 mt-0.5 ${KIND_COLOR[kind]}`} />
+                          <Icon className={cn('mt-0.5 size-4 shrink-0', KIND_COLOR[kind])} aria-hidden />
                           <div className="min-w-0 flex-1">
-                            <span className="text-foreground">{acaoLegivel(r)}</span>
-                            {origem && <p className="text-xs text-muted-foreground">{origem}</p>}
+                            <span className="break-words text-foreground">{acaoLegivel(r)}</span>
+                            {/* No celular a coluna "Quem" sai e o nome vem aqui, junto da origem. */}
+                            <p className="text-xs text-muted-foreground">
+                              <span className="font-medium text-foreground sm:hidden">{r.actorName}</span>
+                              {origem && <span className="sm:hidden"> · </span>}
+                              {origem}
+                            </p>
                           </div>
                           <button
                             type="button"
-                            className="shrink-0 rounded p-0.5 text-muted-foreground hover:text-foreground"
+                            className="-m-1 shrink-0 rounded-md p-1 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
                             aria-expanded={open}
                             aria-label={open ? 'Esconder detalhes' : 'Ver detalhes'}
                             onClick={e => {
@@ -365,17 +372,17 @@ function RouteComponent() {
                               toggleRow(r.id)
                             }}
                           >
-                            <ChevronDown className={`size-4 transition-transform ${open ? 'rotate-180' : ''}`} />
+                            <ChevronDown className={cn('size-4 transition-transform', open && 'rotate-180')} aria-hidden />
                           </button>
                         </div>
                       </TableCell>
-                      <TableCell className="hidden lg:table-cell font-mono text-[11px] text-muted-foreground max-w-xs truncate align-top" title={`${r.method} ${r.path} · ${r.statusCode}`}>
+                      <TableCell className="hidden truncate font-mono text-xs text-faint-foreground align-top pt-3 xl:table-cell" title={`${r.method} ${r.path} · ${r.statusCode}`}>
                         {r.method} {r.path} · {r.statusCode}
                       </TableCell>
                     </TableRow>
                     {open && (
                       <TableRow className="hover:bg-transparent">
-                        <TableCell colSpan={4} className="bg-muted/30 whitespace-normal">
+                        <TableCell colSpan={4} className="bg-muted/50 whitespace-normal">
                           <AuditRowDetails
                             row={r}
                             ipFiltered={!!r.ip && search.ip === r.ip}
@@ -402,6 +409,6 @@ function RouteComponent() {
           showLimitSelector={false}
         />
       )}
-    </div>
+    </PageContainer>
   )
 }

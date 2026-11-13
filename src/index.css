@@ -3,12 +3,35 @@
 @plugin "@tailwindcss/typography";
 @import "shadcn/tailwind.css";
 @import "@fontsource-variable/geist";
+@import "@fontsource-variable/geist-mono";
 
 @custom-variant dark (&:is(.dark *));
 
+/*
+ * Design do sistema (SR-080). Como usar cada token está no CLAUDE.md, seção "Design".
+ *
+ * - Painel: superfícies neutras (cinza-grafite) e UM destaque, o verde do Sindicato.
+ * - Site público: as mesmas regras sobre cores de papel, no escopo `html[data-area="site"]`
+ *   (o atributo é ligado em main.tsx e no layout do painel, ver lib/area.ts).
+ * - Contraste medido (WCAG) em cada valor; os números estão nos comentários.
+ */
+
+@theme {
+    /* Uma curva só para todo movimento: hover, menus, entradas. */
+    --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+    --default-transition-duration: 150ms;
+    --default-transition-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+    /* Sem 700 no sistema: `font-bold` sai em 600. Em código novo, use `font-semibold`. */
+    --font-weight-bold: 600;
+    /* Sombra de coisa que flutua (menus, diálogos). Neutra e baixa. */
+    --shadow-float: 0 8px 24px rgb(0 0 0 / 0.08), 0 1px 2px rgb(0 0 0 / 0.04);
+}
+
 @theme inline {
     --font-heading: var(--font-sans);
-    --font-sans: 'Geist Variable', sans-serif;
+    --font-sans: 'Geist Variable', ui-sans-serif, system-ui, sans-serif;
+    /* A assinatura: números de quadro de cotação. Só em preços, datas e Nº (utilidade `num`). */
+    --font-mono: 'Geist Mono Variable', ui-monospace, SFMono-Regular, Menlo, monospace;
     --color-sidebar-ring: var(--sidebar-ring);
     --color-sidebar-border: var(--sidebar-border);
     --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -26,8 +49,17 @@
     --color-input: var(--input);
     --color-border: var(--border);
     --color-destructive: var(--destructive);
+    --color-destructive-foreground: var(--destructive-foreground);
+    --color-destructive-soft: var(--destructive-soft);
+    --color-success: var(--success);
+    --color-success-foreground: var(--success-foreground);
+    --color-success-soft: var(--success-soft);
+    --color-warning: var(--warning);
+    --color-warning-foreground: var(--warning-foreground);
+    --color-warning-soft: var(--warning-soft);
     --color-accent-foreground: var(--accent-foreground);
     --color-accent: var(--accent);
+    --color-faint-foreground: var(--faint-foreground);
     --color-muted-foreground: var(--muted-foreground);
     --color-muted: var(--muted);
     --color-secondary-foreground: var(--secondary-foreground);
@@ -36,92 +68,175 @@
     --color-primary: var(--primary);
     --color-brand: var(--brand);
     --color-brand-foreground: var(--brand-foreground);
+    --color-brand-positive: var(--brand-positive);
+    --color-brand-negative: var(--brand-negative);
     --color-popover-foreground: var(--popover-foreground);
     --color-popover: var(--popover);
     --color-card-foreground: var(--card-foreground);
     --color-card: var(--card);
     --color-foreground: var(--foreground);
     --color-background: var(--background);
-    --radius-sm: calc(var(--radius) * 0.6);
-    --radius-md: calc(var(--radius) * 0.8);
-    --radius-lg: var(--radius);
-    --radius-xl: calc(var(--radius) * 1.4);
-    --radius-2xl: calc(var(--radius) * 1.8);
-    --radius-3xl: calc(var(--radius) * 2.2);
-    --radius-4xl: calc(var(--radius) * 2.6);
+    /* Cantos: etiqueta 6, item de menu e botão pequeno 8, botão e campo 10, cartão 12,
+       diálogo 16. Pílula (rounded-full) só em etiqueta pequena e avatar. */
+    --radius-sm: 0.375rem;
+    --radius-md: 0.5rem;
+    --radius-lg: 0.625rem;
+    --radius-xl: 0.75rem;
+    --radius-2xl: 1rem;
+    --radius-3xl: 1.25rem;
+    --radius-4xl: 1.5rem;
 }
 
+/* Painel, tema claro (o padrão). */
 :root {
-    --background: oklch(1 0 0);
-    --foreground: oklch(0.145 0 0);
-    --card: oklch(1 0 0);
-    --card-foreground: oklch(0.145 0 0);
-    --popover: oklch(1 0 0);
-    --popover-foreground: oklch(0.145 0 0);
-    --primary: oklch(0.205 0 0);
-    --primary-foreground: oklch(0.985 0 0);
+    color-scheme: light;
+    --radius: 0.625rem;
+    --background: #fafafa;
+    --foreground: #171717;            /* 17,9:1 no cartão */
+    --card: #ffffff;
+    --card-foreground: #171717;
+    --popover: #ffffff;
+    --popover-foreground: #171717;
+    /* Destaque único: o verde do Sindicato. Texto branco 6,3:1; como texto sobre o fundo 6,0:1. */
+    --primary: #1f6e3d;
+    --primary-foreground: #ffffff;
     /* Marca (verde institucional). Fixo nos dois temas — NÃO redefinir no .dark:
        superfícies de marca (footer/hero/login) ficam sempre verde-escuro. */
     --brand: oklch(0.44 0.11 150);
     --brand-foreground: oklch(0.985 0 0);
-    --secondary: oklch(0.97 0 0);
-    --secondary-foreground: oklch(0.205 0 0);
-    --muted: oklch(0.97 0 0);
-    --muted-foreground: oklch(0.556 0 0);
-    --accent: oklch(0.97 0 0);
-    --accent-foreground: oklch(0.205 0 0);
-    --destructive: oklch(0.577 0.245 27.325);
-    --border: oklch(0.922 0 0);
-    --input: oklch(0.922 0 0);
-    --ring: oklch(0.708 0 0);
-    --chart-1: oklch(0.87 0 0);
-    --chart-2: oklch(0.556 0 0);
-    --chart-3: oklch(0.439 0 0);
-    --chart-4: oklch(0.371 0 0);
-    --chart-5: oklch(0.269 0 0);
-    --radius: 0.625rem;
-    --sidebar: oklch(0.985 0 0);
-    --sidebar-foreground: oklch(0.145 0 0);
-    --sidebar-primary: oklch(0.205 0 0);
-    --sidebar-primary-foreground: oklch(0.985 0 0);
-    --sidebar-accent: oklch(0.97 0 0);
-    --sidebar-accent-foreground: oklch(0.205 0 0);
-    --sidebar-border: oklch(0.922 0 0);
-    --sidebar-ring: oklch(0.708 0 0);
+    /* Alta e baixa SOBRE a superfície de marca (o quadro de cotações do site). Tons
+       claros, fixos nos dois temas como o --brand. Sobre o --brand: 5,2:1 e 5,0:1. */
+    --brand-positive: #b9e4c1;
+    --brand-negative: #ffc9b8;
+    --secondary: #f4f4f5;             /* superfície um tom acima (linha ativa, botão secundário) */
+    --secondary-foreground: #171717;
+    --muted: #f4f4f5;
+    --muted-foreground: #525252;      /* texto secundário: 7,5:1 no fundo, 7,1:1 no muted */
+    --faint-foreground: #737373;      /* texto apagado (meta, legenda, placeholder): 4,5:1 no fundo */
+    --accent: #ededee;                /* hover de menu, botão fantasma */
+    --accent-foreground: #171717;
+    /* Positivo / entradas: o mesmo verde. Texto sobre o suave 5,4:1. */
+    --success: #1f6e3d;
+    --success-foreground: #ffffff;
+    --success-soft: #e9f1ec;
+    /* Aviso: âmbar, um tom só. Texto branco 5,7:1; texto sobre o suave 5,0:1. */
+    --warning: #8d5d1c;
+    --warning-foreground: #ffffff;
+    --warning-soft: #fbf0d9;
+    /* Negativo / saídas / excluir: vermelho da terra roxa. Texto branco 6,4:1; sobre o suave 5,5:1. */
+    --destructive: #a43d2b;
+    --destructive-foreground: #ffffff;
+    --destructive-soft: #f6ecea;
+    --border: rgb(23 23 23 / 0.09);   /* linha fina */
+    --input: #d4d4d4;                 /* borda dos campos, um pouco mais forte que a linha */
+    --ring: #1f6e3d;                  /* foco: 6,3:1 no cartão */
+    /* Gráficos: entradas, saídas, aviso e dois neutros. */
+    --chart-1: #1f6e3d;
+    --chart-2: #a43d2b;
+    --chart-3: #8d5d1c;
+    --chart-4: #737373;
+    --chart-5: #a3a3a3;
+    --sidebar: #f4f4f5;
+    --sidebar-foreground: #171717;
+    --sidebar-primary: #1f6e3d;
+    --sidebar-primary-foreground: #ffffff;
+    --sidebar-accent: #ffffff;        /* item ativo/hover: um tom acima da barra */
+    --sidebar-accent-foreground: #171717;
+    --sidebar-border: rgb(23 23 23 / 0.09);
+    --sidebar-ring: #1f6e3d;
 }
 
+/* Painel, tema escuro (rampa grafite). `color-scheme` deixa escuros os controles do
+   navegador (lista do <select> nativo, barra de rolagem, calendário nativo). */
 .dark {
-    --background: oklch(0.145 0 0);
-    --foreground: oklch(0.985 0 0);
-    --card: oklch(0.205 0 0);
-    --card-foreground: oklch(0.985 0 0);
-    --popover: oklch(0.205 0 0);
-    --popover-foreground: oklch(0.985 0 0);
-    --primary: oklch(0.922 0 0);
-    --primary-foreground: oklch(0.205 0 0);
-    --secondary: oklch(0.269 0 0);
-    --secondary-foreground: oklch(0.985 0 0);
-    --muted: oklch(0.269 0 0);
-    --muted-foreground: oklch(0.708 0 0);
-    --accent: oklch(0.269 0 0);
-    --accent-foreground: oklch(0.985 0 0);
-    --destructive: oklch(0.704 0.191 22.216);
-    --border: oklch(1 0 0 / 10%);
-    --input: oklch(1 0 0 / 15%);
-    --ring: oklch(0.556 0 0);
-    --chart-1: oklch(0.87 0 0);
-    --chart-2: oklch(0.556 0 0);
-    --chart-3: oklch(0.439 0 0);
-    --chart-4: oklch(0.371 0 0);
-    --chart-5: oklch(0.269 0 0);
-    --sidebar: oklch(0.205 0 0);
-    --sidebar-foreground: oklch(0.985 0 0);
-    --sidebar-primary: oklch(0.488 0.243 264.376);
-    --sidebar-primary-foreground: oklch(0.985 0 0);
-    --sidebar-accent: oklch(0.269 0 0);
-    --sidebar-accent-foreground: oklch(0.985 0 0);
-    --sidebar-border: oklch(1 0 0 / 10%);
-    --sidebar-ring: oklch(0.556 0 0);
+    color-scheme: dark;
+    --background: #141415;
+    --foreground: #ededed;            /* 15,7:1 */
+    --card: #19191b;
+    --card-foreground: #ededed;
+    --popover: #1e1e20;
+    --popover-foreground: #ededed;
+    /* Verde claro com texto escuro: 6,3:1; como texto sobre o cartão 6,1:1. */
+    --primary: #60a871;
+    --primary-foreground: #0a1a10;
+    --secondary: #232325;
+    --secondary-foreground: #ededed;
+    --muted: #232325;
+    --muted-foreground: #a1a1a6;      /* 6,8:1 no cartão */
+    --faint-foreground: #85858b;      /* 4,8:1 no cartão */
+    --accent: #2a2a2d;
+    --accent-foreground: #ededed;
+    --success: #60a871;
+    --success-foreground: #0a1a10;
+    --success-soft: #243029;          /* texto 4,8:1 */
+    --warning: #e6b55d;
+    --warning-foreground: #1a1204;
+    --warning-soft: #3a3226;          /* texto 6,7:1 */
+    --destructive: #e37e68;           /* 6,2:1 no cartão; texto escuro por cima 6,7:1 */
+    --destructive-foreground: #1f0d08;
+    --destructive-soft: #392927;      /* texto 4,9:1 */
+    --border: rgb(255 255 255 / 0.08);
+    --input: rgb(255 255 255 / 0.14);
+    --ring: #60a871;
+    --chart-1: #60a871;
+    --chart-2: #e37e68;
+    --chart-3: #e6b55d;
+    --chart-4: #85858b;
+    --chart-5: #5c5c61;
+    --sidebar: #0f0f10;
+    --sidebar-foreground: #ededed;
+    --sidebar-primary: #60a871;       /* era o azul-arroxeado do modelo */
+    --sidebar-primary-foreground: #0a1a10;
+    --sidebar-accent: #232325;
+    --sidebar-accent-foreground: #ededed;
+    --sidebar-border: rgb(255 255 255 / 0.08);
+    --sidebar-ring: #60a871;
+}
+
+/*
+ * Site público: cores de papel (rampa quente). O verde e os tons de aviso/negativo são os
+ * mesmos do painel. Fora do painel, Cinza e Verde-claro não existem: o site fica claro
+ * (ou escuro, com o tema escuro), como antes.
+ */
+html[data-area="site"] {
+    --background: #f7f4ee;
+    --foreground: #1f1b16;            /* 15,6:1 */
+    --card: #fdfbf7;
+    --card-foreground: #1f1b16;
+    --popover: #fdfbf7;
+    --popover-foreground: #1f1b16;
+    --secondary: #efe9df;
+    --secondary-foreground: #1f1b16;
+    --muted: #efe9df;
+    --muted-foreground: #5e554a;      /* 6,7:1 na página */
+    --faint-foreground: #736a5e;      /* 4,8:1 na página */
+    --accent: #e9e2d6;
+    --accent-foreground: #1f1b16;
+    --success-soft: #e7ede4;
+    --warning-soft: #f7ecd5;          /* texto 4,8:1 */
+    --destructive-soft: #f4e8e3;
+    --border: rgb(31 27 22 / 0.1);
+    --input: #d3cbbe;
+}
+html.dark[data-area="site"] {
+    --background: #161513;
+    --foreground: #efe9de;            /* 15,1:1 */
+    --card: #1c1a18;
+    --card-foreground: #efe9de;
+    --popover: #201e1b;
+    --popover-foreground: #efe9de;
+    --secondary: #262421;
+    --secondary-foreground: #efe9de;
+    --muted: #262421;
+    --muted-foreground: #aaa398;      /* 6,9:1 no cartão */
+    --faint-foreground: #8a847a;      /* 4,7:1 no cartão */
+    --accent: #2d2a26;
+    --accent-foreground: #efe9de;
+    --success-soft: #273126;
+    --warning-soft: #3c3323;
+    --destructive-soft: #3c2a25;
+    --border: rgb(239 233 222 / 0.08);
+    --input: rgb(239 233 222 / 0.14);
 }
 
 /*
@@ -129,8 +244,9 @@
  * diálogos, menus e campos continuam brancos (--background/--card/--popover não mudam).
  * Ligados por `data-painel` no <html>, que só existe dentro do painel (lib/theme.ts).
  * Contraste conferido (WCAG, razão de luminância): texto principal 15:1+, texto
- * secundário (muted-foreground) 6:1+ sobre o fundo, 7:1+ sobre os cartões; texto de erro
- * (destructive) 5:1+ sobre o fundo; borda dos campos 3:1 sobre o cartão branco.
+ * secundário (muted-foreground) 6:1+ sobre o fundo, 7:1+ sobre os cartões; texto apagado
+ * 4,6:1+ sobre o fundo; vermelho (destructive) e verde 5:1+ sobre o fundo; borda dos
+ * campos 3:1 sobre o cartão branco.
  */
 html[data-painel="cinza"] {
     --painel-fundo: oklch(0.925 0.003 250);
@@ -141,18 +257,25 @@ html[data-painel="verde"] {
 }
 html[data-painel] {
     --muted-foreground: oklch(0.44 0.012 250);
-    --destructive: oklch(0.5 0.19 27);
+    --faint-foreground: #62666b;
     --input: oklch(0.66 0.004 250);
 }
 html[data-painel] body,
 html[data-painel] [data-slot="sidebar-inset"] {
     background-color: var(--painel-fundo);
 }
-/* Campos (transparentes por padrão) ficam brancos sobre o fundo fosco, como os cartões. */
+/* Campos ficam brancos sobre o fundo fosco, como os cartões (garantia para campo feito à mão). */
 html[data-painel] [data-slot="input"]:not([type="checkbox"]):not([type="radio"]),
 html[data-painel] [data-slot="textarea"],
-html[data-painel] [data-slot="select-trigger"] {
+html[data-painel] [data-slot="select-trigger"],
+html[data-painel] [data-slot="native-select"] {
     background-color: var(--card);
+}
+
+/* Números de quadro de cotação: preços, datas e Nº. Mono de largura fixa, algarismos tabulares. */
+@utility num {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
 }
 
 @layer base {
@@ -160,7 +283,7 @@ html[data-painel] [data-slot="select-trigger"] {
     @apply border-border outline-ring/50;
     }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground antialiased;
     }
   html {
     @apply font-sans;

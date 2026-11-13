@@ -28,6 +28,9 @@ import { Pagination } from '@/components/ui/pagination'
 import { Tabs, TabsList, TabsTrigger, TabsContent, tabsWrapClass } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
 import { LoadErrorRetry } from '@/components/LoadErrorRetry'
+import { EmptyState } from '@/components/EmptyState'
+import { PageContainer } from '@/components/PageHeader'
+import { RowActions } from '@/components/RowActions'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -390,7 +393,7 @@ function DadosTab({ userId, user, completeMode, onCompleteModeEnd, hasNoProperti
           })
         }
       }
-      toast.success('Dados salvos com sucesso!')
+      toast.success('Dados salvos com sucesso.')
       setSaved(form)
       setWantInstructor(false)
       setEditing(false)
@@ -412,7 +415,7 @@ function DadosTab({ userId, user, completeMode, onCompleteModeEnd, hasNoProperti
   const d = !editing
   const inp = cn('h-9', d && READ_MODE_FIELD)
   const textareaCls = cn(
-    'rounded-md border border-input px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring bg-background w-full resize-none',
+    'rounded-lg border border-input px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring bg-card w-full resize-none',
     d && READ_MODE_FIELD,
   )
   // campos faltando (calculados em tempo real a partir do form atual)
@@ -452,32 +455,29 @@ function DadosTab({ userId, user, completeMode, onCompleteModeEnd, hasNoProperti
     <div className={cn('flex flex-col gap-6', editing && 'pb-24')}>
       {/* Banner modo completar cadastro */}
       {completeMode && (
-        <div className="rounded-lg border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/30 p-4 flex flex-col gap-3">
+        <div className="rounded-xl border border-warning/30 bg-warning-soft p-4 flex flex-col gap-3">
           <div className="flex items-center gap-2">
-            <AlertCircle className="size-4 text-amber-600 shrink-0" />
-            <p className="text-sm font-semibold text-amber-800 dark:text-amber-300">
+            <AlertCircle className="size-4 text-warning shrink-0" />
+            <p className="text-sm font-semibold text-foreground">
               {missingCount > 0
                 ? `${missingCount} campo${missingCount > 1 ? 's' : ''} necessário${missingCount > 1 ? 's' : ''} para completar o cadastro`
-                : 'Cadastro completo!'}
+                : 'Cadastro completo'}
             </p>
           </div>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-1.5">
             {Object.entries(missing).map(([key, isMissing]) => (
-              <span
+              <Badge
                 key={key}
-                className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                  isMissing
-                    ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400'
-                    : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400 line-through opacity-60'
-                }`}
+                variant={isMissing ? 'warning' : 'success'}
+                className={isMissing ? 'bg-card' : 'line-through opacity-70'}
               >
-                {isMissing ? null : <CheckCircle2 className="size-3" />}
+                {isMissing ? null : <CheckCircle2 />}
                 {missingLabels[key]}
-              </span>
+              </Badge>
             ))}
           </div>
           {missing.properties && (
-            <p className="text-xs text-amber-700 dark:text-amber-400 pl-1">
+            <p className="text-xs text-warning pl-1">
               Cadastre ao menos uma propriedade na aba <strong>Propriedades</strong>.
             </p>
           )}
@@ -486,21 +486,20 @@ function DadosTab({ userId, user, completeMode, onCompleteModeEnd, hasNoProperti
 
       <div className="flex justify-end gap-2">
         {!editing ? (
-          <Button variant="outline" size="sm" onClick={() => setEditing(true)} className="gap-1.5">
-            <Pencil className="size-3.5" /> Editar
+          <Button variant="outline" size="sm" onClick={() => setEditing(true)}>
+            <Pencil /> Editar
           </Button>
         ) : (
           <>
-            <Button variant="ghost" size="sm" onClick={handleCancel} className="gap-1.5">
-              <X className="size-3.5" /> Cancelar
+            <Button variant="ghost" size="sm" onClick={handleCancel}>
+              <X /> Cancelar
             </Button>
             <Button
               size="sm"
               onClick={handleSave}
               disabled={saving}
-              className="gap-1.5"
             >
-              <Save className="size-3.5" />
+              <Save />
               {saving ? 'Salvando...' : 'Salvar dados'}
             </Button>
           </>
@@ -509,7 +508,7 @@ function DadosTab({ userId, user, completeMode, onCompleteModeEnd, hasNoProperti
       {/* Identificação */}
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-sm flex items-center gap-2"><User className="size-4" /> Identificação</CardTitle>
+          <CardTitle className="text-sm flex items-center gap-2"><User className="size-4 text-muted-foreground" /> Identificação</CardTitle>
         </CardHeader>
         <CardContent className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           <PersonField campo="name" ctx={campos} required />
@@ -522,10 +521,10 @@ function DadosTab({ userId, user, completeMode, onCompleteModeEnd, hasNoProperti
                 <div className="flex flex-col gap-2">
                   <input ref={avatarInputRef} type="file" accept="image/*" className="hidden" onChange={handleAvatarFile} />
                   <Button type="button" size="sm" variant="outline" className="shrink-0" disabled={uploadAvatar.isPending} onClick={() => avatarInputRef.current?.click()}>
-                    <ImageUp className="size-3.5 mr-1.5" />{uploadAvatar.isPending ? 'Enviando...' : 'Galeria'}
+                    <ImageUp />{uploadAvatar.isPending ? 'Enviando...' : 'Galeria'}
                   </Button>
                   <Button type="button" size="sm" variant="outline" className="shrink-0" disabled={uploadAvatar.isPending} onClick={() => setShowCamera(true)}>
-                    <Camera className="size-3.5 mr-1.5" />Câmera
+                    <Camera />Câmera
                   </Button>
                 </div>
               )}
@@ -542,7 +541,7 @@ function DadosTab({ userId, user, completeMode, onCompleteModeEnd, hasNoProperti
       {/* Documentos */}
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-sm flex items-center gap-2"><FileText className="size-4" /> Documentos</CardTitle>
+          <CardTitle className="text-sm flex items-center gap-2"><FileText className="size-4 text-muted-foreground" /> Documentos</CardTitle>
         </CardHeader>
         <CardContent className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           <PersonField campo="cpf" ctx={campos} />
@@ -558,7 +557,7 @@ function DadosTab({ userId, user, completeMode, onCompleteModeEnd, hasNoProperti
       {/* Origem e Perfil */}
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-sm flex items-center gap-2"><Globe className="size-4" /> Origem e Perfil</CardTitle>
+          <CardTitle className="text-sm flex items-center gap-2"><Globe className="size-4 text-muted-foreground" /> Origem e Perfil</CardTitle>
         </CardHeader>
         <CardContent className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           <PersonField campo="birthPlace" ctx={campos} />
@@ -576,7 +575,7 @@ function DadosTab({ userId, user, completeMode, onCompleteModeEnd, hasNoProperti
       {/* Associação */}
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-sm flex items-center gap-2"><Briefcase className="size-4" /> Associação</CardTitle>
+          <CardTitle className="text-sm flex items-center gap-2"><Briefcase className="size-4 text-muted-foreground" /> Associação</CardTitle>
         </CardHeader>
         <CardContent className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           <PersonField campo="memberClassification" ctx={campos} />
@@ -596,12 +595,12 @@ function DadosTab({ userId, user, completeMode, onCompleteModeEnd, hasNoProperti
       {/* Instrutor */}
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-sm flex items-center gap-2"><GraduationCap className="size-4" /> Instrutor</CardTitle>
+          <CardTitle className="text-sm flex items-center gap-2"><GraduationCap className="size-4 text-muted-foreground" /> Instrutor</CardTitle>
         </CardHeader>
         <CardContent>
           {isInstructor ? (
             <div className="flex flex-col gap-4">
-              <Badge variant="secondary" className="w-fit">Instrutor ativo</Badge>
+              <Badge variant="success">Instrutor ativo</Badge>
               <div className="grid grid-cols-1 gap-4">
                 <FieldRow label="Bio">
                   <textarea
@@ -662,7 +661,7 @@ function DadosTab({ userId, user, completeMode, onCompleteModeEnd, hasNoProperti
                           onChange={e => setInstrBio(e.target.value)}
                           placeholder="Bio (opcional)"
                           rows={3}
-                          className="rounded-md border border-input px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring bg-background w-full resize-none"
+                          className="rounded-lg border border-input px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring bg-card w-full resize-none"
                         />
                       </FieldRow>
                       <FieldRow label="LinkedIn">
@@ -694,19 +693,19 @@ function DadosTab({ userId, user, completeMode, onCompleteModeEnd, hasNoProperti
         <div
           role="region"
           aria-label="Salvar alterações"
-          className="fixed inset-x-0 bottom-0 z-5 border-t bg-background/95 px-4 py-3 shadow-[0_-4px_12px_rgba(0,0,0,0.06)] backdrop-blur supports-backdrop-filter:bg-background/85 md:pl-[calc(var(--sidebar-width)+1.5rem)] md:group-has-data-[collapsible=icon]/sidebar-wrapper:pl-[calc(var(--sidebar-width-icon)+1.5rem)]"
+          className="fixed inset-x-0 bottom-0 z-5 border-t border-border bg-background px-4 py-3 shadow-[0_-4px_12px_rgba(0,0,0,0.06)] md:pl-[calc(var(--sidebar-width)+1.5rem)] md:group-has-data-[collapsible=icon]/sidebar-wrapper:pl-[calc(var(--sidebar-width-icon)+1.5rem)]"
         >
           <div className="flex flex-wrap items-center gap-2 sm:gap-3">
             {dirty && (
-              <span className="flex w-full items-center gap-1.5 text-sm font-medium text-amber-700 dark:text-amber-400 sm:w-auto">
+              <span className="flex w-full items-center gap-1.5 text-sm font-medium text-warning sm:w-auto">
                 <AlertCircle className="size-4 shrink-0" /> Alterações não salvas
               </span>
             )}
-            <Button variant="outline" onClick={handleCancel} disabled={saving} className="gap-1.5">
-              <X className="size-4" /> Cancelar
+            <Button variant="outline" onClick={handleCancel} disabled={saving}>
+              <X /> Cancelar
             </Button>
-            <Button onClick={handleSave} disabled={saving} className="gap-1.5">
-              <Save className="size-4" />
+            <Button onClick={handleSave} disabled={saving}>
+              <Save />
               {saving ? 'Salvando...' : 'Salvar dados'}
             </Button>
           </div>
@@ -762,6 +761,7 @@ function RelacoesTab({ userId }: { userId: string }) {
   const total = resp?.total ?? 0
   const totalPages = resp ? Math.ceil(total / limit) : 1
 
+  const navigate = useNavigate()
   const createRel = useCreateUserRelation(userId)
   const deleteRel = useDeleteUserRelation(userId)
   const [adding, setAdding] = useState(false)
@@ -793,7 +793,7 @@ function RelacoesTab({ userId }: { userId: string }) {
       setForm({ targetId: '', label: '' })
       setSearch('')
       setAdding(false)
-      toast.success('Relação adicionada!')
+      toast.success('Relação adicionada.')
     } catch (e) {
       toast.error(apiErrorMessage(e, 'Erro ao adicionar relação.'))
     }
@@ -814,7 +814,7 @@ function RelacoesTab({ userId }: { userId: string }) {
   if (relsError && !resp) {
     return (
       <LoadErrorRetry
-        className="rounded-lg border bg-card"
+        className="rounded-xl border border-border bg-card"
         message="Não foi possível carregar as relações."
         onRetry={() => void refetchRels()}
         retrying={relsFetching}
@@ -824,18 +824,15 @@ function RelacoesTab({ userId }: { userId: string }) {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between">
-        <p className="text-sm text-muted-foreground">{total} relação(ões) cadastrada(s)</p>
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-sm text-muted-foreground"><span className="tabular-nums">{total}</span> relação(ões) cadastrada(s)</p>
         <Button size="sm" onClick={() => setAdding(true)}>
           <Plus className="size-4" /> Adicionar
         </Button>
       </div>
 
       {!loadingRels && total === 0 && !adding && (
-        <div className="flex flex-col items-center justify-center py-12 border-2 border-dashed rounded-lg text-center">
-          <Heart className="size-10 text-muted-foreground/30 mb-3" />
-          <p className="text-sm font-medium">Nenhuma relação cadastrada</p>
-        </div>
+        <EmptyState framed icon={Heart} title="Nenhuma relação cadastrada" />
       )}
 
       {adding && (
@@ -843,10 +840,10 @@ function RelacoesTab({ userId }: { userId: string }) {
           <CardContent className="pt-4">
             <form onSubmit={handleCreate} className="flex flex-col gap-3">
               <FieldRow label="Buscar associado">
-                <Input value={search} onChange={e => setSearch(e.target.value)} placeholder="Nome ou CPF..." className="h-9" autoFocus />
+                <Input value={search} onChange={e => setSearch(e.target.value)} placeholder="Nome ou CPF..." autoFocus />
               </FieldRow>
               {search.length > 0 && (
-                <div className="rounded-md border max-h-40 overflow-y-auto">
+                <div className="rounded-lg border border-border max-h-40 overflow-y-auto">
                   {searchError && !searching && (
                     <LoadErrorRetry variant="inline" className="p-3" message="Não foi possível buscar." onRetry={() => void searchAgain()} />
                   )}
@@ -860,13 +857,13 @@ function RelacoesTab({ userId }: { userId: string }) {
                     >
                       <span className="font-medium">{u.name}</span>
                       <MemberBadge person={u} className="ml-2 align-middle" />
-                      {u.cpf && <span className="text-xs text-muted-foreground ml-2">{maskCPF(u.cpf)}</span>}
+                      {u.cpf && <span className="text-xs tabular-nums text-muted-foreground ml-2">{maskCPF(u.cpf)}</span>}
                     </button>
                   ))}
                 </div>
               )}
               <FieldRow label="Tipo de relação">
-                <Input value={form.label} onChange={e => setForm(p => ({ ...p, label: upperNoAccents(e.target.value) }))} placeholder="cônjuge, filho, irmão..." className="h-9" />
+                <Input value={form.label} onChange={e => setForm(p => ({ ...p, label: upperNoAccents(e.target.value) }))} placeholder="cônjuge, filho, irmão..." />
               </FieldRow>
               <div className="flex gap-2 justify-end">
                 <Button type="button" variant="outline" size="sm" onClick={() => { setAdding(false); setSearch(''); setForm({ targetId: '', label: '' }) }}>Cancelar</Button>
@@ -884,24 +881,22 @@ function RelacoesTab({ userId }: { userId: string }) {
           <div className="flex items-center justify-center py-8 text-sm text-muted-foreground">Carregando...</div>
         )}
         {relations.map(rel => (
-          <div key={rel.id} className="flex items-center justify-between rounded-lg border p-3 bg-card">
-            <div>
-              <p className="font-medium text-sm">{rel.target.name}</p>
-              <div className="flex items-center gap-2 mt-0.5">
-                {rel.label && <Badge variant="secondary" className="text-xs">{rel.label}</Badge>}
-                {rel.target.cpf && <span className="text-xs text-muted-foreground font-mono">{maskCPF(rel.target.cpf)}</span>}
+          <div key={rel.id} className="flex items-center justify-between gap-3 rounded-xl border border-border bg-card p-3">
+            <div className="min-w-0">
+              <p className="break-words font-medium text-sm">{rel.target.name}</p>
+              <div className="flex flex-wrap items-center gap-2 mt-0.5">
+                {rel.label && <Badge variant="neutral">{rel.label}</Badge>}
+                {rel.target.cpf && <span className="text-xs tabular-nums text-muted-foreground">{maskCPF(rel.target.cpf)}</span>}
               </div>
             </div>
-            <div className="flex items-center gap-1">
-              <Button variant="ghost" size="icon" className="size-7" asChild>
-                <Link to="/admin/usuarios/$id" params={{ id: rel.target.id }}>
-                  <Eye className="size-3.5" />
-                </Link>
-              </Button>
-              <Button variant="ghost" size="icon" className="size-7 text-destructive/60 hover:text-destructive" onClick={() => setDeleteTarget(rel)}>
-                <Trash2 className="size-3.5" />
-              </Button>
-            </div>
+            <RowActions
+              label={`Ações da relação com ${rel.target.name}`}
+              className="-my-1.5 -mr-1.5 shrink-0"
+              actions={[
+                { label: 'Ver cadastro', icon: Eye, onClick: () => void navigate({ to: '/admin/usuarios/$id', params: { id: rel.target.id } }) },
+                { label: 'Remover relação', icon: Trash2, onClick: () => setDeleteTarget(rel), destructive: true },
+              ]}
+            />
           </div>
         ))}
       </div>
@@ -973,33 +968,35 @@ function RouteComponent() {
 
   if (isLoading) {
     return (
-      <div className="p-6 flex flex-col gap-4">
-        <Skeleton className="h-8 w-48" />
-        <Skeleton className="h-4 w-64" />
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-4">
-          {Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-16 rounded-lg" />)}
+      <PageContainer>
+        <div className="flex flex-col gap-2">
+          <Skeleton className="h-8 w-48" />
+          <Skeleton className="h-4 w-64" />
         </div>
-      </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-16 rounded-xl" />)}
+        </div>
+      </PageContainer>
     )
   }
 
   if (error || !user) {
     return (
-      <div className="p-6">
+      <PageContainer>
         {errorStatus(error) === 404 ? (
-          <p className="rounded-lg border bg-muted/30 px-4 py-3 text-sm text-muted-foreground">Cadastro não encontrado.</p>
+          <p className="rounded-xl border border-border bg-card px-4 py-3 text-sm text-muted-foreground">Cadastro não encontrado.</p>
         ) : (
           <LoadErrorRetry
-            className="rounded-lg border bg-card"
+            className="rounded-xl border border-border bg-card"
             message="Não foi possível carregar o cadastro."
             onRetry={() => void refetch()}
             retrying={isFetching}
           />
         )}
-        <Button variant="outline" asChild className="mt-4">
-          <Link to="/admin/usuarios"><ArrowLeft className="size-4 mr-2" /> Voltar</Link>
+        <Button variant="outline" asChild className="w-fit">
+          <Link to="/admin/usuarios"><ArrowLeft /> Voltar</Link>
         </Button>
-      </div>
+      </PageContainer>
     )
   }
 
@@ -1033,37 +1030,35 @@ function RouteComponent() {
   ]
 
   return (
-    <div className="p-6 flex flex-col gap-6">
-      {/* Header */}
-      <div className="flex flex-wrap items-start gap-x-4 gap-y-3">
-        <Button variant="ghost" size="icon" asChild className="mt-0.5">
-          <Link to="/admin/usuarios">
-            <ArrowLeft className="size-4" />
-          </Link>
-        </Button>
-        {/* No celular o nome ocupa a linha ao lado da seta e os botões descem para a linha de baixo. */}
-        <div className="min-w-0 flex-1 basis-[12rem]">
+    <PageContainer>
+      {/* Cabeçalho: o "voltar" em cima; nome, selo e dados à esquerda; ações à direita
+          (no celular as ações descem para baixo do nome), como no PageHeader. */}
+      <div className="flex flex-col gap-1">
+        <Link to="/admin/usuarios" className="-ml-0.5 inline-flex min-h-9 w-fit items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground">
+          <ArrowLeft className="size-4" /> Usuários
+        </Link>
+        <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-6">
+        <div className="min-w-0">
           <PersonHeading person={user} />
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mt-1">
             {user.email && <span className="min-w-0 break-all text-sm text-muted-foreground">{user.email}</span>}
-            {user.cpf && <span className="whitespace-nowrap text-xs font-mono text-muted-foreground">CPF: {maskCPF(user.cpf)}</span>}
+            {user.cpf && <span className="whitespace-nowrap text-sm tabular-nums text-muted-foreground">CPF: {maskCPF(user.cpf)}</span>}
             {isIncomplete && !completeMode && (
-              <Badge variant="outline" className="text-xs gap-1 border-amber-300 text-amber-700 dark:text-amber-400">
-                <AlertCircle className="size-3" />
+              <Badge variant="warning">
+                <AlertCircle />
                 Cadastro incompleto ({missingFields.length})
               </Badge>
             )}
           </div>
         </div>
-        <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:shrink-0">
+        <div className="flex flex-wrap items-center gap-2 sm:shrink-0 sm:justify-end">
           {isIncomplete && !completeMode && (
             <Button
-              size="sm"
               variant="outline"
-              className="border-amber-300 text-amber-700 hover:bg-amber-50 dark:text-amber-400 dark:hover:bg-amber-950/30 gap-1.5"
+              className="border-warning/30 text-warning hover:bg-warning-soft hover:text-warning"
               onClick={() => { setCompleteMode(true); setActiveTab('dados') }}
             >
-              <AlertCircle className="size-3.5" />
+              <AlertCircle />
               Completar cadastro
             </Button>
           )}
@@ -1071,52 +1066,43 @@ function RouteComponent() {
           {/* Mesma pessoa cadastrada duas vezes (ver "Possíveis duplicados" na lista). */}
           {can('DELETE_USER') && (
             <Button
-              size="sm"
               variant="outline"
-              className="gap-1.5"
               onClick={() => setShowMerge(true)}
               title="Juntar com outro cadastro"
             >
-              <Users className="size-3.5" />
+              <Users />
               <span className="hidden sm:inline">Juntar cadastros</span>
             </Button>
           )}
           <Button
-            size="sm"
-            variant="outline"
-            className="border-red-300 text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/30 gap-1.5"
+            variant="destructive"
             onClick={() => setShowDeleteConfirm(true)}
           >
-            <Trash2 className="size-3.5" />
+            <Trash2 />
             Excluir
           </Button>
         </div>
+        </header>
       </div>
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className={cn(tabsWrapClass, 'mb-4')}>
-          <TabsTrigger value="dados"><User className="size-3.5 mr-1.5" /> Dados</TabsTrigger>
+        <TabsList className={tabsWrapClass}>
+          <TabsTrigger value="dados"><User /> Dados</TabsTrigger>
           <TabsTrigger value="propriedades">
-            <TreePine className="size-3.5 mr-1.5" /> Propriedades
-            {propertiesTotal > 0 && (
-              <span className="ml-1 rounded-full bg-muted px-1.5 text-[10px]">{propertiesTotal}</span>
-            )}
+            <TreePine /> Propriedades
+            {propertiesTotal > 0 && <TabCount n={propertiesTotal} />}
           </TabsTrigger>
           <TabsTrigger value="empresas">
-            <Building2 className="size-3.5 mr-1.5" /> Empresas
-            {(user.companyMemberships?.length ?? 0) > 0 && (
-              <span className="ml-1 rounded-full bg-muted px-1.5 text-[10px]">{user.companyMemberships!.length}</span>
-            )}
+            <Building2 /> Empresas
+            {(user.companyMemberships?.length ?? 0) > 0 && <TabCount n={user.companyMemberships!.length} />}
           </TabsTrigger>
           <TabsTrigger value="unimed">
-            <HeartPulse className="size-3.5 mr-1.5" /> Unimed
+            <HeartPulse /> Unimed
           </TabsTrigger>
           <TabsTrigger value="relacoes">
-            <Heart className="size-3.5 mr-1.5" /> Relações
-            {relationsTotal > 0 && (
-              <span className="ml-1 rounded-full bg-muted px-1.5 text-[10px]">{relationsTotal}</span>
-            )}
+            <Heart /> Relações
+            {relationsTotal > 0 && <TabCount n={relationsTotal} />}
           </TabsTrigger>
         </TabsList>
 
@@ -1168,6 +1154,11 @@ function RouteComponent() {
         onConfirm={handleDelete}
         pending={deleteWorker.isPending}
       />
-    </div>
+    </PageContainer>
   )
+}
+
+/** Contador ao lado do nome da aba (sem pílula). */
+function TabCount({ n }: { n: number }) {
+  return <span className="text-xs tabular-nums text-faint-foreground">{n}</span>
 }

@@ -12,6 +12,8 @@ import {
   Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog'
 import { DeleteConfirmDialog } from '@/components/DeleteConfirmDialog'
+import { RowActions } from '@/components/RowActions'
+import { cn } from '@/lib/utils'
 import { apiErrorMessage } from '@/lib/api-error-message'
 import { safeUrl } from '@/utils/safe-url'
 import {
@@ -109,17 +111,19 @@ export function GalleryAlbumCard({
   }
 
   return (
-    <Card className={hidden ? 'border-dashed' : ''}>
+    // Fora do site (oculta ou sem fotos): a etiqueta diz por quê, e as fotos ficam apagadas.
+    // Sem borda tracejada: o cartão tem a mesma linha fina dos outros.
+    <Card>
       <CardHeader className="flex flex-col gap-3 pb-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
             <h2 className="text-base font-semibold text-foreground">{album.title}</h2>
-            <Badge variant="secondary">{photos.length} foto{photos.length === 1 ? '' : 's'}</Badge>
+            <span className="text-xs text-faint-foreground tabular-nums">{photos.length} foto{photos.length === 1 ? '' : 's'}</span>
             {!album.isActive
-              ? <Badge variant="outline" className="gap-1"><EyeOff className="size-3" /> Oculta</Badge>
+              ? <Badge variant="neutral"><EyeOff aria-hidden /> Oculta</Badge>
               : photos.length === 0
-                ? <Badge variant="outline">Sem fotos: não aparece no site</Badge>
-                : <Badge className="gap-1"><Eye className="size-3" /> No site</Badge>}
+                ? <Badge variant="warning">Sem fotos: não aparece no site</Badge>
+                : <Badge variant="success"><Eye aria-hidden /> No site</Badge>}
           </div>
           {album.description && <p className="mt-1 text-sm text-muted-foreground">{album.description}</p>}
           {album.linkUrl && (
@@ -131,36 +135,40 @@ export function GalleryAlbumCard({
         </div>
         {canEdit && (
           <div className="flex shrink-0 items-center gap-1">
-            <Button size="sm" variant="ghost" className="h-8 px-2" disabled={index === 0} onClick={() => onMove(-1)}
-              aria-label={`Subir ${album.title}`} title="Subir"><ArrowUp className="size-4" /></Button>
-            <Button size="sm" variant="ghost" className="h-8 px-2" disabled={index === total - 1} onClick={() => onMove(1)}
-              aria-label={`Descer ${album.title}`} title="Descer"><ArrowDown className="size-4" /></Button>
-            <Button size="sm" variant="ghost" className="h-8 px-2" onClick={onToggleActive}
-              aria-label={album.isActive ? `Ocultar ${album.title}` : `Mostrar ${album.title}`}
-              title={album.isActive ? 'Ocultar do site' : 'Mostrar no site'}>
-              {album.isActive ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
-            </Button>
-            <Button size="sm" variant="ghost" className="h-8 px-2" onClick={onEdit}
-              aria-label={`Editar ${album.title}`} title="Editar"><Pencil className="size-4" /></Button>
-            {canDelete && (
-              <Button size="sm" variant="ghost" className="h-8 px-2 text-muted-foreground hover:text-destructive" onClick={onDelete}
-                aria-label={`Excluir ${album.title}`} title="Excluir galeria"><Trash2 className="size-4" /></Button>
-            )}
+            {/* Ordem (subir e descer) à parte das ações da galeria. */}
+            <Button size="icon-sm" variant="ghost" className="text-muted-foreground" disabled={index === 0} onClick={() => onMove(-1)}
+              aria-label={`Subir ${album.title}`} title="Subir"><ArrowUp /></Button>
+            <Button size="icon-sm" variant="ghost" className="text-muted-foreground" disabled={index === total - 1} onClick={() => onMove(1)}
+              aria-label={`Descer ${album.title}`} title="Descer"><ArrowDown /></Button>
+            <RowActions
+              label={`Ações da galeria ${album.title}`}
+              actions={[
+                { label: 'Editar', icon: Pencil, onClick: onEdit },
+                {
+                  label: album.isActive ? 'Ocultar do site' : 'Mostrar no site',
+                  key: 'visibilidade',
+                  icon: album.isActive ? EyeOff : Eye,
+                  onClick: onToggleActive,
+                },
+                { label: 'Excluir galeria', icon: Trash2, destructive: true, hidden: !canDelete, onClick: onDelete },
+              ]}
+            />
           </div>
         )}
       </CardHeader>
 
       <CardContent>
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+        <div className={cn('grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5', hidden && '[&_img]:opacity-60')}>
           {photos.map((p, i) => (
-            <figure key={p.id} className="group flex flex-col overflow-hidden rounded-lg border border-border bg-muted/30">
+            <figure key={p.id} className="group flex flex-col overflow-hidden rounded-lg border border-border bg-card">
               <div className="relative aspect-4/3 bg-muted">
                 <img src={p.url} alt={p.caption ?? `Foto ${i + 1} de ${album.title}`} loading="lazy"
                   className="absolute inset-0 size-full object-cover" />
-                <span className="absolute left-1.5 top-1.5 rounded bg-black/60 px-1.5 text-[10px] font-medium text-white">{i + 1}</span>
+                {/* Número sobre a foto: texto branco no véu escuro, nos dois temas. */}
+                <span className="absolute top-1.5 left-1.5 rounded-sm bg-black/60 px-1.5 text-xs font-medium text-white tabular-nums">{i + 1}</span>
               </div>
               <figcaption className="flex min-h-8 items-center px-2 py-1 text-xs text-muted-foreground">
-                <span className="line-clamp-2">{p.caption || <em className="opacity-60">Sem legenda</em>}</span>
+                <span className="line-clamp-2">{p.caption || <span className="text-faint-foreground">Sem legenda</span>}</span>
               </figcaption>
               {canEdit && (
                 <div className="flex items-center justify-between border-t border-border px-1 py-0.5">
@@ -195,7 +203,7 @@ export function GalleryAlbumCard({
               type="button"
               disabled={!!progress}
               onClick={() => fileRef.current?.click()}
-              className="flex aspect-4/3 flex-col items-center justify-center gap-1.5 rounded-lg border-2 border-dashed border-border text-sm text-muted-foreground transition-colors hover:border-primary hover:text-primary disabled:cursor-wait"
+              className="flex aspect-4/3 flex-col items-center justify-center gap-1.5 rounded-lg border border-border bg-muted text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:cursor-wait"
             >
               {progress
                 ? <><Loader2 className="size-5 animate-spin" /> Enviando {Math.min(progress.done + 1, progress.total)} de {progress.total}…</>
@@ -212,7 +220,7 @@ export function GalleryAlbumCard({
         <DialogContent className="sm:max-w-md">
           <form onSubmit={saveCaption} className="flex flex-col gap-4">
             <DialogHeader><DialogTitle>Legenda da foto</DialogTitle></DialogHeader>
-            {captionTarget && <img src={captionTarget.url} alt="" className="max-h-56 w-full rounded-md object-contain bg-muted" />}
+            {captionTarget && <img src={captionTarget.url} alt="" className="max-h-56 w-full rounded-lg bg-muted object-contain" />}
             <Input aria-label="Legenda" maxLength={200} value={caption} onChange={e => setCaption(e.target.value)}
               placeholder="Ex.: Fundação do sindicato, 1986" autoFocus />
             <DialogFooter>

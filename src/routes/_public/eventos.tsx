@@ -1,11 +1,14 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { CalendarDays, CalendarX, Clock, DoorOpen } from 'lucide-react'
+import { CalendarX } from 'lucide-react'
 import { Skeleton } from '@/components/ui/skeleton'
 import { LoadErrorRetry } from '@/components/LoadErrorRetry'
+import { EmptyState } from '@/components/EmptyState'
+import { ContextFigure, PublicPageHeader } from '@/components/PublicPageHeader'
+import { EventDateBlock, EventMeta } from '@/components/home-events-section'
 import { usePublicEvents, type PublicEvent } from '@/hooks/usePublicEvents'
 import { useSeo } from '@/hooks/useSeo'
-import { eventDateLabel, groupByMonth } from '@/lib/public-events'
-import { timeRangeLabel } from '@/lib/agenda'
+import { groupByMonth } from '@/lib/public-events'
+import { formatDateBr, wallDate } from '@/lib/agenda'
 
 export const Route = createFileRoute('/_public/eventos')({
   component: EventosPage,
@@ -13,22 +16,15 @@ export const Route = createFileRoute('/_public/eventos')({
 
 function EventCard({ event }: { event: PublicEvent }) {
   return (
-    <article className="flex flex-col gap-2 rounded-xl border bg-card p-4 shadow-sm">
-      <p className="text-sm font-medium text-primary">{eventDateLabel(event)}</p>
-      <h3 className="text-lg font-semibold leading-snug text-foreground">{event.title}</h3>
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
-        <span className="flex items-center gap-1.5">
-          <Clock className="size-4 shrink-0" aria-hidden />
-          <span className="tabular-nums">{timeRangeLabel(event)}</span>
-        </span>
-        <span className="flex items-center gap-1.5">
-          <DoorOpen className="size-4 shrink-0" aria-hidden />
-          {event.roomName}
-        </span>
+    <article className="flex gap-4 rounded-xl border border-border bg-card p-4 md:p-5">
+      <EventDateBlock event={event} />
+      <div className="flex min-w-0 flex-col gap-2">
+        <h3 className="text-lg font-semibold leading-snug text-foreground wrap-break-word">{event.title}</h3>
+        <EventMeta event={event} />
+        {event.description && (
+          <p className="whitespace-pre-line text-sm text-muted-foreground wrap-break-word">{event.description}</p>
+        )}
       </div>
-      {event.description && (
-        <p className="whitespace-pre-line text-sm text-muted-foreground">{event.description}</p>
-      )}
     </article>
   )
 }
@@ -41,15 +37,23 @@ function EventosPage() {
 
   const { data: events = [], isLoading, isError, isFetching, refetch } = usePublicEvents()
   const months = groupByMonth(events)
+  const next = events[0]
 
   return (
     <div className="bg-background">
-      <div className="container mx-auto max-w-4xl px-4 py-10 md:py-14">
-        <header className="mb-8 flex items-center gap-3">
-          <CalendarDays className="size-7 text-primary" aria-hidden />
-          <h1 className="text-3xl font-bold tracking-tight text-foreground md:text-4xl">Eventos</h1>
-        </header>
+      <PublicPageHeader
+        width="max-w-4xl"
+        title="Eventos"
+        description="Os próximos eventos do Sindicato, com data, horário e local."
+        context={isLoading || isError ? null : events.length > 0
+          ? <>
+              <ContextFigure>{events.length}</ContextFigure> {events.length > 1 ? 'eventos marcados' : 'evento marcado'}
+              {next && <> · o próximo em <span className="num font-medium text-foreground">{formatDateBr(wallDate(next.startTime))}</span></>}
+            </>
+          : ''}
+      />
 
+      <div className="container mx-auto max-w-4xl px-4 py-10 md:py-12">
         {isLoading && (
           <div className="flex flex-col gap-4">
             {Array.from({ length: 3 }).map((_, i) => (
@@ -64,22 +68,19 @@ function EventosPage() {
             onRetry={() => void refetch()}
             retrying={isFetching}
             message="Não foi possível carregar os eventos."
-            className="rounded-xl border bg-card"
+            className="rounded-xl border border-border bg-card"
           />
         )}
 
         {!isLoading && !isError && events.length === 0 && (
-          <div className="flex flex-col items-center justify-center rounded-xl border bg-card py-16 text-center">
-            <CalendarX className="size-12 text-muted-foreground/40" aria-hidden />
-            <p className="mt-3 text-sm text-muted-foreground">Nenhum evento marcado no momento.</p>
-          </div>
+          <EmptyState framed icon={CalendarX} title="Nenhum evento marcado no momento" />
         )}
 
         {!isLoading && !isError && months.length > 0 && (
           <div className="flex flex-col gap-10">
             {months.map(month => (
               <section key={month.key} className="flex flex-col gap-4">
-                <h2 className="text-sm font-semibold uppercase tracking-widest text-muted-foreground">
+                <h2 className="text-base font-semibold text-foreground first-letter:uppercase">
                   {month.label}
                 </h2>
                 <div className="flex flex-col gap-4">

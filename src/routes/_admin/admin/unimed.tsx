@@ -2,7 +2,7 @@ import { createFileRoute } from '@tanstack/react-router'
 import { useState } from 'react'
 import { toast } from 'sonner'
 import {
-  HeartPulse, Plus, Pencil, Trash2, Search, Receipt, ScrollText, FileSignature, Loader2, Download, MoreHorizontal,
+  HeartPulse, Plus, Pencil, Trash2, Search, Receipt, ScrollText, FileSignature, Download,
 } from 'lucide-react'
 import { requirePermission } from '@/lib/auth-guard'
 import { apiErrorMessage } from '@/lib/api-error-message'
@@ -15,13 +15,11 @@ import { maskCPF } from '@/utils/masks'
 import { STICKY_ACTIONS_CELL, STICKY_ACTIONS_ROW } from '@/lib/table-sticky-actions'
 import { useDebouncedValue } from '@/hooks/useDebouncedValue'
 import { useRowSelection } from '@/hooks/useRowSelection'
+import { useIsMobile } from '@/hooks/use-mobile'
 import { usePermissions } from '@/hooks/usePermissions'
 import { useUnimedList, useDeleteUnimed, type UnimedRow } from '@/hooks/useUnimed'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import {
-  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
   Table, TableHeader, TableBody, TableRow, TableHead, TableCell,
@@ -34,6 +32,9 @@ import { Pagination } from '@/components/ui/pagination'
 import { AjudaLink } from '@/components/ajuda/AjudaLink'
 import { BulkDeleteButton } from '@/components/export/BulkDeleteButton'
 import { UnimedFormDialog } from '@/components/unimed/UnimedFormDialog'
+import { PageContainer, PageHeader } from '@/components/PageHeader'
+import { FilterBar } from '@/components/FilterBar'
+import { RowActions, type RowAction } from '@/components/RowActions'
 
 export const Route = createFileRoute('/_admin/admin/unimed')({
   beforeLoad: () => requirePermission('READ_USER'),
@@ -68,6 +69,7 @@ function RouteComponent() {
 
   const { data, isLoading, isError, isFetching, refetch } = useUnimedList({ page, limit: 20, search })
   const deleteM = useDeleteUnimed()
+  const isMobile = useIsMobile()
   const { can } = usePermissions()
 
   const [dialogOpen, setDialogOpen] = useState(false)
@@ -123,34 +125,42 @@ function RouteComponent() {
     }
   }
 
-  return (
-    <div className="p-6 flex flex-col gap-6">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <div className="flex items-center gap-1">
-            <h1 className="text-2xl font-bold tracking-tight text-foreground">Unimed — Beneficiários</h1>
-            <AjudaLink topico="unimed" titulo="Unimed — Beneficiários" />
-          </div>
-          <p className="text-sm text-muted-foreground">
-            Beneficiários do plano de saúde vinculados aos usuários cadastrados.
-          </p>
-        </div>
-        <Button onClick={openNew} className="shrink-0">
-          <Plus className="size-4" /> Novo beneficiário
-        </Button>
-      </div>
+  // Editar e a Ficha à vista (os mais usados); os outros documentos, a planilha e o
+  // Excluir no "Mais", com os nomes escritos.
+  function actionsOf(r: UnimedRow): RowAction[] {
+    const [ficha, ...outros] = UNIMED_DOCS
+    const doc = (d: UnimedDoc): RowAction => ({
+      key: d.kind,
+      label: d.label,
+      icon: d.icon,
+      onClick: () => void gerarDoc(r, d),
+      busy: docBusy?.id === r.id && docBusy.kind === d.kind,
+      disabled: docBusy !== null,
+    })
+    return [
+      { label: 'Editar', icon: Pencil, onClick: () => openEdit(r.id) },
+      doc(ficha),
+      ...outros.map(doc),
+      { label: 'Exportar planilha', icon: Download, onClick: () => void exportarLinha(r), busy: exportBusyId === r.id },
+      { label: 'Excluir', icon: Trash2, onClick: () => setDeleteTarget(r), destructive: true },
+    ]
+  }
 
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <div className="relative w-full sm:max-w-sm">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
-          <Input
-            placeholder="Buscar por nome ou CPF..."
-            className="pl-9"
-            value={searchInput}
-            onChange={e => setSearchInput(e.target.value)}
-          />
-        </div>
-        <div className="flex items-center justify-end gap-2">
+  return (
+    <PageContainer>
+      <PageHeader
+        title="Unimed — Beneficiários"
+        description="Beneficiários do plano de saúde vinculados aos usuários cadastrados"
+        help={<AjudaLink topico="unimed" titulo="Unimed — Beneficiários" />}
+        actions={(
+          <Button onClick={openNew}>
+            <Plus className="size-4" /> Novo beneficiário
+          </Button>
+        )}
+      />
+
+      <FilterBar
+        actions={<>
           <SelectionInfo count={selection.count} onClear={selection.clear} />
           <BulkDeleteButton
             ids={selection.ids}
@@ -159,7 +169,6 @@ function RouteComponent() {
             allowed={can('DELETE_USER')}
             onDelete={id => deleteM.mutateAsync(id)}
             onDone={() => selection.clear()}
-            className="h-9"
           />
           <ExportMenu
             dataset="unimed"
@@ -168,19 +177,30 @@ function RouteComponent() {
             total={data?.total}
             filtered={!!search}
           />
+        </>}
+      >
+        <div className="relative sm:w-80">
+          <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" aria-hidden />
+          <Input
+            placeholder="Buscar por nome ou CPF..."
+            aria-label="Buscar por nome ou CPF"
+            className="pl-9"
+            value={searchInput}
+            onChange={e => setSearchInput(e.target.value)}
+          />
         </div>
-      </div>
+      </FilterBar>
 
       {isError && !data && (
         <LoadErrorRetry
-          className="rounded-lg border border-border bg-card"
+          className="rounded-xl border border-border bg-card"
           message="Não foi possível carregar os beneficiários."
           onRetry={() => void refetch()}
           retrying={isFetching}
         />
       )}
 
-      <div className="rounded-lg border border-border bg-card overflow-hidden">
+      <div className="rounded-xl border border-border bg-card overflow-hidden">
         <div className="overflow-x-auto">
           <Table>
             <TableHeader>
@@ -204,7 +224,7 @@ function RouteComponent() {
                 <TableHead className="hidden xl:table-cell">Matrícula</TableHead>
                 <TableHead className="hidden xl:table-cell">Tipo dependente</TableHead>
                 <TableHead className="hidden lg:table-cell">Data adesão</TableHead>
-                <TableHead className={`text-right ${STICKY_ACTIONS_CELL}`}>Ações</TableHead>
+                <TableHead className={`w-[120px] text-right ${STICKY_ACTIONS_CELL}`}>Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -222,7 +242,7 @@ function RouteComponent() {
               ))}
               {!isLoading && !isError && rows.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={8} className="p-0">
+                  <TableCell colSpan={8} className="p-0 whitespace-normal">
                     <EmptyState
                       icon={HeartPulse}
                       title="Nenhum beneficiário"
@@ -241,49 +261,13 @@ function RouteComponent() {
                   <TableCell className="hidden 2xl:table-cell text-muted-foreground">{r.plano ?? '—'}</TableCell>
                   <TableCell className="hidden xl:table-cell tabular-nums text-muted-foreground">{r.matricula ?? '—'}</TableCell>
                   <TableCell className="hidden xl:table-cell text-muted-foreground">{r.tipoDependente ?? '—'}</TableCell>
-                  <TableCell className="hidden lg:table-cell tabular-nums text-muted-foreground">
+                  <TableCell className="hidden lg:table-cell num text-muted-foreground">
                     {r.dataAdesao ? formatDateFromString(r.dataAdesao) : '—'}
                   </TableCell>
                   <TableCell className={`text-right ${STICKY_ACTIONS_CELL}`}>
-                    {/* Menu com rótulos escritos: os ícones sozinhos só se explicavam
-                        no hover, que não existe no celular/tablet. */}
-                    <DropdownMenu modal={false}>
-                      <DropdownMenuTrigger asChild>
-                        <Button size="sm" variant="outline" className="h-8 gap-1 px-2">
-                          {docBusy?.id === r.id || exportBusyId === r.id
-                            ? <Loader2 className="size-4 animate-spin" />
-                            : <MoreHorizontal className="size-4" />}
-                          Ações
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="w-64">
-                        {UNIMED_DOCS.map(doc => (
-                          <DropdownMenuItem
-                            key={doc.kind}
-                            onSelect={() => gerarDoc(r, doc)}
-                            disabled={docBusy !== null}
-                          >
-                            {docBusy?.id === r.id && docBusy.kind === doc.kind
-                              ? <Loader2 className="size-4 animate-spin" />
-                              : <doc.icon className="size-4" />}
-                            {doc.label}
-                          </DropdownMenuItem>
-                        ))}
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem onSelect={() => exportarLinha(r)} disabled={exportBusyId === r.id}>
-                          {exportBusyId === r.id
-                            ? <Loader2 className="size-4 animate-spin" />
-                            : <Download className="size-4" />}
-                          Exportar planilha
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onSelect={() => openEdit(r.id)}>
-                          <Pencil className="size-4" /> Editar
-                        </DropdownMenuItem>
-                        <DropdownMenuItem variant="destructive" onSelect={() => setDeleteTarget(r)}>
-                          <Trash2 className="size-4" /> Excluir
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                    {/* Editar e Ficha à vista; o resto no "Mais", com os rótulos escritos
+                        (os ícones sozinhos só se explicariam no hover, que o celular não tem). */}
+                    <RowActions label={`Ações de ${r.userData.name}`} actions={actionsOf(r)} visible={isMobile ? 1 : 2} />
                   </TableCell>
                 </TableRow>
               ))}
@@ -321,6 +305,6 @@ function RouteComponent() {
         onConfirm={handleDelete}
         pending={deleteM.isPending}
       />
-    </div>
+    </PageContainer>
   )
 }

@@ -8,11 +8,11 @@ veja: banners, fotos-e-imagens, como-criar-evento
 busca: banner destaque home colocar no ar criar imagem inicial
 ---
 
-1. Abra **Gestão › Banners** e crie um novo.
-2. Envie a **imagem**. Ela precisa ser deitada e bem larga — o destaque ocupa a
-   largura da tela.
+1. Abra **Gestão › Banners** e clique em **Novo banner**.
+2. Envie a **imagem**. Ela precisa ser deitada e bem larga: o painel recorta em
+   1440 × 600, e é esse cartaz inteiro que aparece no site.
 3. Informe a **data de início** e a **data de término**.
-4. Salve.
+4. Clique em **Criar banner**.
 
 O banner entra no ar **à 0h do dia de início** e sai **às 23h59 do dia de
 término**, no horário de Brasília. O dia de término conta inteiro: se o evento
@@ -31,13 +31,17 @@ Pelo selo do banner na lista:
 
 ## Para tirar do ar agora
 
-Marque como **Inativo**. Ele sai na hora, as datas ficam guardadas e você pode
-religar depois. Prefira isso a excluir.
+Abra o banner pelo lápis (**Editar banner**), desmarque **Banner ativo (visível
+no site)** e clique em **Salvar alterações**. Ele sai na hora, ganha o selo
+**Inativo**, as datas ficam guardadas e você pode religar depois. Prefira isso a
+excluir.
 
 ## Se a imagem falhar no envio
 
 O sistema avisa e **reabre o banner já criado na edição**. Não crie outro: é só
 escolher a imagem de novo ali mesmo.
 
-> O que importa na imagem tem que estar **no meio**. O site corta as bordas
-> conforme a tela, e texto colado na beirada some no celular.
+> O site mostra o cartaz **inteiro**, sem cortar: no computador, ao lado do
+> título e do botão; no celular, em cima deles. O único corte é o que você faz
+> no recorte, ao enviar a imagem. Por isso, confira ali se nenhum texto ficou
+> fora do quadro.

@@ -163,7 +163,7 @@ describe('AgendaSection', () => {
     renderSection()
     fireEvent.change(screen.getByLabelText('Buscar reserva por título ou responsável'), { target: { value: 'NAO EXISTE' } })
     act(() => { vi.advanceTimersByTime(400) })
-    expect(screen.getByText('Nada encontrado para “NAO EXISTE”.')).toBeInTheDocument()
+    expect(screen.getByText('Nada encontrado para “NAO EXISTE”')).toBeInTheDocument()
     // O botão do estado vazio (o outro "Limpar busca" é o X do campo).
     fireEvent.click(screen.getAllByRole('button', { name: 'Limpar busca' }).at(-1)!)
     act(() => { vi.advanceTimersByTime(400) })

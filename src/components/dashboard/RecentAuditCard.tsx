@@ -1,6 +1,6 @@
 import { Link } from '@tanstack/react-router'
 import { LoadErrorRetry } from '@/components/LoadErrorRetry'
-import { ScrollText, ArrowRight } from 'lucide-react'
+import { ArrowRight } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useAuditTrail, type AuditTrailItem } from '@/hooks/useAuditTrail'
@@ -22,10 +22,7 @@ export function RecentAuditCard() {
     <Card>
       <CardHeader className="pb-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <CardTitle className="flex items-center gap-2 text-base">
-            <ScrollText className="size-4 text-primary" aria-hidden />
-            Últimas ações
-          </CardTitle>
+          <CardTitle className="text-base">Últimas ações</CardTitle>
           <Link
             to="/admin/auditoria"
             className="inline-flex items-center gap-1 text-sm font-medium text-primary underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
@@ -45,12 +42,12 @@ export function RecentAuditCard() {
             <li key={i}><Skeleton className="h-10 w-full rounded-lg" /></li>
           ))}
           {!isError && !isLoading && itens.map(item => (
-            <li key={item.id} className="flex items-start justify-between gap-3 border-b border-border/60 pb-2 last:border-0 last:pb-0">
+            <li key={item.id} className="flex items-start justify-between gap-3 border-b border-border pb-2 last:border-0 last:pb-0">
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm text-foreground">{auditLine(item)}</p>
                 <p className="truncate text-xs text-muted-foreground">{item.actorName}</p>
               </div>
-              <span className="shrink-0 text-xs text-muted-foreground" title={fullDateTime(item.createdAt)}>
+              <span className="shrink-0 text-xs tabular-nums text-faint-foreground" title={fullDateTime(item.createdAt)}>
                 {relativeTime(item.createdAt)}
               </span>
             </li>

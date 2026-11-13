@@ -1,21 +1,25 @@
 import { useTranslation } from 'react-i18next'
 import type { Course } from '@/@types/course'
+import { Badge } from '@/components/ui/badge'
 
+type Tone = 'neutral' | 'success' | 'warning' | 'outline'
+
+/**
+ * Selo do status do curso, nos tons da etiqueta (ui/badge): público em verde, privado
+ * em âmbar, rascunho e concluído neutros; "Em andamento" é neutro com a linha, para
+ * se distinguir do rascunho sem trazer outra cor.
+ */
 export function StatusBadge({ status }: { status: Course['status'] }) {
   const { t } = useTranslation()
 
-  const STATUS_MAP: Record<string, { label: string; cls: string }> = {
-    PUBLIC: { label: t('admin.courses.form.statusPublic'), cls: 'bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-400 dark:border-emerald-900' },
-    PRIVATE: { label: t('admin.courses.form.statusPrivate'), cls: 'bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-400 dark:border-amber-900' },
-    UNPUBLISHED: { label: t('admin.courses.form.statusDraft'), cls: 'bg-muted text-muted-foreground border-border' },
-    IN_PROGRESS: { label: t('admin.courses.form.statusInProgress'), cls: 'bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-950/40 dark:text-blue-400 dark:border-blue-900' },
-    COMPLETED: { label: 'Concluído', cls: 'bg-violet-100 text-violet-700 border-violet-200 dark:bg-violet-950/40 dark:text-violet-400 dark:border-violet-900' },
+  const STATUS_MAP: Record<string, { label: string; tone: Tone }> = {
+    PUBLIC: { label: t('admin.courses.form.statusPublic'), tone: 'success' },
+    PRIVATE: { label: t('admin.courses.form.statusPrivate'), tone: 'warning' },
+    UNPUBLISHED: { label: t('admin.courses.form.statusDraft'), tone: 'neutral' },
+    IN_PROGRESS: { label: t('admin.courses.form.statusInProgress'), tone: 'outline' },
+    COMPLETED: { label: 'Concluído', tone: 'neutral' },
   }
 
-  const { label, cls } = STATUS_MAP[status] ?? STATUS_MAP.UNPUBLISHED
-  return (
-    <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium ${cls}`}>
-      {label}
-    </span>
-  )
+  const { label, tone } = STATUS_MAP[status] ?? STATUS_MAP.UNPUBLISHED
+  return <Badge variant={tone}>{label}</Badge>
 }

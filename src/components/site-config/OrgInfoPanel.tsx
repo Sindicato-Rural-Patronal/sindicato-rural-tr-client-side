@@ -41,7 +41,7 @@ export function OrgInfoPanel({ canEdit }: { canEdit: boolean }) {
   return (
     <div className="flex flex-col gap-4">
       {isError && !data && (
-        <LoadErrorRetry className="rounded-lg border bg-card" message="Não foi possível carregar os dados do sindicato." onRetry={() => void refetch()} retrying={isFetching} />
+        <LoadErrorRetry className="rounded-xl border border-border bg-card" message="Não foi possível carregar os dados do sindicato." onRetry={() => void refetch()} retrying={isFetching} />
       )}
       {isLoading && <Skeleton className="h-96 w-full rounded-xl" />}
       {data && <OrgInfoForm initial={data} canEdit={canEdit} />}
@@ -84,31 +84,31 @@ function OrgInfoForm({ initial, canEdit }: { initial: SiteSettings; canEdit: boo
         </CardHeader>
         <CardContent className="grid grid-cols-1 gap-4 md:grid-cols-6">
           <Field id="org-phone" label="Telefone" className="md:col-span-2">
-            <Input id="org-phone" className="h-9" disabled={d} inputMode="tel" value={form.orgPhone}
+            <Input id="org-phone" disabled={d} inputMode="tel" value={form.orgPhone}
               onChange={e => set('orgPhone', maskPhone(e.target.value))} placeholder="(44) 0000-0000" />
           </Field>
           <Field id="org-email" label="E-mail" className="md:col-span-4">
-            <Input id="org-email" type="email" className="h-9" disabled={d} value={form.orgEmail}
+            <Input id="org-email" type="email" disabled={d} value={form.orgEmail}
               onChange={e => set('orgEmail', e.target.value)} />
           </Field>
           <Field id="org-street" label="Rua e número" className="md:col-span-4">
-            <Input id="org-street" className="h-9" disabled={d} value={form.orgStreet}
+            <Input id="org-street" disabled={d} value={form.orgStreet}
               onChange={e => set('orgStreet', e.target.value)} placeholder="Rua José Tondato, 80" />
           </Field>
           <Field id="org-district" label="Bairro" className="md:col-span-2">
-            <Input id="org-district" className="h-9" disabled={d} value={form.orgDistrict}
+            <Input id="org-district" disabled={d} value={form.orgDistrict}
               onChange={e => set('orgDistrict', e.target.value)} />
           </Field>
           <Field id="org-city" label="Cidade" className="md:col-span-3">
-            <Input id="org-city" className="h-9" disabled={d} value={form.orgCity}
+            <Input id="org-city" disabled={d} value={form.orgCity}
               onChange={e => set('orgCity', e.target.value)} />
           </Field>
           <Field id="org-state" label="UF" className="md:col-span-1">
-            <Input id="org-state" className="h-9" disabled={d} maxLength={2} value={form.orgState}
+            <Input id="org-state" disabled={d} maxLength={2} value={form.orgState}
               onChange={e => set('orgState', e.target.value.replace(/[^a-z]/gi, '').toUpperCase())} />
           </Field>
           <Field id="org-zip" label="CEP" className="md:col-span-2">
-            <Input id="org-zip" className="h-9" disabled={d} inputMode="numeric" value={form.orgZip}
+            <Input id="org-zip" disabled={d} inputMode="numeric" value={form.orgZip}
               onChange={e => set('orgZip', maskCEP(e.target.value))} placeholder="00000-000" />
           </Field>
           <Field id="org-hours" label="Horário de atendimento" hint='Uma linha por horário, no formato "Dias: horário".' className="md:col-span-3">
@@ -116,7 +116,7 @@ function OrgInfoForm({ initial, canEdit }: { initial: SiteSettings; canEdit: boo
               onChange={e => set('orgHours', e.target.value)} placeholder={'Segunda a Sexta: 08h às 17h\nSábado: 08h às 12h'} />
           </Field>
           <Field id="org-map" label="Busca do mapa" hint="O que o mapa da página Contato procura no Google Maps." className="md:col-span-3">
-            <Input id="org-map" className="h-9" disabled={d} value={form.orgMapQuery}
+            <Input id="org-map" disabled={d} value={form.orgMapQuery}
               onChange={e => set('orgMapQuery', e.target.value)} placeholder="Sindicato Rural de Terra Roxa PR" />
             <a href={mapUrl} target="_blank" rel="noopener noreferrer"
               className="inline-flex w-fit items-center gap-1 text-xs text-primary hover:underline">

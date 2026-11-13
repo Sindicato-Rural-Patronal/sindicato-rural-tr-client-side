@@ -14,19 +14,21 @@ busca: criar curso novo cadastrar abrir turma passo a passo
 3. Escolha a **sala**. Esse campo é obrigatório e é o que põe o curso na
    agenda — sem ele, duas coisas poderiam ser marcadas no mesmo horário.
 4. Informe **data e horário de início e término**.
-5. Deixe a situação em **Rascunho** enquanto estiver montando. Assim o curso
+5. Deixe o **Status** em **Rascunho** enquanto estiver montando. Assim o curso
    não aparece no site nem aceita inscrição.
 6. Preencha o que já souber: valor, carga horária, nº do evento, mínimo de
-   alunos e o **prazo de inscrição**.
+   alunos e o prazo de inscrição (**Inscrições até (data)**).
 7. Na aba **Descrição**, escreva o texto que o visitante vai ler. Na aba
    **Imagens**, envie a capa — é ela que aparece no site e na prévia do
    WhatsApp.
-8. Quando estiver pronto, mude a situação para **Público** e salve. O curso
-   entra na lista do site e passa a aceitar inscrição.
+8. Quando estiver pronto, mude o **Status** para **Público** e clique em
+   **Criar curso** (ou em **Salvar**, se o curso já existia). O curso entra na
+   lista do site e passa a aceitar inscrição.
 
 ## Se o curso já existiu antes
 
-Não recomece do zero: no menu do card, use **Duplicar curso**. Ele abre a
+Não recomece do zero: no menu **Mais** (o **⋯** no canto do cartão), use
+**Duplicar curso**. Ele abre a
 criação já preenchida, com a capa e os instrutores copiados, e deixa em branco
 o que muda — datas, prazo e nº do evento. Vem como Rascunho.
 

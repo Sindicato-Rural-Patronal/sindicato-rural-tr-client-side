@@ -27,6 +27,8 @@ import {
 import { NoPermission } from '@/components/NoPermission'
 import { LoadErrorRetry } from '@/components/LoadErrorRetry'
 import { AjudaLink } from '@/components/ajuda/AjudaLink'
+import { PageContainer, PageHeader } from '@/components/PageHeader'
+import { cn } from '@/lib/utils'
 
 export const Route = createFileRoute('/_admin/admin/cotacoes/')({
   component: RouteComponent,
@@ -47,12 +49,10 @@ function Variation({ value }: { value: string | null }) {
   if (!value) return null
   const trend = trendOf(value)
   const Icon = trend === 'down' ? TrendingDown : trend === 'up' ? TrendingUp : Minus
-  const color = trend === 'down'
-    ? 'text-red-600 dark:text-red-400'
-    : trend === 'up' ? 'text-emerald-600 dark:text-emerald-400' : 'text-muted-foreground'
+  const color = trend === 'down' ? 'text-destructive' : trend === 'up' ? 'text-success' : 'text-muted-foreground'
   return (
-    <span className={`inline-flex items-center gap-0.5 font-medium ${color}`}>
-      <Icon className="size-3" /> {value}
+    <span className={cn('inline-flex items-center gap-0.5 font-medium', color)}>
+      <Icon className="size-3" aria-hidden /> <span className="num">{value}</span>
     </span>
   )
 }
@@ -61,9 +61,9 @@ function LastEntry({ q }: { q: MarketQuote }) {
   if (q.priceCents == null) return <span className="text-sm text-muted-foreground">Sem lançamento ainda</span>
   return (
     <div className="flex flex-col">
-      <span className="text-sm font-medium tabular-nums text-foreground">{q.value}</span>
+      <span className="num text-sm font-medium text-foreground">{q.value}</span>
       <span className="flex flex-wrap items-center gap-x-1.5 text-xs text-muted-foreground">
-        {q.referenceDate && <span>{formatDateFromString(q.referenceDate)}</span>}
+        {q.referenceDate && <span className="num">{formatDateFromString(q.referenceDate)}</span>}
         {q.period && <span>· {QUOTE_PERIOD_LABEL[q.period]}</span>}
         {q.variation && <span>·</span>}
         <Variation value={q.variation} />
@@ -116,7 +116,6 @@ function QuotesSourceCard({ canEdit }: { canEdit: boolean }) {
             <label htmlFor="quotes-source" className="text-xs font-medium text-muted-foreground">Fonte exibida no site</label>
             <Input
               id="quotes-source"
-              className="h-9"
               maxLength={80}
               placeholder="Ex.: Cvale"
               disabled={!canEdit || isLoading || update.isPending}
@@ -311,20 +310,16 @@ function RouteComponent() {
   ].filter((p): p is string => !!p)
 
   return (
-    <div className="flex flex-col gap-6 p-6">
-      <div>
-        <div className="flex items-center gap-1">
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">Cotações</h1>
-          <AjudaLink topico="cotacoes" titulo="Cotações" />
-        </div>
-        <p className="text-sm text-muted-foreground">
-          Produtos fixos exibidos na página inicial. Lance só os preços e o período — a data é a de hoje.
-        </p>
-      </div>
+    <PageContainer>
+      <PageHeader
+        title="Cotações"
+        description="Produtos fixos exibidos na página inicial. Lance só os preços e o período — a data é a de hoje"
+        help={<AjudaLink topico="cotacoes" titulo="Cotações" />}
+      />
 
       {isError && !quotes ? (
         <LoadErrorRetry
-          className="rounded-lg border border-border bg-card"
+          className="rounded-xl border border-border bg-card"
           message="Não foi possível carregar as cotações."
           onRetry={() => void refetch()}
           retrying={isFetching}
@@ -336,10 +331,11 @@ function RouteComponent() {
             <div>
               <CardTitle className="text-base">Lançamento de hoje</CardTitle>
               <p className="mt-0.5 inline-flex items-center gap-1.5 text-sm text-muted-foreground">
-                <CalendarDays className="size-3.5" /> {today}
+                <CalendarDays className="size-3.5 text-faint-foreground" aria-hidden /> {today}
               </p>
             </div>
-            <div role="radiogroup" aria-label="Período" className="inline-flex rounded-lg border border-border p-0.5">
+            {/* Mesmo desenho do SegmentedControl, mas como grupo de rádio (escolha de um período). */}
+            <div role="radiogroup" aria-label="Período" className="inline-flex w-fit gap-0.5 rounded-lg border border-border bg-muted p-0.5">
               {(Object.keys(QUOTE_PERIOD_LABEL) as QuotePeriod[]).map(p => {
                 const Icon = PERIOD_ICON[p]
                 const active = period === p
@@ -351,11 +347,14 @@ function RouteComponent() {
                     aria-checked={active}
                     disabled={!canEdit || saving}
                     onClick={() => setPeriod(p)}
-                    className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors disabled:cursor-not-allowed ${
-                      active ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-                    }`}
+                    className={cn(
+                      'inline-flex h-8 items-center gap-1.5 rounded-md px-3 text-sm font-medium transition-colors disabled:cursor-not-allowed',
+                      active
+                        ? 'bg-card text-foreground shadow-xs ring-1 ring-border [&_svg]:text-primary'
+                        : 'text-muted-foreground hover:text-foreground',
+                    )}
                   >
-                    <Icon className="size-4" /> {QUOTE_PERIOD_LABEL[p]}
+                    <Icon className="size-4" aria-hidden /> {QUOTE_PERIOD_LABEL[p]}
                   </button>
                 )
               })}
@@ -363,7 +362,7 @@ function RouteComponent() {
           </CardHeader>
 
           <CardContent className="flex flex-col gap-0 p-0">
-            <div className="hidden grid-cols-[0.8fr_1.6fr_1.4fr] gap-4 border-y border-border bg-muted/40 px-6 py-2 text-xs font-medium text-muted-foreground sm:grid">
+            <div className="hidden grid-cols-[0.8fr_1.6fr_1.4fr] gap-4 border-y border-border bg-muted px-6 py-2 text-xs font-medium text-muted-foreground sm:grid">
               <span>Produto</span>
               <span>Último lançamento</span>
               <span>Novo preço e unidade</span>
@@ -390,12 +389,12 @@ function RouteComponent() {
                         type="button"
                         variant="outline"
                         size="sm"
-                        className="h-8 shrink-0"
+                        className="shrink-0"
                         disabled={saving}
                         title="Preencher o novo preço com o último lançado"
                         onClick={() => repeatLast(q)}
                       >
-                        <Repeat className="size-3.5" /> Repetir último
+                        <Repeat /> Repetir último
                       </Button>
                     )}
                   </div>
@@ -404,7 +403,7 @@ function RouteComponent() {
                       <Input
                         ref={el => { inputRefs.current[q.id] = el }}
                         id={inputId}
-                        className="h-9 tabular-nums"
+                        className="tabular-nums"
                         inputMode="numeric"
                         enterKeyHint="next"
                         placeholder="R$ 0,00"
@@ -416,7 +415,7 @@ function RouteComponent() {
                       />
                       <NativeSelect
                         aria-label={`Unidade de ${quoteProductLabel(q.label)}`}
-                        className={`h-9 w-36 shrink-0 px-2 ${unitChanged ? 'border-amber-500 dark:border-amber-400' : ''}`}
+                        className={cn('w-36 shrink-0 px-2', unitChanged && 'border-warning')}
                         disabled={!canEdit || saving}
                         value={unitValue}
                         onChange={e => changeUnit(q, e.target.value)}
@@ -426,7 +425,7 @@ function RouteComponent() {
                       </NativeSelect>
                     </div>
                     {unitChanged && !errors && (
-                      <span className="text-xs text-amber-700 dark:text-amber-400">
+                      <span className="text-xs text-warning">
                         Unidade alterada — vale no site depois de salvar.
                       </span>
                     )}
@@ -479,7 +478,7 @@ function RouteComponent() {
           </AlertDialogHeader>
           <div className="overflow-x-auto rounded-lg border border-border">
             <table className="w-full text-sm">
-              <thead className="bg-muted/40 text-xs text-muted-foreground">
+              <thead className="bg-muted text-xs text-muted-foreground">
                 <tr>
                   <th className="px-3 py-2 text-left font-medium">Produto</th>
                   <th className="px-3 py-2 text-right font-medium">Último</th>
@@ -491,9 +490,9 @@ function RouteComponent() {
                 {(deviations ?? []).map(d => (
                   <tr key={d.id} className="border-t border-border">
                     <td className="px-3 py-2 font-medium text-foreground">{d.label}</td>
-                    <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">{centsToBRL(d.lastCents)}</td>
-                    <td className="px-3 py-2 text-right tabular-nums font-semibold text-foreground">{centsToBRL(d.newCents)}</td>
-                    <td className="px-3 py-2 text-right tabular-nums font-medium text-amber-700 dark:text-amber-400">{formatQuoteChange(d.change)}</td>
+                    <td className="num px-3 py-2 text-right text-muted-foreground">{centsToBRL(d.lastCents)}</td>
+                    <td className="num px-3 py-2 text-right font-semibold text-foreground">{centsToBRL(d.newCents)}</td>
+                    <td className="num px-3 py-2 text-right font-medium text-warning">{formatQuoteChange(d.change)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -507,6 +506,6 @@ function RouteComponent() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+    </PageContainer>
   )
 }

@@ -34,20 +34,21 @@ export function PublicFooter() {
   ]
 
   return (
-    <footer className="border-t bg-brand text-brand-foreground">
-      <div className="container mx-auto px-4 py-12">
+    <footer className="bg-brand text-brand-foreground">
+      {/* pb-24 no celular: a última linha não fica embaixo do botão do WhatsApp. */}
+      <div className="container mx-auto px-4 pb-24 pt-12 lg:pb-12">
         <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-[1.3fr_0.8fr_1.2fr_1fr] lg:gap-12">
           {/* Marca + redes */}
           <div className="space-y-4">
             <div className="flex items-center gap-3">
-              <div className="flex size-14 shrink-0 items-center justify-center rounded-full bg-white p-1">
+              <div className="flex size-14 shrink-0 items-center justify-center rounded-full bg-brand-foreground p-1">
                 <img src="/logo-full.png" alt="" width={52} height={52} className="object-contain" />
               </div>
-              <p className="font-semibold leading-tight">Sindicato Rural<br />de Terra Roxa</p>
+              <p className="text-base font-semibold leading-tight">Sindicato Rural<br />de Terra Roxa</p>
             </div>
             {socials.length > 0 && (
               <div>
-                <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-brand-foreground/70">{t('footer.socialMedia')}</h4>
+                <h4 className="mb-2 text-sm text-brand-foreground/80">{t('footer.socialMedia')}</h4>
                 <div className="flex gap-3">
                   {socials.map(s => (
                     <a
@@ -55,7 +56,7 @@ export function PublicFooter() {
                       href={s.href}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="flex size-11 items-center justify-center rounded-full bg-white/20 transition-colors hover:bg-white/30"
+                      className="flex size-11 items-center justify-center rounded-full bg-brand-foreground/15 transition-colors hover:bg-brand-foreground/25"
                       aria-label={s.label}
                     >
                       <s.Icon className="size-5" />
@@ -71,7 +72,7 @@ export function PublicFooter() {
             <h4 className="mb-4 text-sm font-semibold">{t('footer.quickLinks')}</h4>
             <nav className="grid grid-cols-2 gap-x-6 text-sm text-brand-foreground/90 sm:grid-cols-1 sm:gap-y-2">
               {links.map(l => (
-                <Link key={l.to} to={l.to} className="flex min-h-11 w-fit items-center transition-colors hover:text-white sm:min-h-0">{l.label}</Link>
+                <Link key={l.to} to={l.to} className="flex min-h-11 w-fit items-center underline-offset-4 transition-colors hover:text-brand-foreground hover:underline sm:min-h-0">{l.label}</Link>
               ))}
             </nav>
           </div>
@@ -81,13 +82,13 @@ export function PublicFooter() {
             <h4 className="mb-4 text-sm font-semibold">{t('footer.contact')}</h4>
             <div className="space-y-3 text-sm text-brand-foreground/90">
               {org.phone && (
-                <a href={`tel:${phoneDigits(org.phone)}`} className="flex items-center gap-2 transition-colors hover:text-white">
+                <a href={`tel:${phoneDigits(org.phone)}`} className="flex w-fit items-center gap-2 underline-offset-4 transition-colors hover:text-brand-foreground hover:underline">
                   <Phone className="size-4 shrink-0" />
                   {org.phone}
                 </a>
               )}
               {org.email && (
-                <a href={`mailto:${org.email}`} className="flex items-center gap-2 break-all transition-colors hover:text-white">
+                <a href={`mailto:${org.email}`} className="flex w-fit items-center gap-2 break-all underline-offset-4 transition-colors hover:text-brand-foreground hover:underline">
                   <Mail className="size-4 shrink-0" />
                   {org.email}
                 </a>
@@ -116,18 +117,18 @@ export function PublicFooter() {
           {/* Chamada */}
           <div className="space-y-3">
             <h4 className="text-sm font-semibold">{t('footer.contactUs')}</h4>
-            <p className="text-sm text-brand-foreground/80">{t('footer.contactCta')}</p>
-            <Button asChild className="h-11 w-full bg-white text-sm font-semibold text-brand hover:bg-white/90">
+            <p className="text-sm text-brand-foreground/90">{t('footer.contactCta')}</p>
+            <Button asChild className="h-11 w-full bg-brand-foreground text-sm font-medium text-brand hover:bg-brand-foreground/90">
               <Link to="/contato">{t('footer.contactButton')}</Link>
             </Button>
           </div>
         </div>
 
-        <div className="mt-10 flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-t border-white/20 pt-6 text-xs text-brand-foreground/60">
+        <div className="mt-10 flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-t border-brand-foreground/20 pt-6 text-sm text-brand-foreground/80">
           <span>{t('footer.copyright', { year: new Date().getFullYear() })}</span>
           {/* Acesso da equipe: link discreto, sem competir com o "Entrar em contato".
               A margem negativa compensa o px-2, alinhando o texto à borda. */}
-          <Link to="/login" className="-mx-2 inline-flex min-h-11 items-center px-2 underline-offset-4 transition-colors hover:text-white hover:underline sm:min-h-0">
+          <Link to="/login" className="-mx-2 inline-flex min-h-11 items-center px-2 underline-offset-4 transition-colors hover:text-brand-foreground hover:underline sm:min-h-0">
             {t('footer.adminPanel')}
           </Link>
         </div>

@@ -92,13 +92,13 @@ export function GalleriesPanel({ canCreate, canEdit, canDelete }: {
       </div>
 
       {isError && !albums && (
-        <LoadErrorRetry className="rounded-lg border bg-card" message="Não foi possível carregar as galerias." onRetry={() => void refetch()} retrying={isFetching} />
+        <LoadErrorRetry className="rounded-xl border border-border bg-card" message="Não foi possível carregar as galerias." onRetry={() => void refetch()} retrying={isFetching} />
       )}
 
       {isLoading && Array.from({ length: 2 }).map((_, i) => <Skeleton key={i} className="h-56 w-full rounded-xl" />)}
 
       {!isLoading && !isError && list.length === 0 && (
-        <EmptyState icon={Images} title="Nenhuma galeria" description='Clique em "Nova galeria" para começar.' />
+        <EmptyState framed icon={Images} title="Nenhuma galeria" description='Clique em "Nova galeria" para começar.' />
       )}
 
       {list.map((album, i) => (

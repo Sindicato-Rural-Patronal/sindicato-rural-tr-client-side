@@ -15,10 +15,11 @@ export function QuickActions({ onNovaReserva }: { onNovaReserva: () => void }) {
 
   if (!podeCriarPessoa && !podeCriarCurso && !podeLancarCotacao) return null
 
-  const classe = 'h-11 w-full justify-start gap-2 sm:w-auto'
+  // 44 px no toque; no celular, dois por linha (um embaixo do outro empurrava o resto para longe).
+  const classe = 'h-11 w-full min-w-0 justify-start gap-2 sm:w-auto md:h-9'
 
   return (
-    <div role="group" aria-label="Ações rápidas" className="grid gap-2 sm:flex sm:flex-wrap">
+    <div role="group" aria-label="Ações rápidas" className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
       {podeCriarPessoa && (
         <Button asChild className={classe}>
           <Link to="/admin/usuarios/novo">

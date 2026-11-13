@@ -37,3 +37,16 @@ describe('EmptyState', () => {
     expect(screen.queryByRole('button')).not.toBeInTheDocument()
   })
 })
+
+describe('EmptyState: a caixa', () => {
+  it('sem `framed` não desenha borda (vai dentro de cartão, tabela ou painel)', () => {
+    const { container } = render(<EmptyState icon={GraduationCap} title="Vazio" />)
+    expect(container.firstChild).not.toHaveClass('border')
+  })
+
+  it('com `framed` vira um cartão com a linha fina, nunca tracejado', () => {
+    const { container } = render(<EmptyState icon={GraduationCap} title="Vazio" framed />)
+    expect(container.firstChild).toHaveClass('border', 'rounded-xl', 'bg-card')
+    expect(container.firstChild).not.toHaveClass('border-dashed')
+  })
+})

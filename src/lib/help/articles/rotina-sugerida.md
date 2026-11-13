@@ -12,12 +12,13 @@ assumindo o painel e não sabe por onde começar o dia.
 
 ## Todo dia
 
-1. Abra o **Painel Geral** e olhe os números que estão diferentes de zero.
+1. Abra o **Painel Geral** e olhe os cartões em âmbar, à frente: são os
+   números que estão diferentes de zero.
 2. Confira o **sino**: pendências em âmbar são coisas esperando por alguém.
 3. **Cotações** — lance de manhã. Depois das 11h em dia útil o painel cobra.
 4. **Mensagens** — responda ou repasse o que chegou pelo site.
-5. **Inscrições a confirmar** — cada curso com inscrição pendente aparece no
-   painel.
+5. **Inscrições a confirmar** — o painel mostra o total. Clique nele para ir aos
+   cursos e confirmar.
 
 ## Toda semana
 

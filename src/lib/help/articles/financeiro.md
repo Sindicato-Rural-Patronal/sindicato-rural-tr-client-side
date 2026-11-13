@@ -12,14 +12,48 @@ busca: financeiro caixa lancamento entrada saida saldo categoria comprovante rec
 **Categorias**, **Caixas**, **Formas de pagamento** e **Fechamento**. A tela abre
 na **Visão geral**, mas o trabalho do dia a dia é na aba **Lançamentos**.
 
+## Visão geral
+
+Em cima, escolha o **Período**: **Este mês**, **Este ano** (o que abre),
+**Últimos 12 meses** ou **Personalizado**, que mostra os campos **De** e
+**Até**. Do outro lado ficam os botões **Relatório de despesas** e **Baixar
+PDF** (veja [Relatórios](#relatorios)).
+
+Logo abaixo vêm quatro números: **Saldo em caixa** (de todas as datas),
+**Entradas**, **Saídas** e **Resultado** do período. Clicar em **Entradas** ou
+em **Saídas** abre a aba **Lançamentos** já filtrada por elas.
+
+O bloco principal é o gráfico **Entradas × Saídas por mês**. Ao lado dele (em
+tela menor, embaixo) ficam as **Saídas por categoria** e, mais abaixo, o
+**Saldo por caixa**.
+
 ## Lançamentos
 
 Cada linha é uma entrada ou uma saída de um caixa. No topo ficam os totais —
 **Entradas, Saídas e Saldo** — sempre **dos filtros que você está usando**, não
 do mês inteiro. Mudou o filtro, mudou o total.
 
+Em cima fica a barra com o campo **Buscar** e os botões **Exportar**,
+**Transferir** e **Novo lançamento**. Os filtros (**De**, **Até**, **Tipo**,
+**Categoria**, **Caixa**, **Forma de pagamento** e **Ordenar por**) ficam numa linha logo
+embaixo dela. No celular, eles aparecem dois por linha.
+
 Os filtros ficam no endereço da página, então **dá para salvar o link nos
 favoritos** ou mandar para um colega e ele vê a mesma lista.
+
+### Os botões da linha
+
+No fim de cada linha ficam dois ícones à vista: o lápis, **Editar**, e as
+setas, **Repetir**. Passe o mouse sobre o ícone para ver o nome. O resto fica
+no menu **Mais**, o botão **⋯** ao lado deles:
+
+- **Gerar Nota de Empenho**;
+- **Gerar recibo em PDF** (só nas entradas, veja [Recibo de entrada](#recibo-de-entrada));
+- **Excluir**, por último e em vermelho, separado dos outros por uma linha.
+
+Quem não tem a permissão de criar ou de editar no Financeiro vê menos ícones,
+e o que sobra passa para a vista. Transferência entre caixas só tem **Excluir**.
+No celular, cada lançamento vira um cartão, com os mesmos botões.
 
 ### Nome / Razão social
 
@@ -37,7 +71,7 @@ para uma linha miúda embaixo da descrição, no mesmo lugar.
 
 ### Buscando um lançamento
 
-O campo de busca diz **Nº, descrição, nome ou CNPJ/CPF…** e acha por qualquer um
+O campo **Buscar** diz **Nº, descrição, nome ou CNPJ/CPF…** e acha por qualquer um
 dos quatro, sem diferenciar maiúscula nem acento: "sao jose" acha "SÃO JOSÉ".
 
 - **Nº** — o número do lançamento. Digite só o número (`128`); os zeros à
@@ -56,7 +90,7 @@ você procura está entre eles.
 
 ### Ordenando a lista
 
-O seletor **Ordenar por**, junto dos filtros (**Caixa**, **Forma de
+O seletor **Ordenar por**, o último da linha dos filtros (**Caixa**, **Forma de
 pagamento**…), tem duas opções, e as duas vão **do maior para o menor**:
 
 - **Data** (o padrão) — o lançamento de data mais nova primeiro;
@@ -81,10 +115,10 @@ confirmação.
 ### Linha com o selo "Mês fechado"
 
 Quando o mês de um caixa está fechado, os lançamentos desse caixa naquele mês
-ganham o selo **Mês fechado**, com um cadeado, e os botões **Editar** e
-**Excluir** ficam desligados. Passe o mouse sobre o selo ou sobre o botão para
-ver o motivo. **Repetir** continua ligado. Veja a seção
-[Fechamento](#fechamento) mais abaixo.
+ganham o selo âmbar **Mês fechado**, com um cadeado. O **Editar** (o lápis)
+fica desligado, e o **Excluir**, no menu **Mais**, aparece apagado. Passe o
+mouse sobre o selo ou sobre o lápis para ver o motivo. **Repetir** e as notas e
+recibos continuam ligados. Veja a seção [Fechamento](#fechamento) mais abaixo.
 
 ## Número do lançamento
 
@@ -167,15 +201,15 @@ chama `nota-empenho-128.pdf` (com o Nº do lançamento).
 
 ## Recibo de entrada
 
-Em todo lançamento de **entrada** há um botão que gera o **recibo** em PDF: o
-ícone de uma mão com moedas, ao lado do botão da **Nota de Empenho**. Ao passar
-o mouse sobre ele, a dica diz **Gerar recibo em PDF**. O arquivo baixa na hora,
-em folha A4, pronto para imprimir e assinar. Cada recibo gerado fica registrado
-na [Auditoria](?topico=auditoria) (veja [Relatórios](#relatorios)).
+Todo lançamento de **entrada** gera o **recibo** em PDF. Na linha, abra o menu
+**Mais** (o **⋯**) e clique em **Gerar recibo em PDF**, logo abaixo de **Gerar
+Nota de Empenho**. O arquivo baixa na hora, em folha A4, pronto para imprimir e
+assinar. Cada recibo gerado fica registrado na [Auditoria](?topico=auditoria)
+(veja [Relatórios](#relatorios)).
 
-Só **entrada** tem recibo. **Saída**, **Só nota** e transferência entre caixas
-não mostram o botão. Ele funciona também com o **mês fechado**, porque o recibo
-só lê o lançamento e não muda nada nele.
+Só **entrada** tem recibo. Em **Saída**, **Só nota** e transferência entre
+caixas, o item não aparece no menu. Ele funciona também com o **mês fechado**,
+porque o recibo só lê o lançamento e não muda nada nele.
 
 ### O que sai no recibo
 
@@ -202,8 +236,8 @@ O recibo é montado com o que está no lançamento. Preencha antes de gerar:
 | *referente a…* | **Descrição** |
 
 O jeito mais rápido é **vincular** a pessoa ou a empresa na seção **Nota de
-Empenho** (abas **Pessoa** e **Empresa**): nome, CNPJ ou CPF e endereço vêm do
-cadastro, sozinhos.
+Empenho** (escolha **Pessoa** ou **Empresa** e busque): nome, CNPJ ou CPF e
+endereço vêm do cadastro, sozinhos.
 
 **Sem esses dados, o recibo sai sem dizer de quem veio**: *Recebemos a
 importância de…* O endereço sozinho, sem nome nem documento, também não entra.
@@ -311,7 +345,7 @@ O que **não** é travado:
 5. Se o saldo não bater, escreva o motivo em **Observações**.
 6. Clique em **Fechar mês**.
 
-O botão fecha **na hora, sem perguntar de novo**. Aparece **Mês fechado!** e o mês
+O botão fecha **na hora, sem perguntar de novo**. Aparece **Mês fechado.** e o mês
 entra na lista **Fechamentos de** (ano e caixa) logo abaixo. Se o mês já estava
 fechado, no lugar dos campos aparece o resumo (*"já está fechado em…"*) com o
 botão **Reabrir mês**.
@@ -320,11 +354,11 @@ botão **Reabrir mês**.
 
 | Onde | O que você vê |
 |---|---|
-| Lista de **Lançamentos** | Selo **Mês fechado** com cadeado; **Editar** e **Excluir** desligados |
-| Formulário **Novo lançamento** ou **Editar lançamento** | Faixa amarela embaixo da **Data**; **Registrar**, **Registrar e novo** e **Salvar** desligados |
-| Janela **Transferir entre caixas** | A mesma faixa amarela embaixo da **Data**; **Transferir** desligado |
+| Lista de **Lançamentos** | Selo âmbar **Mês fechado** com cadeado; **Editar** desligado e **Excluir** apagado no menu **Mais** |
+| Formulário **Novo lançamento** ou **Editar lançamento** | Faixa âmbar embaixo da **Data**; **Registrar**, **Registrar e novo** e **Salvar** desligados |
+| Janela **Transferir entre caixas** | A mesma faixa âmbar embaixo da **Data**; **Transferir** desligado |
 
-A faixa amarela e a dica dos botões dizem o mesmo:
+A faixa âmbar e a dica do **Editar** na linha dizem o mesmo:
 
 > Mês 10/2026 fechado no caixa BANCO. Para mudar, reabra o mês na aba
 > Fechamento.
@@ -372,8 +406,8 @@ anexar passa pelo **Editar**, que está desligado. Por isso vale anexar tudo
 
 | O que aparece | O que fazer |
 |---|---|
-| Selo **Mês fechado** e **Editar** e **Excluir** desligados | O mês desse caixa está fechado. Reabra o mês na aba **Fechamento** |
-| Faixa amarela "Mês 10/2026 fechado no caixa BANCO…" e botões de salvar desligados | Troque a data ou o caixa, ou reabra o mês |
+| Selo **Mês fechado**, **Editar** desligado e **Excluir** apagado no menu **Mais** | O mês desse caixa está fechado. Reabra o mês na aba **Fechamento** |
+| Faixa âmbar "Mês 10/2026 fechado no caixa BANCO…" e botões de salvar desligados | Troque a data ou o caixa, ou reabra o mês |
 | Texto vermelho ao salvar: *O mês 10/2026 está fechado no caixa "BANCO". Reabra o mês para mudar lançamentos dele.* | É a mesma trava, avisada pelo servidor. **Nada foi gravado.** Reabra o mês |
 | Não aparece o botão **Reabrir mês** | Falta a permissão de excluir no Financeiro. Peça a quem cuida dos administradores |
 | A recorrência não lançou um mês | O caixa dela estava com o mês fechado. Reabra; o lançamento entra na próxima vez que o Financeiro for aberto |

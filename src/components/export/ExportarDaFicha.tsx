@@ -62,8 +62,8 @@ export function ExportarDaFicha({ dataset, planilhas, fontes, textoSoNoComputado
     <>
       <DropdownMenu modal={false} onOpenChange={aberto => { if (aberto) planilha.reler() }}>
         <DropdownMenuTrigger asChild>
-          <Button size="sm" variant="outline" className="gap-1.5" disabled={baixando} aria-label="Exportar" title="Exportar">
-            {baixando ? <Loader2 className="size-3.5 animate-spin" /> : <Download className="size-3.5" />}
+          <Button variant="outline" disabled={baixando} aria-label="Exportar" title="Exportar">
+            {baixando ? <Loader2 className="animate-spin" /> : <Download />}
             <span className={textoSoNoComputador ? 'hidden sm:inline' : undefined}>Exportar</span>
           </Button>
         </DropdownMenuTrigger>

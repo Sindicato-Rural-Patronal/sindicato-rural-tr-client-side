@@ -30,7 +30,7 @@ function Line({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-baseline justify-between gap-2 text-xs">
       <span className="text-muted-foreground">{label}</span>
-      <span className="truncate font-medium text-foreground">{value}</span>
+      <span className="truncate font-medium tabular-nums text-foreground">{value}</span>
     </div>
   )
 }
@@ -51,7 +51,7 @@ function CandidateCard({
       onClick={onSelect}
       aria-pressed={selected}
       className={cn(
-        'flex flex-col gap-2 rounded-lg border p-3 text-left transition-colors',
+        'flex flex-col gap-2 rounded-xl border p-3 text-left transition-colors',
         selected
           ? 'border-primary bg-primary/5 ring-1 ring-primary/30'
           : 'border-border bg-card hover:bg-muted/50',
@@ -80,11 +80,11 @@ function CandidateCard({
       </div>
       <div className="flex flex-wrap gap-1">
         {person.hasLogin && (
-          <Badge variant="outline" className="gap-1 text-[10px]">
-            <ShieldCheck className="size-3" /> Acesso ao painel
+          <Badge variant="outline">
+            <ShieldCheck /> Acesso ao painel
           </Badge>
         )}
-        {selected && <Badge className="text-[10px]">Este cadastro fica</Badge>}
+        {selected && <Badge variant="success">Este cadastro fica</Badge>}
       </div>
     </button>
   )
@@ -197,7 +197,7 @@ export function MergePeopleDialog({
           {other && !isLoading && people.length === 2 && (
             <>
               <div>
-                <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                <p className="mb-2 text-sm font-medium text-foreground">
                   Qual cadastro fica?
                 </p>
                 <div className="grid gap-3 sm:grid-cols-2">
@@ -220,20 +220,20 @@ export function MergePeopleDialog({
               </div>
 
               {differentCpf && (
-                <p className="rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
+                <p className="rounded-lg border border-destructive/30 bg-destructive-soft px-3 py-2 text-sm text-destructive">
                   Cadastros com CPFs diferentes não podem ser juntados — são duas pessoas.
                 </p>
               )}
               {bothHaveLogin && (
-                <p className="rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
+                <p className="rounded-lg border border-destructive/30 bg-destructive-soft px-3 py-2 text-sm text-destructive">
                   Os dois cadastros têm conta de acesso ao painel. Só é possível juntar quando
                   apenas um deles tem login.
                 </p>
               )}
 
               {!blocked && keep && removed && (
-                <div className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-xs text-amber-900 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-200">
-                  <p className="mb-1.5 flex items-center gap-1.5 font-semibold">
+                <div className="rounded-lg border border-warning/30 bg-warning-soft p-3 text-xs text-foreground">
+                  <p className="mb-1.5 flex items-center gap-1.5 font-semibold text-warning">
                     <AlertTriangle className="size-3.5" />
                     O que vai acontecer
                   </p>

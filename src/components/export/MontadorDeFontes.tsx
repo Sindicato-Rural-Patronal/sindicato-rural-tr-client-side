@@ -39,7 +39,7 @@ function AbrindoMontador() {
   if (!visivel) return null
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/10">
-      <p role="status" className="flex items-center gap-2 rounded-lg bg-popover px-4 py-3 text-sm text-popover-foreground shadow-lg ring-1 ring-foreground/10">
+      <p role="status" className="flex items-center gap-2 rounded-lg border border-border bg-popover px-4 py-3 text-sm text-popover-foreground shadow-float">
         <Loader2 className="size-4 animate-spin" aria-hidden /> Abrindo o montador…
       </p>
     </div>

@@ -88,7 +88,7 @@ function Segmented<T extends string>({ label, value, options, onChange }: {
   onChange: (value: T) => void
 }) {
   return (
-    <div role="group" aria-label={label} className="grid auto-cols-fr grid-flow-col gap-1 rounded-lg border bg-muted/40 p-1">
+    <div role="group" aria-label={label} className="grid auto-cols-fr grid-flow-col gap-0.5 rounded-lg border border-border bg-muted p-0.5">
       {options.map(option => {
         const active = option.value === value
         return (
@@ -99,7 +99,8 @@ function Segmented<T extends string>({ label, value, options, onChange }: {
             onClick={() => onChange(option.value)}
             className={cn(
               'h-10 rounded-md px-3 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed',
-              active ? 'bg-background text-foreground shadow-sm ring-1 ring-border' : 'text-muted-foreground hover:text-foreground',
+              // O mesmo desenho do SegmentedControl (escolhida um tom acima, com a linha fina).
+              active ? 'bg-card text-foreground shadow-xs ring-1 ring-border' : 'text-muted-foreground hover:text-foreground',
             )}
           >
             {option.label}
@@ -179,7 +180,7 @@ function BookingDialogSession({ open, booking, defaults, canUpdate = true, canDe
   return (
     <>
       <Dialog open={open} onOpenChange={isOpen => { if (!isOpen) requestClose() }}>
-        <DialogContent className="flex max-h-[92vh] flex-col gap-0 overflow-hidden p-0 sm:max-w-xl" showCloseButton={false}>
+        <DialogContent className="flex max-h-[92vh] flex-col gap-0 overflow-hidden p-0 sm:max-w-xl">
           <DialogHeader className="shrink-0 border-b px-5 pb-4 pt-5">
             <DialogTitle className="text-xl">{title}</DialogTitle>
             <DialogDescription>
@@ -287,7 +288,7 @@ function BookingDialogSession({ open, booking, defaults, canUpdate = true, canDe
                   />
                   {values.responsibleMode === 'person' ? (
                     values.responsible ? (
-                      <div className="flex h-10 items-center justify-between gap-2 rounded-md border bg-muted/30 pl-3 pr-1 text-sm">
+                      <div className="flex h-10 items-center justify-between gap-2 rounded-lg border border-border bg-muted pl-3 pr-1 text-sm">
                         <span className="truncate font-medium">{values.responsible.name}</span>
                         {!readOnly && (
                           <Button type="button" variant="ghost" size="sm" className="h-8" onClick={() => set('responsible', null)}>
@@ -389,8 +390,8 @@ function BookingDialogSession({ open, booking, defaults, canUpdate = true, canDe
               {!creating && canDelete && (
                 <Button
                   type="button"
-                  variant="outline"
-                  className="h-10 text-destructive hover:text-destructive"
+                  variant="destructive"
+                  className="h-10"
                   disabled={pending}
                   onClick={() => setDeleting(true)}
                 >

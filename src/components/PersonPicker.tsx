@@ -47,7 +47,7 @@ export function PersonPicker({
       onBlur={e => { if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setOpen(false) }}
       onKeyDown={e => { if (e.key === 'Escape' && open) { e.stopPropagation(); setOpen(false) } }}
     >
-      <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+      <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
       <Input
         id={id}
         value={q}
@@ -56,12 +56,12 @@ export function PersonPicker({
         // Clicar de novo reabre a lista fechada com Esc.
         onClick={() => setOpen(true)}
         placeholder={placeholder}
-        className="h-9 pl-9"
+        className="pl-9"
         autoComplete="off"
         autoFocus={autoFocus}
       />
       {open && dq.length >= 2 && (
-        <div className="absolute z-50 mt-1 w-full overflow-hidden rounded-md border border-border bg-popover shadow-md">
+        <div className="absolute z-50 mt-1 w-full overflow-hidden rounded-lg border border-border bg-popover shadow-float">
           {isFetching && <div className="px-3 py-2 text-xs text-muted-foreground">Buscando…</div>}
           {!isFetching && isError && (
             <div className="px-3 py-2 text-xs text-destructive">Não foi possível buscar pessoas.</div>
@@ -99,7 +99,7 @@ export function PersonPicker({
                   <span className="max-w-full truncate">{u.name}</span>
                   <MemberBadge person={u} />
                 </span>
-                <span className="shrink-0 text-xs text-muted-foreground">
+                <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
                   {excluded ? excludedLabel : u.cpf ? maskCPF(u.cpf) : ''}
                 </span>
               </button>

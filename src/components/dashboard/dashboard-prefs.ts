@@ -46,13 +46,17 @@ function ehSpan(v: unknown): v is DashboardSpan {
   return v === 2 || v === 3 || v === 4
 }
 
-/** Nome de cada bloco no modo de organizar (é o que o admin lê). */
+/**
+ * Nome de cada bloco no modo de organizar (é o que o admin lê), na ordem de fábrica.
+ * A agenda das salas vem logo depois dos números: é o bloco principal do painel
+ * (SR-081); o Financeiro do mês, um cartão curto, fica embaixo dela.
+ */
 export const DASHBOARD_BLOCKS: { id: DashboardBlockId; label: string }[] = [
   { id: 'acoes', label: 'Ações rápidas' },
   { id: 'numeros', label: 'Números do sistema' },
   { id: 'cotacoes', label: 'Aviso das cotações' },
-  { id: 'financeiro', label: 'Financeiro do mês' },
   { id: 'agenda', label: 'Calendário e agenda das salas' },
+  { id: 'financeiro', label: 'Financeiro do mês' },
   { id: 'cursos', label: 'Cursos públicos' },
   { id: 'incompletos', label: 'Cadastros incompletos' },
   { id: 'auditoria', label: 'Últimas ações' },

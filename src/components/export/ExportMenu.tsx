@@ -306,10 +306,10 @@ export function SelectCheckbox({ checked, indeterminate = false, onChange, label
 export function SelectionInfo({ count, onClear }: { count: number; onClear: () => void }) {
   if (count === 0) return null
   return (
-    <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary">
+    <span className="inline-flex h-7 items-center gap-1.5 rounded-md bg-primary/10 pr-1 pl-2.5 text-xs font-medium tabular-nums text-primary">
       {count} selecionado{count > 1 ? 's' : ''}
-      <button type="button" onClick={onClear} className="rounded-full p-0.5 hover:bg-primary/15" aria-label="Limpar seleção">
-        <X className="size-3" />
+      <button type="button" onClick={onClear} className="rounded-sm p-1 transition-colors hover:bg-primary/15" aria-label="Limpar seleção">
+        <X className="size-3" aria-hidden />
       </button>
     </span>
   )

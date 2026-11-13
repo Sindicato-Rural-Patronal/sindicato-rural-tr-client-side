@@ -63,19 +63,19 @@ export function AuditRetentionPanel() {
   }
 
   return (
-    <div className="rounded-lg border border-border bg-card">
+    <div className="rounded-xl border border-border bg-card">
       <button
         type="button"
-        className="flex w-full items-center gap-2 px-4 py-3 text-left"
+        className="flex w-full items-center gap-2 rounded-xl px-4 py-3 text-left transition-colors hover:bg-muted/50"
         aria-expanded={open}
         onClick={() => setOpen(o => !o)}
       >
-        <Settings2 className="size-4 text-muted-foreground" />
+        <Settings2 className="size-4 text-muted-foreground" aria-hidden />
         <span className="text-sm font-medium text-foreground">Configurações da trilha</span>
         <span className="text-xs text-muted-foreground">
           {isLoading || failed ? '' : `Guarda: ${retentionLabel(current)}`}
         </span>
-        <ChevronDown className={`ml-auto size-4 text-muted-foreground transition-transform ${open ? 'rotate-180' : ''}`} />
+        <ChevronDown className={`ml-auto size-4 text-muted-foreground transition-transform ${open ? 'rotate-180' : ''}`} aria-hidden />
       </button>
 
       {open && (
@@ -92,13 +92,13 @@ export function AuditRetentionPanel() {
           ) : (
             <>
               <div className="flex flex-wrap items-end gap-3">
-                <div className="flex flex-col gap-1">
-                  <Label className="text-[11px] text-muted-foreground" htmlFor="audit-retention">
+                <div className="flex flex-col gap-1.5">
+                  <Label className="text-xs font-medium text-muted-foreground" htmlFor="audit-retention">
                     Tempo de guarda dos registros
                   </Label>
                   <NativeSelect
                     id="audit-retention"
-                    className="h-9 w-[260px]"
+                    className="w-[260px] max-w-full"
                     value={String(current)}
                     disabled={update.isPending}
                     onChange={e => handleChange(e.target.value)}

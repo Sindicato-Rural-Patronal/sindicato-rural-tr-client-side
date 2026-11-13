@@ -4,8 +4,11 @@ import { LineChart, Minus, Share2, Table2, TrendingDown, TrendingUp } from 'luci
 import { QuoteHistoryChart } from '@/components/cotacoes/QuoteHistoryChart'
 import { Skeleton } from '@/components/ui/skeleton'
 import { LoadErrorRetry } from '@/components/LoadErrorRetry'
+import { EmptyState } from '@/components/EmptyState'
 import { useMarketQuotes, useQuoteHistory, type QuoteHistorySeries } from '@/hooks/useMarketQuotes'
-import { QuoteDayCard } from '@/components/cotacoes/QuoteDayCard'
+import { QuoteBoard } from '@/components/cotacoes/QuoteBoard'
+import { PublicPageHeader } from '@/components/PublicPageHeader'
+import { Button } from '@/components/ui/button'
 import { usePublicSiteSettings } from '@/hooks/useSiteSettings'
 import { useSeo } from '@/hooks/useSeo'
 import { QUOTE_PERIOD_LABEL, pointX, quoteProductLabel, quoteUnitLong } from '@/lib/quote-utils'
@@ -28,7 +31,7 @@ function Segmented<T extends string | number>({ label, value, options, onChange 
   onChange: (v: T) => void
 }) {
   return (
-    <div role="radiogroup" aria-label={label} className="inline-flex rounded-lg border bg-card p-0.5">
+    <div role="radiogroup" aria-label={label} className="inline-flex rounded-lg border border-border bg-card p-0.5">
       {options.map(o => (
         <button
           key={o.value}
@@ -38,7 +41,7 @@ function Segmented<T extends string | number>({ label, value, options, onChange 
           onClick={() => onChange(o.value)}
           className={cn(
             'inline-flex h-11 items-center gap-1.5 rounded-md px-3 text-sm transition-colors sm:h-8',
-            o.value === value ? 'bg-muted font-semibold text-foreground' : 'text-muted-foreground hover:text-foreground',
+            o.value === value ? 'bg-muted font-medium text-foreground' : 'text-muted-foreground hover:text-foreground',
           )}
         >
           {o.label}
@@ -57,7 +60,7 @@ function CotacoesPage() {
   const source = settings?.quotesSource?.trim()
   // Os preços de hoje abrem a página, no formato da página antiga; o histórico
   // vem embaixo. Quem entra aqui quase sempre quer só "quanto está hoje".
-  const { data: hoje } = useMarketQuotes()
+  const { data: hoje, isLoading: hojeLoading } = useMarketQuotes()
   const doDia = hoje ?? []
   const diaDeReferencia = (() => {
     const dia = doDia.map(q => q.referenceDate).filter(Boolean).sort().at(-1)
@@ -72,38 +75,34 @@ function CotacoesPage() {
 
   return (
     <main>
-      <section className="bg-primary py-14 md:py-20">
-        <div className="container mx-auto px-4 text-center">
-          <h1 className="text-3xl font-bold text-primary-foreground md:text-4xl lg:text-5xl">Cotações</h1>
-          <p className="mx-auto mt-3 max-w-xl text-lg text-primary-foreground/80">
-            Histórico dos preços lançados pelo sindicato{source ? ` · Fonte: ${source}` : ''}
-          </p>
-        </div>
-      </section>
+      <PublicPageHeader
+        width="max-w-6xl"
+        title="Cotações"
+        description="Os preços lançados pelo Sindicato: os de hoje e o histórico de cada produto."
+        context={hojeLoading ? null : diaDeReferencia
+          ? <>Preços de <span className="num font-medium text-foreground">{diaDeReferencia}</span>{source ? ` · Fonte: ${source}` : ''}</>
+          : source ? `Fonte: ${source}` : ''}
+      />
 
       {doDia.length > 0 && (
-        <section className="border-b border-border bg-muted/30 py-8">
+        <section className="border-b border-border py-10">
           <div className="container mx-auto max-w-6xl px-4">
-            <div className="mb-4 flex flex-wrap items-baseline gap-2">
-              <h2 className="text-lg font-bold text-foreground">Cotações do dia</h2>
-              {diaDeReferencia && <span className="text-sm text-muted-foreground">{diaDeReferencia}</span>}
-              <Link
-                to="/cotacao"
-                className="ml-auto inline-flex min-h-11 items-center gap-1.5 text-sm font-medium text-primary hover:underline sm:min-h-0"
-              >
-                <Share2 className="size-4" /> Mandar no grupo
-              </Link>
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+              <h2 className="text-xl font-semibold text-foreground">Cotações do dia</h2>
+              <Button asChild variant="ghost" className="h-11 text-primary hover:text-primary sm:h-9">
+                <Link to="/cotacao">
+                  <Share2 /> Mandar no grupo
+                </Link>
+              </Button>
             </div>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-              {doDia.map(q => <QuoteDayCard key={q.id} quote={q} />)}
-            </div>
+            <QuoteBoard quotes={doDia} source={source} />
           </div>
         </section>
       )}
 
       <section className="py-10 md:py-14">
         <div className="container mx-auto flex max-w-6xl flex-col gap-6 px-4">
-          <h2 className="text-lg font-bold text-foreground">Histórico</h2>
+          <h2 className="text-xl font-semibold text-foreground">Histórico</h2>
           <div className="flex flex-wrap items-center gap-3">
             <Segmented
               label="Período"
@@ -139,9 +138,7 @@ function CotacoesPage() {
           )}
 
           {!isLoading && !isError && (!series || series.length === 0) && (
-            <p className="rounded-xl border bg-card p-8 text-center text-muted-foreground">
-              Nenhuma cotação lançada neste período.
-            </p>
+            <EmptyState framed icon={LineChart} title="Nenhuma cotação lançada neste período" />
           )}
 
           {series && series.length > 0 && (
@@ -168,17 +165,17 @@ function ProductCard({ series, domain, view }: { series: QuoteHistorySeries; dom
   const TrendIcon = change > 0.005 ? TrendingUp : change < -0.005 ? TrendingDown : Minus
 
   return (
-    <article className="flex flex-col gap-4 rounded-xl border bg-card p-4 shadow-sm md:p-5">
+    <article className="flex flex-col gap-4 rounded-xl border border-border bg-card p-4 md:p-5">
       <header className="flex flex-wrap items-start justify-between gap-2">
         <div>
           <h2 className="text-lg font-semibold text-foreground">{name}</h2>
           <p className="text-xs text-muted-foreground">{series.unit ? `R$ por ${quoteUnitLong(series.unit)}` : 'R$'}</p>
         </div>
         <div className="text-right">
-          <p className="text-xl font-bold text-foreground">{centsToBRL(last.priceCents)}</p>
+          <p className="num text-xl font-semibold text-foreground">{centsToBRL(last.priceCents)}</p>
           <p className="inline-flex items-center gap-1 text-xs text-muted-foreground">
-            <TrendIcon className="size-3.5" />
-            {change.toLocaleString('pt-BR', { signDisplay: 'exceptZero', maximumFractionDigits: 1, minimumFractionDigits: 1 })}% no período
+            <TrendIcon className="size-3.5" aria-hidden />
+            <span className="num">{change.toLocaleString('pt-BR', { signDisplay: 'exceptZero', maximumFractionDigits: 1, minimumFractionDigits: 1 })}%</span> no período
           </p>
         </div>
       </header>
@@ -204,7 +201,7 @@ function HistoryTable({ series }: { series: QuoteHistorySeries }) {
   }, [series])
 
   return (
-    <div className="max-h-72 overflow-y-auto rounded-md border">
+    <div className="max-h-72 overflow-y-auto rounded-lg border border-border">
       <table className="w-full text-sm">
         <caption className="sr-only">Preços de {quoteProductLabel(series.label)} por dia</caption>
         <thead className="sticky top-0 bg-muted text-xs text-muted-foreground">
@@ -217,9 +214,9 @@ function HistoryTable({ series }: { series: QuoteHistorySeries }) {
         <tbody>
           {rows.map(([date, r]) => (
             <tr key={date} className="border-t">
-              <th scope="row" className="px-3 py-1.5 text-left font-normal tabular-nums">{formatDateFromString(date)}</th>
-              <td className="px-3 py-1.5 text-right tabular-nums">{r.morning != null ? centsToBRL(r.morning) : '—'}</td>
-              <td className="px-3 py-1.5 text-right tabular-nums">{r.afternoon != null ? centsToBRL(r.afternoon) : '—'}</td>
+              <th scope="row" className="num px-3 py-1.5 text-left font-normal">{formatDateFromString(date)}</th>
+              <td className="num px-3 py-1.5 text-right">{r.morning != null ? centsToBRL(r.morning) : '—'}</td>
+              <td className="num px-3 py-1.5 text-right">{r.afternoon != null ? centsToBRL(r.afternoon) : '—'}</td>
             </tr>
           ))}
         </tbody>

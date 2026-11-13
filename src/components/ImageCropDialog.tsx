@@ -121,7 +121,7 @@ export function ImageCropDialog({
             onChange={e => setZoom(Number(e.target.value))}
             className="flex-1 accent-primary"
           />
-          <span className="text-xs text-muted-foreground w-10 text-right">{zoom.toFixed(2)}×</span>
+          <span className="w-10 text-right text-xs text-muted-foreground tabular-nums">{zoom.toFixed(2)}×</span>
         </div>
 
         <DialogFooter>

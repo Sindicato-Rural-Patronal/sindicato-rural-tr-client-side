@@ -9,8 +9,9 @@ busca: sala reserva agenda calendario reuniao evento auditorio cozinha ocupacao 
 ---
 
 A agenda das salas **não tem tela própria**: ela fica dentro do
-[Painel Geral](?topico=painel-geral), logo abaixo do calendário. Clique num dia
-do calendário e a agenda mostra aquele dia.
+[Painel Geral](?topico=painel-geral), no bloco **Agenda das salas**. O
+calendário do mês fica à esquerda e a agenda ao lado (no celular, embaixo).
+Clique num dia do calendário e a agenda mostra aquele dia.
 
 ## O que pode ser marcado
 
@@ -18,13 +19,15 @@ do calendário e a agenda mostra aquele dia.
 - **Evento** — algo aberto, que pode até aparecer no site
 - **Reunião** — uso interno
 
-Cada tipo tem sua cor, no calendário e na agenda.
+Cada tipo tem um **ponto de cor** ao lado do nome, no calendário e na agenda.
+Em cima do bloco, os botões **Todos**, **Curso**, **Evento** e **Reunião**
+(com o mesmo ponto) mostram só um tipo, e **Todas as salas** escolhe uma sala.
 
 ## Marcando uma reserva
 
 Clique em **Nova reserva** (ou num espaço livre da faixa de ocupação, que já
-vem com a sala e a hora preenchidas). No formulário: tipo, título, sala, data,
-início e término, responsável, descrição.
+vem com a sala e a hora preenchidas; veja abaixo). No formulário: tipo, título,
+sala, data, início e término, responsável, descrição.
 
 - **Termina em outro dia** — para o que atravessa a meia-noite.
 - **Repetir** toda semana ou todo mês até uma data — só na hora de criar.
@@ -42,13 +45,18 @@ Editar uma repetição muda só aquela data.
 
 ## Ocupação das salas
 
-Abaixo da agenda há uma linha por sala, **mesmo as vazias**. O horário vem
-sempre escrito — *"08:00 às 12:00"* — então dá para bater o olho e saber o que
-está livre. Em tela estreita (celular), vira uma lista por sala com o mesmo
-conteúdo; nada fica escondido.
+Na visão **Dia**, abaixo da agenda, fica **Ocupação das salas neste dia**.
+Clique nela para abrir ou fechar; no celular, ela começa fechada.
 
-Cada sala tem **Marcar reserva nesta sala**, que já sugere o primeiro horário
-livre.
+Aberta, ela mostra uma linha por sala, **mesmo as vazias**. O horário vem
+sempre escrito — *"08:00 às 12:00"* — então dá para bater o olho e saber o que
+está livre. Há dois jeitos de ela aparecer, conforme o espaço:
+
+- **Espaço largo:** uma faixa por hora em cada sala. Clique num espaço livre da
+  faixa para marcar uma reserva já com a sala e a hora.
+- **Espaço estreito** (celular, ou o painel ao lado do calendário numa tela
+  menor): uma lista por sala, com o mesmo conteúdo. Cada sala tem **Marcar
+  reserva nesta sala**, que já sugere o primeiro horário livre.
 
 ## Ver, exportar, imprimir
 

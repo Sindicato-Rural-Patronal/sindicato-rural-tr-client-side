@@ -8,8 +8,10 @@ busca: exportar csv excel xlsx planilha do excel aba sobre baixar relatorio pdf 
 ---
 
 Toda lista do painel exporta em planilha. O botão **Exportar** fica no topo da
-lista (nas inscrições de um curso, ele se chama **Planilha**). Em várias listas,
-cada linha também tem um ícone de download, para levar só aquele registro.
+lista (nas inscrições de um curso, ele se chama **Planilha**). Em Associados,
+Administradores, Empresas e Mensagens, cada linha também tem um ícone de
+download para levar só aquele registro. No celular, e na Unimed, ele fica no
+menu **Mais** (o **⋯**) da linha.
 
 ## As três formas de exportar
 
@@ -17,7 +19,7 @@ cada linha também tem um ícone de download, para levar só aquele registro.
 |---|---|
 | **Selecionados (N)** | Só as linhas que você marcou na caixinha |
 | **Todos com os filtros atuais** | Tudo o que o filtro de agora mostra — não só a página na tela |
-| Ícone na linha | Aquele registro sozinho |
+| Ícone na linha (ou no menu **Mais**) | Aquele registro sozinho |
 
 A diferença entre a primeira e a segunda é a que mais confunde: **"Todos" não é
 "o banco inteiro"**, é tudo o que casa com os filtros que você deixou ligados.
@@ -30,7 +32,7 @@ o **Ano**: o **Todos (N)** leva o mesmo número de cursos que a tela mostra.
 
 A seleção **continua valendo quando você troca de página** — dá para marcar
 cinco pessoas na página 1, ir à página 3, marcar mais três e exportar as oito.
-O contador no topo mostra "8 selecionados · Limpar".
+O contador no topo mostra "8 selecionados", com um **×** para limpar a seleção.
 
 Algumas listas não têm seleção: as **Inscrições** de um curso, a **Auditoria**
 e os **Lançamentos** do Financeiro. Nelas o menu só tem **Todos**. Na agenda das
@@ -79,7 +81,7 @@ abra de novo. Se continuar assim, recarregue a página (F5).
 - **Este dia**, **Esta semana** e **Escolher período…**, no **Exportar** da
   agenda das salas;
 - o ícone de download de uma linha (e o **Exportar planilha** do menu
-  **Ações**, na Unimed).
+  **Mais**, na Unimed).
 
 Nesses lugares, para ter o Excel, use o montador: o **Montar relatório…** do
 menu tem o formato **Planilha do Excel (.xlsx)**. Para um registro só de uma

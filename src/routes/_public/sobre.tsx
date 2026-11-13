@@ -5,6 +5,7 @@ import { ArrowRight, Clock, ExternalLink, MapPin, Phone } from 'lucide-react'
 import { GalleryLightbox } from '@/components/GalleryLightbox'
 import { Skeleton } from '@/components/ui/skeleton'
 import { LoadErrorRetry } from '@/components/LoadErrorRetry'
+import { PublicPageHeader } from '@/components/PublicPageHeader'
 import { usePublicGalleries, type GalleryAlbum } from '@/hooks/useGalleries'
 import { useOrgInfo, usePublicSiteSettings } from '@/hooks/useSiteSettings'
 import { useSeo } from '@/hooks/useSeo'
@@ -28,39 +29,53 @@ function AboutPage() {
   const org = useOrgInfo()
   const address = orgAddressLines(org)
   const text = paragraphs(settings?.aboutText ?? '')
+  // Linha de contexto: a cidade da sede e quantas fotos a galeria tem (mesma consulta da galeria).
+  const { data: albums, isLoading: albumsLoading } = usePublicGalleries()
+  const photoCount = (albums ?? []).reduce((n, a) => n + a.photos.length, 0)
+  const city = [org.city, org.state].filter(Boolean).join(' – ')
 
   return (
     <main>
-      <section className="bg-primary py-14 md:py-20">
-        <div className="container mx-auto px-4 text-center">
-          <h1 className="text-3xl font-bold text-primary-foreground md:text-4xl lg:text-5xl">{t('aboutPage.title')}</h1>
-          <p className="mx-auto mt-3 max-w-xl text-lg text-primary-foreground/80">{t('aboutPage.subtitle')}</p>
-        </div>
-      </section>
+      <PublicPageHeader
+        width="max-w-5xl"
+        title={t('aboutPage.title')}
+        description={t('aboutPage.subtitle')}
+        context={isLoading || albumsLoading ? null : (
+          <>
+            {city && <>Sede em {city}</>}
+            {city && photoCount > 0 && ' · '}
+            {photoCount > 0 && (
+              <a href="#galeria" className="text-foreground underline-offset-4 hover:underline">
+                <span className="font-medium tabular-nums">{photoCount}</span> {photoCount > 1 ? 'fotos' : 'foto'} na galeria
+              </a>
+            )}
+          </>
+        )}
+      />
 
       <section className="py-12 md:py-16">
         <div className="container mx-auto grid max-w-5xl grid-cols-1 gap-10 px-4 lg:grid-cols-3">
           <div className="flex flex-col gap-4 lg:col-span-2">
-            <h2 className="text-2xl font-bold text-foreground">{t('aboutPage.whoWeAre')}</h2>
+            <h2 className="text-2xl font-semibold tracking-tight text-foreground">{t('aboutPage.whoWeAre')}</h2>
             {isLoading ? (
               <div className="flex flex-col gap-2">
                 {Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-4 w-full" />)}
               </div>
             ) : isError && !settings ? (
               // Sem os dados, o texto genérico pareceria o texto de verdade.
-              <LoadErrorRetry className="rounded-xl border bg-card" onRetry={() => void refetch()} retrying={isFetching} />
+              <LoadErrorRetry className="rounded-xl border border-border bg-card" onRetry={() => void refetch()} retrying={isFetching} />
             ) : (
               (text.length ? text : [t('aboutPage.fallback')]).map((p, i) => (
-                <p key={i} className="whitespace-pre-line leading-relaxed text-muted-foreground">{p}</p>
+                <p key={i} className="whitespace-pre-line text-base leading-relaxed text-foreground/85">{p}</p>
               ))
             )}
           </div>
 
-          <aside className="flex h-fit flex-col gap-4 rounded-xl border bg-card p-5 shadow-sm">
+          <aside className="flex h-fit flex-col gap-4 rounded-xl border border-border bg-card p-5">
             <h2 className="font-semibold text-foreground">{t('aboutPage.visit')}</h2>
             {address.length > 0 && (
               <div className="flex gap-3 text-sm">
-                <MapPin className="mt-0.5 size-4 shrink-0 text-primary" />
+                <MapPin className="mt-0.5 size-4 shrink-0 text-faint-foreground" />
                 <div className="text-muted-foreground">
                   {address.map((line, i) => <p key={i}>{line}</p>)}
                 </div>
@@ -68,16 +83,16 @@ function AboutPage() {
             )}
             {org.phone && (
               <div className="flex gap-3 text-sm">
-                <Phone className="mt-0.5 size-4 shrink-0 text-primary" />
+                <Phone className="mt-0.5 size-4 shrink-0 text-faint-foreground" />
                 <a href={`tel:${phoneDigits(org.phone)}`} className="text-muted-foreground hover:text-foreground">{org.phone}</a>
               </div>
             )}
             {org.hours.length > 0 && (
               <div className="flex gap-3 text-sm">
-                <Clock className="mt-0.5 size-4 shrink-0 text-primary" />
+                <Clock className="mt-0.5 size-4 shrink-0 text-faint-foreground" />
                 <div className="flex flex-col gap-0.5 text-muted-foreground">
                   {org.hours.map(h => (
-                    <p key={h.label}>{h.label}{h.time && <>: <span className="tabular-nums text-foreground">{h.time}</span></>}</p>
+                    <p key={h.label}>{h.label}{h.time && <>: <span className="text-foreground">{h.time}</span></>}</p>
                   ))}
                 </div>
               </div>
@@ -111,15 +126,15 @@ function AboutGallery() {
   if (!isLoading && !isError && albums.length === 0) return null
 
   return (
-    <section id="galeria" className="scroll-mt-20 border-t bg-muted/40 py-12 md:py-16">
+    <section id="galeria" className="scroll-mt-20 border-t border-border py-12 md:py-16">
       <div className="container mx-auto flex max-w-5xl flex-col gap-10 px-4">
         <div>
-          <h2 className="text-2xl font-bold text-foreground md:text-3xl">{t('gallery.title')}</h2>
+          <h2 className="text-2xl font-semibold tracking-tight text-foreground md:text-3xl">{t('gallery.title')}</h2>
           <p className="mt-1 text-sm text-muted-foreground">{t('gallery.subtitle')}</p>
         </div>
 
         {isError && albums.length === 0 && (
-          <LoadErrorRetry className="rounded-xl border bg-card" onRetry={() => void refetch()} retrying={isFetching} />
+          <LoadErrorRetry className="rounded-xl border border-border bg-card" onRetry={() => void refetch()} retrying={isFetching} />
         )}
 
         {isLoading && (
@@ -151,8 +166,9 @@ function AboutGallery() {
                   aria-label={photo.caption ?? `${album.title} — ${t('gallery.photo')} ${index + 1}`}
                   className="group relative aspect-square overflow-hidden rounded-lg bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
                 >
+                  {/* Hover escurece de leve a foto (não cresce). */}
                   <img src={photo.url} alt="" loading="lazy"
-                    className="absolute inset-0 size-full object-cover transition-transform duration-500 group-hover:scale-105" />
+                    className="absolute inset-0 size-full object-cover transition-opacity group-hover:opacity-90" />
                   {photo.caption && (
                     <span className="absolute inset-x-0 bottom-0 line-clamp-2 bg-linear-to-t from-black/75 to-transparent px-2 pb-1.5 pt-6 text-left text-xs text-white">
                       {photo.caption}

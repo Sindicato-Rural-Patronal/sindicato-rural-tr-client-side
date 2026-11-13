@@ -12,12 +12,15 @@ import { RouteErrorPage } from '@/components/RouteErrorPage'
 import { PageLoader } from '@/components/PageLoader'
 import { reloadForNewChunks } from '@/lib/chunk-reload'
 import { isAdminPath, readStoredTheme, syncTheme } from '@/lib/theme'
+import { areaForPath, setArea } from '@/lib/area'
 import './index.css';
 import './i18n';
 
 // Aplica o tema salvo antes do render (evita flash claro→escuro). Cinza e Verde-claro só
 // valem no painel (/admin), ver lib/theme.ts; o layout do painel cuida das trocas de tela.
 syncTheme(isAdminPath(window.location.pathname))
+// Cores de papel no site, neutras no painel (lib/area.ts), também antes do primeiro desenho.
+setArea(areaForPath(window.location.pathname))
 // No modo "sistema", acompanha mudanças do SO ao vivo.
 try {
   window.matchMedia?.('(prefers-color-scheme: dark)').addEventListener('change', () => {

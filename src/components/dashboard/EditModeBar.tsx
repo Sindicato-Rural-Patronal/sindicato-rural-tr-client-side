@@ -1,5 +1,6 @@
 import { useLayoutEffect, useRef, useState } from 'react'
 import { Check, Loader2, RotateCcw, X } from 'lucide-react'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 
@@ -47,8 +48,8 @@ export function EditModeBar({
         role="region"
         aria-label="Organizar o painel"
         className={cn(
-          'fixed inset-x-0 z-30 bg-background/95 px-4 py-3 backdrop-blur supports-backdrop-filter:bg-background/85',
-          'bottom-0 border-t border-border shadow-[0_-4px_12px_rgba(0,0,0,0.06)]',
+          'fixed inset-x-0 z-30 bg-background px-4 py-3',
+          'bottom-0 border-t border-border shadow-float',
           'md:top-0 md:bottom-auto md:border-t-0 md:border-b md:px-6 md:shadow-none',
           // Começa depois da sidebar, para não tapar o menu nem o sino.
           'md:left-(--sidebar-width) md:group-has-data-[collapsible=icon]/sidebar-wrapper:md:left-(--sidebar-width-icon)',
@@ -59,9 +60,7 @@ export function EditModeBar({
             <p className="flex flex-wrap items-center gap-2 text-sm font-semibold text-foreground">
               Organizando o painel
               {alterado && (
-                <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800 dark:bg-amber-950/50 dark:text-amber-300">
-                  Alterações não salvas
-                </span>
+                <Badge variant="warning">Alterações não salvas</Badge>
               )}
             </p>
             {/* Uma linha só: o resto a pessoa descobre olhando os blocos. A

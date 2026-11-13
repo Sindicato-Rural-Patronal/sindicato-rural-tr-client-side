@@ -39,8 +39,8 @@ envia o logo, põe o link e define a ordem.
 
 ## Contatos públicos
 
-A seção *Nossa Equipe*. Qualquer pessoa do cadastro pode entrar, com cargo e
-ordem de exibição.
+A seção *Nossa equipe*, na página *Contato* do site. Qualquer pessoa do
+cadastro pode entrar, com cargo e ordem de exibição.
 
 ## Salas
 

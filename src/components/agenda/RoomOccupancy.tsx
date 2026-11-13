@@ -19,6 +19,16 @@ import { cn } from '@/lib/utils'
 //     sala no aperto (ver `labelPlacement` em `lib/agenda.ts`).
 
 const BAR_CLASS: Record<ScheduleKind, string> = KIND_DOT_CLASS
+/**
+ * A barra na faixa é neutra (fundo do cartão, linha fina, texto principal) e o tipo é
+ * um traço de cor na ponta esquerda, como o ponto do calendário: sem fundo colorido,
+ * e o texto lê bem nos dois temas.
+ */
+const BAR_STRIPE: Record<ScheduleKind, string> = {
+  COURSE: 'before:bg-chart-1',
+  EVENT: 'before:bg-chart-3',
+  MEETING: 'before:bg-chart-4',
+}
 
 /** Altura de cada linha da sala e da barra dentro dela (px). */
 const LANE_HEIGHT = 34
@@ -99,7 +109,7 @@ function RoomList({ row, canCreate, onOpen, onNewBooking }: {
       <div className="flex items-center justify-between gap-2 border-b border-border bg-muted/40 px-3 py-2">
         {/* Sem cortar: "SALA DE VIDEO CONFERENCIA" não cabe numa linha de 390px. */}
         <p className="min-w-0 text-sm leading-tight font-semibold wrap-break-word text-foreground">{row.roomName}</p>
-        <span className={cn('shrink-0 text-xs font-medium', livre ? 'text-emerald-700 dark:text-emerald-400' : 'text-muted-foreground')}>
+        <span className={cn('shrink-0 text-xs font-medium', livre ? 'text-success' : 'text-muted-foreground')}>
           {livre ? 'Livre o dia todo' : row.lines.length === 1 ? '1 horário marcado' : `${row.lines.length} horários marcados`}
         </span>
       </div>
@@ -118,9 +128,9 @@ function RoomList({ row, canCreate, onOpen, onNewBooking }: {
                 aria-label={blockAria(row.roomName, line)}
                 className="flex min-h-11 w-full items-start gap-2.5 px-3 py-2.5 text-left transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
               >
-                <span className={cn('mt-1.5 size-2.5 shrink-0 rounded-full', BAR_CLASS[line.kind])} aria-hidden />
+                <span className={cn('mt-1.5 size-2 shrink-0 rounded-full', BAR_CLASS[line.kind])} aria-hidden />
                 <span className="min-w-0 flex-1">
-                  <span className="block text-sm font-semibold tabular-nums text-foreground">{line.time}</span>
+                  <span className="num block text-sm font-medium text-foreground">{line.time}</span>
                   <span className="block truncate text-sm text-foreground">{line.title}</span>
                   <span className="block text-xs text-muted-foreground">
                     {KIND_LABEL[line.kind]}
@@ -176,14 +186,14 @@ function OccupancyChart({ rows, canCreate, onOpen, onNewBooking }: {
               <span
                 key={tick.minutes}
                 className={cn(
-                  'absolute bottom-0 flex flex-col gap-0.5 text-[11px] leading-none tabular-nums',
-                  tick.major ? 'font-semibold text-foreground' : 'hidden text-muted-foreground @min-[900px]:flex',
+                  'num absolute bottom-0 flex flex-col gap-0.5 text-xs leading-none',
+                  tick.major ? 'text-muted-foreground' : 'hidden text-faint-foreground @min-[900px]:flex',
                   first ? 'left-0 items-start' : last ? 'right-0 items-end' : 'items-center -translate-x-1/2',
                 )}
                 style={first || last ? undefined : { left: `${tick.left}%` }}
               >
                 {tick.label}
-                <span className={cn('h-1.5 w-px', tick.major ? 'bg-foreground/50' : 'bg-border')} aria-hidden />
+                <span className={cn('h-1.5 w-px', tick.major ? 'bg-foreground/30' : 'bg-border')} aria-hidden />
               </span>
             )
           })}
@@ -251,9 +261,10 @@ function OccupancyChart({ rows, canCreate, onOpen, onNewBooking }: {
                       aria-label={blockAria(row.roomName, block)}
                       onClick={() => onOpen(block.key)}
                       className={cn(
-                        'absolute flex items-center overflow-hidden rounded-md px-1.5 text-left text-[11px] font-semibold text-white',
+                        'absolute flex items-center overflow-hidden rounded-md border border-border bg-card pr-1.5 pl-3 text-left text-xs font-medium text-foreground transition-colors hover:bg-accent',
+                        'before:absolute before:inset-y-1 before:left-1 before:w-[3px] before:rounded-full',
                         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-                        BAR_CLASS[block.kind],
+                        BAR_STRIPE[block.kind],
                         block.cutBefore && 'rounded-l-none',
                         block.cutAfter && 'rounded-r-none',
                       )}
@@ -266,7 +277,7 @@ function OccupancyChart({ rows, canCreate, onOpen, onNewBooking }: {
                     >
                       {block.labelPlacement === 'inside' && (
                         <span className="truncate">
-                          <span className="tabular-nums">{block.time}</span> · {block.title}
+                          <span className="num">{block.time}</span> · {block.title}
                         </span>
                       )}
                     </button>
@@ -301,7 +312,7 @@ function OccupancyChart({ rows, canCreate, onOpen, onNewBooking }: {
       <div className="flex flex-wrap items-center gap-x-4 gap-y-1 pt-1 text-xs text-muted-foreground">
         {(['COURSE', 'EVENT', 'MEETING'] as ScheduleKind[]).map(kind => (
           <span key={kind} className="flex items-center gap-1.5">
-            <span className={cn('size-2.5 rounded-full', BAR_CLASS[kind])} aria-hidden />
+            <span className={cn('size-2 rounded-full', BAR_CLASS[kind])} aria-hidden />
             {KIND_LABEL[kind]}
           </span>
         ))}
@@ -330,8 +341,8 @@ function BlockSideLabel({ block }: { block: OccupancyBlock }) {
       className={cn('pointer-events-none absolute flex items-center', after ? 'justify-start' : 'justify-end')}
       style={style}
     >
-      <span className="min-w-0 truncate rounded bg-background/80 px-1 text-[11px] font-medium text-foreground">
-        <span className="tabular-nums">{block.time}</span> · {block.title}
+      <span className="min-w-0 truncate rounded-sm bg-card/90 px-1 text-xs font-medium text-foreground">
+        <span className="num">{block.time}</span> · {block.title}
       </span>
     </span>
   )
