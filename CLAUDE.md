@@ -167,7 +167,8 @@ src/
 │   ├── course-card.tsx              # CourseCard: uma etiqueta só (a situação), preço como texto, instrutor só se houver
 │   ├── StatusBadge.tsx              # Selo do status do curso (tons do Badge)
 │   ├── GalleryLightbox.tsx          # Fotos de uma galeria em tela cheia (página Sobre)
-│   ├── adminSideBar.tsx             # Sidebar admin (favicon.ico como marca); sino ao lado do logo; itens por permissão
+│   ├── adminSideBar.tsx             # Sidebar admin (favicon.ico como marca); sino ao lado do logo; itens por permissão; seção sem item permitido
+│   │                                #   não mostra nem o título (SR-126)
 │   ├── nav-user.tsx                 # Menu do usuário: Minha conta, sair (limpa o cache do React Query)
 │   ├── CommandPalette.tsx           # Ctrl+K: busca de telas (NAV_ITEMS de lib/command-palette.ts, filtrados por permissão)
 │   ├── notifications/NotificationBell.tsx # Sino (avisos não lidos + pendências warning): Popover no computador,
@@ -206,6 +207,8 @@ src/
 │   │                                #   anterior", dia do quadro), QuoteHistoryChart (gráfico SVG), QuoteDayCard e CotacaoSimples
 │   │                                #   (tela /cotacao)
 │   ├── courses/                     # CoursesList (lista do painel com as abas Próximos/Armazenados, filtros, cartões e paginação),
+│   │                                #   AddInstructorForm ("Adicionar instrutor" da aba Instrutores: só pede GET /admin/instructors com READ_USER;
+│   │                                #   sem ela a dica "Pede a permissão Visualizar usuários" toma o lugar do formulário, SR-126),
 │   │                                #   AdminCourseCard + CourseCardSkeleton, RegistrationsTab (aba "Inscrições" da janela do
 │   │                                #   curso: ordem de chegada, "Inscrito em dd/mm/aaaa hh:mm", presença, fichas) — os três fora
 │   │                                #   do arquivo da rota para poder ser testados;
@@ -475,6 +478,7 @@ Cor que vem do cadastro (cor da categoria e do caixa no Financeiro) continua com
 - Datas ISO da API → `formatDateFromString()` para exibir (não usa fuso).
 - Lista suspensa dentro de `Dialog`: marque o contêiner com `data-escape-owner` enquanto aberta (Esc fecha só a lista; ver `ui/dialog.tsx`).
 - `routeTree.gen.ts` regenerado automaticamente — **nunca editar manualmente**.
+- **Aviso `Buffer is not defined` (warn) ao gerar PDF com imagem** (nota de empenho, recibo, os três da Unimed; SR-126): vem do `@react-pdf/layout` (`fetchImage` chama `Buffer.isBuffer(source)` depois de carregar a imagem, e o navegador não tem `Buffer`). A imagem sai certa; só perde a chave de cache dela. Existe desde antes da 4.6.1 e continua na 5.2.0 (a última). Não há conserto nosso sem polyfill global de `Buffer`, que não vale o risco: ignorar, e rever quando o react-pdf corrigir. PDFs sem imagem (relatórios, lista de presença, agenda, ficha de inscrição) não avisam.
 - Avisos conhecidos só de desenvolvimento (ignorar nas baterias de navegador): "Cannot update a component while rendering a different component" (React Hook Form + React 19.3) e "This library called use() to suspend in a previous render…" (TanStack Router + React 19.3).
 
 ## Regras de negócio que valem no código
@@ -543,7 +547,7 @@ O porquê de cada uma está em `docs/HISTORICO.md`.
 - **Permissões**: `useMe` e a guarda de rota leem a MESMA consulta (`meQuery` em `hooks/useAdmin.ts`, chave `['admin','me']`, staleTime 5 min).
   - `requirePermission(perm)` (`lib/auth-guard.ts`), no `beforeLoad` da rota: sem a permissão → `/admin/dashboard`; 401 → login; **falha ao conferir (rede, 5xx) lança erro** e o roteador mostra a tela de erro com "Tentar de novo" — não é "sem permissão". Usado em banners, convênios, cursos, empresas, mensagens, notícias, unimed, usuários e `usuarios/novo` (CREATE_USER).
   - `usePermissions()` → `can`, `cannot`, `isLoading`, `perms` e `isError`/`retry`/`retrying`. Com `isError`, `can` responde false, mas a tela não deve dizer "sem permissão": o `NoPermission` já mostra a falha com "Tentar de novo", e o Painel Geral avisa que blocos podem faltar.
-  - A sidebar mostra todos os itens enquanto as permissões não carregaram.
+  - A sidebar mostra todos os itens enquanto as permissões não carregaram (ou se falharam). Com as permissões conhecidas, o item sem permissão some e a seção que ficou sem nenhum item também (o título "Financeiro"/"Configurações" não fica solto, SR-126).
 - **Minha conta** (`components/conta/PerfilTab.tsx`): trocar a senha manda `password` + `currentPassword`. A tela confere antes que a senha atual foi preenchida e que a nova tem 8+ caracteres (para não gastar as 10 tentativas por 5 min da rota). 400 "Senha atual incorreta." / "Informe a senha atual…" aparece embaixo do campo. Nome e usuário sozinhos não pedem a senha.
 - **Alterações não salvas**: `const allowLeave = useUnsavedGuard(active)` (`hooks/use-unsaved-guard.ts`) pergunta "Sair sem salvar?" ao ir para outro caminho; só search params não pergunta. Chame `allowLeave()` logo antes do `navigate()` pós-salvar/criar/excluir.
 - **Busca de telas**: `CommandPalette` (Ctrl+K ou "Buscar…" no topo da sidebar); busca ignora acentos/maiúsculas e exige todas as palavras.
@@ -613,7 +617,7 @@ useAdminUser                → GET /admin/users/:id
 useUserProperties           → GET /admin/users/:id/properties · useCreate/Update/DeleteUserProperty
 useUploadAvatar             → POST /admin/users/:id/avatar
 useUserRelations            → GET /admin/users/:id/relations · useCreate/DeleteUserRelation
-useInstructors              → GET /admin/instructors
+useInstructors              → GET /admin/instructors (exige READ_USER: `useInstructors({ enabled })`; só o AddInstructorForm usa)
 usePromoteInstructor / useUpdateInstructor / useRemoveInstructor → POST / PATCH / DELETE /admin/users/:id/instructor
 useCEPLookup                → GET /address/cep/:cep
 usePublicContacts           → GET /contacts (público)
