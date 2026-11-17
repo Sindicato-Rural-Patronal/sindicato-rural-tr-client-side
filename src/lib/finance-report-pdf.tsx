@@ -44,7 +44,7 @@ function typeLabel(t: FinanceTransaction): string {
   return t.type === 'IN' ? 'Entrada' : 'Saída'
 }
 
-function FinanceReportDocument({ summary, transactions, range }: {
+export function FinanceReportDocument({ summary, transactions, range }: {
   summary: FinanceSummary
   transactions: FinanceTransaction[]
   range: { from?: string; to?: string }
@@ -52,6 +52,7 @@ function FinanceReportDocument({ summary, transactions, range }: {
   const per = range.from && range.to
     ? `Período: ${formatDateFromString(range.from)} a ${formatDateFromString(range.to)}`
     : 'Todo o período'
+  const inCats = summary.byCategory.filter(c => c.type === 'IN')
   const outCats = summary.byCategory.filter(c => c.type === 'OUT')
   // "Só nota" (type null) não é movimento de caixa — fora do relatório do período
   // (assim a tabela bate com os totais, que também as excluem).
@@ -100,6 +101,15 @@ function FinanceReportDocument({ summary, transactions, range }: {
               ))}
           </View>
           <View style={styles.col}>
+            <Text style={styles.section}>Entradas por categoria</Text>
+            {inCats.length === 0
+              ? <Text style={{ color: C.muted }}>Sem entradas no período.</Text>
+              : inCats.map(c => (
+                <View key={c.categoryId ?? c.name} style={styles.lineRow}>
+                  <Text>{c.name}</Text>
+                  <Text>{centsToBRL(c.totalCents)}</Text>
+                </View>
+              ))}
             <Text style={styles.section}>Saídas por categoria</Text>
             {outCats.length === 0
               ? <Text style={{ color: C.muted }}>Sem saídas no período.</Text>
