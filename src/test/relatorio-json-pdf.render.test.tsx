@@ -312,3 +312,40 @@ describe('relatório em PDF do JSON', { timeout: 30_000 }, () => {
     expect(buf.subarray(0, 4).toString()).toBe('%PDF')
   })
 })
+
+describe('totais depois da tabela (SR-132)', () => {
+  const colunas = [
+    { key: 'd', label: 'Descrição', type: 'text' },
+    { key: 'v', label: 'Valor (R$)', type: 'money' },
+  ]
+  const linhas = [['MENSALIDADE', '1.000,00'], ['TAXA', '500,00']]
+  const totais = [
+    { rotulo: 'Total de entradas', valor: 'R$ 12.345,67' },
+    { rotulo: 'Total de saídas', valor: 'R$ 2.000,00' },
+  ]
+
+  it('desenha cada total e a nota na última página', async () => {
+    const data = relatorio(2, 2, {
+      columns: colunas, rows: linhas, totais, notaDosTotais: 'Transferências entre caixas não entram nos totais.',
+    })
+    const texto = (await trechosDoPdf(await renderToBuffer(<RelatorioJsonDocument data={data} geradoEm="11/11/2026 10:00" />))).join('|')
+    expect(texto).toContain('Total de entradas')
+    expect(texto).toContain('R$ 12.345,67')
+    expect(texto).toContain('Total de saídas')
+    expect(texto).toContain('R$ 2.000,00')
+    expect(texto).toContain('Transferências entre caixas não entram nos totais.')
+  })
+
+  it('sem coluna de dinheiro os totais saem no fim da largura', async () => {
+    const data = relatorio(2, 2, { totais })
+    const texto = (await trechosDoPdf(await renderToBuffer(<RelatorioJsonDocument data={data} geradoEm="11/11/2026 10:00" />))).join('|')
+    expect(texto).toContain('R$ 12.345,67')
+  })
+
+  it('sem os campos, nada de totais', async () => {
+    const data = relatorio(2, 2, { columns: colunas, rows: linhas })
+    const texto = (await trechosDoPdf(await renderToBuffer(<RelatorioJsonDocument data={data} geradoEm="11/11/2026 10:00" />))).join('|')
+    expect(texto).not.toContain('Total de')
+    expect(texto).not.toContain('Transfer')
+  })
+})

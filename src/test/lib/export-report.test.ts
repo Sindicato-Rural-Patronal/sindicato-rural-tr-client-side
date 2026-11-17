@@ -115,6 +115,26 @@ describe('lerRelatorioJson', () => {
     })
   })
 
+  it('totais: lê rótulo e valor e a nota; item fora do formato é ignorado', () => {
+    const base = { columns: [{ key: 'a', label: 'A' }], rows: [['1']] }
+    const r = lerRelatorioJson({
+      ...base,
+      totais: [{ rotulo: 'Total de entradas', valor: 'R$ 12.345,67' }, { rotulo: 'Sem valor' }, 'x', null],
+      notaDosTotais: 'Transferências entre caixas não entram nos totais.',
+    }, 'X', 'x.pdf')
+    expect(r.totais).toEqual([{ rotulo: 'Total de entradas', valor: 'R$ 12.345,67' }])
+    expect(r.notaDosTotais).toBe('Transferências entre caixas não entram nos totais.')
+  })
+
+  it('sem totais, ou com formato errado, não há totais nem nota', () => {
+    const base = { columns: [{ key: 'a', label: 'A' }], rows: [['1']] }
+    for (const extra of [{}, { totais: 'x' }, { totais: [] }, { totais: [{ rotulo: 1, valor: 2 }], notaDosTotais: 'Nota' }]) {
+      const r = lerRelatorioJson({ ...base, ...extra }, 'X', 'x.pdf')
+      expect(r).not.toHaveProperty('totais')
+      expect(r).not.toHaveProperty('notaDosTotais')
+    }
+  })
+
   it('sem colunas ou linhas é erro', () => {
     expect(() => lerRelatorioJson('a;b', 'X', 'x.pdf')).toThrow()
     expect(() => lerRelatorioJson({ columns: [] }, 'X', 'x.pdf')).toThrow()
