@@ -4,8 +4,8 @@ resumo: Lançamentos de caixa com número e recibo, recorrentes, categorias, cai
 grupo: gestao
 ordem: 1
 permissao: READ_FINANCE
-veja: como-registrar-lancamento, como-emitir-recibo, exportar-planilhas, montar-relatorio, busca-e-filtros, auditoria
-busca: financeiro caixa lancamento entrada saida saldo categoria comprovante recorrente fechamento fechar reabrir mes fechado trava cadeado transferencia relatorio pdf nome razao social fornecedor nome fantasia empenho cnpj cpf coluna buscar planilha pausar reativar ativar visao geral numero n anterior numeracao sequencia automatico proximo salto corrigir ordenar ordem recibo recibos gerar recibo receber pagador despesas exportar exportar csv montar relatorio resumido excel xlsx planilha do excel forma de pagamento auditoria gerou o documento nota de empenho baixar pdf relatorio de despesas o pdf aceita ate 2.000 linhas
+veja: como-registrar-lancamento, como-emitir-recibo, como-gerar-relatorio-de-receitas, exportar-planilhas, montar-relatorio, busca-e-filtros, auditoria
+busca: financeiro caixa lancamento entrada saida saldo categoria comprovante recorrente fechamento fechar reabrir mes fechado trava cadeado transferencia relatorio pdf nome razao social fornecedor nome fantasia empenho cnpj cpf coluna buscar planilha pausar reativar ativar visao geral numero n anterior numeracao sequencia automatico proximo salto corrigir ordenar ordem recibo recibos gerar recibo receber pagador despesas exportar exportar csv montar relatorio resumido excel xlsx planilha do excel forma de pagamento auditoria gerou o documento nota de empenho baixar pdf relatorio de despesas o pdf aceita ate 2.000 linhas receita receitas contabilidade contador total totais entradas por categoria
 ---
 
 **Financeiro** tem sete abas: **Visão geral**, **Lançamentos**, **Recorrentes**,
@@ -17,7 +17,7 @@ na **Visão geral**, mas o trabalho do dia a dia é na aba **Lançamentos**.
 Em cima, escolha o **Período**: **Este mês**, **Este ano** (o que abre),
 **Últimos 12 meses** ou **Personalizado**, que mostra os campos **De** e
 **Até**. Do outro lado ficam os botões **Relatório de despesas** e **Baixar
-PDF** (veja [Relatórios](#relatorios)).
+PDF** (o relatório do período, com **Entradas por categoria** e **Saídas por categoria**; veja [Relatórios](#relatorios)).
 
 Logo abaixo vêm quatro números: **Saldo em caixa** (de todas as datas),
 **Entradas**, **Saídas** e **Resultado** do período. Clicar em **Entradas** ou
@@ -422,7 +422,7 @@ filtros e a ordem da tela**. O menu tem três partes:
 |---|---|
 | **Planilha**, com os botões **CSV** e **Excel (.xlsx)** | A planilha de sempre, com todas as colunas (veja abaixo), no formato que você marcar. Marque o formato e depois clique em **Todos** |
 | **Relatório em PDF (para imprimir)** | Um PDF curto, no modelo **Resumido**: Nº, Data, Descrição, Nome / Razão social e Valor (R$) |
-| **Montar relatório…** | Você escolhe as colunas e a ordem. Dá para levar o que a planilha não tem, como o desconto e o endereço, o telefone e o banco da Nota de Empenho. Veja [Como montar um relatório](?topico=montar-relatorio) |
+| **Montar relatório…** | Você escolhe as colunas e a ordem. Dá para levar o que a planilha não tem, como o desconto e o endereço, o telefone e o banco da Nota de Empenho. Tem o modelo **Contabilidade** (veja abaixo). Veja [Como montar um relatório](?topico=montar-relatorio) |
 
 **Para fazer contas, use o Excel.** Na planilha do Excel, o **Valor (R$)** sai
 como número em reais, pronto para somar, e a **Data** sai como data, para
@@ -447,9 +447,21 @@ planilha.
 **A planilha (CSV ou Excel) e o PDF ficam na [Auditoria](?topico=auditoria)**,
 como os das outras listas: quem baixou, quando e o que levou.
 
+### Relatório de receitas para a contabilidade
+
+No **Montar relatório…**, escolha o modelo de fábrica **Contabilidade**: Nº,
+Data, Nome / Razão social, CNPJ / CPF, Descrição, Categoria, Método e Valor
+(R$). **O modelo não filtra**: antes de abrir o montador, ponha **Tipo ›
+Entradas** e o período na tela, senão as saídas entram. No **Excel** e no
+**PDF** do montador, o arquivo traz o **Total de entradas** (e o **Total de
+saídas**, se houver saídas) no fim. Transferências entre caixas e lançamentos
+"só nota" não entram nos totais. A planilha CSV e o Excel rápido do menu
+**Exportar** não têm totais. O passo a passo está em
+[Como gerar o relatório de receitas para a contabilidade](?topico=como-gerar-relatorio-de-receitas).
+
 ### Os PDFs do Financeiro na Auditoria
 
-Na aba **Visão geral** ficam o **relatório em PDF** do período (**Baixar PDF**)
+Na aba **Visão geral** ficam o **relatório em PDF** do período (**Baixar PDF**, com as **Entradas por categoria** e, depois, as **Saídas por categoria**)
 e o **Relatório de despesas**, no formato que o Sindicato já usa em papel. Na
 aba **Lançamentos** ficam a **Nota de Empenho** e o **recibo** de cada
 lançamento.
