@@ -8,7 +8,7 @@
 // (mono, "—" vazio), `date` (mono), `description` (ícone do tipo e os selos),
 // `category` (ponto de cor), `account` (ícone na cor do caixa) e `amount` (sinal e
 // cor). As larguras saem de `larguras.ts`: nenhuma palavra cortada (se não cabe,
-// a tabela rola de lado).
+// a tabela rola de lado, com o Valor e "Ações" presos à direita).
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { ArrowDownCircle, ArrowLeftRight, ArrowUpCircle, Landmark, Receipt, Wallet } from 'lucide-react'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -28,6 +28,9 @@ import {
 
 /** "Ações": Editar e Repetir à vista e o "Mais" (3 × 32 px) com o respiro da célula. */
 const LARGURA_ACOES = 108
+
+/** A sombra na borda esquerda do que fica preso: avisa que há colunas passando por baixo. */
+const SOMBRA_DA_PRESA = 'shadow-[-8px_0_8px_-8px_rgba(0,0,0,0.25)]'
 
 function TipoIcone({ t }: { t: Pick<FinanceTransaction, 'type' | 'transferId'> }) {
   const Icone = t.transferId ? ArrowLeftRight : t.type === 'IN' ? ArrowUpCircle : t.type === 'OUT' ? ArrowDownCircle : Receipt
@@ -213,30 +216,50 @@ export function TabelaDeLancamentos({ rows, colunas, reserva, isLoading, vazio, 
 
   // Os selos vão na Descrição; sem ela, na primeira coluna.
   const colunaDosSelos = cols.some(c => c.key === 'description') ? 'description' : cols[0]?.key
-  const sombra = rola ? 'shadow-[-8px_0_8px_-8px_rgba(0,0,0,0.25)]' : ''
+  // Quando rola, o Valor (a coluna principal para a contabilidade) fica preso à direita
+  // junto com "Ações": ele vai para o fim da linha e só as colunas do meio rolam. Sem
+  // Valor na visão, só "Ações" fica presa, como antes.
+  const iValor = cols.findIndex(c => c.key === 'amount')
+  const valorPreso = rola && iValor >= 0
+  const ordem = cols.map((_, j) => j)
+  if (valorPreso) ordem.push(...ordem.splice(iValor, 1))
+  // A sombra vai na borda esquerda do que está preso: o Valor, se ele está; senão, "Ações".
+  const presoAoValor = valorPreso ? cn(STICKY_ACTIONS_CELL, SOMBRA_DA_PRESA) : ''
+  const estiloDoValor = valorPreso ? { right: LARGURA_ACOES } : undefined
+  const acoesPresas = valorPreso
+    ? cn(STICKY_ACTIONS_CELL, 'shadow-none max-lg:shadow-none')
+    : cn(STICKY_ACTIONS_CELL, rola && SOMBRA_DA_PRESA)
 
   return (
     <div ref={caixa} className="hidden overflow-hidden rounded-xl border border-border bg-card md:block">
       <Table className="table-fixed" style={rola ? { width: total + LARGURA_ACOES, minWidth: '100%' } : undefined}>
         <colgroup>
-          {cols.map((c, i) => <col key={c.key} style={{ width: larguras[i] }} />)}
+          {ordem.map(j => <col key={cols[j].key} style={{ width: larguras[j] }} />)}
           <col style={{ width: LARGURA_ACOES }} />
         </colgroup>
         <TableHeader>
           <TableRow>
-            {cols.map(c => (
-              <TableHead key={c.key} className={cn('px-1.5 whitespace-normal align-bottom', c.key === 'amount' && 'text-right')}>
-                {/* Sem corte: a coluna tem a largura do rótulo em duas linhas, quebrando entre palavras. */}
-                <span className="block break-normal">{c.label}</span>
-              </TableHead>
-            ))}
-            <TableHead className={cn('text-right', STICKY_ACTIONS_CELL, sombra)}>Ações</TableHead>
+            {ordem.map(j => {
+              const c = cols[j]
+              const ehValor = c.key === 'amount'
+              return (
+                <TableHead
+                  key={c.key}
+                  className={cn('px-1.5 whitespace-normal align-bottom', ehValor && 'text-right', ehValor && presoAoValor)}
+                  style={ehValor ? estiloDoValor : undefined}
+                >
+                  {/* Sem corte: a coluna tem a largura do rótulo em duas linhas, quebrando entre palavras. */}
+                  <span className="block break-normal">{c.label}</span>
+                </TableHead>
+              )
+            })}
+            <TableHead className={cn('text-right', acoesPresas)}>Ações</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {isLoading && Array.from({ length: 6 }).map((_, i) => (
             <TableRow key={i}>
-              {cols.map(c => <TableCell key={c.key}><Skeleton className="h-4 w-3/4" /></TableCell>)}
+              {ordem.map(j => <TableCell key={cols[j].key}><Skeleton className="h-4 w-3/4" /></TableCell>)}
               <TableCell><Skeleton className="ml-auto h-7 w-16" /></TableCell>
             </TableRow>
           ))}
@@ -252,19 +275,27 @@ export function TabelaDeLancamentos({ rows, colunas, reserva, isLoading, vazio, 
             const blocoDeSelos = s ? <div className="mt-1 flex flex-wrap items-center gap-1 font-normal">{s}</div> : null
             return (
               <TableRow key={t.id} className={STICKY_ACTIONS_ROW}>
-                {cols.map((c, j) => (
-                  <TableCell key={c.key} className={cn('min-w-0 overflow-hidden px-1.5 align-top whitespace-normal pt-3 text-[13px]', c.key === 'amount' && 'text-right')}>
-                    <Conteudo
-                      inteira={inteiras[j]}
-                      coluna={c}
-                      t={t}
-                      celula={colunas ? celulaDe(t, j) : undefined}
-                      selos={c.key === 'description' ? blocoDeSelos : null}
-                    />
-                    {c.key !== 'description' && c.key === colunaDosSelos && blocoDeSelos}
-                  </TableCell>
-                ))}
-                <TableCell className={cn('text-right align-top pt-1.5', STICKY_ACTIONS_CELL, sombra)}>
+                {ordem.map(j => {
+                  const c = cols[j]
+                  const ehValor = c.key === 'amount'
+                  return (
+                    <TableCell
+                      key={c.key}
+                      className={cn('min-w-0 overflow-hidden px-1.5 align-top whitespace-normal pt-3 text-[13px]', ehValor && 'text-right', ehValor && presoAoValor)}
+                      style={ehValor ? estiloDoValor : undefined}
+                    >
+                      <Conteudo
+                        inteira={inteiras[j]}
+                        coluna={c}
+                        t={t}
+                        celula={colunas ? celulaDe(t, j) : undefined}
+                        selos={c.key === 'description' ? blocoDeSelos : null}
+                      />
+                      {c.key !== 'description' && c.key === colunaDosSelos && blocoDeSelos}
+                    </TableCell>
+                  )
+                })}
+                <TableCell className={cn('text-right align-top pt-1.5', acoesPresas)}>
                   {acoes(t)}
                 </TableCell>
               </TableRow>
