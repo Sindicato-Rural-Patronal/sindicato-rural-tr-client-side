@@ -3,8 +3,8 @@ titulo: Exportar planilhas
 resumo: Tirar as listas do painel em planilha (CSV ou Excel) ou PDF, e o que fica registrado na Auditoria.
 grupo: dia-a-dia
 ordem: 7
-veja: montar-relatorio, como-gerar-relatorio-de-receitas, busca-e-filtros, auditoria, usuarios, cursos, financeiro
-busca: exportar csv excel xlsx planilha do excel aba sobre baixar relatorio pdf lista selecionados download montar colunas campos telefone formatado 4,5e+10 padrao como hoje auditoria registrado exportou a planilha exportou a planilha do excel exportou o relatorio em pdf gerou o documento documento lista de presenca ficha de inscricao nota de empenho recibo unimed imprimir agenda numero n anterior ordem lancamentos financeiro resumo resumido resumida folha em pe deitada 2.000 linhas 20.000 linhas o pdf aceita ate nao foi possivel montar o pdf aba ano proximos armazenados relatorio de cadastros copiar telefones copiar e-mails muitos documentos seguidos ficha da pessoa ficha da empresa ficha completa dados da empresa planilha baixada modelos da equipe salvar como modelo modelo de fabrica receita receitas contabilidade contador total totais
+veja: montar-relatorio, como-usar-visoes, como-gerar-relatorio-de-receitas, busca-e-filtros, auditoria, usuarios, cursos, financeiro
+busca: exportar csv excel xlsx planilha do excel aba sobre baixar relatorio pdf lista selecionados download montar colunas campos telefone formatado 4,5e+10 padrao como hoje auditoria registrado exportou a planilha exportou a planilha do excel exportou o relatorio em pdf gerou o documento documento lista de presenca ficha de inscricao nota de empenho recibo unimed imprimir agenda numero n anterior ordem lancamentos financeiro resumo resumido resumida folha em pe deitada 2.000 linhas 20.000 linhas o pdf aceita ate nao foi possivel montar o pdf aba ano proximos armazenados relatorio de cadastros copiar telefones copiar e-mails muitos documentos seguidos ficha da pessoa ficha da empresa ficha completa dados da empresa planilha baixada modelos da equipe salvar como modelo modelo de fabrica receita receitas contabilidade contador total totais visao visoes exportar o que esta na tela barra da visao colunas
 ---
 
 Toda lista do painel exporta em planilha. O botão **Exportar** fica no topo da
@@ -12,6 +12,32 @@ lista (nas inscrições de um curso, ele se chama **Planilha**). Em Associados,
 Administradores, Empresas e Mensagens, cada linha também tem um ícone de
 download para levar só aquele registro. No celular, e na Unimed, ele fica no
 menu **Mais** (o **⋯**) da linha.
+
+**Em Financeiro › Lançamentos é diferente.** Lá o **Exportar** fica na barra da
+visão e leva o que está na tela. Não tem o menu, o **Relatório em PDF** nem o
+**Montar relatório…** desta página. Veja
+[Lançamentos: o que está na tela](#lancamentos-o-que-esta-na-tela).
+
+## Lançamentos: o que está na tela
+
+Em **Financeiro › Lançamentos**, a própria lista escolhe as colunas: é a
+**visão** (**Padrão**, **Contabilidade**, **Completa (como a planilha de
+antes)**, **Resumida** ou uma da equipe). O **Exportar** fica no fim da barra da
+visão, entre os filtros e os totais, e abre **Exportar o que está na tela**.
+
+- **Um clique baixa**: **Planilha CSV**, **Excel (.xlsx)**, **PDF** ou
+  **Imprimir** (no celular, sem o **Imprimir**).
+- **O arquivo leva o que a tela mostra**: as colunas da visão, na ordem, com
+  todos os lançamentos dos filtros de agora (não só a página) e na ordem da
+  lista. Não há seleção.
+- **O PDF e o Excel dizem a visão**, como *Visão: Contabilidade*, e trazem os
+  totais no fim quando a coluna **Valor (R$)** está na lista.
+- **A planilha de sempre** é a visão **Completa (como a planilha de antes)**. A
+  planilha CSV dela sai igual à de antes.
+
+O passo a passo está em
+[Como usar as visões em Lançamentos](?topico=como-usar-visoes). O resto desta
+página vale para as outras listas.
 
 ## As três formas de exportar
 
@@ -34,8 +60,8 @@ A seleção **continua valendo quando você troca de página** — dá para marc
 cinco pessoas na página 1, ir à página 3, marcar mais três e exportar as oito.
 O contador no topo mostra "8 selecionados", com um **×** para limpar a seleção.
 
-Algumas listas não têm seleção: as **Inscrições** de um curso, a **Auditoria**
-e os **Lançamentos** do Financeiro. Nelas o menu só tem **Todos**. Na agenda das
+Algumas listas não têm seleção: as **Inscrições** de um curso e a
+**Auditoria**. Nelas o menu só tem **Todos**. Na agenda das
 salas, o menu é outro: **Este dia** ou **Esta semana** (o período da tela) e
 **Escolher período…**.
 
@@ -90,8 +116,8 @@ lista, marque a linha e use **Selecionados**.
 ## Escolher as colunas
 
 Os itens **Selecionados** e **Todos** do menu tiram a planilha com **todas as
-colunas de sempre**. Toda lista tem, no fim do menu, o item **Montar
-relatório…**: você escolhe os campos e a ordem das colunas, parte de um modelo
+colunas de sempre**. Toda lista (menos os Lançamentos, que usam as visões) tem,
+no fim do menu, o item **Montar relatório…**: você escolhe os campos e a ordem das colunas, parte de um modelo
 de fábrica (*Nome e CPF*, *Lista de presença*, *Calendário*…) e baixa em
 planilha CSV, planilha do Excel ou PDF, ou imprime. As fichas de pessoa e de
 empresa também têm. O passo a passo está em
@@ -105,12 +131,12 @@ e o formato com um nome, e todos que exportam a lista o encontram no seletor
 Só o **Relatório de cadastros**, no topo de **Gestão › Usuários**, sai sempre
 com todas as colunas.
 
-## Totais: só no montador
+## Totais: só nos Lançamentos
 
-O **Montar relatório…** dos Lançamentos, em **Excel** ou **PDF**, traz no fim o
-**Total de entradas** e/ou o **Total de saídas**. A planilha CSV e o Excel rápido
-do menu **Exportar** (sem montar) **não** têm totais. Para o relatório de
-receitas, veja
+Nos **Lançamentos** do Financeiro, o **Excel** e o **PDF** do **Exportar** trazem
+no fim o **Total de entradas** e/ou o **Total de saídas**, quando a coluna
+**Valor (R$)** está na visão. A planilha CSV **não** tem totais. As outras
+listas não têm totais. Para o relatório de receitas, veja
 [Como gerar o relatório de receitas para a contabilidade](?topico=como-gerar-relatorio-de-receitas).
 
 ## O arquivo
@@ -150,20 +176,19 @@ só com as colunas principais, as que cabem na folha. É o modelo **Resumo**:
 - com até 5 colunas, a folha sai em pé;
 - o telefone sai formatado, como *(44) 99999-8888*.
 
-Nos **Lançamentos** do Financeiro e na **Auditoria**, o modelo é outro:
-
-- Lançamentos: **Resumido**, com Nº, Data, Descrição, Nome / Razão social e
-  Valor (R$);
-- Auditoria: **Resumida**, com Data e hora, Quem, Ação e Alvo.
+Na **Auditoria**, o modelo é outro: **Resumida**, com Data e hora, Quem, Ação e
+Alvo. Os **Lançamentos** não têm este menu: lá o PDF sai pelo **Exportar** da
+barra da visão, com as colunas da tela (o antigo **Resumido** é a visão
+**Resumida**).
 
 **Acima de 2.000 linhas, depende da lista:**
 
 | Lista | O que acontece |
 |---|---|
-| **Lançamentos** e **Auditoria** | Os itens do PDF ficam desligados, e o menu avisa embaixo: *O PDF aceita até 2.000 linhas. Baixe a planilha ou use um filtro.* Filtre a lista (o período, por exemplo) ou baixe a planilha |
+| **Auditoria** | Os itens do PDF ficam desligados, e o menu avisa embaixo: *O PDF aceita até 2.000 linhas. Baixe a planilha ou use um filtro.* Filtre a lista (o período, por exemplo) ou baixe a planilha |
 | As outras listas | O PDF sai do jeito antigo: montado no seu navegador a partir da planilha, com a folha deitada e sem a linha de modelo e filtros. As colunas são as mesmas |
 
-Nos **Lançamentos** e na **Auditoria**, se aparecer *Não foi possível montar o
+Na **Auditoria**, se aparecer *Não foi possível montar o
 PDF agora. Tente de novo ou baixe a planilha.*, o sistema não conseguiu saber
 as colunas do PDF naquele momento. Espere um instante e clique de novo, ou baixe
 a planilha.
@@ -192,7 +217,8 @@ lista.
   **Inscrições de todos os cursos**) e as **Inscrições** de um curso (botão
   **Planilha**).
 - **Gestão › Unimed**, **Gestão › Mensagens** e **Gestão › Auditoria**.
-- **Financeiro**, aba **Lançamentos**.
+- **Financeiro**, aba **Lançamentos**: o **Exportar** da barra da visão (veja
+  [Lançamentos: o que está na tela](#lancamentos-o-que-esta-na-tela)).
 - A agenda das salas, no **Painel Geral**: só as reservas (eventos e reuniões).
   Os cursos não entram.
 
@@ -200,12 +226,12 @@ Também há exportação no detalhe de uma pessoa (**Ficha completa** e
 **Propriedades**), de uma empresa (**Dados da empresa** e **Propriedades**), de
 um curso e de uma mensagem.
 
-A planilha dos **Lançamentos** (botão **Exportar**, na aba **Lançamentos** do
-Financeiro) começa pela coluna **Nº**, o número do lançamento, e traz também
-**Nome / Razão social**, **CNPJ / CPF** e **Nº anterior**. O nome vem do campo
-do formulário; o CNPJ ou CPF e o Nº anterior, da Nota de Empenho — vazios
-quando o lançamento não tem. As linhas saem **na mesma ordem da tela**: se a
-lista está em **Ordenar por › Nº**, a planilha também. Veja
+O arquivo dos **Lançamentos** leva as colunas da visão da tela. Na visão
+**Completa (como a planilha de antes)**, ele começa pela coluna **Nº**, o número
+do lançamento, e traz também **Nome / Razão social**, **CNPJ / CPF** e **Nº
+anterior**. O nome vem do campo do formulário; o CNPJ ou CPF e o Nº anterior, da
+Nota de Empenho — vazios quando o lançamento não tem. As linhas saem **na mesma
+ordem da tela**: se a lista está em **Ordenar por › Nº**, o arquivo também. Veja
 [Financeiro](?topico=financeiro).
 
 ## Relatório de cadastros
@@ -228,8 +254,8 @@ Ao terminar, aparece *Relatório de cadastros baixado (1.234 registros).*
 
 Toda exportação fica registrada na [Auditoria](?topico=auditoria), com o nome
 de quem baixou e quando: a do menu (CSV, Excel ou PDF), a do **Montar
-relatório…**, a do ícone da linha, a das fichas, a planilha dos **Lançamentos**
-e o **Relatório de cadastros**. Os documentos em PDF que o painel monta também
+relatório…**, a do ícone da linha, a das fichas, o **Exportar** dos
+**Lançamentos** e o **Relatório de cadastros**. Os documentos em PDF que o painel monta também
 ficam (veja [Documentos em PDF](#documentos-em-pdf)). Isso não é para pegar
 ninguém — é porque a planilha leva dados pessoais para fora do sistema, e o
 Sindicato precisa saber por onde eles andaram.
@@ -248,8 +274,8 @@ A frase diz também em que formato a lista saiu:
   CPF"*;
 - planilha do Excel: *Exportou a planilha do Excel "Pessoas: 3 registros
   (todos) · Excel · com CPF"*;
-- PDF, do **Montar relatório…** (baixado ou pelo **Imprimir**) ou do
-  **Relatório em PDF** do menu: *Exportou o relatório em PDF "Pessoas: 4
+- PDF, do **Montar relatório…** (baixado ou pelo **Imprimir**), do
+  **Relatório em PDF** do menu ou do **Exportar** dos **Lançamentos**: *Exportou o relatório em PDF "Pessoas: 4
   registros (com filtros) · PDF · com CPF"*.
 
 > Todo PDF de lista aparece na Auditoria como *Exportou o relatório em PDF
@@ -302,6 +328,6 @@ como *Exportou o relatório em PDF "Relatório de cadastros: 850 registros
 **A planilha sai do sistema e vira sua responsabilidade.** Ela tem CPF,
 telefone e endereço de associados. Não mande por grupo de WhatsApp, não deixe na
 área de trabalho de um computador compartilhado e apague quando terminar o que
-precisava. Melhor ainda: com o **Montar relatório…**, leve só as colunas de que
-a tarefa precisa. O mesmo vale para os documentos em PDF: a ficha de inscrição e
+precisava. Melhor ainda: com o **Montar relatório…** (nos Lançamentos, com as
+**Colunas** da visão), leve só as colunas de que a tarefa precisa. O mesmo vale para os documentos em PDF: a ficha de inscrição e
 os da Unimed levam CPF, endereço e dados de saúde.

@@ -3,14 +3,14 @@ titulo: Como montar um relatório
 resumo: Escolher os campos e a ordem das colunas e baixar em planilha (CSV ou Excel) ou PDF, ou imprimir.
 grupo: como-fazer
 ordem: 14
-veja: exportar-planilhas, como-gerar-relatorio-de-receitas, auditoria, usuarios, empresas, cursos, financeiro
-busca: contabilidade receita receitas contador total totais montar relatorio escolher campos colunas ordem modelo padrao alterado nome e cpf nome e email contato lista de presenca assinatura numero de ordem endereco correspondencia mala direta etiqueta associados inscricoes so confirmadas nenhuma inscricao confirmada planilha csv pdf imprimir aba bloqueada pop-up excel exportar arrastar dados pessoais sensivel telefone formatado limite abrindo o montador hifen palavra cortada empresas razao social e cnpj propriedades administradores cursos calendario mensagens unimed nome cpf e plano auditoria resumida detalhes da exportacao lancamentos financeiro resumido agenda reservas sala ficha completa dados da empresa propriedades dos selecionados propriedades das selecionadas inscricoes dos cursos selecionados inscricoes de todos os cursos filtros aba armazenados ano regra de acesso so nao lidas so parceiras 20.000 linhas mais recentes 2.000 linhas planilha do excel xlsx baixar planilha do excel aba sobre cabecalho preso valor em reais data forma de pagamento tipo usuario modelos da equipe modelo de fabrica salvar como modelo salvar modelo nome do modelo salvar alteracoes no modelo salvar no modelo renomear excluir modelo lapis lixeira carregando o modelo criado por editado por ja existe um modelo 100 modelos modelo nao encontrado os modelos da equipe nao carregaram
+veja: exportar-planilhas, auditoria, usuarios, empresas, cursos, como-usar-visoes
+busca: montar relatorio escolher campos colunas ordem modelo padrao alterado nome e cpf nome e email contato lista de presenca assinatura numero de ordem endereco correspondencia mala direta etiqueta associados inscricoes so confirmadas nenhuma inscricao confirmada planilha csv pdf imprimir aba bloqueada pop-up excel exportar arrastar dados pessoais sensivel telefone formatado limite abrindo o montador hifen palavra cortada empresas razao social e cnpj propriedades administradores cursos calendario mensagens unimed nome cpf e plano auditoria resumida detalhes da exportacao lancamentos financeiro visoes agenda reservas sala ficha completa dados da empresa propriedades dos selecionados propriedades das selecionadas inscricoes dos cursos selecionados inscricoes de todos os cursos filtros aba armazenados ano regra de acesso so nao lidas so parceiras 20.000 linhas mais recentes 2.000 linhas planilha do excel xlsx baixar planilha do excel aba sobre cabecalho preso valor em reais data forma de pagamento tipo usuario modelos da equipe modelo de fabrica salvar como modelo salvar modelo nome do modelo salvar alteracoes no modelo salvar no modelo renomear excluir modelo lapis lixeira carregando o modelo criado por editado por ja existe um modelo 100 modelos modelo nao encontrado os modelos da equipe nao carregaram
 ---
 
 O **Montar relatório…** deixa você escolher **quais colunas saem e em que
 ordem**: só nome e CPF, nome e e-mail, uma lista para assinar, os endereços para
-mandar carta, os lançamentos do mês com o valor. Em vez de baixar a planilha
-inteira e apagar colunas no Excel, você leva só o que precisa.
+mandar carta. Em vez de baixar a planilha inteira e apagar colunas no Excel,
+você leva só o que precisa.
 
 ## Onde fica
 
@@ -27,12 +27,15 @@ botão **Exportar** (nas inscrições de um curso, do botão **Planilha**):
 | Beneficiários da Unimed | **Gestão › Unimed** › **Exportar** › **Montar relatório…** |
 | Mensagens de contato | **Gestão › Mensagens** › **Exportar** › **Montar relatório…** |
 | Auditoria | **Gestão › Auditoria** › **Exportar** › **Montar relatório…** |
-| Lançamentos | **Financeiro**, aba **Lançamentos** › **Exportar** › **Montar relatório…** |
 | Reservas das salas | **Painel Geral**, na agenda das salas › **Exportar** › **Montar relatório…** |
 
 O título do montador diz qual lista ele leva, por exemplo **Montar relatório ·
 Empresas**. Só o **Relatório de cadastros**, no topo de **Gestão › Usuários**,
 não tem montador: ele sai sempre com todas as colunas.
+
+**Os Lançamentos do Financeiro não têm montador.** Lá, a própria lista escolhe
+as colunas (são as **visões**), e o **Exportar** leva o que está na tela. Veja
+[Como usar as visões em Lançamentos](?topico=como-usar-visoes).
 
 **Nas fichas.** A ficha de uma pessoa e a de uma empresa também têm o montador.
 Clique em **Exportar**, no topo da ficha. Embaixo da planilha, o grupo **Montar
@@ -73,7 +76,7 @@ montou.
 - **Para levar só alguns registros, marque-os na lista** (a caixinha de cada
   linha). Com alguém marcado, o montador já abre em **Selecionados**.
 - **Algumas listas não têm seleção:** as **Inscrições** de um curso, a
-  **Auditoria**, os **Lançamentos** e a agenda. Nelas o relatório leva tudo o que
+  **Auditoria** e a agenda. Nelas o relatório leva tudo o que
   a lista mostra com os filtros de agora. Nas inscrições, você ainda escolhe
   entre todas e só as confirmadas (veja [O que entra](#o-que-entra)). O botão
   **Planilha** só aparece quando o curso tem alguma inscrição.
@@ -168,8 +171,6 @@ dois grupos: **Modelos de fábrica**, com o **Padrão (como hoje)** primeiro, e
 | Beneficiários da Unimed | **Nome, CPF e plano** | Nome, CPF e Plano |
 | Mensagens de contato | **Contato** | Nome, E-mail e Telefone |
 | Auditoria | **Resumida** | Data e hora, Quem, Ação e Alvo |
-| Lançamentos | **Resumido** | Nº, Data, Descrição, Nome / Razão social e Valor (R$) |
-| Lançamentos | **Contabilidade** | Nº, Data, Tipo, Nome / Razão social, CNPJ / CPF, Descrição, Categoria, Método e Valor (R$). Não filtra: ponha **Tipo › Entradas** e marque **Sem transferências entre caixas** na tela antes. Veja [Como gerar o relatório de receitas](?topico=como-gerar-relatorio-de-receitas) |
 | Propriedades | — | Só o **Padrão (como hoje)** |
 | Reservas das salas | — | Só o **Padrão (como hoje)** |
 
@@ -214,6 +215,10 @@ a lista antes de abrir o montador, como sempre.
 Cada lista tem os seus modelos. O que foi salvo em Pessoas aparece em todo
 montador de Pessoas (as abas **Pessoa física** e **Associados** e a **Ficha
 completa…**), mas não em Empresas.
+
+Os modelos que a equipe tinha salvo nos **Lançamentos** viraram **visões da
+equipe**: aparecem no seletor **Visão** da lista, só com as colunas. Veja
+[Como usar as visões em Lançamentos](?topico=como-usar-visoes).
 
 ### Quem pode
 
@@ -338,9 +343,7 @@ nome fica livre, e outro modelo pode usá-lo.
 - Os campos ficam em grupos, que mudam com a lista. Em Pessoas: Identificação,
   Documentos, Contato, Endereço, Associado, Vínculos e Sistema (nas inscrições,
   o grupo Inscrição vem primeiro). Nas Empresas: Empresa, Contato, Sede,
-  Vínculos, Parceria e Sistema. Nos Lançamentos: Lançamento, Valores,
-  Favorecido, Nota de Empenho e Sistema. Toda lista termina com o grupo
-  Relatório. Clique no nome do grupo para abrir ou fechar.
+  Vínculos, Parceria e Sistema. Toda lista termina com o grupo Relatório. Clique no nome do grupo para abrir ou fechar.
 - **Procurar campo…** acha pelo nome, sem precisar de acento. Procurar
   *endereco* traz o grupo Endereço inteiro.
 - Para **mudar a ordem**, arraste a coluna pela alça (os pontinhos à esquerda)
@@ -375,11 +378,6 @@ Alguns campos que só existem no montador:
   coluna só. Ele não vem no **Padrão**: marque o campo no grupo Detalhes. Veja
   [Auditoria](?topico=auditoria).
 
-Algumas listas têm campos que a planilha de sempre não traz. Nos
-**Lançamentos**, por exemplo: o desconto, os dados da Nota de Empenho
-(endereço, telefone, banco, nota fiscal, cheque), quantos comprovantes e a data
-em que foi lançado.
-
 Cabem até 80 colunas. Chegando nisso, os outros campos ficam desligados.
 
 ## O que entra
@@ -401,18 +399,14 @@ PDF. Alguns exemplos:
 | Empresas | *Filtros: Tipo: Privada · Só parceiras* (ou *Só não parceiras*) |
 | Administradores | *Filtros: Regra de acesso:* e o nome da regra |
 | Mensagens | *Filtros: Só lidas* (ou *Só não lidas*) |
-| Lançamentos | *Filtros: Período: 01/10/2026 a 31/10/2026 · Tipo: Saída · Categoria: INSUMOS · Caixa: BANCO · Forma de pagamento: PIX · Busca: adubo · Ordem: Nº* |
 | Auditoria | *Filtros: Ação: Exportações · Tipo: Usuário · Quem:* e o usuário de quem fez |
 | Agenda | *Filtros: Dia: 12/11/2026 · Sala: AUDITORIO · Tipo: Reunião* (na semana, *Período:* com o primeiro e o último dia) |
 
 Nos Cursos, a aba sempre aparece, mesmo sem outro filtro. O **Todos** só vira
 **Todos com os filtros atuais** quando há busca ou ano.
 
-O nome do filtro nem sempre é o da coluna. Nos Lançamentos, o filtro se chama
-**Forma de pagamento**, na tela e na linha *Filtros:*, mas a coluna da planilha
-se chama **Método**. Na
-Auditoria, o filtro aparece como *Tipo*, como na tela, e a coluna se chama
-**Área**.
+O nome do filtro nem sempre é o da coluna. Na Auditoria, o filtro aparece como
+*Tipo*, como na tela, e a coluna se chama **Área**.
 
 Detalhes:
 
@@ -461,7 +455,7 @@ No celular aparecem os três primeiros: só o **Imprimir** fica de fora.
 ### A planilha do Excel
 
 - **A primeira aba tem os dados**, com o nome da lista (*Pessoas*,
-  *Lançamentos*…). A linha dos títulos fica presa no alto quando você rola. Não
+  *Cursos*…). A linha dos títulos fica presa no alto quando você rola. Não
   há nada acima dela, então dá para ordenar, filtrar e montar tabela dinâmica
   direto.
 - **A aba Sobre** diz o que é o arquivo: o relatório, quando foi gerado,
@@ -472,11 +466,6 @@ No celular aparecem os três primeiros: só o **Imprimir** fica de fora.
   para ordenar e filtrar por período.
 - **Texto que começa com "=" aparece como foi escrito.** Ele não vira fórmula
   do Excel.
-- **Totais, nos Lançamentos.** Com o **Valor (R$)** entre as colunas, o fim da
-  planilha traz o **Total de entradas** e/ou o **Total de saídas** (uma linha em
-  branco e as linhas de total), repetidos na aba **Sobre**. Transferências entre
-  caixas e lançamentos "só nota" não entram, e aparece a nota *Transferências
-  entre caixas não entram nos totais.* A planilha CSV não tem totais.
 
 O aviso de letra pequena e o limite de 2.000 linhas são só do PDF. A planilha do
 Excel tem os limites da planilha CSV.
@@ -487,7 +476,6 @@ Excel tem os limites da planilha CSV.
   diminui conforme as colunas aumentam. A partir de 9 colunas, o montador
   avisa: *Com 9 colunas o PDF sai deitado e com letra menor. Se ficar difícil de
   ler, tire colunas ou baixe a planilha.*
-- Nos Lançamentos, com o **Valor (R$)**, o fim do PDF traz os totais de entradas e/ou de saídas e a nota das transferências.
 - No alto vão o título, quantos registros, a data, o modelo e os filtros. O
   título das colunas se repete em toda página.
 - Cada coluna fica pelo menos da largura da maior palavra do título dela (e,
@@ -502,8 +490,7 @@ Excel tem os limites da planilha CSV.
 
 O **Relatório em PDF** do menu **Exportar**, sem montar, é outra coisa: ele sai
 com as colunas principais, no modelo **Resumo**. Acima de 2.000 linhas, ele sai
-do jeito antigo, menos nos **Lançamentos** e na **Auditoria**, onde fica
-desligado. Veja [Exportar planilhas](?topico=exportar-planilhas).
+do jeito antigo, menos na **Auditoria**, onde fica desligado. Veja [Exportar planilhas](?topico=exportar-planilhas).
 
 Sobre o **Imprimir**: a aba nova abre na hora, com *Gerando o relatório…*, e o
 PDF aparece nela quando fica pronto. Imprima por ali. Se o navegador bloquear a
@@ -521,9 +508,6 @@ a formatação, o Excel transforma o telefone de uma planilha CSV num número co
 *4,5E+10*. Telefone digitado com outro tamanho (sem DDD, por exemplo) sai como
 foi digitado. CPF, CNPJ e CEP saem com a pontuação, e o CNS da Unimed sai como
 *123 4567 8901 2345*. Vale para a planilha CSV, a do Excel e o PDF.
-
-A exceção é a coluna **CNPJ / CPF** dos **Lançamentos**: ela sai como foi
-digitada na Nota de Empenho, com ou sem pontuação, como sempre saiu.
 
 Por isso o **Padrão (como hoje)** do montador tem as mesmas colunas da planilha
 rápida do menu, mas não é igual a ela: na planilha rápida, sem montar, o
@@ -624,7 +608,7 @@ Para voltar ao começo, escolha **Padrão (como hoje)** em **Modelo**.
 
 | O que aparece | O que fazer |
 |---|---|
-| O menu não tem **Montar relatório…** | O item aparece quando o sistema termina de carregar os campos: feche o menu e abra de novo. Se continuar sem, recarregue a página (F5). O **Relatório de cadastros** não tem montador |
+| O menu não tem **Montar relatório…** | O item aparece quando o sistema termina de carregar os campos: feche o menu e abra de novo. Se continuar sem, recarregue a página (F5). O **Relatório de cadastros** e os **Lançamentos** não têm montador: nos Lançamentos, use as visões (veja [Como usar as visões em Lançamentos](?topico=como-usar-visoes)) |
 | **Montar relatório: propriedades dos selecionados…** (ou outro item "dos selecionados") desligado | Marque as linhas na lista primeiro |
 | **Propriedades (0)…** desligado na ficha | A pessoa ou a empresa não tem propriedade cadastrada |
 | *Abrindo o montador…* | O montador está carregando pela primeira vez nesta visita ao painel, e a internet está lenta. Espere um instante: ele abre sozinho |

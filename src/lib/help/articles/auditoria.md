@@ -4,8 +4,8 @@ resumo: O histórico de tudo que foi criado, alterado e excluído no painel.
 grupo: gestao
 ordem: 2
 permissao: READ_AUDIT
-veja: administradores, seguranca, exportar-planilhas, montar-relatorio
-busca: auditoria historico trilha log quem alterou ip navegador retencao guarda exportar exportou o que foi exportado exportou a planilha exportou o relatorio em pdf campos cpf modelo formato fechamento de caixa fechou reabriu mes lancamento numero n corrigiu numero financeiro planilha csv montar relatorio resumida detalhes da exportacao 20.000 linhas mais recentes local aparelho dados pessoais excel xlsx exportou a planilha do excel gerou o documento documento lista de presenca ficha de inscricao recibo nota de empenho unimed agenda imprimir tipo area milhar ponto 0 registros nenhum registro modelo de relatorio modelos da equipe criou o modelo editou o modelo excluiu o modelo renomeou antes campos formato so confirmadas
+veja: administradores, seguranca, exportar-planilhas, montar-relatorio, como-usar-visoes
+busca: auditoria historico trilha log quem alterou ip navegador retencao guarda exportar exportou o que foi exportado exportou a planilha exportou o relatorio em pdf campos cpf modelo formato fechamento de caixa fechou reabriu mes lancamento numero n corrigiu numero financeiro planilha csv montar relatorio resumida detalhes da exportacao 20.000 linhas mais recentes local aparelho dados pessoais excel xlsx exportou a planilha do excel gerou o documento documento lista de presenca ficha de inscricao recibo nota de empenho unimed agenda imprimir tipo area milhar ponto 0 registros nenhum registro modelo de relatorio modelos da equipe criou o modelo editou o modelo excluiu o modelo renomeou antes campos formato so confirmadas visao da lista visoes visao filtros
 ---
 
 **Gestão › Auditoria** é o histórico do painel: quem fez, o que fez e quando.
@@ -27,7 +27,8 @@ vê que o preço foi de R$ 100 para R$ 10.
 
 Numa exportação, o bloco **O que foi exportado** mostra o **Formato**
 (*Planilha CSV*, *Excel (.xlsx)* ou *PDF*), o **Modelo** (de fábrica ou da
-equipe, com *(alterado)* se a pessoa mexeu nas colunas), **O que entrou**
+equipe, com *(alterado)* se a pessoa mexeu nas colunas; nos Lançamentos, o nome
+da visão, como *Contabilidade (alterada)*), **O que entrou**
 (selecionados ou todos), quantos **Registros**, os **Filtros** e os **Campos**,
 na ordem das colunas. Vale para todas as listas; só a planilha do **Relatório de
 cadastros** (CSV ou Excel) fica sem esse bloco, e o PDF dele mostra só o
@@ -157,6 +158,22 @@ Veja [Como montar um relatório](?topico=montar-relatorio).
 Quem só **usa** um modelo da equipe para exportar não aparece neste tipo. A
 exportação fica em **Exportações**, no filtro **Ação**, com o nome do modelo em
 **Modelo**, no bloco **O que foi exportado**.
+
+### Visões da lista
+
+Nos **Lançamentos** do Financeiro, os modelos da equipe são as **visões da
+equipe** (veja [Como usar as visões em Lançamentos](?topico=como-usar-visoes)).
+Elas têm o tipo próprio **Visão da lista**, no filtro **Tipo**:
+
+- *Criou a visão "Lançamentos: Receitas para o contador"*
+- *Editou a visão "Lançamentos: Receitas para o contador"*
+- *Excluiu a visão "Lançamentos: Receitas para o contador"*
+
+Abrindo a linha, **O que mudou** mostra o **Nome**, os **Campos** e os
+**Filtros**, em palavras, como *Tipo: Entrada · Sem transferências entre caixas
+· Período: mês passado*. Numa exclusão, a coluna **Antes** guarda o que a visão
+tinha. As linhas gravadas antes das visões continuam com o tipo **Modelo de
+relatório**.
 
 ## Exportar a trilha
 
