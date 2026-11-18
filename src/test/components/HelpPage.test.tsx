@@ -52,4 +52,27 @@ describe('HelpPage', () => {
     fireEvent.click(screen.getByText('Limpar busca'))
     expect(onChange).toHaveBeenCalledWith({ topico: undefined, q: undefined })
   })
+
+  it('imagem do artigo: texto alternativo, carregamento preguiçoso, legenda e abre inteira em outra aba', () => {
+    render(<HelpPage topico="como-gerar-relatorio-de-receitas" onChange={vi.fn()} />)
+    const imagem = screen.getByRole('img', { name: /Os filtros De e Até com o período/ })
+    expect(imagem).toHaveAttribute('src', '/ajuda-imagens/receitas/02-filtros.png')
+    expect(imagem).toHaveAttribute('loading', 'lazy')
+    expect(imagem).toHaveAttribute('decoding', 'async')
+    // Nunca passa da coluna do artigo, com a altura proporcional.
+    expect(imagem).toHaveClass('max-w-full', 'h-auto')
+
+    // A legenda (o title do markdown) fica visível embaixo.
+    expect(screen.getByText(/o contorno é só para destacar/)).toBeInTheDocument()
+
+    // Tocar na imagem abre o arquivo inteiro em outra aba (no celular dá para dar zoom).
+    const link = imagem.closest('a')!
+    expect(link).toHaveAttribute('href', '/ajuda-imagens/receitas/02-filtros.png')
+    expect(link).toHaveAttribute('target', '_blank')
+    expect(link).toHaveAttribute('rel', 'noreferrer')
+    // Cada passo ilustrado tem a sua imagem, todas com texto alternativo.
+    const todas = screen.getAllByRole('img')
+    expect(todas.length).toBeGreaterThanOrEqual(8)
+    for (const img of todas) expect(img.getAttribute('alt')?.trim()).toBeTruthy()
+  })
 })

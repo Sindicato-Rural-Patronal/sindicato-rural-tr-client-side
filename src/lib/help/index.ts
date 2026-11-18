@@ -169,7 +169,7 @@ export function searchExcerpt(article: HelpArticle, query: string, tamanho = 120
   const texto = article.body
     .replace(/```[\s\S]*?```/g, ' ')
     .replace(/^#{1,6}\s+/gm, '')
-    .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1')
+    .replace(/!?\[([^\]]*)\]\([^)]*\)/g, '$1')
     .replace(/[*_`>|-]/g, ' ')
     .replace(/\s+/g, ' ')
     .trim()

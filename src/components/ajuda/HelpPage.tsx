@@ -54,6 +54,38 @@ function textoDe(children: React.ReactNode): string {
 }
 
 /**
+ * Imagem de um artigo (`![texto](/ajuda-imagens/…png "legenda")`). Nunca passa da largura
+ * da coluna, com a altura proporcional (no celular de 360 px ela encolhe junto). O
+ * `alt` é o que o leitor de tela lê; o `title` vira a legenda visível. Tocar abre o
+ * arquivo inteiro em outra aba, onde o celular deixa dar zoom com os dedos.
+ * `eager` é do manual impresso: imagem preguiçosa dentro de um bloco escondido não
+ * chega a carregar antes de a impressão abrir.
+ */
+function HelpImage({ src, alt, title, eager }: React.ComponentProps<'img'> & { eager?: boolean }) {
+  if (typeof src !== 'string') return null
+  return (
+    <span className="not-prose my-4 flex flex-col items-start gap-1.5 print:break-inside-avoid">
+      <a
+        href={src}
+        target="_blank"
+        rel="noreferrer"
+        className="block max-w-full min-w-0 cursor-zoom-in overflow-hidden rounded-lg border border-border bg-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring print:cursor-auto"
+      >
+        <img
+          src={src}
+          alt={alt ?? ''}
+          loading={eager ? 'eager' : 'lazy'}
+          decoding="async"
+          className="block h-auto max-w-full"
+        />
+        <span className="sr-only"> (abre a imagem inteira em outra aba)</span>
+      </a>
+      {title && <span className="text-xs text-muted-foreground">{title}</span>}
+    </span>
+  )
+}
+
+/**
  * A Central de Ajuda. No computador (a partir de 1024 px), o índice e o artigo ficam lado
  * a lado. Abaixo disso a tela mostra uma coisa por vez: sem artigo, o índice; com um
  * artigo escolhido (`?topico=`), o artigo primeiro, com "← Voltar ao índice" em cima.
@@ -208,7 +240,9 @@ function ManualCompleto({ articles }: { articles: HelpArticle[] }) {
               <h2 className="text-xl font-semibold text-foreground">{article.title}</h2>
               <p className="mt-1 text-sm text-muted-foreground">{article.summary}</p>
               <div className={cn(PROSE, 'mt-3')}>
-                <ReactMarkdown remarkPlugins={[remarkGfm]}>{article.body}</ReactMarkdown>
+                <ReactMarkdown remarkPlugins={[remarkGfm]} components={{ img: props => <HelpImage {...props} eager /> }}>
+                  {article.body}
+                </ReactMarkdown>
               </div>
             </article>
           ))}
@@ -371,6 +405,7 @@ function HelpArticleView({ article, visible, q }: {
         <ReactMarkdown
           remarkPlugins={[remarkGfm]}
           components={{
+            img: props => <HelpImage {...props} />,
             // Título ganha âncora para o "Nesta página" conseguir chegar nele.
             h2: ({ children, ...rest }) => (
               <h2 id={slug(textoDe(children))} className="scroll-mt-4" {...rest}>{children}</h2>
