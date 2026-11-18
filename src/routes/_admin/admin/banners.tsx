@@ -13,6 +13,7 @@ import {
   bannerStartIso, bannerEndIso, brasiliaYmd, bannerPeriodLabel, bannerState, BANNER_STATE_LABEL,
   type BannerState,
 } from '@/lib/banner-dates'
+import { bannerTitle } from '@/lib/banner-layout'
 import {
   useAdminBanners, useCreateBanner, useUpdateBanner,
   useDeleteBanner, useUploadBannerImage, useReorderBanners,
@@ -265,7 +266,7 @@ function BannerSheet({
             <div className="flex flex-col gap-2">
               <Label>Imagem</Label>
               {imageUrl && (
-                <img src={imageUrl} alt={banner.title} className="aspect-[12/5] w-full rounded-lg border border-border object-cover" />
+                <img src={imageUrl} alt={bannerTitle(banner.title)} className="aspect-[12/5] w-full rounded-lg border border-border object-cover" />
               )}
               <div className="flex items-center gap-2 flex-wrap">
                 <input ref={imageInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileSelect} />
@@ -316,12 +317,18 @@ function BannerSheet({
 
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="bn-title">Título *</Label>
-            <Input id="bn-title" value={form.title} onChange={e => set('title', upperNoAccents(e.target.value))} required />
+            <Input id="bn-title" value={form.title} onChange={e => set('title', upperNoAccents(e.target.value))} required aria-describedby="bn-layout-help" />
           </div>
 
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="bn-subtitle">Subtítulo</Label>
-            <Input id="bn-subtitle" value={form.subtitle} onChange={e => set('subtitle', upperNoAccents(e.target.value))} placeholder="Texto de apoio abaixo do título" />
+            <Input id="bn-subtitle" value={form.subtitle} onChange={e => set('subtitle', upperNoAccents(e.target.value))} placeholder="Texto de apoio abaixo do título" aria-describedby="bn-layout-help" />
+            {/* A regra do site (lib/banner-layout): sem subtítulo e sem botões, só o cartaz. */}
+            <p id="bn-layout-help" className="text-xs text-muted-foreground">
+              Se o cartaz já traz o texto, deixe o subtítulo e os botões vazios: o site mostra só o cartaz,
+              centralizado. O título então não aparece no site, mas é lido por quem usa leitor de tela:
+              escreva nele o que o cartaz anuncia.
+            </p>
           </div>
 
           <div className="flex flex-col gap-1.5">
@@ -471,7 +478,7 @@ function RouteComponent() {
               {/* Miniatura na proporção do banner (1440 × 600): o cartaz aparece inteiro. */}
               <div className="flex aspect-[12/5] w-28 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-border bg-muted sm:w-36">
                 {banner.imageUrl ? (
-                  <img src={banner.imageUrl} alt={banner.title} className="size-full object-cover" />
+                  <img src={banner.imageUrl} alt={bannerTitle(banner.title)} className="size-full object-cover" />
                 ) : (
                   <span className="px-1 text-center text-xs text-faint-foreground">Sem imagem</span>
                 )}

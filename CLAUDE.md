@@ -158,8 +158,10 @@ src/
 │   ├── WhatsAppFloatingButton.tsx   # Botão flutuante do WhatsApp, 48 px no verde do Sindicato (só com WhatsApp nas
 │   │                                #   Configurações; some abaixo de lg em /cursos/$id)
 │   ├── PublicPageHeader.tsx         # Faixa de topo das páginas internas do site (ver "Design" › Site público)
-│   ├── home-hero-section.tsx        # Banner: o cartaz inteiro (1440 × 600) ao lado do título e do botão; troca a cada 9 s,
-│   │                                #   para no hover/foco/clique, parado com "reduzir movimento"; some sem banner
+│   ├── home-hero-section.tsx        # Banner: o cartaz inteiro (1440 × 600). Sem subtítulo e sem botões, só o cartaz, no meio
+│   │                                #   (até 1152 px); com eles, o título e o botão ao lado (lib/banner-layout). Setas e pontos
+│   │                                #   embaixo, no meio; troca a cada 9 s, para no hover/foco/clique, parado com "reduzir
+│   │                                #   movimento"; some sem banner
 │   ├── home-cotacoes-section.tsx    # Cotações da home: título, atualização, links e o quadro (cotacoes/QuoteBoard)
 │   ├── home-courses-section.tsx     # Carrossel de cursos (CoursesSection; só anda quando a pessoa pede)
 │   ├── home-events-section.tsx      # "Próximos eventos" (só quando há evento publicado); EventDateBlock e EventMeta,
@@ -349,6 +351,7 @@ src/
 │   ├── quote-utils.ts, quote-price-check.ts # Cotações: rótulos/unidades/período; aviso de variação >20%
 │   ├── cotacao-resumo.ts            # diaDaCotacao/resumoDaCotacao (a mesma regra do server/cotacao-resumo.mjs)
 │   ├── banner-dates.ts              # Período do banner em dias de Brasília; bannerState (mesma regra do GET /banners)
+│   ├── banner-layout.ts             # Banner só cartaz (isPosterOnly) e título que não diz nada ("." → bannerTitle neutro)
 │   ├── convenio-utils.ts            # Helpers puros de Convênios (slug, valores), da página pública e do editor
 │   ├── audit-fields.ts              # "O que mudou": rótulos dos campos e formatação dos valores
 │   ├── password-strength.ts         # passwordStrength (nunca impede salvar)
@@ -473,6 +476,7 @@ Cor que vem do cadastro (cor da categoria e do caixa no Financeiro) continua com
 **Site público** (SR-082)
 - **Faixa de topo única** (`PublicPageHeader`) em Cursos, Notícias, Eventos, Sobre, Contato, Cotações, Convênios e cada convênio: título à esquerda sobre o papel, a frase da página e uma linha de contexto com dado de verdade ("4 cursos com inscrições abertas", "Preços de 10/11/2026 · Fonte: Cvale"). `width` alinha a faixa com o conteúdo (`max-w-5xl`…); `context={null}` reserva a altura enquanto carrega. Nada de faixa verde ou preta com título centralizado.
 - **Imagem que é cartaz não se corta nem leva texto por cima**: banner e imagem de notícia são recortados no painel em 1440 × 600 e aparecem inteiros (`aspect-[12/5]`); a capa do curso (16:9) aparece inteira ao lado do título.
+- **Banner só cartaz** (SR-155): sem subtítulo e sem botões, o site mostra só o cartaz, no meio, até 1152 px (`max-w-6xl`), e o título vira `h1` `sr-only` e o `alt`. Título sem letra nem número (".", "-", "…", que o Sindicato põe porque o campo é obrigatório) nunca aparece nem é lido: entra "Aviso do Sindicato Rural de Terra Roxa" (`bannerTitle`), e o ponto do carrossel diz só "Aviso 1". Com subtítulo ou botões, duas colunas como antes. As setas e os pontos ficam embaixo do carrossel, no meio, no mesmo lugar em qualquer slide; num carrossel misto no celular, o slide só com cartaz fica com um vão embaixo (a altura é a do slide mais alto, para as setas não pularem).
 - **O quadro de cotações** (`cotacoes/QuoteBoard`) é o momento do site: superfície `bg-brand`, tudo em mono (é o único lugar com rótulo em mono), parado. Alta e baixa sobre o verde usam `text-brand-positive`/`text-brand-negative` (tokens fixos nos dois temas, 5,2:1 e 5,0:1 sobre o `--brand`); o texto sobre o verde fica a 80% ou mais (`text-brand-foreground/80` = 5,2:1). A variação diz com o que compara (`variationBasis`).
 - **Nada se move sozinho** além do banner (9 s, para no hover). Parceiros em grade, cursos só com as setas.
 - Rodapé: `bg-brand` (`#15632f`); texto a 80% no mínimo (o pé estava a 60%, 3,6:1).
