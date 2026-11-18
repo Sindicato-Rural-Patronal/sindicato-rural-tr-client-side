@@ -78,6 +78,13 @@ describe('auditoria: modelo de relatório da equipe (SR-115)', () => {
     expect(formatAuditValue('onlyConfirmed', true)).toBe('Sim')
     expect(formatAuditValue('onlyConfirmed', false)).toBe('Não')
   })
+
+  it('visão da lista (SR-149/SR-150): "Filtros" com o texto em palavras como veio', () => {
+    expect(auditFieldLabel('filters')).toBe('Filtros')
+    const texto = 'Tipo: Entrada · Sem transferências entre caixas · Período: mês passado'
+    expect(formatAuditValue('filters', texto)).toBe(texto)
+    expect(formatAuditValue('filters', null)).toBe('—')
+  })
 })
 
 describe('auditoria: reabrir o mês (Fechamento de caixa)', () => {

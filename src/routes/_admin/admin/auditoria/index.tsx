@@ -78,6 +78,8 @@ const ENTITIES = [
   'Endereço', 'Exportação', 'Fechamento de caixa', 'Galeria', 'Inscrição', 'Instrutor', 'Lançamento', 'Login', 'Mensagem',
   'Modelo de relatório', 'Notícia',
   'Propriedade', 'Regra', 'Relação', 'Reserva de sala', 'Sala', 'Transferência', 'Usuário',
+  // As visões da lista de Lançamentos (decisão 007, SR-149); antes, "Modelo de relatório".
+  'Visão da lista',
 ]
 
 // A frase ("Iniciou o curso "HORTA"") vem pronta do backend (lib/audit-sentence.ts).
