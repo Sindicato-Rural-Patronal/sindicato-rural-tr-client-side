@@ -102,7 +102,7 @@ export function numeroDaLinha(t: Pick<FinanceTransaction, 'number'>): string {
  * Por data e, no mesmo dia, pelo Nº do lançamento (do menor para o maior: a ordem em que foram
  * lançados). Sem Nº, depois dos que têm. A data compara só o dia, como o resto do relatório.
  */
-function porDataENumero(a: FinanceTransaction, b: FinanceTransaction): number {
+export function porDataENumero(a: FinanceTransaction, b: FinanceTransaction): number {
   const dia = a.date.slice(0, 10).localeCompare(b.date.slice(0, 10))
   if (dia !== 0) return dia
   const na = numeroValido(a.number) ? a.number : Number.POSITIVE_INFINITY
