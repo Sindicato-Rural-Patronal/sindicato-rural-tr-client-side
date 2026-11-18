@@ -5,8 +5,10 @@
 // No celular, duas linhas: a visão na largura toda; "Colunas" e "Exportar" meio a
 // meio, com 44 px. Salvar, renomear e excluir vão para o menu do seletor.
 // Salvar como, salvar alterações, renomear e excluir abrem um painel embaixo da
-// barra (sem diálogo); o erro da API aparece nele, como veio.
-import { useId, useRef, useState, type ReactNode } from 'react'
+// barra (sem diálogo); o erro da API aparece nele, como veio. O foco vai para o
+// painel (o campo do nome; "Cancelar" no Excluir), o Esc fecha e, ao fechar, o foco
+// volta ao botão que abriu.
+import { useEffect, useId, useRef, useState, type ReactNode } from 'react'
 import { toast } from 'sonner'
 import { Check, ChevronDown, Layers, Loader2, MoreHorizontal } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -63,13 +65,29 @@ export function BarraDaVisao({ v, tela, descrever, celular, colunas, exportar }:
   const [erro, setErro] = useState<string | null>(null)
   const [enviando, setEnviando] = useState(false)
   const seletorRef = useRef<HTMLButtonElement>(null)
-  // Escolher no menu um item que abre o painel: o menu não devolve o foco ao botão
-  // (o campo do painel fica com ele).
-  const abrindoPainel = useRef(false)
+  const maisRef = useRef<HTMLButtonElement>(null)
+  const painelRef = useRef<HTMLDivElement>(null)
+  // O botão que abriu o painel: o foco volta para ele ao fechar.
+  const origemRef = useRef<HTMLElement | null>(null)
+  // Item do menu que abre um painel: o painel só abre DEPOIS de o menu fechar. Aberto
+  // antes, o menu (que prende o foco enquanto está aberto) levava o foco junto ao
+  // sumir: ele ia para o `body` e o Esc não fechava o painel (SR-153).
+  const pendente = useRef<{ qual: Painel; origem: HTMLElement | null } | null>(null)
+  const pedirPeloMenu = (qual: Painel, origem: HTMLElement | null) => { pendente.current = { qual, origem } }
   const aoFecharMenu = (e: Event) => {
-    if (abrindoPainel.current) e.preventDefault()
-    abrindoPainel.current = false
+    const pedido = pendente.current
+    if (!pedido) return // fechou sem escolher painel: o foco volta ao botão do menu, como sempre
+    e.preventDefault()
+    pendente.current = null
+    abrir(pedido.qual, pedido.origem)
   }
+
+  // O painel abriu (ou trocou): o foco vai para dentro dele.
+  useEffect(() => {
+    if (!painel) return
+    const alvo = painelRef.current?.querySelector<HTMLElement>('[data-foco-inicial]')
+    alvo?.focus()
+  }, [painel])
 
   const atual = v.atual
   const daEquipe = atual?.origem === 'equipe'
@@ -80,10 +98,8 @@ export function BarraDaVisao({ v, tela, descrever, celular, colunas, exportar }:
     return partes.length ? `Liga: ${partes.join(' · ')}` : null
   }
 
-  function abrir(qual: Painel) {
-    // Só vale para o fechamento do menu que vem logo em seguida (o botão à vista não fecha menu nenhum).
-    abrindoPainel.current = true
-    window.setTimeout(() => { abrindoPainel.current = false }, 600)
+  function abrir(qual: Painel, origem: HTMLElement | null) {
+    origemRef.current = origem
     setErro(null)
     if (qual === 'salvar-como') {
       setNome('')
@@ -103,7 +119,11 @@ export function BarraDaVisao({ v, tela, descrever, celular, colunas, exportar }:
   function fechar() {
     setPainel(null)
     setErro(null)
-    seletorRef.current?.focus()
+    // O botão que abriu (o "⋯" some quando a visão é excluída: aí, o seletor).
+    const origem = origemRef.current
+    origemRef.current = null
+    const alvo = origem?.isConnected && !(origem as HTMLButtonElement).disabled ? origem : seletorRef.current
+    alvo?.focus()
   }
 
   async function confirmar() {
@@ -144,7 +164,7 @@ export function BarraDaVisao({ v, tela, descrever, celular, colunas, exportar }:
           <span className="text-xs font-medium text-muted-foreground">Nome da visão</span>
           <Input
             value={nome}
-            autoFocus
+            data-foco-inicial
             maxLength={NOME_DO_MODELO_MAX}
             placeholder="Ex.: Contabilidade março"
             className={cn(celular && 'h-11')}
@@ -157,6 +177,8 @@ export function BarraDaVisao({ v, tela, descrever, celular, colunas, exportar }:
         <input
           type="checkbox"
           className="size-4 accent-primary"
+          // Em "Salvar alterações" (sem campo de nome), o foco começa aqui.
+          data-foco-inicial={painel === 'salvar-alteracoes' ? true : undefined}
           checked={guardarFiltros}
           onChange={e => setGuardarFiltros(e.target.checked)}
         />
@@ -174,6 +196,7 @@ export function BarraDaVisao({ v, tela, descrever, celular, colunas, exportar }:
 
   const painelAberto = painel && atual && (
     <div
+      ref={painelRef}
       className="flex flex-col gap-3 rounded-xl border border-border bg-card p-3 sm:p-4"
       role="group"
       aria-labelledby={`${ids}-painel`}
@@ -194,7 +217,7 @@ export function BarraDaVisao({ v, tela, descrever, celular, colunas, exportar }:
             <span className="text-xs font-medium text-muted-foreground">Nome da visão</span>
             <Input
               value={nome}
-              autoFocus
+              data-foco-inicial
               maxLength={NOME_DO_MODELO_MAX}
               className={cn(celular && 'h-11')}
               onChange={e => { setNome(e.target.value); setErro(null) }}
@@ -218,7 +241,7 @@ export function BarraDaVisao({ v, tela, descrever, celular, colunas, exportar }:
       )}
       {erro && <p role="alert" className="text-sm text-destructive">{erro}</p>}
       <div className={cn('flex gap-2', celular ? 'flex-col-reverse' : 'justify-end')}>
-        <Button type="button" variant="outline" className={cn(celular && 'h-11')} onClick={fechar} autoFocus={painel === 'excluir'}>
+        <Button type="button" variant="outline" className={cn(celular && 'h-11')} onClick={fechar} data-foco-inicial={painel === 'excluir' ? true : undefined}>
           Cancelar
         </Button>
         <Button
@@ -241,22 +264,22 @@ export function BarraDaVisao({ v, tela, descrever, celular, colunas, exportar }:
   const itensDeSalvar = (
     <>
       {daEquipe && (
-        <DropdownMenuItem className="min-h-11" disabled={!v.alterada} onSelect={() => abrir('salvar-alteracoes')}>
+        <DropdownMenuItem className="min-h-11" disabled={!v.alterada} onSelect={() => pedirPeloMenu('salvar-alteracoes', seletorRef.current)}>
           Salvar alterações
         </DropdownMenuItem>
       )}
-      <DropdownMenuItem className="min-h-11" onSelect={() => abrir('salvar-como')}>Salvar como…</DropdownMenuItem>
+      <DropdownMenuItem className="min-h-11" onSelect={() => pedirPeloMenu('salvar-como', seletorRef.current)}>Salvar como…</DropdownMenuItem>
       {daEquipe && (
         <>
-          <DropdownMenuItem className="min-h-11" onSelect={() => abrir('renomear')}>Renomear…</DropdownMenuItem>
-          <DropdownMenuItem className="min-h-11 text-destructive" onSelect={() => abrir('excluir')}>Excluir…</DropdownMenuItem>
+          <DropdownMenuItem className="min-h-11" onSelect={() => pedirPeloMenu('renomear', seletorRef.current)}>Renomear…</DropdownMenuItem>
+          <DropdownMenuItem className="min-h-11 text-destructive" onSelect={() => pedirPeloMenu('excluir', seletorRef.current)}>Excluir…</DropdownMenuItem>
         </>
       )}
     </>
   )
 
   const seletor = (
-    <DropdownMenu onOpenChange={o => { if (o) setPainel(null) }}>
+    <DropdownMenu onOpenChange={o => { if (o) { pendente.current = null; setPainel(null) } }}>
       <DropdownMenuTrigger asChild>
         <Button
           ref={seletorRef}
@@ -363,24 +386,24 @@ export function BarraDaVisao({ v, tela, descrever, celular, colunas, exportar }:
                 className="text-foreground disabled:text-faint-foreground"
                 disabled={!v.alterada || v.equipe.salvando}
                 title={!v.alterada ? 'Nada mudou nesta visão.' : undefined}
-                onClick={() => abrir('salvar-alteracoes')}
+                onClick={e => abrir('salvar-alteracoes', e.currentTarget)}
               >
                 Salvar alterações
               </Button>
             )}
-            <Button type="button" variant="ghost" size="sm" className="text-foreground" onClick={() => abrir('salvar-como')}>
+            <Button type="button" variant="ghost" size="sm" className="text-foreground" onClick={e => abrir('salvar-como', e.currentTarget)}>
               Salvar como…
             </Button>
             {daEquipe && (
-              <DropdownMenu>
+              <DropdownMenu onOpenChange={o => { if (o) pendente.current = null }}>
                 <DropdownMenuTrigger asChild>
-                  <Button type="button" variant="ghost" size="icon-sm" aria-label="Mais ações da visão" title="Renomear ou excluir">
+                  <Button ref={maisRef} type="button" variant="ghost" size="icon-sm" aria-label="Mais ações da visão" title="Renomear ou excluir">
                     <MoreHorizontal aria-hidden />
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="start" className="w-44" onCloseAutoFocus={aoFecharMenu}>
-                  <DropdownMenuItem onSelect={() => abrir('renomear')}>Renomear…</DropdownMenuItem>
-                  <DropdownMenuItem className="text-destructive" onSelect={() => abrir('excluir')}>Excluir…</DropdownMenuItem>
+                  <DropdownMenuItem onSelect={() => pedirPeloMenu('renomear', maisRef.current)}>Renomear…</DropdownMenuItem>
+                  <DropdownMenuItem className="text-destructive" onSelect={() => pedirPeloMenu('excluir', maisRef.current)}>Excluir…</DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             )}
