@@ -476,7 +476,7 @@ Excel rápido do menu **Exportar** não têm totais. O passo a passo está em
 
 ### Os PDFs do Financeiro na Auditoria
 
-Na aba **Visão geral** ficam o **relatório em PDF** do período (**Baixar PDF**, com as **Entradas por categoria** e, depois, as **Saídas por categoria**)
+Na aba **Visão geral** ficam o **relatório em PDF** do período (**Baixar PDF**, com as **Entradas por categoria** e, depois, as **Saídas por categoria**),
 o **Relatório de despesas** e o **Relatório de receitas**, no formato que o
 Sindicato já usa em papel. Na
 aba **Lançamentos** ficam a **Nota de Empenho** e o **recibo** de cada

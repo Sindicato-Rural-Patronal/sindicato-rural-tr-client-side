@@ -13,7 +13,9 @@ relatório pronto: só as **entradas** do período, com o nome e o CNPJ ou CPF d
 quem pagou e os **totais** no fim. Cada passo tem a imagem da tela embaixo. Para
 ver a imagem inteira, clique nela.
 
-**O caminho mais rápido:** na aba **Visão geral**, escolha o **Período** e
+## O jeito mais rápido: Relatório de receitas
+
+Na aba **Visão geral**, escolha o **Período** e
 clique em **Relatório de receitas**. Sai um PDF pronto, com as entradas
 separadas por categoria, o subtotal de cada uma e o **TOTAL GERAL** no fim.
 Serve para a maioria dos meses. Se você prefere **Excel**, ou quer escolher as
