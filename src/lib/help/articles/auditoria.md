@@ -63,7 +63,7 @@ saiu e em que formato:
 | *Exportou a planilha "Pessoas: 3 registros (todos) · CSV · com CPF"* | Uma planilha CSV |
 | *Exportou a planilha do Excel "Pessoas: 3 registros (todos) · Excel · com CPF"* | Uma planilha do Excel (.xlsx) |
 | *Exportou o relatório em PDF "Pessoas: 4 registros (com filtros) · PDF · com CPF"* | Um PDF do **Montar relatório…** (baixado ou pelo **Imprimir**) ou do **Relatório em PDF** do menu |
-| *Gerou o documento "Lista de presença: HORTA · 12 registros · com CPF"* | Um documento em PDF que o painel monta: lista de presença, ficha de inscrição, **Imprimir** da agenda, **Baixar PDF** e **Relatório de despesas** do Financeiro, Nota de Empenho, recibo, ou Ficha, Termo de adesão e Contrato da Unimed |
+| *Gerou o documento "Lista de presença: HORTA · 12 registros · com CPF"* | Um documento em PDF que o painel monta: lista de presença, ficha de inscrição, **Imprimir** da agenda, **Baixar PDF** e **Relatório de despesas** e **Relatório de receitas** do Financeiro, Nota de Empenho, recibo, ou Ficha, Termo de adesão e Contrato da Unimed |
 
 Na frase do documento, o texto entre aspas diz qual é o documento, o que ele
 cobre (o curso, a pessoa, o período ou o lançamento), quantos registros tem e

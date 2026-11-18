@@ -5,7 +5,7 @@ grupo: gestao
 ordem: 1
 permissao: READ_FINANCE
 veja: como-registrar-lancamento, como-emitir-recibo, como-gerar-relatorio-de-receitas, exportar-planilhas, montar-relatorio, busca-e-filtros, auditoria
-busca: financeiro caixa lancamento entrada saida saldo categoria comprovante recorrente fechamento fechar reabrir mes fechado trava cadeado transferencia relatorio pdf nome razao social fornecedor nome fantasia empenho cnpj cpf coluna buscar planilha pausar reativar ativar visao geral numero n anterior numeracao sequencia automatico proximo salto corrigir ordenar ordem recibo recibos gerar recibo receber pagador despesas exportar exportar csv montar relatorio resumido excel xlsx planilha do excel forma de pagamento auditoria gerou o documento nota de empenho baixar pdf relatorio de despesas o pdf aceita ate 2.000 linhas receita receitas contabilidade contador total totais entradas por categoria
+busca: financeiro caixa lancamento entrada saida saldo categoria comprovante recorrente fechamento fechar reabrir mes fechado trava cadeado transferencia relatorio pdf nome razao social fornecedor nome fantasia empenho cnpj cpf coluna buscar planilha pausar reativar ativar visao geral numero n anterior numeracao sequencia automatico proximo salto corrigir ordenar ordem recibo recibos gerar recibo receber pagador despesas exportar exportar csv montar relatorio resumido excel xlsx planilha do excel forma de pagamento auditoria gerou o documento nota de empenho baixar pdf relatorio de despesas o pdf aceita ate 2.000 linhas receita receitas contabilidade contador total totais entradas por categoria relatorio de receitas botao visao geral subtotal total geral
 ---
 
 **Financeiro** tem sete abas: **Visão geral**, **Lançamentos**, **Recorrentes**,
@@ -16,8 +16,8 @@ na **Visão geral**, mas o trabalho do dia a dia é na aba **Lançamentos**.
 
 Em cima, escolha o **Período**: **Este mês**, **Este ano** (o que abre),
 **Últimos 12 meses** ou **Personalizado**, que mostra os campos **De** e
-**Até**. Do outro lado ficam os botões **Relatório de despesas** e **Baixar
-PDF** (o relatório do período, com **Entradas por categoria** e **Saídas por categoria**; veja [Relatórios](#relatorios)).
+**Até**. Do outro lado ficam os botões **Relatório de despesas**, **Relatório
+de receitas** e **Baixar PDF** (o relatório do período, com **Entradas por categoria** e **Saídas por categoria**; veja [Relatórios](#relatorios)).
 
 Logo abaixo vêm quatro números: **Saldo em caixa** (de todas as datas),
 **Entradas**, **Saídas** e **Resultado** do período. Clicar em **Entradas** ou
@@ -26,6 +26,14 @@ em **Saídas** abre a aba **Lançamentos** já filtrada por elas.
 O bloco principal é o gráfico **Entradas × Saídas por mês**. Ao lado dele (em
 tela menor, embaixo) ficam as **Saídas por categoria** e, mais abaixo, o
 **Saldo por caixa**.
+
+O **Relatório de receitas** fica ao lado do de despesas e usa o período
+escolhido em cima. Ele baixa um PDF com as entradas, um bloco por categoria,
+com Nº, Data, Nome / Razão social, CNPJ / CPF, Descrição, Forma de pagamento e
+Valor, o subtotal de cada categoria e o **TOTAL GERAL** no fim. Saídas,
+transferências entre caixas e lançamentos marcados como só nota ficam de fora.
+É o jeito mais rápido de mandar as receitas ao contador; para Excel ou para
+escolher as colunas, veja [Como gerar o relatório de receitas](?topico=como-gerar-relatorio-de-receitas).
 
 ## Lançamentos
 
@@ -469,15 +477,18 @@ Excel rápido do menu **Exportar** não têm totais. O passo a passo está em
 ### Os PDFs do Financeiro na Auditoria
 
 Na aba **Visão geral** ficam o **relatório em PDF** do período (**Baixar PDF**, com as **Entradas por categoria** e, depois, as **Saídas por categoria**)
-e o **Relatório de despesas**, no formato que o Sindicato já usa em papel. Na
+o **Relatório de despesas** e o **Relatório de receitas**, no formato que o
+Sindicato já usa em papel. Na
 aba **Lançamentos** ficam a **Nota de Empenho** e o **recibo** de cada
 lançamento.
 
-Os quatro também ficam na Auditoria. **Antes de gerar o PDF, o painel registra
+Todos eles também ficam na Auditoria. **Antes de gerar o PDF, o painel registra
 o documento**, com o período ou o lançamento:
 
 - *Gerou o documento "Relatório do Financeiro: 01/10/2026 a 31/10/2026 · 45
   registros"*
+- *Gerou o documento "Relatório de receitas: 01/10/2026 a 31/10/2026 · 32
+  registros · com CNPJ / CPF"*
 - *Gerou o documento "Recibo: Nº 128 · COOP LTDA · 1 registro"*
 
 A Nota de Empenho gerada de dentro do formulário (botão **Gerar Nota de

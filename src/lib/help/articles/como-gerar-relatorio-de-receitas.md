@@ -5,7 +5,7 @@ grupo: como-fazer
 ordem: 15
 permissao: READ_FINANCE
 veja: financeiro, montar-relatorio, exportar-planilhas, como-registrar-lancamento
-busca: receita receitas contabilidade contador contabil total totais entradas relatorio de receitas relatorio para a contabilidade exportar excel xlsx pdf modelo fabrica periodo mes financeiro lancamentos montar relatorio salvar como modelo cnpj cpf razao social sem transferencias entre caixas imagens print tela passo a passo nota de empenho
+busca: receita receitas contabilidade contador contabil total totais entradas relatorio de receitas botao relatorio de receitas visao geral relatorio para a contabilidade exportar excel xlsx pdf modelo fabrica periodo mes financeiro lancamentos montar relatorio salvar como modelo cnpj cpf razao social sem transferencias entre caixas imagens print tela passo a passo nota de empenho
 ---
 
 O contador pede, todo mês, o que o Sindicato recebeu. Este roteiro tira esse
@@ -13,7 +13,13 @@ relatório pronto: só as **entradas** do período, com o nome e o CNPJ ou CPF d
 quem pagou e os **totais** no fim. Cada passo tem a imagem da tela embaixo. Para
 ver a imagem inteira, clique nela.
 
-## Passo a passo
+**O caminho mais rápido:** na aba **Visão geral**, escolha o **Período** e
+clique em **Relatório de receitas**. Sai um PDF pronto, com as entradas
+separadas por categoria, o subtotal de cada uma e o **TOTAL GERAL** no fim.
+Serve para a maioria dos meses. Se você prefere **Excel**, ou quer escolher as
+colunas e os filtros, use o passo a passo abaixo, pela lista de Lançamentos.
+
+## Passo a passo (Excel ou colunas à sua escolha)
 
 1. Abra **Financeiro** no menu e vá na aba **Lançamentos**.
 
@@ -93,7 +99,7 @@ Tipo nem a caixa Sem transferências entre caixas**: a cada mês, ponha as datas
 
 ## Outro relatório: o PDF do período
 
-Na aba **Visão geral**, o botão **Baixar PDF** tira o Relatório Financeiro do
+Na aba **Visão geral**, além do **Relatório de receitas**, o botão **Baixar PDF** tira o Relatório Financeiro do
 período, com **Entradas por categoria** e **Saídas por categoria**. Serve para
 mostrar de onde veio o dinheiro, sem listar lançamento por lançamento. Veja
 [Financeiro](?topico=financeiro).
@@ -109,5 +115,5 @@ mostrar de onde veio o dinheiro, sem listar lançamento por lançamento. Veja
 | Não vejo o modelo **Contabilidade** | Recarregue a página (F5) e abra o montador de novo |
 | *O PDF aceita até 2.000 linhas.* | Escolha um período menor ou use o Excel |
 
-Todo arquivo baixado fica na [Auditoria](?topico=auditoria). Ele leva CNPJ e
+Os dois caminhos ficam na Auditoria: o botão da **Visão geral** aparece como *Gerou o documento "Relatório de receitas: …"*. Todo arquivo baixado fica na [Auditoria](?topico=auditoria). Ele leva CNPJ e
 CPF de quem pagou: não mande por grupo de WhatsApp.
