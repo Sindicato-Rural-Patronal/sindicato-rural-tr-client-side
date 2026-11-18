@@ -38,6 +38,11 @@ Em cima fica a barra com o campo **Buscar** e os botões **Exportar**,
 **Categoria**, **Caixa**, **Forma de pagamento** e **Ordenar por**) ficam numa linha logo
 embaixo dela. No celular, eles aparecem dois por linha.
 
+Ao lado do **Ordenar por** fica a caixa **Sem transferências entre caixas**.
+Marcada, as duas pernas de cada transferência (a saída e a entrada) saem da
+lista, dos totais da tela e do arquivo que você exporta. É o que faz as linhas
+somarem exatamente o total.
+
 Os filtros ficam no endereço da página, então **dá para salvar o link nos
 favoritos** ou mandar para um colega e ele vê a mesma lista.
 
@@ -450,13 +455,15 @@ como os das outras listas: quem baixou, quando e o que levou.
 ### Relatório de receitas para a contabilidade
 
 No **Montar relatório…**, escolha o modelo de fábrica **Contabilidade**: Nº,
-Data, Nome / Razão social, CNPJ / CPF, Descrição, Categoria, Método e Valor
-(R$). **O modelo não filtra**: antes de abrir o montador, ponha **Tipo ›
-Entradas** e o período na tela, senão as saídas entram. No **Excel** e no
-**PDF** do montador, o arquivo traz o **Total de entradas** (e o **Total de
-saídas**, se houver saídas) no fim. Transferências entre caixas e lançamentos
-"só nota" não entram nos totais. A planilha CSV e o Excel rápido do menu
-**Exportar** não têm totais. O passo a passo está em
+Data, Tipo, Nome / Razão social, CNPJ / CPF, Descrição, Categoria, Método e
+Valor (R$). **O modelo não filtra**: antes de abrir o montador, ponha **Tipo ›
+Entradas** e o período na tela, senão as saídas entram. Marque também **Sem
+transferências entre caixas**: assim as linhas somam exatamente o total. No
+**Excel** e no **PDF** do montador, o arquivo traz o **Total de entradas** (e o
+**Total de saídas**, se houver saídas) no fim. Transferências entre caixas e
+lançamentos "só nota" não entram nos totais (com a caixa desmarcada, as
+transferências aparecem nas linhas e o arquivo avisa disso). A planilha CSV e o
+Excel rápido do menu **Exportar** não têm totais. O passo a passo está em
 [Como gerar o relatório de receitas para a contabilidade](?topico=como-gerar-relatorio-de-receitas).
 
 ### Os PDFs do Financeiro na Auditoria

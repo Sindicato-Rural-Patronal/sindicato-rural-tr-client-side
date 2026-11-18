@@ -169,7 +169,7 @@ dois grupos: **Modelos de fábrica**, com o **Padrão (como hoje)** primeiro, e
 | Mensagens de contato | **Contato** | Nome, E-mail e Telefone |
 | Auditoria | **Resumida** | Data e hora, Quem, Ação e Alvo |
 | Lançamentos | **Resumido** | Nº, Data, Descrição, Nome / Razão social e Valor (R$) |
-| Lançamentos | **Contabilidade** | Nº, Data, Nome / Razão social, CNPJ / CPF, Descrição, Categoria, Método e Valor (R$). Não filtra: ponha **Tipo › Entradas** na tela antes. Veja [Como gerar o relatório de receitas](?topico=como-gerar-relatorio-de-receitas) |
+| Lançamentos | **Contabilidade** | Nº, Data, Tipo, Nome / Razão social, CNPJ / CPF, Descrição, Categoria, Método e Valor (R$). Não filtra: ponha **Tipo › Entradas** e marque **Sem transferências entre caixas** na tela antes. Veja [Como gerar o relatório de receitas](?topico=como-gerar-relatorio-de-receitas) |
 | Propriedades | — | Só o **Padrão (como hoje)** |
 | Reservas das salas | — | Só o **Padrão (como hoje)** |
 
