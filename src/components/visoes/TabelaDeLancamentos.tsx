@@ -54,11 +54,12 @@ function fonteDa(key: string): Fonte {
 const EXTRA: Record<string, number> = { description: 24, category: 16, account: 20 }
 
 /**
- * A largura mínima da coluna (com o respiro) de quem lê frase: a Descrição (144 px
+ * A largura mínima da coluna (com o respiro) de quem lê frase: a Descrição (124 px
  * de texto, ao lado do ícone) e o Nome (138 px) não ficam com uma ou duas palavras
- * por linha. Valem também quando a tabela rola.
+ * por linha. Valem também quando a tabela rola. A Descrição tem 160 (era 180) para a
+ * Contabilidade caber a 1366 px, tela comum de notebook (decisão do Orquestrador).
  */
-const PISO_DA_COLUNA: Record<string, number> = { description: 180, payeeName: 150 }
+const PISO_DA_COLUNA: Record<string, number> = { description: 160, payeeName: 150 }
 
 /**
  * A letra de verdade, pelo canvas; sem ele (testes), a estimativa. Antes de a fonte
