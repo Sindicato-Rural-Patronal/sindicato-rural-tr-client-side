@@ -29,8 +29,18 @@ import {
 /** "Ações": Editar e Repetir à vista e o "Mais" (3 × 32 px) com o respiro da célula. */
 const LARGURA_ACOES = 108
 
-/** A sombra na borda esquerda do que fica preso: avisa que há colunas passando por baixo. */
-const SOMBRA_DA_PRESA = 'shadow-[-8px_0_8px_-8px_rgba(0,0,0,0.25)]'
+/**
+ * A borda esquerda do que fica preso enquanto a tabela rola, para a coluna que passa
+ * por baixo não parecer palavra cortada ("M", "BO", "PI"): uma linha de 1 px na cor da
+ * borda (sombra `inset`; `max-lg:` repete para vencer a de `STICKY_ACTIONS_CELL`) e,
+ * à esquerda dela, uma sombra de 10 px na cor do texto (escura no claro, clara no
+ * escuro). A sombra é um degradê no `::before`: na tabela de bordas coladas o
+ * navegador não desenha o `box-shadow` de fora de uma célula. Só tokens do tema.
+ */
+const SOMBRA_DA_PRESA =
+  'shadow-[inset_1px_0_0_var(--border)] max-lg:shadow-[inset_1px_0_0_var(--border)] '
+  + 'before:pointer-events-none before:absolute before:inset-y-0 before:right-full before:w-2.5 '
+  + 'before:bg-linear-to-l before:from-[color-mix(in_srgb,var(--foreground)_16%,transparent)] before:to-transparent'
 
 function TipoIcone({ t }: { t: Pick<FinanceTransaction, 'type' | 'transferId'> }) {
   const Icone = t.transferId ? ArrowLeftRight : t.type === 'IN' ? ArrowUpCircle : t.type === 'OUT' ? ArrowDownCircle : Receipt
@@ -254,7 +264,8 @@ export function TabelaDeLancamentos({ rows, colunas, reserva, isLoading, vazio, 
                 </TableHead>
               )
             })}
-            <TableHead className={cn('text-right', acoesPresas)}>Ações</TableHead>
+            {/* Pela base, como os outros cabeçalhos (no meio ficava 12 px acima). */}
+            <TableHead className={cn('text-right align-bottom', acoesPresas)}>Ações</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -282,7 +293,7 @@ export function TabelaDeLancamentos({ rows, colunas, reserva, isLoading, vazio, 
                   return (
                     <TableCell
                       key={c.key}
-                      className={cn('min-w-0 overflow-hidden px-1.5 align-top whitespace-normal pt-3 text-[13px]', ehValor && 'text-right', ehValor && presoAoValor)}
+                      className={cn('min-w-0 overflow-hidden px-1.5 align-top whitespace-normal pt-3 text-[13px]', ehValor && 'text-right', ehValor && presoAoValor, ehValor && valorPreso && 'overflow-visible')}
                       style={ehValor ? estiloDoValor : undefined}
                     >
                       <Conteudo
