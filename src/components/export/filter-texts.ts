@@ -9,6 +9,9 @@
 const TIPO_DO_LANCAMENTO: Record<string, string> = { IN: 'Entrada', OUT: 'Saída' }
 const TIPO_DA_RESERVA: Record<string, string> = { EVENT: 'Evento', MEETING: 'Reunião' }
 
+/** O rótulo que a API escreve na linha "Filtros:" do PDF e na aba "Sobre" (SR-135). */
+export const TEXTO_SEM_TRANSFERENCIAS = 'Sem transferências entre caixas'
+
 function juntar(partes: Record<string, string | null>): Record<string, string> {
   const textos: Record<string, string> = {}
   for (const [chave, texto] of Object.entries(partes)) if (texto) textos[chave] = texto
@@ -31,10 +34,10 @@ function porLista(rotulo: string, valor: string | null | undefined, nomes: Recor
 
 /**
  * Financeiro › Lançamentos: o tipo como a API diz ("Tipo: Saída"), a categoria
- * e o caixa pelo nome e a ordem por Nº ("Ordem: Nº"; a por data, a de sempre,
- * não aparece).
+ * e o caixa pelo nome, a ordem por Nº ("Ordem: Nº"; a por data, a de sempre,
+ * não aparece) e "Sem transferências entre caixas".
  */
-export function textosDoFinanceiro({ type, categoryId, categoria, accountId, caixa, orderBy }: {
+export function textosDoFinanceiro({ type, categoryId, categoria, accountId, caixa, orderBy, excludeTransfers }: {
   type?: string | null
   categoryId?: string | null
   /** Nome da categoria do filtro, se a tela souber. */
@@ -43,12 +46,15 @@ export function textosDoFinanceiro({ type, categoryId, categoria, accountId, cai
   /** Nome do caixa do filtro, se a tela souber. */
   caixa?: string | null
   orderBy?: string | null
+  /** "Sem transferências entre caixas" (SR-136), no texto exato da API (sem ": Sim"). */
+  excludeTransfers?: boolean
 }): Record<string, string> {
   return juntar({
     type: porLista('Tipo', type, TIPO_DO_LANCAMENTO),
     categoryId: porNome('Categoria', categoryId, categoria),
     accountId: porNome('Caixa', accountId, caixa),
     orderBy: orderBy === 'number' ? 'Ordem: Nº' : null,
+    excludeTransfers: excludeTransfers ? TEXTO_SEM_TRANSFERENCIAS : null,
   })
 }
 
