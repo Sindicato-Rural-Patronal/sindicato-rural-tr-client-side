@@ -869,13 +869,19 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
   // Visão da equipe que filtra por categoria ou caixa: confere se ainda existem (com as inativas).
   const modelosDaEquipe = useReportTemplates('finance-transactions', { enabled: false }).data
   const filtraPorId = !!modelosDaEquipe?.some(m => m.filters && ('categoryId' in m.filters || 'accountId' in m.filters))
-  const todasAsCategorias = useFinanceCategories({ includeInactive: true, enabled: enabled && filtraPorId }).data
-  const todosOsCaixas = useFinanceAccounts({ includeInactive: true, enabled: enabled && filtraPorId }).data
+  const categoriasComInativas = useFinanceCategories({ includeInactive: true, enabled: enabled && filtraPorId })
+  const caixasComInativos = useFinanceAccounts({ includeInactive: true, enabled: enabled && filtraPorId })
+  const todasAsCategorias = categoriasComInativas.data
+  const todosOsCaixas = caixasComInativos.data
+  const categoriasFalharam = categoriasComInativas.isError
+  const caixasFalharam = caixasComInativos.isError
+  // `undefined` = a lista ainda não chegou (a última visão espera por ela); se a lista
+  // não carregou, não dá para conferir e o filtro fica (como antes).
   const existeNaLista = useCallback((chave: string, valor: string | boolean) => {
-    if (chave === 'categoryId') return todasAsCategorias ? todasAsCategorias.some(c => c.id === valor) : undefined
-    if (chave === 'accountId') return todosOsCaixas ? todosOsCaixas.some(a => a.id === valor) : undefined
+    if (chave === 'categoryId') return todasAsCategorias ? todasAsCategorias.some(c => c.id === valor) : categoriasFalharam || undefined
+    if (chave === 'accountId') return todosOsCaixas ? todosOsCaixas.some(a => a.id === valor) : caixasFalharam || undefined
     return true
-  }, [todasAsCategorias, todosOsCaixas])
+  }, [todasAsCategorias, todosOsCaixas, categoriasFalharam, caixasFalharam])
   const visao = useVisaoDaLista({
     dataset: 'finance-transactions',
     enabled,

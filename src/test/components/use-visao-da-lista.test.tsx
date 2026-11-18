@@ -23,17 +23,28 @@ const CATALOGO = {
   ],
 }
 const MODELO = modeloDaEquipeCru({ id: 'm1', dataset: 'finance-transactions', name: 'Março', fields: ['number', 'amount'], format: null, filters: { type: 'OUT' } })
+// SR-153: visões da equipe que filtram por uma categoria e por um caixa que depois foram excluídos.
+const COM_CATEGORIA = modeloDaEquipeCru({ id: 'm2', dataset: 'finance-transactions', name: 'Cursos', fields: ['number', 'amount'], format: null, filters: { type: 'IN', categoryId: 'cat-x' } })
+const COM_CAIXA = modeloDaEquipeCru({ id: 'm3', dataset: 'finance-transactions', name: 'Banco', fields: ['number', 'amount'], format: null, filters: { accountId: 'caixa-x', periodo: 'mes-passado' } })
+let modelos: unknown[] = [MODELO]
 
 const resposta = (corpo: unknown) => Promise.resolve({ json: () => Promise.resolve(corpo) })
 
-function rodar(props: { tela?: Record<string, string | boolean | undefined>; url?: { visao?: string; cols?: string } } = {}) {
+type Existe = (chave: string, valor: string | boolean) => boolean | undefined
+type PropsDoHook = { tela: Record<string, string | boolean | undefined>; url: { visao?: string; cols?: string }; existe?: Existe }
+
+function rodar(props: Partial<PropsDoHook> = {}) {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   const wrapper = ({ children }: { children: ReactNode }) => <QueryClientProvider client={qc}>{children}</QueryClientProvider>
   const mudar = vi.fn()
+  const inicial: PropsDoHook = { tela: props.tela ?? {}, url: props.url ?? {}, existe: props.existe }
   const hook = renderHook(
-    (p: { tela: Record<string, string | boolean | undefined>; url: { visao?: string; cols?: string } }) =>
-      useVisaoDaLista({ dataset: 'finance-transactions', enabled: true, tela: p.tela, url: p.url, mudar }),
-    { wrapper, initialProps: { tela: props.tela ?? {}, url: props.url ?? {} } },
+    (p: PropsDoHook) =>
+      useVisaoDaLista({
+        dataset: 'finance-transactions', enabled: true, tela: p.tela, url: p.url, mudar, existe: p.existe,
+        avisoDoQueSumiu: k => (k === 'accountId' ? 'O caixa saiu da visão.' : 'A categoria saiu da visão.'),
+      }),
+    { wrapper, initialProps: inicial },
   )
   return { ...hook, mudar }
 }
@@ -41,9 +52,10 @@ function rodar(props: { tela?: Record<string, string | boolean | undefined>; url
 beforeEach(() => {
   vi.clearAllMocks()
   localStorage.clear()
+  modelos = [MODELO]
   apiFetch.mockImplementation((path: string, init?: { method?: string; body?: string }) => {
     if (path.endsWith('/catalog')) return resposta(CATALOGO)
-    if (path === '/admin/report-templates/finance-transactions' && !init?.method) return resposta([MODELO])
+    if (path === '/admin/report-templates/finance-transactions' && !init?.method) return resposta(modelos)
     if (init?.method === 'POST') {
       const corpo = JSON.parse(init.body ?? '{}')
       return resposta(modeloDaEquipeCru({ id: 'novo', dataset: 'finance-transactions', name: corpo.name, fields: corpo.fields, filters: corpo.filters }))
@@ -104,6 +116,43 @@ describe('useVisaoDaLista', () => {
     await waitFor(() => expect(mudar).toHaveBeenCalledWith({
       visao: 'contabilidade', cols: undefined, filtros: { type: 'IN', excludeTransfers: true },
     }))
+  })
+
+  it('a última visão com uma categoria excluída volta sem ela: espera a lista de categorias e avisa (SR-153)', async () => {
+    modelos = [MODELO, COM_CATEGORIA]
+    localStorage.setItem('sr:visao:finance-transactions', JSON.stringify({ visao: 'equipe:m2' }))
+    // A lista de categorias ainda não chegou: não se sabe se a categoria existe.
+    const naoSei: Existe = k => (k === 'categoryId' ? undefined : true)
+    const { result, rerender, mudar } = rodar({ existe: naoSei })
+    await waitFor(() => expect(result.current.visoes.some(v => v.id === 'equipe:m2')).toBe(true))
+    await new Promise(r => setTimeout(r, 30))
+    expect(mudar).not.toHaveBeenCalled()
+    // A tabela espera (não pede a lista com a categoria que talvez não exista).
+    expect(result.current.carregando).toBe(true)
+
+    // A lista chegou e a categoria não está nela (foi excluída).
+    const excluida: Existe = k => (k === 'categoryId' ? false : true)
+    rerender({ tela: {}, url: {}, existe: excluida })
+    await waitFor(() => expect(mudar).toHaveBeenCalledTimes(1))
+    expect(mudar).toHaveBeenCalledWith({ visao: 'equipe:m2', cols: undefined, filtros: { type: 'IN' } })
+
+    // Com a URL já na visão: o aviso, e a visão não fica "(alterada)" pela categoria que saiu.
+    rerender({ tela: { type: 'IN' }, url: { visao: 'equipe:m2' }, existe: excluida })
+    expect(result.current.avisos).toEqual(['A categoria saiu da visão.'])
+    expect(result.current.filtrosDaVisao).toEqual({ type: 'IN' })
+    expect(result.current.alterada).toBe(false)
+    expect(mudar).toHaveBeenCalledTimes(1)
+  })
+
+  it('o mesmo com um caixa excluído: o período volta, o caixa não', async () => {
+    modelos = [MODELO, COM_CAIXA]
+    localStorage.setItem('sr:visao:finance-transactions', JSON.stringify({ visao: 'equipe:m3' }))
+    const { mudar } = rodar({ existe: k => (k === 'accountId' ? false : true) })
+    await waitFor(() => expect(mudar).toHaveBeenCalledTimes(1))
+    const [{ visao, filtros }] = mudar.mock.calls[0]
+    expect(visao).toBe('equipe:m3')
+    expect(Object.keys(filtros).sort()).toEqual(['from', 'to'])
+    expect(filtros).not.toHaveProperty('accountId')
   })
 
   it('"Salvar como…" manda as colunas e só os filtros ligados (sem busca nem datas), e abre a visão nova', async () => {

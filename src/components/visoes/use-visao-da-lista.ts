@@ -62,6 +62,11 @@ export function useVisaoDaLista({ dataset, enabled, tela, url, mudar, existe, av
   const atual: Visao | null = achada ?? (esperandoEquipe ? null : padrao)
   const sumiu = !!url.visao && !achada && !esperandoEquipe && temVisoes
 
+  // Algum filtro da visão aponta para algo que ainda não se sabe se existe (a lista
+  // de categorias ou de caixas não chegou)? Ao voltar à última visão, espera por ela.
+  const semResposta = (f: FiltrosDaVisao | null) =>
+    !!f && !!existe && Object.entries(f).some(([k, x]) => k !== 'periodo' && existe(k, x) === undefined)
+
   // Filtro que aponta para categoria ou caixa excluído sai da visão (e avisa).
   const { filtrosEfetivos, quaisSumiram } = useMemo(() => {
     const f = atual?.filters ?? null
@@ -89,6 +94,8 @@ export function useVisaoDaLista({ dataset, enabled, tela, url, mudar, existe, av
 
   // Voltar à última visão (uma vez, quando as visões chegam). Enquanto não volta, a
   // tabela espera (senão a lista de sempre piscaria antes das colunas da visão).
+  // Os filtros que ela devolve são os de `filtrosDe`, como no `aplicar`: categoria
+  // ou caixa excluído fica de fora (SR-153; antes voltava e a lista saía vazia).
   const voltou = useRef(false)
   const ultimaVolta = !!ultima && !url.visao && (ultima.visao !== ID_DO_PADRAO || !!ultima.cols)
   const restaurando = ultimaVolta && (
@@ -98,16 +105,19 @@ export function useVisaoDaLista({ dataset, enabled, tela, url, mudar, existe, av
   useEffect(() => {
     if (voltou.current || url.visao || !ultima || !temVisoes) return
     if (ultima.visao.startsWith('equipe:') && equipeCarregando) return
-    voltou.current = true
     const v = visoes.find(x => x.id === ultima.visao)
+    // Ainda não se sabe se a categoria ou o caixa da visão existe: espera a lista.
+    if (v && semResposta(v.filters)) return
+    voltou.current = true
     if (!v || v.id === ID_DO_PADRAO && !ultima.cols) return
-    const aplicaFiltros = deveAplicarFiltrosAoVoltar(v.filters, tela)
+    const filtros = filtrosDe(v)
+    const aplicaFiltros = deveAplicarFiltrosAoVoltar(filtros, tela)
     mudar({
       visao: v.id,
       cols: ultima.cols && colunasDaUrl(ultima.cols) ? ultima.cols : undefined,
-      ...(aplicaFiltros ? { filtros: patchDaVisao(v.filters) } : {}),
+      ...(aplicaFiltros ? { filtros: patchDaVisao(filtros) } : {}),
     })
-  }, [url.visao, ultima, temVisoes, equipeCarregando, visoes, tela, mudar])
+  })
 
   // Lembrar o estado (só depois que a URL tem a visão: a primeira tela não apaga a última).
   useEffect(() => {
