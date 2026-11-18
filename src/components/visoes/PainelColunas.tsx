@@ -3,11 +3,13 @@
 // ↓ e ×; as linhas do montador). A tabela muda na hora; não há "Aplicar". Marcar
 // põe a coluna no fim. "Ações" não é coluna escolhível: fica sempre por último.
 //
-// Computador: Popover largo ancorado no botão, com a altura limitada ao espaço
-// que sobra na janela (cada lado rola por dentro). Celular: folha de baixo de
-// altura cheia, ↑ ↓ × de 44 px, sem arrastar; "Adicionar coluna" troca o
-// conteúdo pela lista agrupada e "Pronto" volta.
-import { useMemo, useState } from 'react'
+// Computador: Popover largo ancorado no botão, para o lado com mais espaço e com a
+// altura limitada ao espaço desse lado (cada lista rola por dentro). Se o painel não
+// cabe inteiro em nenhum dos lados, a página sobe só o que falta antes de ele abrir
+// (SR-153: a 1280 × 800, com a página no topo, ele abria para cima com 368 px e
+// mostrava 6 colunas). Celular: folha de baixo de altura cheia, ↑ ↓ × de 44 px, sem
+// arrastar; "Adicionar coluna" troca o conteúdo pela lista agrupada e "Pronto" volta.
+import { useMemo, useRef, useState } from 'react'
 import {
   DndContext, KeyboardSensor, PointerSensor, closestCenter, useSensor, useSensors, type DragEndEvent,
 } from '@dnd-kit/core'
@@ -21,6 +23,27 @@ import { LinhaArrastavel, LinhaDaColuna } from '@/components/export/LinhaDaColun
 import { camposDoCatalogo, type CampoComGrupo, type ExportCatalog } from '@/components/export/report-builder'
 import { cn } from '@/lib/utils'
 import { alternarColuna, moverColuna } from '@/components/visoes/visoes'
+
+/**
+ * A altura do painel inteiro no computador (o respiro de 16 px, o cabeçalho, as
+ * listas de 480 px: umas 10 colunas à vista), mais a distância do botão e a folga da borda da janela.
+ */
+const ALTURA_DO_PAINEL = 600
+/** Até onde a página sobe: o botão fica a esta distância do topo da janela. */
+const TOPO_MINIMO = 16
+
+/**
+ * Antes de abrir: se o painel não cabe inteiro nem embaixo nem em cima do botão, a
+ * página rola só o que falta para ele caber embaixo (sem tirar o botão da tela).
+ */
+function darEspacoAoPainel(botao: HTMLElement | null) {
+  if (!botao || typeof window === 'undefined') return
+  const r = botao.getBoundingClientRect()
+  const abaixo = window.innerHeight - r.bottom
+  if (abaixo >= ALTURA_DO_PAINEL || r.top >= ALTURA_DO_PAINEL) return
+  const sobe = Math.min(ALTURA_DO_PAINEL - abaixo, r.top - TOPO_MINIMO)
+  if (sobe > 0) window.scrollBy({ top: sobe, behavior: 'instant' })
+}
 
 type Props = {
   catalog: ExportCatalog | null
@@ -37,6 +60,7 @@ export function PainelColunas({ catalog, cols, onChange, alterada, onVoltar, cel
   const [aberto, setAberto] = useState(false)
   const [busca, setBusca] = useState('')
   const [tela, setTela] = useState<'colunas' | 'campos'>('colunas')
+  const botaoRef = useRef<HTMLButtonElement>(null)
   const campos = useMemo(() => (catalog ? camposDoCatalogo(catalog) : new Map<string, CampoComGrupo>()), [catalog])
   const escolhidos = cols.map(k => campos.get(k)).filter((c): c is CampoComGrupo => !!c)
 
@@ -55,6 +79,7 @@ export function PainelColunas({ catalog, cols, onChange, alterada, onVoltar, cel
 
   const botao = (
     <Button
+      ref={botaoRef}
       type="button"
       variant="outline"
       className={cn('gap-2', celular && 'h-11 w-full', className)}
@@ -131,10 +156,11 @@ export function PainelColunas({ catalog, cols, onChange, alterada, onVoltar, cel
   }
 
   return (
-    <Popover open={aberto} onOpenChange={setAberto}>
+    <Popover open={aberto} onOpenChange={o => { if (o) darEspacoAoPainel(botaoRef.current); setAberto(o) }}>
       <PopoverTrigger asChild>{botao}</PopoverTrigger>
-      {/* A altura é a que sobra na janela (`available-height`, com 12 px de folga):
-          a 1280 × 800 o painel cabe inteiro, e cada lado rola por dentro. */}
+      {/* Abre para o lado com mais espaço (o `flip` do Radix escolhe o que melhor cabe),
+          com a altura desse lado (`available-height`, com 12 px de folga); cada lista
+          rola por dentro. A 1280 × 800 a página sobe antes e ele abre para baixo inteiro. */}
       <PopoverContent
         side="bottom"
         align="start"
@@ -149,7 +175,7 @@ export function PainelColunas({ catalog, cols, onChange, alterada, onVoltar, cel
           {voltar}
         </div>
         {catalog && (
-          <div className="grid h-[440px] min-h-32 shrink grid-cols-[3fr_2fr] grid-rows-[minmax(0,1fr)] gap-4">
+          <div className="grid h-[480px] min-h-32 shrink grid-cols-[3fr_2fr] grid-rows-[minmax(0,1fr)] gap-4">
             <section className="flex min-h-0 flex-col gap-2" aria-label="Campos">
               <h3 className="text-sm font-medium text-foreground">Campos</h3>
               <div className="min-h-0 flex-1 overflow-y-auto pr-1">
