@@ -29,7 +29,7 @@ A barra da visão fica na aba **Lançamentos**, entre os filtros e os totais
 
 **Transferir** e **Novo lançamento** continuam no alto, ao lado do **Buscar**.
 
-![A aba Lançamentos com a visão Contabilidade: os filtros em cima, a barra da visão com Visão, Colunas (9), Salvar como… e Exportar, os totais e a tabela com as 9 colunas](/ajuda-imagens/visoes/02-contabilidade-aplicada.jpg "A barra da visão fica entre os filtros e os totais. O contorno marca o que a visão ligou.")
+![A aba Lançamentos com a visão Contabilidade: os filtros em cima, a barra da visão com Visão, Colunas (9), Salvar como… e Exportar, os totais e a tabela com as 9 colunas, que rola de lado com o Valor (R$) e as Ações presos à direita](/ajuda-imagens/visoes/02-contabilidade-aplicada.jpg "A barra da visão fica entre os filtros e os totais. O contorno marca o que a visão ligou.")
 
 ## Antes de começar
 
@@ -106,8 +106,9 @@ Algumas regras:
 - A lista fica sempre com pelo menos uma coluna.
 - **Ações** (os botões da linha) não é coluna que se escolhe: fica sempre por
   último.
-- Quando as colunas não cabem na largura da tela, a tabela rola de lado, e a
-  coluna **Ações** fica presa à direita.
+- Quando as colunas não cabem na largura da tela, a tabela rola de lado. A
+  coluna **Valor (R$)** e **Ações** ficam presas à direita, sempre à vista. Sem
+  o **Valor (R$)** na visão, só **Ações** fica presa.
 - **Voltar ao padrão da visão** desfaz as mudanças e põe de novo as colunas e os
   filtros da visão.
 
@@ -286,9 +287,10 @@ relatório…** continuam iguais. Veja [Exportar planilhas](?topico=exportar-pla
 
 - **As visões da equipe:** criar, salvar alterações, renomear e excluir ficam na
   [Auditoria](?topico=auditoria), no tipo **Visão da lista**. A frase diz, por
-  exemplo, *Criou a visão "Lançamentos: Receitas para o contador"*. Abrindo a
-  linha, **O que mudou** mostra o **Nome**, os **Campos** e os **Filtros**, em
-  palavras.
+  exemplo, *Criou a visão "Lançamentos: Receitas para o contador"*. Nas linhas
+  **Editou** e **Excluiu**, **O que mudou** mostra o **Nome**, os **Campos** e os
+  **Filtros**, em palavras. A linha **Criou** não tem **O que mudou**, como toda
+  criação no sistema.
 - **Cada exportação:** fica registrada como as das outras listas, com quem
   baixou e quando. No bloco **O que foi exportado**, o nome da visão aparece em
   **Modelo**.

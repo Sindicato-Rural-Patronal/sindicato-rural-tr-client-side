@@ -169,10 +169,11 @@ Elas têm o tipo próprio **Visão da lista**, no filtro **Tipo**:
 - *Editou a visão "Lançamentos: Receitas para o contador"*
 - *Excluiu a visão "Lançamentos: Receitas para o contador"*
 
-Abrindo a linha, **O que mudou** mostra o **Nome**, os **Campos** e os
-**Filtros**, em palavras, como *Tipo: Entrada · Sem transferências entre caixas
-· Período: mês passado*. Numa exclusão, a coluna **Antes** guarda o que a visão
-tinha. As linhas gravadas antes das visões continuam com o tipo **Modelo de
+Nas linhas **Editou** e **Excluiu**, **O que mudou** mostra o **Nome**, os
+**Campos** e os **Filtros**, em palavras, como *Tipo: Entrada · Sem
+transferências entre caixas · Período: mês passado*. A linha **Criou** não tem
+**O que mudou**, como toda criação no sistema. Numa exclusão, a coluna **Antes**
+guarda o que a visão tinha. As linhas gravadas antes das visões continuam com o tipo **Modelo de
 relatório**.
 
 ## Exportar a trilha

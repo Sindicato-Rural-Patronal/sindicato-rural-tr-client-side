@@ -21,11 +21,13 @@ O que o site mostra depende do **Subtítulo** e dos **Botões** do banner:
 
 No banner só de cartaz, **o título não aparece na tela**. Ele continua
 obrigatório: é lido em voz alta para quem usa leitor de tela e é o nome do
-banner aqui no painel.
+banner aqui no painel. Título só de pontuação, como ".", não é lido: o leitor de
+tela ouve só *Aviso do Sindicato Rural de Terra Roxa*.
 
 **Se o cartaz já traz o texto**, deixe o **Subtítulo** e os **Botões** vazios,
 e escreva no **Título** o que o cartaz anuncia, como *Feliz Natal*. Assim o
-texto não aparece duas vezes.
+texto não aparece duas vezes, e quem não enxerga o cartaz fica sabendo o que ele
+diz.
 
 ## O período
 

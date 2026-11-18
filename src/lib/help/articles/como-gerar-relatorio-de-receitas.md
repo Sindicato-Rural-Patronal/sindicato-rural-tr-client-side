@@ -43,11 +43,14 @@ Lançamentos.
    **Entradas** mostra a soma do que ficou na lista: confira se é o valor que
    você espera.
 
+   Se as colunas não couberem na tela, a tabela rola de lado. O **Valor (R$)**
+   fica preso à direita, sempre à vista.
+
    Precisa de outro mês? Mude **De** e **Até**. O nome da visão passa a
    **Contabilidade (alterada)**: é só um lembrete, e o arquivo sai do mesmo
    jeito. Se quiser, filtre também por **Caixa** ou **Categoria**.
 
-   ![A visão Contabilidade aplicada: os filtros De e Até com outubro, Tipo em Entradas e Sem transferências entre caixas marcada, a barra da visão, os totais e a tabela com as 9 colunas](/ajuda-imagens/visoes/02-contabilidade-aplicada.jpg "O que a visão Contabilidade ligou na tela (o contorno é só para destacar).")
+   ![A visão Contabilidade aplicada: os filtros De e Até com outubro, Tipo em Entradas e Sem transferências entre caixas marcada, a barra da visão, os totais e a tabela com as 9 colunas, com o Valor (R$) e as Ações presos à direita](/ajuda-imagens/visoes/02-contabilidade-aplicada.jpg "O que a visão Contabilidade ligou na tela (o contorno é só para destacar).")
 
 3. Clique em **Exportar**, no fim da barra. Confira o resumo: quantos
    lançamentos, **9 colunas** e **Visão: Contabilidade**. Embaixo, a linha dos

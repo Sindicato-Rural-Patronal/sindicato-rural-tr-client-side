@@ -31,7 +31,9 @@ botão continua com o texto ao lado do cartaz.
 
 **Se o cartaz já traz o texto**, deixe o **Subtítulo** e os **Botões** vazios.
 O **Título** continua obrigatório: escreva o que o cartaz anuncia, como *Feliz
-Natal*.
+Natal*. É ele que o leitor de tela lê para quem não enxerga o cartaz. Título só
+de pontuação, como ".", não é lido: a pessoa ouve só *Aviso do Sindicato Rural
+de Terra Roxa*.
 
 ## Conferindo se está no ar
 
