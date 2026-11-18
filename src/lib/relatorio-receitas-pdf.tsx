@@ -4,6 +4,7 @@ import { centsToBRL } from '@/utils/masks'
 import { formatDateFromString } from '@/utils/format-data-from-string'
 import type { FinanceTransaction } from '@/hooks/useFinance'
 import type { DadosEntidade } from '@/lib/relatorio-empenho-pdf'
+import { quebraDaColuna } from '@/lib/relatorio-pdf'
 import {
   blocosDeReceitas, nomeDoArquivoReceitas, totalDeReceitas, type BlocoReceita,
 } from '@/lib/relatorio-receitas'
@@ -40,11 +41,12 @@ const styles = StyleSheet.create({
     backgroundColor: C.brand, paddingVertical: 4,
     fontSize: 9, fontFamily: 'Helvetica-Bold', color: '#ffffff', textAlign: 'center',
   },
-  resumo: {
-    flexDirection: 'row', flexWrap: 'wrap',
-    borderWidth: 1, borderColor: C.borda, borderTopWidth: 0, marginBottom: 14,
-  },
-  resumoItem: { width: '33.33%', flexDirection: 'row', justifyContent: 'center', paddingVertical: 5, paddingHorizontal: 4 },
+  // Grade de 4 por linha com divisórias, como no de despesas.
+  resumo: { borderWidth: 1, borderColor: C.borda, borderTopWidth: 0, marginBottom: 14 },
+  resumoLinha: { flexDirection: 'row' },
+  resumoLinhaDiv: { borderTopWidth: 1, borderTopColor: C.borda },
+  resumoItem: { flex: 1, flexDirection: 'row', justifyContent: 'center', paddingVertical: 6 },
+  resumoDiv: { borderLeftWidth: 1, borderLeftColor: C.borda },
   resumoRotulo: { fontSize: 6.5, fontFamily: 'Helvetica-Bold', color: C.brand },
   resumoValor: { fontSize: 7.5, fontFamily: 'Helvetica-Bold', marginLeft: 4 },
 
@@ -62,9 +64,9 @@ const styles = StyleSheet.create({
   linhaZebra: { backgroundColor: C.zebra },
   cNumero: { width: 32, fontFamily: 'Helvetica-Bold', fontSize: 7.5 },
   cData: { width: 46, fontSize: 6.5, color: C.suave },
-  cNome: { flex: 1.3, fontFamily: 'Helvetica-Bold', fontSize: 7, paddingRight: 6 },
-  cDocumento: { width: 76, fontSize: 6.5, color: C.suave, paddingRight: 4 },
-  cDescricao: { flex: 1.2, fontSize: 7, paddingRight: 6 },
+  cNome: { flex: 1, fontFamily: 'Helvetica-Bold', fontSize: 7, paddingRight: 6 },
+  cDocumento: { width: 70, fontSize: 6.5, color: C.suave, paddingRight: 4 },
+  cDescricao: { flex: 1.7, fontSize: 7, paddingRight: 6 },
   cForma: { width: 74, fontSize: 6.5, color: C.suave, paddingRight: 4 },
   cValor: { width: 58, fontFamily: 'Helvetica-Bold', fontSize: 7.5, textAlign: 'right' },
   blocoTotal: {
@@ -84,6 +86,27 @@ const styles = StyleSheet.create({
   },
 })
 
+// Larguras das colunas fixas (pt), para saber quanto sobra para Nome e Descrição
+// (flex 1 e 1,7) e a palavra que cabe não ser partida (como o RelatorioJsonDocument).
+const MIOLO = 595.28 - 2 * 28 - 2 * 6
+const FIXAS = 32 + 46 + 70 + 74 + 58
+const SOBRA = MIOLO - FIXAS
+const UTIL_NOME = SOBRA / 2.7 - 6
+const UTIL_DESCRICAO = (SOBRA * 1.7) / 2.7 - 6
+const quebraNome = quebraDaColuna(UTIL_NOME, 7, true)
+const quebraDescricao = quebraDaColuna(UTIL_DESCRICAO, 7)
+
+/** Os subtotais em linhas de 4, a última completada com células vazias. */
+function emLinhasDe4<T>(itens: T[]): (T | null)[][] {
+  const linhas: (T | null)[][] = []
+  for (let i = 0; i < itens.length; i += 4) {
+    const l: (T | null)[] = itens.slice(i, i + 4)
+    while (l.length < 4) l.push(null)
+    linhas.push(l)
+  }
+  return linhas
+}
+
 /** Valor sem o "R$" — o cabeçalho já diz que a coluna é dinheiro. */
 function valor(cents: number): string {
   return centsToBRL(cents).replace('R$', '').trim()
@@ -93,12 +116,12 @@ function Bloco({ bloco }: { bloco: BlocoReceita }) {
   return (
     <View>
       <Text style={styles.blocoTitulo} minPresenceAhead={50}>{bloco.label}</Text>
-      <View style={styles.cabecalho} wrap={false}>
+      <View style={styles.cabecalho} wrap={false} fixed>
         <Text style={[styles.cabecalhoTexto, styles.cNumero]}>Nº</Text>
         <Text style={[styles.cabecalhoTexto, styles.cData]}>Data</Text>
-        <Text style={[styles.cabecalhoTexto, styles.cNome]}>Nome / Razão social</Text>
+        <Text style={[styles.cabecalhoTexto, styles.cNome]} hyphenationCallback={quebraNome}>Nome / Razão social</Text>
         <Text style={[styles.cabecalhoTexto, styles.cDocumento]}>CNPJ / CPF</Text>
-        <Text style={[styles.cabecalhoTexto, styles.cDescricao]}>Descrição</Text>
+        <Text style={[styles.cabecalhoTexto, styles.cDescricao]} hyphenationCallback={quebraDescricao}>Descrição</Text>
         <Text style={[styles.cabecalhoTexto, styles.cForma]}>Forma de pagamento</Text>
         <Text style={[styles.cabecalhoTexto, styles.cValor]}>Valor (R$)</Text>
       </View>
@@ -106,9 +129,9 @@ function Bloco({ bloco }: { bloco: BlocoReceita }) {
         <View key={l.id} style={[styles.linha, ...(i % 2 === 1 ? [styles.linhaZebra] : [])]} wrap={false}>
           <Text style={styles.cNumero}>{l.numero}</Text>
           <Text style={styles.cData}>{formatDateFromString(l.date.slice(0, 10))}</Text>
-          <Text style={styles.cNome}>{l.nome}</Text>
+          <Text style={styles.cNome} hyphenationCallback={quebraNome}>{l.nome}</Text>
           <Text style={styles.cDocumento}>{l.documento}</Text>
-          <Text style={styles.cDescricao}>{l.descricao}</Text>
+          <Text style={styles.cDescricao} hyphenationCallback={quebraDescricao}>{l.descricao}</Text>
           <Text style={styles.cForma}>{l.forma}</Text>
           <Text style={styles.cValor}>{valor(l.amountCents)}</Text>
         </View>
@@ -162,10 +185,14 @@ export function RelatorioReceitasDocument({ entidade, blocos, de, ate }: {
           <>
             <Text style={styles.descritivo}>DESCRITIVO</Text>
             <View style={styles.resumo}>
-              {blocos.map(b => (
-                <View key={b.chave} style={styles.resumoItem}>
-                  <Text style={styles.resumoRotulo}>{b.label} ·</Text>
-                  <Text style={styles.resumoValor}>{centsToBRL(b.totalCents)}</Text>
+              {emLinhasDe4(blocos).map((linha, li) => (
+                <View key={li} style={[styles.resumoLinha, ...(li > 0 ? [styles.resumoLinhaDiv] : [])]} wrap={false}>
+                  {linha.map((b, i) => (
+                    <View key={b?.chave ?? `vazio-${i}`} style={[styles.resumoItem, ...(i > 0 ? [styles.resumoDiv] : [])]}>
+                      {b && <Text style={styles.resumoRotulo}>{b.label} ·</Text>}
+                      {b && <Text style={styles.resumoValor}>{centsToBRL(b.totalCents)}</Text>}
+                    </View>
+                  ))}
                 </View>
               ))}
             </View>

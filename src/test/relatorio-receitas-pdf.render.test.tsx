@@ -93,4 +93,21 @@ describe('RelatorioReceitasDocument', () => {
     expect(texto).toContain('Nenhuma receita no per')
     expect(texto).not.toContain('TOTAL GERAL')
   })
+
+  it('repete o cabeçalho das colunas quando o bloco passa de página', async () => {
+    const muitas = Array.from({ length: 70 }, (_, i) => lanc({ number: i + 1, description: `MENSALIDADE ${i + 1}` }))
+    const texto = await textoDoPdf(await render(muitas))
+    expect(texto.split('Valor (R$)').length - 1).toBeGreaterThanOrEqual(2)
+    expect(texto).toContain('TOTAL GERAL')
+  })
+
+  it('o DESCRITIVO traz um subtotal por categoria, em linhas de 4', async () => {
+    const cats = ['A', 'B', 'C', 'D', 'E']
+    const texto = await textoDoPdf(await render(cats.map((c, i) => lanc({
+      amountCents: 1000 * (i + 1), categoryId: c,
+      category: { id: c, name: `CAT${c}`, type: 'IN', color: '#000', active: true, order: i } as FinanceTransaction['category'],
+    }))))
+    for (const c of cats) expect(texto).toContain(`CAT${c}`)
+    expect(texto).toContain('DESCRITIVO')
+  })
 })
