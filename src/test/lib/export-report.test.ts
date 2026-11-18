@@ -78,6 +78,13 @@ describe('reportBody', () => {
       .toEqual({ ids: ['a'], fields: ['cpf', 'name'], format: 'csv', modelo: 'Nome e CPF' })
   })
 
+  it('visão da tela (decisão 007): manda `visao` no lugar de `modelo`, nunca os dois', () => {
+    expect(reportBody({ type: 'IN', excludeTransfers: true }, 'xlsx', { fields: ['number', 'amount'], visao: 'Contabilidade (alterada)' }))
+      .toEqual({ type: 'IN', excludeTransfers: 'true', fields: ['number', 'amount'], format: 'xlsx', visao: 'Contabilidade (alterada)' })
+    expect(reportBody({}, 'pdf', { fields: ['number'], visao: 'Resumida', modelo: 'Resumo' }))
+      .toEqual({ fields: ['number'], format: 'pdf', visao: 'Resumida' })
+  })
+
   it('Excel: o formato vai sempre, com ou sem fields (a planilha rápida e o cadastros)', () => {
     expect(reportBody({ search: 'ana' }, 'xlsx')).toEqual({ search: 'ana', format: 'xlsx' })
     expect(reportBody({}, 'xlsx', { fields: ['name'], modelo: 'Nome' }))
@@ -113,6 +120,12 @@ describe('lerRelatorioJson', () => {
       title: 'Pessoas', filename: 'p.pdf', count: 1, filters: null, modelo: null,
       columns: [{ key: 'a', label: 'A', type: 'text' }], rows: [['', '3']],
     })
+  })
+
+  it('visão (decisão 007): lê o nome quando vem; sem ela, o campo nem aparece', () => {
+    const base = { columns: [{ key: 'a', label: 'A' }], rows: [['1']] }
+    expect(lerRelatorioJson({ ...base, modelo: null, visao: 'Contabilidade' }, 'X', 'x.pdf').visao).toBe('Contabilidade')
+    expect(lerRelatorioJson(base, 'X', 'x.pdf')).not.toHaveProperty('visao')
   })
 
   it('totais: lê rótulo e valor e a nota; item fora do formato é ignorado', () => {

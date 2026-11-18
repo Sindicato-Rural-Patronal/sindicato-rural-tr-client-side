@@ -158,6 +158,21 @@ export type FinanceTransaction = {
   createdBy: string | null
   createdAt: string
   updatedAt: string
+  /**
+   * Só quando a lista foi pedida com `fields` (decisão 007, SR-149): o texto de cada
+   * coluna, na ordem de `columns`, formatado pelo mesmo catálogo da exportação
+   * (como no PDF; vazio = "").
+   */
+  cells?: string[]
+}
+
+/** Uma coluna da lista pedida com `fields`: a mesma do catálogo (`weight` = a largura do PDF). */
+export type ColunaDaLista = {
+  key: string
+  label: string
+  type: string
+  weight: number
+  privacy: 'comum' | 'pessoal' | 'sensivel'
 }
 
 export type FinanceTransactionsPage = {
@@ -169,6 +184,8 @@ export type FinanceTransactionsPage = {
   /** Entradas e saídas de todos os lançamentos filtrados (não só da página);
    *  transferências entre caixas e "só nota" não contam. */
   totals?: { incomeCents: number; expenseCents: number }
+  /** Só com `fields`: as colunas pedidas, na ordem pedida (e cada linha traz `cells`). */
+  columns?: ColunaDaLista[]
 }
 
 export type FinanceSummary = {
@@ -370,14 +387,31 @@ export function financeExportFilters(filters: TransactionFilters): Record<string
   }
 }
 
+/**
+ * O caminho da lista. Com `fields` (decisão 007, SR-149: as colunas da visão, chaves do
+ * catálogo de `finance-transactions` na ordem), a resposta traz também `columns` e, em
+ * cada linha, `cells`. Sem `fields` (a visão Padrão), a resposta é a de sempre.
+ */
+export function caminhoDaLista(filters: TransactionFilters, fields?: string[] | null): string {
+  const query = buildQuery(filters)
+  if (!fields?.length) return `/admin/finance/transactions${query}`
+  const comCampos = `fields=${fields.map(encodeURIComponent).join(',')}`
+  return `/admin/finance/transactions${query ? `${query}&${comCampos}` : `?${comCampos}`}`
+}
+
 export function useFinanceTransactions(
   filters: TransactionFilters = {},
-  opts: { enabled?: boolean } = {},
+  opts: { enabled?: boolean; fields?: string[] | null } = {},
 ) {
+  const fields = opts.fields?.length ? opts.fields : null
   return useQuery<FinanceTransactionsPage>({
-    queryKey: ['finance', 'transactions', filters],
-    queryFn: () => apiFetch(`/admin/finance/transactions${buildQuery(filters)}`).then(r => r.json()),
+    queryKey: ['finance', 'transactions', filters, ...(fields ? [{ fields }] : [])],
+    queryFn: () => apiFetch(caminhoDaLista(filters, fields)).then(r => r.json()),
     enabled: opts.enabled ?? true,
+    // Mexer só nas colunas (visões, decisão 007) não apaga a lista: ela fica até as
+    // células novas chegarem. Trocar filtro ou página continua como sempre (carregando).
+    placeholderData: (anterior, consulta) =>
+      consulta && JSON.stringify(consulta.queryKey[2]) === JSON.stringify(filters) ? anterior : undefined,
   })
 }
 

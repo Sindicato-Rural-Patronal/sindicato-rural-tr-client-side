@@ -677,7 +677,7 @@ describe('modelos da equipe (fase 3, SR-115)', () => {
       const lista = lerModelosDaEquipe([modeloDaEquipeCru(), { id: 'x' }, null, 'lixo'])
       expect(lista).toEqual([{
         id: 't1', dataset: 'people', name: 'Telefones da equipe', fields: ['name', 'phone'], missingFields: [],
-        format: 'pdf', confirmed: null, createdAt: '2026-11-10T13:00:00.000Z', updatedAt: '2026-11-10T13:00:00.000Z',
+        format: 'pdf', confirmed: null, filters: null, createdAt: '2026-11-10T13:00:00.000Z', updatedAt: '2026-11-10T13:00:00.000Z',
         createdBy: { id: 'a1', username: 'gestor' }, updatedBy: null,
       }])
       expect(lerModelosDaEquipe({ error: 'Forbidden' })).toEqual([])

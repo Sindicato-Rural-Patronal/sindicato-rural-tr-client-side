@@ -105,6 +105,11 @@ describe('larguras e cabeçalho', () => {
     expect(linhaDoModeloEFiltros({ modelo: null, filters: null })).toBeNull()
     expect(linhaDoModeloEFiltros({ modelo: null, filters: 'Seleção: 8 registros' })).toBe('Seleção: 8 registros')
   })
+
+  it('com a visão da tela (decisão 007), "Visão: <nome>" no lugar do modelo', () => {
+    expect(linhaDoModeloEFiltros({ modelo: null, visao: 'Contabilidade', filters: 'Tipo: Entrada' }))
+      .toBe('Visão: Contabilidade · Filtros: Tipo: Entrada')
+  })
 })
 
 describe('quebra de palavra nas células', () => {
