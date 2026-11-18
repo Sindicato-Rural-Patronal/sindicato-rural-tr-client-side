@@ -148,6 +148,10 @@ export type RelatorioJson = {
   modelo: string | null
   columns: RelatorioColuna[]
   rows: string[][]
+  /** Totais já formatados, desenhados depois da tabela (SR-131/SR-132). Ausente = sem totais. */
+  totais?: { rotulo: string; valor: string }[]
+  /** Nota embaixo dos totais ("Transferências entre caixas não entram nos totais."). */
+  notaDosTotais?: string
 }
 
 /** Confere o JSON do PDF. Fora do formato é erro (não dá para desenhar). */
@@ -169,6 +173,16 @@ export function lerRelatorioJson(data: unknown, fallbackTitle: string, fallbackF
     Array.isArray(r) ? r.map(v => (v == null ? '' : String(v))) : [],
   )
   const texto = (v: unknown) => (typeof v === 'string' && v.trim() ? v : null)
+  // Totais são opcionais: item fora do formato é ignorado; sem nenhum bom, não há totais.
+  const totais = Array.isArray(d.totais)
+    ? (d.totais as unknown[]).flatMap(t => {
+        const o = (t && typeof t === 'object' ? t : {}) as Record<string, unknown>
+        return typeof o.rotulo === 'string' && o.rotulo.trim() && typeof o.valor === 'string' && o.valor.trim()
+          ? [{ rotulo: o.rotulo, valor: o.valor }]
+          : []
+      })
+    : []
+  const notaDosTotais = totais.length ? texto(d.notaDosTotais) : null
   return {
     title: texto(d.title) ?? fallbackTitle,
     filename: texto(d.filename) ?? fallbackFilename,
@@ -177,6 +191,8 @@ export function lerRelatorioJson(data: unknown, fallbackTitle: string, fallbackF
     modelo: texto(d.modelo),
     columns,
     rows,
+    ...(totais.length ? { totais } : {}),
+    ...(notaDosTotais ? { notaDosTotais } : {}),
   }
 }
 

@@ -3,8 +3,8 @@ titulo: Como montar um relatório
 resumo: Escolher os campos e a ordem das colunas e baixar em planilha (CSV ou Excel) ou PDF, ou imprimir.
 grupo: como-fazer
 ordem: 14
-veja: exportar-planilhas, auditoria, usuarios, empresas, cursos, financeiro
-busca: montar relatorio escolher campos colunas ordem modelo padrao alterado nome e cpf nome e email contato lista de presenca assinatura numero de ordem endereco correspondencia mala direta etiqueta associados inscricoes so confirmadas nenhuma inscricao confirmada planilha csv pdf imprimir aba bloqueada pop-up excel exportar arrastar dados pessoais sensivel telefone formatado limite abrindo o montador hifen palavra cortada empresas razao social e cnpj propriedades administradores cursos calendario mensagens unimed nome cpf e plano auditoria resumida detalhes da exportacao lancamentos financeiro resumido agenda reservas sala ficha completa dados da empresa propriedades dos selecionados propriedades das selecionadas inscricoes dos cursos selecionados inscricoes de todos os cursos filtros aba armazenados ano regra de acesso so nao lidas so parceiras 20.000 linhas mais recentes 2.000 linhas planilha do excel xlsx baixar planilha do excel aba sobre cabecalho preso valor em reais data forma de pagamento tipo usuario modelos da equipe modelo de fabrica salvar como modelo salvar modelo nome do modelo salvar alteracoes no modelo salvar no modelo renomear excluir modelo lapis lixeira carregando o modelo criado por editado por ja existe um modelo 100 modelos modelo nao encontrado os modelos da equipe nao carregaram
+veja: exportar-planilhas, como-gerar-relatorio-de-receitas, auditoria, usuarios, empresas, cursos, financeiro
+busca: contabilidade receita receitas contador total totais montar relatorio escolher campos colunas ordem modelo padrao alterado nome e cpf nome e email contato lista de presenca assinatura numero de ordem endereco correspondencia mala direta etiqueta associados inscricoes so confirmadas nenhuma inscricao confirmada planilha csv pdf imprimir aba bloqueada pop-up excel exportar arrastar dados pessoais sensivel telefone formatado limite abrindo o montador hifen palavra cortada empresas razao social e cnpj propriedades administradores cursos calendario mensagens unimed nome cpf e plano auditoria resumida detalhes da exportacao lancamentos financeiro resumido agenda reservas sala ficha completa dados da empresa propriedades dos selecionados propriedades das selecionadas inscricoes dos cursos selecionados inscricoes de todos os cursos filtros aba armazenados ano regra de acesso so nao lidas so parceiras 20.000 linhas mais recentes 2.000 linhas planilha do excel xlsx baixar planilha do excel aba sobre cabecalho preso valor em reais data forma de pagamento tipo usuario modelos da equipe modelo de fabrica salvar como modelo salvar modelo nome do modelo salvar alteracoes no modelo salvar no modelo renomear excluir modelo lapis lixeira carregando o modelo criado por editado por ja existe um modelo 100 modelos modelo nao encontrado os modelos da equipe nao carregaram
 ---
 
 O **Montar relatório…** deixa você escolher **quais colunas saem e em que
@@ -169,6 +169,7 @@ dois grupos: **Modelos de fábrica**, com o **Padrão (como hoje)** primeiro, e
 | Mensagens de contato | **Contato** | Nome, E-mail e Telefone |
 | Auditoria | **Resumida** | Data e hora, Quem, Ação e Alvo |
 | Lançamentos | **Resumido** | Nº, Data, Descrição, Nome / Razão social e Valor (R$) |
+| Lançamentos | **Contabilidade** | Nº, Data, Tipo, Nome / Razão social, CNPJ / CPF, Descrição, Categoria, Método e Valor (R$). Não filtra: ponha **Tipo › Entradas** e marque **Sem transferências entre caixas** na tela antes. Veja [Como gerar o relatório de receitas](?topico=como-gerar-relatorio-de-receitas) |
 | Propriedades | — | Só o **Padrão (como hoje)** |
 | Reservas das salas | — | Só o **Padrão (como hoje)** |
 
@@ -471,6 +472,11 @@ No celular aparecem os três primeiros: só o **Imprimir** fica de fora.
   para ordenar e filtrar por período.
 - **Texto que começa com "=" aparece como foi escrito.** Ele não vira fórmula
   do Excel.
+- **Totais, nos Lançamentos.** Com o **Valor (R$)** entre as colunas, o fim da
+  planilha traz o **Total de entradas** e/ou o **Total de saídas** (uma linha em
+  branco e as linhas de total), repetidos na aba **Sobre**. Transferências entre
+  caixas e lançamentos "só nota" não entram, e aparece a nota *Transferências
+  entre caixas não entram nos totais.* A planilha CSV não tem totais.
 
 O aviso de letra pequena e o limite de 2.000 linhas são só do PDF. A planilha do
 Excel tem os limites da planilha CSV.
@@ -481,6 +487,7 @@ Excel tem os limites da planilha CSV.
   diminui conforme as colunas aumentam. A partir de 9 colunas, o montador
   avisa: *Com 9 colunas o PDF sai deitado e com letra menor. Se ficar difícil de
   ler, tire colunas ou baixe a planilha.*
+- Nos Lançamentos, com o **Valor (R$)**, o fim do PDF traz os totais de entradas e/ou de saídas e a nota das transferências.
 - No alto vão o título, quantos registros, a data, o modelo e os filtros. O
   título das colunas se repete em toda página.
 - Cada coluna fica pelo menos da largura da maior palavra do título dela (e,

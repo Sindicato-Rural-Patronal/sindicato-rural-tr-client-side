@@ -3,8 +3,8 @@ titulo: Exportar planilhas
 resumo: Tirar as listas do painel em planilha (CSV ou Excel) ou PDF, e o que fica registrado na Auditoria.
 grupo: dia-a-dia
 ordem: 7
-veja: montar-relatorio, busca-e-filtros, auditoria, usuarios, cursos, financeiro
-busca: exportar csv excel xlsx planilha do excel aba sobre baixar relatorio pdf lista selecionados download montar colunas campos telefone formatado 4,5e+10 padrao como hoje auditoria registrado exportou a planilha exportou a planilha do excel exportou o relatorio em pdf gerou o documento documento lista de presenca ficha de inscricao nota de empenho recibo unimed imprimir agenda numero n anterior ordem lancamentos financeiro resumo resumido resumida folha em pe deitada 2.000 linhas 20.000 linhas o pdf aceita ate nao foi possivel montar o pdf aba ano proximos armazenados relatorio de cadastros copiar telefones copiar e-mails muitos documentos seguidos ficha da pessoa ficha da empresa ficha completa dados da empresa planilha baixada modelos da equipe salvar como modelo modelo de fabrica
+veja: montar-relatorio, como-gerar-relatorio-de-receitas, busca-e-filtros, auditoria, usuarios, cursos, financeiro
+busca: exportar csv excel xlsx planilha do excel aba sobre baixar relatorio pdf lista selecionados download montar colunas campos telefone formatado 4,5e+10 padrao como hoje auditoria registrado exportou a planilha exportou a planilha do excel exportou o relatorio em pdf gerou o documento documento lista de presenca ficha de inscricao nota de empenho recibo unimed imprimir agenda numero n anterior ordem lancamentos financeiro resumo resumido resumida folha em pe deitada 2.000 linhas 20.000 linhas o pdf aceita ate nao foi possivel montar o pdf aba ano proximos armazenados relatorio de cadastros copiar telefones copiar e-mails muitos documentos seguidos ficha da pessoa ficha da empresa ficha completa dados da empresa planilha baixada modelos da equipe salvar como modelo modelo de fabrica receita receitas contabilidade contador total totais
 ---
 
 Toda lista do painel exporta em planilha. O botão **Exportar** fica no topo da
@@ -104,6 +104,14 @@ e o formato com um nome, e todos que exportam a lista o encontram no seletor
 
 Só o **Relatório de cadastros**, no topo de **Gestão › Usuários**, sai sempre
 com todas as colunas.
+
+## Totais: só no montador
+
+O **Montar relatório…** dos Lançamentos, em **Excel** ou **PDF**, traz no fim o
+**Total de entradas** e/ou o **Total de saídas**. A planilha CSV e o Excel rápido
+do menu **Exportar** (sem montar) **não** têm totais. Para o relatório de
+receitas, veja
+[Como gerar o relatório de receitas para a contabilidade](?topico=como-gerar-relatorio-de-receitas).
 
 ## O arquivo
 

@@ -9,7 +9,7 @@ import {
   useCreateFinanceCategory, useUpdateFinanceCategory, useDeleteFinanceCategory,
   useFinanceAccounts, useCreateFinanceAccount, useUpdateFinanceAccount, useDeleteFinanceAccount,
   useCreateFinanceTransfer, fetchFinanceTransactionsForRange, useGenerateFinanceRecurrences,
-  useUploadFinanceAttachment, useDeleteFinanceAttachment, openFinanceAttachment, financeExportFilters,
+  useUploadFinanceAttachment, useDeleteFinanceAttachment, openFinanceAttachment, financeExportFilters, lerSemTransferencias,
   useFinanceClosings, useFinanceNextNumber,
   type FinanceType, type FinanceCategory, type FinanceAccount, type FinanceTransaction, type TransactionFilters, type Empenho,
   type FinanceAttachment,
@@ -94,6 +94,8 @@ type FinanceSearch = {
   q?: string
   /** Ordem da lista: `number` = por Nº (o maior primeiro); sem ele, por data (o mais novo primeiro). */
   ord?: 'number'
+  /** "Sem transferências entre caixas" (SR-136): na URL só existe quando marcado (`?semTransf=true`). */
+  semTransf?: true
   page?: number
 }
 const TABS: FinanceTab[] = ['dashboard', 'lancamentos', 'recorrentes', 'categorias', 'caixas', 'formas', 'fechamento']
@@ -120,6 +122,7 @@ export const Route = createFileRoute('/_admin/admin/financeiro/')({
       pm: str(s.pm),
       q: searchText(s.q),
       ord: s.ord === 'number' ? 'number' : undefined,
+      semTransf: lerSemTransferencias(s.semTransf),
       page: Number.isFinite(page) && page > 1 ? page : undefined,
     }
   },
@@ -206,7 +209,7 @@ function RouteComponent() {
         </TabsList>
 
         <TabsContent value="dashboard">
-          <DashboardTab enabled={enabled} onDrill={patch => setSearch({ tab: 'lancamentos', page: undefined, cat: undefined, acc: undefined, pm: undefined, q: undefined, ...patch })} />
+          <DashboardTab enabled={enabled} onDrill={patch => setSearch({ tab: 'lancamentos', page: undefined, cat: undefined, acc: undefined, pm: undefined, q: undefined, semTransf: undefined, ...patch })} />
         </TabsContent>
         <TabsContent value="lancamentos">
           <TransactionsTab enabled={enabled} search={search} setSearch={setSearch} canCreate={can('CREATE_FINANCE')} canUpdate={can('UPDATE_FINANCE')} canDelete={can('DELETE_FINANCE')} />
@@ -802,7 +805,8 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
     type: search.fType ?? '',
     categoryId: search.cat, accountId: search.acc, method: search.pm, search: search.q,
     orderBy: search.ord,
-  }), [page, search.from, search.to, search.fType, search.cat, search.acc, search.pm, search.q, search.ord])
+    excludeTransfers: search.semTransf,
+  }), [page, search.from, search.to, search.fType, search.cat, search.acc, search.pm, search.q, search.ord, search.semTransf])
   const { data, isLoading, isError, isFetching, refetch, error: listError } = useFinanceTransactions(filters, { enabled })
   const catsQuery = useFinanceCategories({ enabled })
   const accsQuery = useFinanceAccounts({ enabled })
@@ -1158,7 +1162,7 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
   // Exportar (SR-103): planilha, PDF e "Montar relatório…" da fonte `finance-transactions`, com os
   // filtros e a ordem da tela (a lista não tem seleção). A linha "Filtros:" do montador diz o tipo,
   // a categoria e o caixa pelo nome, como a API no PDF; o período, a forma e a busca ele já diz.
-  const temFiltro = !!(search.from || search.to || search.fType || search.cat || search.acc || search.pm || search.q)
+  const temFiltro = !!(search.from || search.to || search.fType || search.cat || search.acc || search.pm || search.q || search.semTransf)
   const textosDosFiltros = textosDoFinanceiro({
     type: search.fType,
     categoryId: search.cat,
@@ -1166,6 +1170,7 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
     accountId: search.acc,
     caixa: search.acc ? accountNameOf(search.acc) : null,
     orderBy: search.ord,
+    excludeTransfers: search.semTransf,
   })
 
   function abrirTransferencia() {
@@ -1297,6 +1302,23 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
             <option value="number">Nº</option>
           </NativeSelect>
         </FilterField>
+        {/* Tira as duas pernas das transferências entre caixas (a API também as tira dos totais): é o que o
+            relatório para a contabilidade precisa para a conta fechar. Caixa de marcar na altura dos campos (36 px);
+            no celular ocupa a linha toda, porque o texto não cabe em meia largura. */}
+        <label
+          htmlFor="lanc-sem-transf"
+          className="col-span-2 flex h-9 cursor-pointer items-center gap-2 rounded-md border border-input bg-background px-3 text-sm sm:col-span-1"
+          title="Esconde as transferências entre caixas (as duas pernas) e tira os valores delas dos totais e da exportação."
+        >
+          <input
+            id="lanc-sem-transf"
+            type="checkbox"
+            className="size-4 shrink-0 cursor-pointer accent-primary"
+            checked={!!search.semTransf}
+            onChange={e => setSearch({ semTransf: e.target.checked ? true : undefined, page: undefined })}
+          />
+          <span className="min-w-0">Sem transferências entre caixas</span>
+        </label>
       </div>
 
       {listasFalharam && (

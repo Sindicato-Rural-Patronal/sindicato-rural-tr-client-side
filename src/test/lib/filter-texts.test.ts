@@ -1,5 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { textosDaAgenda, textosDaAuditoria, textosDoFinanceiro } from '@/components/export/filter-texts'
+import { filtrosEmPalavras } from '@/components/export/report-builder'
+import { financeExportFilters } from '@/hooks/useFinance'
 
 // A linha "Filtros:" do montador nas telas da fase 2, parte B (SR-103): os
 // filtros que a tela manda por id ou código saem pelo nome, como a API diz no PDF.
@@ -16,8 +18,30 @@ describe('textosDoFinanceiro', () => {
     expect(textosDoFinanceiro({ type: '', categoria: 'INSUMOS', caixa: 'BANCO', orderBy: 'date' })).toEqual({})
   })
 
+  it('"Sem transferências entre caixas" sai com o texto exato da API, sem ": Sim"; desmarcado, nada', () => {
+    expect(textosDoFinanceiro({ type: 'IN', excludeTransfers: true }))
+      .toEqual({ type: 'Tipo: Entrada', excludeTransfers: 'Sem transferências entre caixas' })
+    expect(textosDoFinanceiro({ excludeTransfers: false })).toEqual({})
+    expect(textosDoFinanceiro({})).toEqual({})
+  })
+
   it('filtro cujo nome a tela não achou sai sem o id', () => {
     expect(textosDoFinanceiro({ categoryId: 'c1', accountId: 'a1' })).toEqual({ categoryId: 'Categoria', accountId: 'Caixa' })
+  })
+})
+
+describe('linha "Filtros:" do montador com o filtro sem transferências (SR-136)', () => {
+  const filterLabels = { type: 'Tipo', excludeTransfers: 'Sem transferências entre caixas' }
+
+  it('diz "Sem transferências entre caixas", igual à API', () => {
+    const filters = financeExportFilters({ type: 'IN', excludeTransfers: true })
+    const textos = textosDoFinanceiro({ type: 'IN', excludeTransfers: true })
+    expect(filtrosEmPalavras(filters, filterLabels, { textos })).toEqual(['Tipo: Entrada', 'Sem transferências entre caixas'])
+  })
+
+  it('sem o filtro, a linha não muda', () => {
+    const filters = financeExportFilters({ type: 'IN' })
+    expect(filtrosEmPalavras(filters, filterLabels, { textos: textosDoFinanceiro({ type: 'IN' }) })).toEqual(['Tipo: Entrada'])
   })
 })
 

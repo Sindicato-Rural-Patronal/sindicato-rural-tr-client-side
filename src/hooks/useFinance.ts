@@ -239,6 +239,16 @@ export type TransactionFilters = {
   search?: string
   /** `date` (padrão: data, o mais novo primeiro) ou `number` (Nº, o maior primeiro). Vale na lista e na exportação. */
   orderBy?: 'date' | 'number'
+  /**
+   * "Sem transferências entre caixas" (SR-136): a API tira as duas pernas das transferências e `total` e
+   * `totals` contam só o que sobra. Vale na lista e na exportação; ausente ou `false`, como sempre.
+   */
+  excludeTransfers?: boolean
+}
+
+/** O `?semTransf=` da URL do Financeiro: só `true` (ou "true") liga o filtro; qualquer outra coisa é como sem ele. */
+export function lerSemTransferencias(v: unknown): true | undefined {
+  return v === true || v === 'true' ? true : undefined
 }
 
 // ── Categorias ──────────────────────────────────────────────────────────────
@@ -322,7 +332,7 @@ export function useDeleteFinanceAccount() {
 }
 
 // ── Lançamentos ──────────────────────────────────────────────────────────────
-function buildQuery(filters: TransactionFilters): string {
+export function buildQuery(filters: TransactionFilters): string {
   const p = new URLSearchParams()
   if (filters.page) p.set('page', String(filters.page))
   if (filters.limit) p.set('limit', String(filters.limit))
@@ -334,6 +344,7 @@ function buildQuery(filters: TransactionFilters): string {
   if (filters.method) p.set('method', filters.method)
   if (filters.search) p.set('search', filters.search)
   if (filters.orderBy === 'number') p.set('orderBy', 'number')
+  if (filters.excludeTransfers) p.set('excludeTransfers', 'true')
   const s = p.toString()
   return s ? `?${s}` : ''
 }
@@ -345,7 +356,7 @@ function buildQuery(filters: TransactionFilters): string {
  * quando é por Nº (a por data é a de sempre). A planilha e o PDF saem na ordem
  * da tela. As chaves vão na ordem em que a API diz os filtros no PDF.
  */
-export function financeExportFilters(filters: TransactionFilters): Record<string, string | undefined> {
+export function financeExportFilters(filters: TransactionFilters): Record<string, string | boolean | undefined> {
   return {
     from: filters.from || undefined,
     to: filters.to || undefined,
@@ -355,6 +366,7 @@ export function financeExportFilters(filters: TransactionFilters): Record<string
     method: filters.method || undefined,
     search: filters.search || undefined,
     orderBy: filters.orderBy === 'number' ? 'number' : undefined,
+    excludeTransfers: filters.excludeTransfers ? true : undefined,
   }
 }
 

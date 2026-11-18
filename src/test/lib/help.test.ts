@@ -4,6 +4,9 @@ import {
   relatedArticles, searchExcerpt, slug, visibleArticles,
 } from '@/lib/help'
 
+// Só os caminhos dos arquivos de public/ (os carregadores nunca são chamados).
+const ARQUIVOS_PUBLIC = new Set(Object.keys(import.meta.glob('/public/ajuda-imagens/**/*')))
+
 const all = () => true
 const ids = (list: { id: string }[]) => list.map(a => a.id)
 
@@ -109,6 +112,38 @@ describe('slug e articleSections', () => {
       const ids = articleSections(article.body).map(s => s.id)
       expect(new Set(ids).size, article.id).toBe(ids.length)
     }
+  })
+})
+
+describe('imagens dos artigos', () => {
+  // `![texto alternativo](/caminho.png "legenda")`
+  const IMAGEM = /!\[([^\]]*)\]\(([^)\s]*)(?:\s+"([^"]*)")?\)/g
+  const imagens = HELP_ARTICLES.flatMap(article =>
+    [...article.body.matchAll(IMAGEM)].map(([, alt, src]) => ({ id: article.id, alt, src })),
+  )
+
+  it('os artigos ilustrados têm imagens (senão este teste não prova nada)', () => {
+    expect(imagens.length).toBeGreaterThan(0)
+  })
+
+  it('toda imagem tem texto alternativo, para o leitor de tela', () => {
+    for (const { id, alt, src } of imagens) {
+      expect(alt.trim().length, `${id}: ${src} sem texto alternativo`).toBeGreaterThan(10)
+    }
+  })
+
+  it('toda imagem citada existe em public/ajuda-imagens', () => {
+    for (const { id, src } of imagens) {
+      expect(src, id).toMatch(/^\/ajuda-imagens\/[a-z0-9-]+\/[a-z0-9-]+\.(png|jpg|webp)$/)
+      expect(ARQUIVOS_PUBLIC, `${id}: ${src} não existe em public/`).toContain(`/public${src}`)
+    }
+  })
+
+  it('o trecho da busca mostra o texto alternativo, não o endereço da imagem', () => {
+    const artigo = { ...HELP_ARTICLES[0], body: 'Antes ![A tela de lançamentos](/ajuda-imagens/x/01.png "legenda") depois' }
+    const trecho = searchExcerpt(artigo, 'lançamentos')!
+    expect(trecho).toContain('A tela de lançamentos')
+    expect(trecho).not.toMatch(/ajuda-imagens|!\[/)
   })
 })
 

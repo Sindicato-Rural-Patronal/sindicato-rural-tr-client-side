@@ -34,6 +34,10 @@ const styles = StyleSheet.create({
   linhaCabecalho: { flexDirection: 'row', backgroundColor: C.faixa, borderBottomWidth: 1, borderBottomColor: C.linha },
   celula: { paddingVertical: 3, paddingHorizontal: 4 },
   celulaCabecalho: { paddingVertical: 4, paddingHorizontal: 4, fontWeight: 'bold', fontSize: 8 },
+  totaisBloco: { marginTop: 10, alignItems: 'flex-end' },
+  totalLinha: { flexDirection: 'row', justifyContent: 'flex-end', paddingVertical: 2 },
+  totalTexto: { fontWeight: 'bold' },
+  totalNota: { fontSize: 7, color: C.suave, marginTop: 4, textAlign: 'right' },
   rodape: {
     position: 'absolute', bottom: 16, left: 24, right: 24,
     flexDirection: 'row', justifyContent: 'space-between',
@@ -380,6 +384,46 @@ export function linhaDoModeloEFiltros(data: Pick<RelatorioJson, 'modelo' | 'filt
 
 const ALINHA_DIREITA = new Set(['number', 'money'])
 
+/**
+ * Totais depois da tabela: uma linha por total, rótulo e valor em negrito, à
+ * direita. O valor fica embaixo da última coluna de dinheiro (`money`), se
+ * houver e o valor couber; senão, no fim da largura.
+ */
+function Totais({ totais, nota, columns, fracoes, fontSize, orientation }: {
+  totais: { rotulo: string; valor: string }[]
+  nota?: string
+  columns: RelatorioColuna[]
+  fracoes: number[]
+  fontSize: number
+  orientation: 'portrait' | 'landscape'
+}) {
+  const iDinheiro = columns.map(c => c.type).lastIndexOf('money')
+  const depois = iDinheiro >= 0 ? fracoes.slice(iDinheiro + 1).reduce((a, b) => a + b, 0) : 0
+  const util = iDinheiro >= 0 ? larguraUtilDaColuna(fracoes[iDinheiro], orientation) : 0
+  const cabe = iDinheiro >= 0 && totais.every(t => larguraDaPalavra(t.valor, fontSize, true) <= util)
+  return (
+    <View style={styles.totaisBloco} wrap={false}>
+      {totais.map(t => (
+        <View key={t.rotulo} style={styles.totalLinha}>
+          <Text style={[styles.totalTexto, { marginRight: 6 }]}>{t.rotulo}</Text>
+          <Text
+            style={[
+              styles.totalTexto,
+              cabe
+                ? { width: emPorcento(fracoes[iDinheiro]), paddingHorizontal: MARGEM_DA_CELULA, textAlign: 'right' }
+                : { textAlign: 'right' },
+            ]}
+          >
+            {t.valor}
+          </Text>
+          {cabe && depois > 0 && <View style={{ width: emPorcento(depois) }} />}
+        </View>
+      ))}
+      {nota && <Text style={styles.totalNota}>{nota}</Text>}
+    </View>
+  )
+}
+
 export function RelatorioJsonDocument({ data, geradoEm }: { data: RelatorioJson; geradoEm: string }) {
   const { orientation, fontSize } = layoutDoPdf(data.columns.length)
   const fracoes = fracoesDasColunas(data.columns, data.rows, { orientation, fontSize })
@@ -432,6 +476,17 @@ export function RelatorioJsonDocument({ data, geradoEm }: { data: RelatorioJson;
               </View>
             ))}
           </View>
+        )}
+
+        {data.totais && data.totais.length > 0 && (
+          <Totais
+            totais={data.totais}
+            nota={data.notaDosTotais}
+            columns={data.columns}
+            fracoes={fracoes}
+            fontSize={fontSize}
+            orientation={orientation}
+          />
         )}
 
         <View style={styles.rodape} fixed>

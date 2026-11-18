@@ -7,7 +7,7 @@ const apiFetch = vi.fn()
 vi.mock('@/lib/api', () => ({ apiFetch: (...args: unknown[]) => apiFetch(...args), apiUpload: vi.fn() }))
 vi.mock('@/utils/download', () => ({ saveBlob: vi.fn(), openBlob: vi.fn() }))
 
-import { financeExportFilters, fetchFinanceTransactionsForRange } from '@/hooks/useFinance'
+import { financeExportFilters, fetchFinanceTransactionsForRange, buildQuery, lerSemTransferencias } from '@/hooks/useFinance'
 
 const resposta = (corpo: unknown = {}) => ({ ok: true, blob: async () => new Blob(['csv']), json: async () => corpo })
 
@@ -35,8 +35,35 @@ describe('exportação dos lançamentos: os filtros e a ordem da tela', () => {
 
   it('as chaves vão na ordem em que a API diz os filtros no PDF', () => {
     expect(Object.keys(financeExportFilters({}))).toEqual(
-      ['from', 'to', 'type', 'categoryId', 'accountId', 'method', 'search', 'orderBy'],
+      ['from', 'to', 'type', 'categoryId', 'accountId', 'method', 'search', 'orderBy', 'excludeTransfers'],
     )
+  })
+})
+
+describe('"Sem transferências entre caixas" (SR-136)', () => {
+  it('marcado, a exportação leva excludeTransfers: true, junto dos outros filtros', () => {
+    const f = financeExportFilters({ type: 'IN', from: '2026-10-01', to: '2026-10-31', excludeTransfers: true })
+    expect(f.excludeTransfers).toBe(true)
+    expect(Object.entries(f).filter(([, v]) => v !== undefined)).toEqual([
+      ['from', '2026-10-01'], ['to', '2026-10-31'], ['type', 'IN'], ['excludeTransfers', true],
+    ])
+  })
+
+  it('desmarcado ou ausente, a exportação não manda nada', () => {
+    expect(financeExportFilters({}).excludeTransfers).toBeUndefined()
+    expect(financeExportFilters({ excludeTransfers: false }).excludeTransfers).toBeUndefined()
+  })
+
+  it('a consulta da lista manda excludeTransfers=true só quando marcado', () => {
+    expect(buildQuery({ page: 2, limit: 20, type: 'IN', excludeTransfers: true })).toBe('?page=2&limit=20&type=IN&excludeTransfers=true')
+    expect(buildQuery({ page: 2, limit: 20, type: 'IN' })).not.toContain('excludeTransfers')
+    expect(buildQuery({ excludeTransfers: false })).toBe('')
+  })
+
+  it('na URL só "true" liga o filtro (?semTransf=true chega como booleano pelo roteador)', () => {
+    expect(lerSemTransferencias(true)).toBe(true)
+    expect(lerSemTransferencias('true')).toBe(true)
+    for (const v of [false, 'false', '', 'sim', 1, null, undefined]) expect(lerSemTransferencias(v)).toBeUndefined()
   })
 })
 
