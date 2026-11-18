@@ -31,6 +31,7 @@ import { useOrgInfo } from '@/hooks/useSiteSettings'
 import { ORG_CONTACT } from '@/lib/org-contact'
 import { cn } from '@/lib/utils'
 import { despesasDoRelatorio, fornecedorDoLancamento } from '@/lib/relatorio-empenho'
+import { gerarRelatorioReceitas } from '@/lib/gerar-relatorio-receitas'
 import { alvoDoLancamento } from '@/lib/recibo'
 import { erroDoDocumento, periodoDoDocumento, registrarDocumento } from '@/lib/registrar-documento'
 import { Button } from '@/components/ui/button'
@@ -250,7 +251,29 @@ function DashboardTab({ enabled, onDrill }: {
   const summaryFailed = isError && !data
   const [pdfBusy, setPdfBusy] = useState(false)
   const [empenhoBusy, setEmpenhoBusy] = useState(false)
+  const [receitasBusy, setReceitasBusy] = useState(false)
   const org = useOrgInfo()
+
+  const entidade = () => ({
+    nome: 'SINDICATO RURAL DE TERRA ROXA / PR',
+    cnpj: ORG_CONTACT.cnpj,
+    endereco: org.street,
+    cepCidade: `CEP: ${org.zip} / ${org.city.toUpperCase()} / ${org.state}`,
+    telefone: org.phone,
+    site: 'www.ruraltr.com.br',
+  })
+
+  /** "RECEITAS / RELATÓRIO": o espelho do de despesas, com as entradas por categoria (SR-140). */
+  async function handleReceitasPdf() {
+    setReceitasBusy(true)
+    try {
+      await gerarRelatorioReceitas(range, entidade())
+    } catch (e) {
+      toast.error(apiErrorMessage(e, 'Erro ao gerar o relatório de receitas.'))
+    } finally {
+      setReceitasBusy(false)
+    }
+  }
 
   /** "DESPESAS / RELATÓRIO", no formato que o sindicato já usa em papel. */
   async function handleEmpenhoPdf() {
@@ -266,14 +289,7 @@ function DashboardTab({ enabled, onDrill }: {
         alvo: periodoDoDocumento(range.from, range.to),
         escopo: 'com filtros',
       })
-      await downloadRelatorioEmpenhoPdf(txns, {
-        nome: 'SINDICATO RURAL DE TERRA ROXA / PR',
-        cnpj: ORG_CONTACT.cnpj,
-        endereco: org.street,
-        cepCidade: `CEP: ${org.zip} / ${org.city.toUpperCase()} / ${org.state}`,
-        telefone: org.phone,
-        site: 'www.ruraltr.com.br',
-      }, range)
+      await downloadRelatorioEmpenhoPdf(txns, entidade(), range)
     } catch (e) {
       toast.error(apiErrorMessage(e, 'Erro ao gerar o relatório de despesas.'))
     } finally {
@@ -327,6 +343,9 @@ function DashboardTab({ enabled, onDrill }: {
         actions={<>
           <Button variant="outline" disabled={empenhoBusy} onClick={() => void handleEmpenhoPdf()}>
             <Receipt className="size-4" /> {empenhoBusy ? 'Gerando...' : 'Relatório de despesas'}
+          </Button>
+          <Button variant="outline" disabled={receitasBusy} onClick={() => void handleReceitasPdf()}>
+            <HandCoins className="size-4" /> {receitasBusy ? 'Gerando...' : 'Relatório de receitas'}
           </Button>
           <Button variant="outline" disabled={pdfBusy || isLoading || !data} onClick={handlePdf}>
             <FileDown className="size-4" /> {pdfBusy ? 'Gerando...' : 'Baixar PDF'}
