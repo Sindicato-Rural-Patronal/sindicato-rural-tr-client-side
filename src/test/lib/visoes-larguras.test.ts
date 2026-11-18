@@ -1,36 +1,51 @@
 import { describe, it, expect } from 'vitest'
 import {
-  MINIMO_DA_COLUNA, PISO_DO_TEXTO, RESPIRO, colunaInteira, larguraPedida, largurasDasColunas, palavras,
+  MINIMO_DA_COLUNA, RESPIRO, TETO_DA_PALAVRA, colunaInteira, larguraDoRotulo, larguraPedida, largurasDasColunas, palavras,
   type ColunaParaMedir, type Medidor,
 } from '@/components/visoes/larguras'
 import { textoDaCelula, textoNaTabela } from '@/components/visoes/lancamentos'
 import type { FinanceTransaction } from '@/hooks/useFinance'
 
-// A largura das colunas da tabela da visão (decisão 007, SR-150): nada de palavra
-// partida no meio, e a Contabilidade (9 colunas) cabendo a 1280 px.
+// A largura das colunas da tabela da visão (decisão 007, SR-150; SR-153): nenhuma
+// palavra cortada, nem no cabeçalho; se os pisos não cabem, a tabela rola.
 
 // 8 px por letra: dá para fazer as contas de cabeça.
 const medir: Medidor = texto => texto.length * 8
+/** O px de folga sobre a medida do canvas. */
+const FOLGA = 1
 const col = (over: Partial<ColunaParaMedir> = {}): ColunaParaMedir =>
   ({ key: 'x', label: 'X', type: 'text', weight: 2, fonte: 'texto', ...over })
 
 describe('larguraPedida', () => {
   it('texto: a maior palavra (só espaço separa palavras) mais o respiro', () => {
     expect(palavras('Curso/SENAR  de  verão')).toEqual(['Curso/SENAR', 'de', 'verão'])
-    expect(larguraPedida(col(), ['Convênios do mês', 'BANCO'], medir)).toBe(9 * 8 + RESPIRO)
+    expect(larguraPedida(col(), ['Convênios do mês', 'BANCO'], medir)).toBe(9 * 8 + FOLGA + RESPIRO)
   })
 
   it('valor inteiro: o maior valor inteiro (a data não quebra)', () => {
-    expect(larguraPedida(col({ type: 'date' }), ['27/10/2026'], medir)).toBe(80 + RESPIRO)
+    expect(larguraPedida(col({ type: 'date' }), ['27/10/2026'], medir)).toBe(80 + FOLGA + RESPIRO)
   })
 
-  it('o rótulo também conta (a maior palavra dele) e há um mínimo', () => {
-    expect(larguraPedida(col({ label: 'Observações' }), ['a'], medir)).toBe(11 * 8 + RESPIRO)
+  it('o rótulo também conta (inteiro em até duas linhas) e há um mínimo', () => {
+    expect(larguraPedida(col({ label: 'Observações' }), ['a'], medir)).toBe(11 * 8 + FOLGA + RESPIRO)
     expect(larguraPedida(col({ label: 'Nº' }), ['7'], medir)).toBe(MINIMO_DA_COLUNA)
+    // "Nome / Razão" | "social": 12 letras na linha maior (a 72 px, "Nome / Razão…" saía cortado).
+    expect(larguraDoRotulo('Nome / Razão social', medir)).toBe(12 * 8)
+    expect(larguraPedida(col({ label: 'Nome / Razão social' }), ['ANA'], medir)).toBe(12 * 8 + FOLGA + RESPIRO)
   })
 
   it('o ícone ou o ponto entram como `extra`', () => {
-    expect(larguraPedida(col({ extra: 16 }), ['Doação'], medir)).toBe(6 * 8 + 16 + RESPIRO)
+    expect(larguraPedida(col({ extra: 16 }), ['Doação'], medir)).toBe(6 * 8 + 16 + FOLGA + RESPIRO)
+  })
+
+  it('o piso próprio da coluna (Descrição, Nome) vale mesmo com palavras curtas', () => {
+    expect(larguraPedida(col({ piso: 180 }), ['Taxa de uso'], medir)).toBe(180)
+    expect(larguraPedida(col({ piso: 180 }), ['Palavraenormesemespaconenhum'], medir)).toBe(28 * 8 + FOLGA + RESPIRO)
+  })
+
+  it('só um "token" muito longo (e-mail, URL) passa do teto e leva reticências', () => {
+    const email = 'financeiro.cooperativa.agricola@exemplo.com.br'
+    expect(larguraPedida(col(), [email], medir)).toBe(TETO_DA_PALAVRA + FOLGA + RESPIRO)
   })
 })
 
@@ -61,29 +76,21 @@ describe('largurasDasColunas', () => {
     expect(r.larguras[2]).toBe(200)
   })
 
-  it('não cabe: as de texto encolhem (a de mais peso por último) e as inteiras não', () => {
-    const r = largurasDasColunas(tipos, [44, 200, 160, 100], 444)
-    expect(r.rola).toBe(false)
-    expect(r.larguras[0]).toBe(44)
-    expect(r.larguras[3]).toBe(100)
-    expect(r.larguras[1] + r.larguras[2]).toBeLessThanOrEqual(300)
-    expect(r.larguras[1]).toBeGreaterThan(r.larguras[2])
-    expect(r.larguras[2]).toBeGreaterThanOrEqual(PISO_DO_TEXTO)
+  it('não cabe: nenhuma coluna encolhe abaixo do piso (isso cortava palavras); a tabela rola', () => {
+    // Faltam 60 px: antes as de texto encolhiam até 72 px e a palavra ganhava reticências.
+    expect(largurasDasColunas(tipos, [44, 200, 160, 100], 444)).toEqual({ larguras: [44, 200, 160, 100], rola: true, total: 504 })
+    expect(largurasDasColunas(tipos, [44, 200, 160, 100], 250)).toEqual({ larguras: [44, 200, 160, 100], rola: true, total: 504 })
+    // Na conta exata, cabe.
+    expect(largurasDasColunas(tipos, [44, 200, 160, 100], 504).rola).toBe(false)
   })
 
-  it('nem os pisos cabem: cada uma com o que pede, e a tabela rola', () => {
-    const r = largurasDasColunas(tipos, [44, 200, 160, 100], 250)
-    expect(r).toEqual({ larguras: [44, 200, 160, 100], rola: true, total: 504 })
-  })
-
-  it('a coluna marcada `inteira` (CNPJ/CPF em texto) também não encolhe', () => {
+  it('a coluna marcada `inteira` (CNPJ/CPF em texto) não recebe a sobra', () => {
     const r = largurasDasColunas(
-      [{ label: 'CNPJ / CPF', type: 'text', weight: 2, inteira: true }, { label: 'Nome', type: 'text', weight: 3 }],
+      [{ type: 'text', weight: 2, inteira: true }, { type: 'text', weight: 3 }],
       [150, 200],
-      300,
+      400,
     )
-    expect(r.larguras[0]).toBe(150)
-    expect(r.larguras[1]).toBe(150)
+    expect(r.larguras).toEqual([150, 250])
   })
 })
 

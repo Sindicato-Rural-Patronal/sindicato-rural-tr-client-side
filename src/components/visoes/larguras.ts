@@ -1,20 +1,21 @@
 // A largura de cada coluna da tabela da visão (decisão 007), PURA e testada.
 //
-// A regra que a SR-145 pediu: a largura é decidida pelo que cabe na tela, não pelo
-// número de colunas, e nenhuma palavra se parte no meio ("Convênio s", "BAN CO").
+// A regra (SR-145, revista na SR-153): a largura é decidida pelo que cabe na tela,
+// não pelo número de colunas, e NENHUMA palavra sai cortada, nem no cabeçalho nem
+// nas células ("Convênio s", "BAN CO", "Curso/SEN…", "Nome / Razão…").
 //   1. Coluna de valor inteiro (Nº, data, dinheiro, CPF/CNPJ, telefone, CEP, sim/não,
 //      e a de texto em que todo valor é um número só, como "44.555.666/0001-81")
 //      nunca quebra nem encolhe: fica da largura do maior valor da página.
-//   2. Coluna de texto quebra só entre palavras: o mínimo dela é a maior palavra.
-//   3. Se tudo cabe, o que sobra vai para as colunas de texto pelo `weight` (o mesmo
-//      peso do PDF).
-//   4. Se não cabe, as colunas de texto encolhem até um nível comum, multiplicado
-//      pelo peso (a Descrição, peso 4, e o Nome, peso 3, encolhem por último; as que
-//      pedem pouco ficam inteiras), nunca abaixo de um piso; a palavra que não cabe
-//      ganha reticências, com o texto inteiro no `title`. Assim a visão Contabilidade
-//      (9 colunas) cabe a 1280 px.
-//   5. Se nem os pisos cabem, cada coluna fica com a largura que pede e a tabela rola
-//      de lado, com "Ações" presa à direita.
+//   2. Coluna de texto quebra só entre palavras, e o piso dela é a maior palavra da
+//      página. Só um "token" único muito longo (e-mail, URL: acima de
+//      `TETO_DA_PALAVRA`) pode levar reticências, com o texto inteiro no `title`.
+//   3. O cabeçalho cabe em até duas linhas, quebrando só entre palavras.
+//   4. A coluna pode ter um piso próprio (`piso`): a Descrição e o Nome não ficam
+//      estreitos a ponto de mostrar uma ou duas palavras por linha.
+//   5. Se tudo cabe, o que sobra vai para as colunas de texto pelo `weight` (o mesmo
+//      peso do PDF). Se não cabe, nada encolhe abaixo do piso: cada coluna fica com
+//      o piso dela e a tabela rola de lado, com "Ações" presa à direita. Rolar é
+//      melhor que cortar (pedido do usuário depois da SR-152).
 
 /** O tipo do catálogo que nunca quebra linha (o valor sai inteiro). */
 const TIPOS_INTEIROS = new Set(['number', 'money', 'date', 'datetime', 'wallclock', 'cpf', 'cnpj', 'cep', 'phone', 'cns', 'boolean'])
@@ -37,16 +38,24 @@ export type ColunaParaMedir = {
   fonte: Fonte
   /** Espaço fixo dentro da célula além do texto (ícone do tipo, ponto da categoria…). */
   extra?: number
+  /** A coluna nunca fica mais estreita que isso (com o respiro). */
+  piso?: number
 }
 
 /** O respiro da célula (`px-1.5` dos dois lados, na tabela da visão). */
 export const RESPIRO = 12
-/** Até onde uma coluna de texto encolhe antes de a tabela rolar. */
-export const PISO_DO_TEXTO = 72
-/** Maior palavra que uma coluna de texto tenta mostrar inteira (endereço de e-mail, URL…). */
-export const TETO_DA_PALAVRA = 200
+/**
+ * A maior palavra que uma coluna de texto mostra inteira. Acima disso só fica um
+ * "token" único (endereço de e-mail, URL…), que leva reticências com o texto no `title`.
+ */
+export const TETO_DA_PALAVRA = 260
 /** Nenhuma coluna fica mais estreita que isso (o "Nº" com "—"). */
 export const MINIMO_DA_COLUNA = 44
+/**
+ * Folga sobre a medida do canvas: o navegador arredonda a largura das letras de um
+ * jeito um pouco diferente, e meio pixel a menos já põe a palavra na linha de baixo.
+ */
+const FOLGA = 1
 
 /** O texto em palavras (só espaço separa: "Curso/SENAR" é uma palavra). */
 export function palavras(texto: string): string[] {
@@ -65,22 +74,41 @@ export function colunaInteira(type: string, textos: readonly string[]): boolean 
   return cheios.length > 0 && cheios.every(t => SO_NUMERO.test(t))
 }
 
-/** A largura que a coluna pede: o maior valor (inteira) ou a maior palavra (texto), com o rótulo. */
+/**
+ * A largura que o rótulo do cabeçalho pede para caber em até duas linhas, quebrando
+ * só entre palavras ("Nome / Razão" | "social"). Uma palavra só: ela inteira.
+ */
+export function larguraDoRotulo(rotulo: string, medir: Medidor): number {
+  const ps = palavras(rotulo)
+  if (ps.length === 0) return 0
+  if (ps.length === 1) return medir(ps[0], 'cabecalho')
+  let melhor = Infinity
+  for (let k = 1; k < ps.length; k++) {
+    const linhas = Math.max(medir(ps.slice(0, k).join(' '), 'cabecalho'), medir(ps.slice(k).join(' '), 'cabecalho'))
+    melhor = Math.min(melhor, linhas)
+  }
+  return melhor
+}
+
+/**
+ * O piso da coluna: o maior valor (inteira) ou a maior palavra (texto, até o
+ * `TETO_DA_PALAVRA`), o rótulo em até duas linhas e o `piso` próprio dela.
+ */
 export function larguraPedida(col: ColunaParaMedir, textos: readonly string[], medir: Medidor): number {
   const extra = col.extra ?? 0
-  const rotulo = Math.max(0, ...palavras(col.label).map(p => medir(p, 'cabecalho')))
+  const rotulo = larguraDoRotulo(col.label, medir)
   let conteudo = 0
   if (colunaInteira(col.type, textos)) {
     for (const t of textos) if (t) conteudo = Math.max(conteudo, medir(t.trim(), col.fonte))
   } else {
     for (const t of textos) for (const p of palavras(t)) conteudo = Math.max(conteudo, Math.min(TETO_DA_PALAVRA, medir(p, col.fonte)))
   }
-  return Math.max(MINIMO_DA_COLUNA, Math.ceil(Math.max(rotulo, conteudo + extra) + RESPIRO))
+  return Math.max(MINIMO_DA_COLUNA, col.piso ?? 0, Math.ceil(Math.max(rotulo, conteudo + extra) + FOLGA + RESPIRO))
 }
 
 export type Larguras = {
   larguras: number[]
-  /** true = não coube nem com os pisos: a tabela rola de lado. */
+  /** true = os pisos não cabem: a tabela rola de lado. */
   rola: boolean
   /** A soma das colunas (sem a de Ações). */
   total: number
@@ -88,57 +116,29 @@ export type Larguras = {
 
 /**
  * As larguras para `disponivel` px (a largura da tabela menos a coluna Ações).
- * `pedidas[i]` = `larguraPedida` da coluna i.
+ * `pisos[i]` = `larguraPedida` da coluna i: nenhuma coluna fica abaixo dele.
  */
 export function largurasDasColunas(
-  colunas: readonly (Pick<ColunaParaMedir, 'type' | 'weight' | 'label'> & { inteira?: boolean })[],
-  pedidas: readonly number[],
+  colunas: readonly (Pick<ColunaParaMedir, 'type' | 'weight'> & { inteira?: boolean })[],
+  pisos: readonly number[],
   disponivel: number,
-  medir?: Medidor,
 ): Larguras {
   const texto = colunas.map(c => !(c.inteira ?? ehValorInteiro(c.type)))
   const soma = (xs: readonly number[]) => xs.reduce((a, b) => a + b, 0)
-  const pedido = soma(pedidas)
+  const pedido = soma(pisos)
 
-  // 3. Cabe tudo: a sobra vai para as de texto pelo peso (sem coluna de texto, para todas).
+  // Cabe tudo: a sobra vai para as de texto pelo peso (sem coluna de texto, para todas).
   if (pedido <= disponivel) {
     const sobra = disponivel - pedido
     const recebem = texto.some(Boolean) ? texto : colunas.map(() => true)
     const pesos = colunas.map((c, i) => (recebem[i] ? Math.max(0.5, c.weight || 1) : 0))
     const totalDosPesos = soma(pesos) || 1
-    const larguras = pedidas.map((p, i) => Math.floor(p + (sobra * pesos[i]) / totalDosPesos))
+    const larguras = pisos.map((p, i) => Math.floor(p + (sobra * pesos[i]) / totalDosPesos))
     return { larguras, rola: false, total: soma(larguras) }
   }
 
-  // 4. Não cabe: as colunas de texto encolhem até um nível comum (as que pedem menos ficam inteiras).
-  const pisos = pedidas.map((p, i) => {
-    if (!texto[i]) return p
-    // O piso nunca parte o rótulo: a maior palavra dele cabe.
-    const rotulo = medir ? Math.ceil(Math.max(0, ...palavras(colunas[i].label).map(w => medir(w, 'cabecalho'))) + RESPIRO) : 0
-    return Math.min(p, Math.max(PISO_DO_TEXTO, rotulo))
-  })
-  if (soma(pisos) <= disponivel) {
-    const fixas = soma(pedidas.filter((_, i) => !texto[i]))
-    const paraTexto = disponivel - fixas
-    // Procura o nível L: Σ max(piso, min(pedida, L × peso)) = paraTexto.
-    const peso = (i: number) => Math.sqrt(Math.max(0.5, colunas[i].weight || 1))
-    const deTexto = pedidas.map((p, i) => ({ p, piso: pisos[i], i })).filter(x => texto[x.i])
-    const largura = (x: { p: number; piso: number; i: number }, nivel: number) =>
-      Math.max(x.piso, Math.min(x.p, nivel * peso(x.i)))
-    let baixo = 0
-    let alto = Math.max(...deTexto.map(x => x.p / peso(x.i)))
-    for (let k = 0; k < 40; k++) {
-      const meio = (baixo + alto) / 2
-      const usado = soma(deTexto.map(x => largura(x, meio)))
-      if (usado > paraTexto) alto = meio
-      else baixo = meio
-    }
-    const larguras = pedidas.map((p, i) => (texto[i] ? Math.floor(largura({ p, piso: pisos[i], i }, baixo)) : p))
-    return { larguras, rola: false, total: soma(larguras) }
-  }
-
-  // 5. Nem os pisos cabem: cada uma com o que pede, e a tabela rola.
-  return { larguras: [...pedidas], rola: true, total: pedido }
+  // Não cabe: nada encolhe abaixo do piso (encolher cortava palavras); a tabela rola.
+  return { larguras: [...pisos], rola: true, total: pedido }
 }
 
 /**

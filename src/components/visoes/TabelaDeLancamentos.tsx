@@ -7,8 +7,9 @@
 // saem iguais. Seis chaves têm realce, sempre a partir do lançamento cru: `number`
 // (mono, "—" vazio), `date` (mono), `description` (ícone do tipo e os selos),
 // `category` (ponto de cor), `account` (ícone na cor do caixa) e `amount` (sinal e
-// cor). As larguras saem de `larguras.ts`: nada de palavra partida no meio.
-import { useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+// cor). As larguras saem de `larguras.ts`: nenhuma palavra cortada (se não cabe,
+// a tabela rola de lado).
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { ArrowDownCircle, ArrowLeftRight, ArrowUpCircle, Landmark, Receipt, Wallet } from 'lucide-react'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
@@ -49,8 +50,18 @@ function fonteDa(key: string): Fonte {
 /** O espaço do ícone do tipo, do ponto da categoria e do ícone do caixa. */
 const EXTRA: Record<string, number> = { description: 24, category: 16, account: 20 }
 
-/** A letra de verdade, pelo canvas; sem ele (testes), a estimativa. */
-function criarMedidor(): Medidor {
+/**
+ * A largura mínima da coluna (com o respiro) de quem lê frase: a Descrição (144 px
+ * de texto, ao lado do ícone) e o Nome (138 px) não ficam com uma ou duas palavras
+ * por linha. Valem também quando a tabela rola.
+ */
+const PISO_DA_COLUNA: Record<string, number> = { description: 180, payeeName: 150 }
+
+/**
+ * A letra de verdade, pelo canvas; sem ele (testes), a estimativa. Antes de a fonte
+ * da página carregar, o canvas mede com outra letra: aí a medida não fica guardada.
+ */
+function criarMedidor(fontesProntas: boolean): Medidor {
   const ctx = typeof document !== 'undefined' && !/jsdom/i.test(navigator.userAgent)
     ? document.createElement('canvas').getContext('2d')
     : null
@@ -72,14 +83,16 @@ function criarMedidor(): Medidor {
     if (pronto != null) return pronto
     ctx.font = fontes[fonte]
     const w = ctx.measureText(texto).width
-    cache.set(chave, w)
+    if (fontesProntas) cache.set(chave, w)
     return w
   }
 }
 
 /**
- * Texto de célula que quebra só entre palavras: cada palavra é um bloco que, se não
- * couber na coluna, termina em reticências (o texto inteiro fica no `title`).
+ * Texto de célula que quebra só entre palavras, em até duas linhas (como a Descrição
+ * da lista de sempre; o resto some entre palavras, com "…"). Cada palavra é um bloco:
+ * a coluna nunca é mais estreita que a maior palavra, e só um "token" muito longo
+ * (e-mail, URL) termina em reticências. O texto inteiro fica no `title`.
  */
 function TextoInteiro({ texto, className }: { texto: string; className?: string }) {
   const lista = palavras(texto)
@@ -165,7 +178,17 @@ export function TabelaDeLancamentos({ rows, colunas, reserva, isLoading, vazio, 
   const cols = colunas ?? reserva
   const caixa = useRef<HTMLDivElement>(null)
   const [largura, setLargura] = useState(0)
-  const medir = useMemo(() => criarMedidor(), [])
+  // A fonte da página pode chegar depois da primeira medida: aí mede de novo.
+  const [fontesProntas, setFontesProntas] = useState(
+    () => typeof document === 'undefined' || !document.fonts || document.fonts.status === 'loaded',
+  )
+  useEffect(() => {
+    if (fontesProntas || typeof document === 'undefined' || !document.fonts) return
+    let vivo = true
+    void document.fonts.ready.then(() => { if (vivo) setFontesProntas(true) })
+    return () => { vivo = false }
+  }, [fontesProntas])
+  const medir = useMemo(() => criarMedidor(fontesProntas), [fontesProntas])
 
   useLayoutEffect(() => {
     const el = caixa.current
@@ -181,11 +204,11 @@ export function TabelaDeLancamentos({ rows, colunas, reserva, isLoading, vazio, 
   const { larguras, rola, total, inteiras } = useMemo(() => {
     const textos = cols.map((c, j) => rows.map(t => textoNaTabela(c.key, t, colunas ? celulaDe(t, j) : undefined)))
     const medidas = cols.map((c, j): ColunaParaMedir & { inteira: boolean } => ({
-      ...c, fonte: fonteDa(c.key), extra: EXTRA[c.key], inteira: colunaInteira(c.type, textos[j]),
+      ...c, fonte: fonteDa(c.key), extra: EXTRA[c.key], piso: PISO_DA_COLUNA[c.key], inteira: colunaInteira(c.type, textos[j]),
     }))
-    const pedidas = medidas.map((c, j) => larguraPedida(c, textos[j], medir))
+    const pisos = medidas.map((c, j) => larguraPedida(c, textos[j], medir))
     const disponivel = Math.max(0, (largura || 960) - LARGURA_ACOES - 2)
-    return { ...largurasDasColunas(medidas, pedidas, disponivel, medir), inteiras: medidas.map(c => c.inteira) }
+    return { ...largurasDasColunas(medidas, pisos, disponivel), inteiras: medidas.map(c => c.inteira) }
   }, [cols, colunas, rows, largura, medir])
 
   // Os selos vão na Descrição; sem ela, na primeira coluna.
@@ -203,7 +226,8 @@ export function TabelaDeLancamentos({ rows, colunas, reserva, isLoading, vazio, 
           <TableRow>
             {cols.map(c => (
               <TableHead key={c.key} className={cn('px-1.5 whitespace-normal align-bottom', c.key === 'amount' && 'text-right')}>
-                <span className="line-clamp-2 break-normal" title={c.label}>{c.label}</span>
+                {/* Sem corte: a coluna tem a largura do rótulo em duas linhas, quebrando entre palavras. */}
+                <span className="block break-normal">{c.label}</span>
               </TableHead>
             ))}
             <TableHead className={cn('text-right', STICKY_ACTIONS_CELL, sombra)}>Ações</TableHead>
