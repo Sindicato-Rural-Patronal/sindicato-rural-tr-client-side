@@ -14,7 +14,7 @@ import { ArrowDownCircle, ArrowLeftRight, ArrowUpCircle, Landmark, Receipt, Wall
 import { Skeleton } from '@/components/ui/skeleton'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { EmptyState } from '@/components/EmptyState'
-import { STICKY_ACTIONS_CELL, STICKY_ACTIONS_ROW } from '@/lib/table-sticky-actions'
+import { STICKY_ACTIONS_ROW, STICKY_CELL, STICKY_EDGE } from '@/lib/table-sticky-actions'
 import { numeroValido } from '@/lib/finance-number'
 import type { ColunaDaLista, FinanceTransaction } from '@/hooks/useFinance'
 import { centsToBRL } from '@/utils/masks'
@@ -31,16 +31,13 @@ const LARGURA_ACOES = 108
 
 /**
  * A borda esquerda do que fica preso enquanto a tabela rola, para a coluna que passa
- * por baixo não parecer palavra cortada ("M", "BO", "PI"): uma linha de 1 px na cor da
- * borda (sombra `inset`; `max-lg:` repete para vencer a de `STICKY_ACTIONS_CELL`) e,
- * à esquerda dela, uma sombra de 10 px na cor do texto (escura no claro, clara no
- * escuro). A sombra é um degradê no `::before`: na tabela de bordas coladas o
- * navegador não desenha o `box-shadow` de fora de uma célula. Só tokens do tema.
+ * por baixo não parecer palavra cortada ("M", "BO", "PI"): a `STICKY_EDGE` de
+ * `table-sticky-actions.ts` (linha `inset` de 1 px e degradê de 10 px no `::before`).
+ * Aqui ela vale em qualquer largura, só enquanto a tabela rola; por isso as células
+ * presas usam `STICKY_CELL` (sem borda), e não `STICKY_ACTIONS_CELL`, cuja borda
+ * aparece sempre abaixo de lg.
  */
-const SOMBRA_DA_PRESA =
-  'shadow-[inset_1px_0_0_var(--border)] max-lg:shadow-[inset_1px_0_0_var(--border)] '
-  + 'before:pointer-events-none before:absolute before:inset-y-0 before:right-full before:w-2.5 '
-  + 'before:bg-linear-to-l before:from-[color-mix(in_srgb,var(--foreground)_16%,transparent)] before:to-transparent'
+const SOMBRA_DA_PRESA = STICKY_EDGE
 
 function TipoIcone({ t }: { t: Pick<FinanceTransaction, 'type' | 'transferId'> }) {
   const Icone = t.transferId ? ArrowLeftRight : t.type === 'IN' ? ArrowUpCircle : t.type === 'OUT' ? ArrowDownCircle : Receipt
@@ -235,11 +232,9 @@ export function TabelaDeLancamentos({ rows, colunas, reserva, isLoading, vazio, 
   const ordem = cols.map((_, j) => j)
   if (valorPreso) ordem.push(...ordem.splice(iValor, 1))
   // A sombra vai na borda esquerda do que está preso: o Valor, se ele está; senão, "Ações".
-  const presoAoValor = valorPreso ? cn(STICKY_ACTIONS_CELL, SOMBRA_DA_PRESA) : ''
+  const presoAoValor = valorPreso ? cn(STICKY_CELL, SOMBRA_DA_PRESA) : ''
   const estiloDoValor = valorPreso ? { right: LARGURA_ACOES } : undefined
-  const acoesPresas = valorPreso
-    ? cn(STICKY_ACTIONS_CELL, 'shadow-none max-lg:shadow-none')
-    : cn(STICKY_ACTIONS_CELL, rola && SOMBRA_DA_PRESA)
+  const acoesPresas = valorPreso ? STICKY_CELL : cn(STICKY_CELL, rola && SOMBRA_DA_PRESA)
 
   return (
     <div ref={caixa} className="hidden overflow-hidden rounded-xl border border-border bg-card md:block">
