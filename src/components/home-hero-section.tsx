@@ -9,14 +9,22 @@ import Autoplay from 'embla-carousel-autoplay'
 import { useBanners } from '@/hooks/useBanner'
 import type { BannerButton, PublicBanner } from '@/hooks/useBanner'
 import { safeUrl } from '@/utils/safe-url'
+import { bannerHasContent, bannerTitle, hasBannerTitle, isPosterOnly } from '@/lib/banner-layout'
 import { cn } from '@/lib/utils'
 
 // Os banners são cartazes que o próprio Sindicato faz, com o texto escrito na
 // imagem. Eles aparecem inteiros, na proporção em que o painel recorta
-// (1440 × 600), ao lado do título e de um botão de verdade; no celular o
-// cartaz vem primeiro e o texto embaixo. Antes o cartaz era esticado e cortado
-// na tela toda, com o título por cima dos textos dele.
+// (1440 × 600). Antes o cartaz era esticado e cortado na tela toda, com o
+// título por cima dos textos dele. Dois jeitos (SR-155):
+// - só o cartaz (sem subtítulo e sem botões, o caso mais comum): grande e no
+//   meio; o título fica só para o leitor de tela, porque às vezes é um "."
+//   posto só porque o campo é obrigatório;
+// - com subtítulo ou botões: o título, o subtítulo e os botões à esquerda e o
+//   cartaz à direita; no celular o cartaz vem primeiro e o texto embaixo.
 const POSTER_ASPECT = 'aspect-[12/5]'
+// Só o cartaz: até 1152 px de largura (480 de altura), para não virar uma
+// parede em tela larga e caber inteiro na primeira tela de um notebook.
+const POSTER_ONLY_WIDTH = 'max-w-6xl'
 
 // Troca sozinho bem devagar e para quando o mouse passa, o foco entra ou a
 // pessoa usa as setas. Com "reduzir movimento" só troca quando a pessoa pede.
@@ -52,35 +60,61 @@ function BannerBtn({ btn, index }: { btn: BannerButton; index: number }) {
   )
 }
 
+function PosterImage({ src, alt, index }: { src: string; alt: string; index: number }) {
+  return (
+    <img
+      src={src}
+      alt={alt}
+      width={1440}
+      height={600}
+      decoding={index === 0 ? 'auto' : 'async'}
+      fetchPriority={index === 0 ? 'high' : 'auto'}
+      loading={index === 0 ? 'eager' : 'lazy'}
+      className="h-full w-full object-contain"
+    />
+  )
+}
+
 function BannerSlide({ banner, index }: { banner: PublicBanner; index: number }) {
   const Heading = index === 0 ? 'h1' : 'h2'
+  // Título sem letra nem número ("." "-" "…") nunca aparece nem é lido.
+  const title = bannerTitle(banner.title)
+
+  if (banner.imageUrl && isPosterOnly(banner)) {
+    // O cartaz tem o próprio texto: o título é o que o leitor de tela lê.
+    return (
+      <div data-layout="cartaz" className="w-full">
+        <Heading className="sr-only">{title}</Heading>
+        <figure className={cn('mx-auto w-full overflow-hidden rounded-xl border border-border bg-muted', POSTER_ONLY_WIDTH, POSTER_ASPECT)}>
+          <PosterImage src={banner.imageUrl} alt={title} index={index} />
+        </figure>
+      </div>
+    )
+  }
+
+  const showTitle = hasBannerTitle(banner.title)
+  const subtitle = banner.subtitle?.trim()
   return (
-    <div className="grid items-center gap-6 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:gap-12">
+    <div data-layout="texto" className="grid w-full items-center gap-6 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:gap-12">
       {banner.imageUrl && (
         <figure className={cn('overflow-hidden rounded-xl border border-border bg-muted lg:order-2', POSTER_ASPECT)}>
-          <img
-            src={banner.imageUrl}
-            // O cartaz tem o próprio texto: o alt diz o que ele anuncia.
-            alt={banner.subtitle ? `${banner.title}: ${banner.subtitle}` : banner.title}
-            width={1440}
-            height={600}
-            decoding={index === 0 ? 'auto' : 'async'}
-            fetchPriority={index === 0 ? 'high' : 'auto'}
-            loading={index === 0 ? 'eager' : 'lazy'}
-            className="h-full w-full object-contain"
-          />
+          {/* O alt diz o que o cartaz anuncia. */}
+          <PosterImage src={banner.imageUrl} alt={subtitle ? `${title}: ${subtitle}` : title} index={index} />
         </figure>
       )}
-      {/* lg:pb-14 guarda o lugar das setas, que ficam no pé desta coluna. */}
-      <div className={cn('flex flex-col items-start lg:pb-14', !banner.imageUrl && 'lg:col-span-2')}>
-        <Heading className="text-3xl font-semibold leading-tight tracking-tight text-foreground text-balance wrap-break-word md:text-4xl xl:text-[2.75rem]">
-          {banner.title}
+      <div className={cn('flex flex-col items-start', !banner.imageUrl && 'lg:col-span-2')}>
+        <Heading
+          className={showTitle
+            ? 'text-3xl font-semibold leading-tight tracking-tight text-foreground text-balance wrap-break-word md:text-4xl xl:text-[2.75rem]'
+            : 'sr-only'}
+        >
+          {title}
         </Heading>
-        {banner.subtitle && (
-          <p className="mt-3 max-w-xl text-base text-muted-foreground md:text-lg">{banner.subtitle}</p>
+        {subtitle && (
+          <p className={cn('max-w-xl text-base text-muted-foreground md:text-lg', showTitle && 'mt-3')}>{subtitle}</p>
         )}
         {banner.buttons.length > 0 && (
-          <div className="mt-6 flex flex-wrap gap-3">
+          <div className={cn('flex flex-wrap gap-3', (showTitle || subtitle) && 'mt-6')}>
             {banner.buttons.map((btn, i) => (
               <BannerBtn key={i} btn={btn} index={i} />
             ))}
@@ -124,16 +158,10 @@ export function HeroSection() {
   const selected = useSyncExternalStore(subscribe, () => api?.selectedScrollSnap() ?? 0, () => 0)
 
   if (isLoading) {
+    // O formato do caso mais comum (só o cartaz): a página não pula quando chega.
     return (
       <HeroFrame>
-        <div className="grid items-center gap-6 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:gap-12">
-          <Skeleton className={cn('w-full rounded-xl lg:order-2', POSTER_ASPECT)} />
-          <div className="flex flex-col gap-3">
-            <Skeleton className="h-10 w-3/4" />
-            <Skeleton className="h-5 w-2/3" />
-            <Skeleton className="mt-3 h-11 w-36" />
-          </div>
-        </div>
+        <Skeleton className={cn('mx-auto w-full rounded-xl', POSTER_ONLY_WIDTH, POSTER_ASPECT)} />
       </HeroFrame>
     )
   }
@@ -144,9 +172,10 @@ export function HeroSection() {
     )
   }
 
-  if (!banners || banners.length === 0) return null
+  const visible = banners?.filter(bannerHasContent) ?? []
+  if (visible.length === 0) return null
 
-  const many = banners.length > 1
+  const many = visible.length > 1
   // Seta e ponto contam como "a pessoa pediu": o carrossel para de trocar sozinho.
   const goTo = (i: number) => {
     autoplay.stop()
@@ -160,46 +189,40 @@ export function HeroSection() {
         plugins={many && !reduceMotion ? [autoplay] : []}
         setApi={setApi}
         aria-label="Avisos do Sindicato"
-        className="relative"
       >
         <CarouselContent>
-          {banners.map((banner, i) => (
-            <CarouselItem key={banner.id} aria-label={`${i + 1} de ${banners.length}`}>
+          {visible.map((banner, i) => (
+            // Os slides têm a altura do maior. No computador cada um fica no meio
+            // dessa altura; no celular fica em cima, com o cartaz no mesmo lugar
+            // nos dois jeitos.
+            <CarouselItem key={banner.id} aria-label={`${i + 1} de ${visible.length}`} className="flex flex-col lg:justify-center">
               <BannerSlide banner={banner} index={i} />
             </CarouselItem>
           ))}
         </CarouselContent>
 
         {many && (
-          // Computador: no pé da coluna do texto, alinhadas com a base do cartaz.
-          <div className="mt-5 flex items-center gap-3 lg:absolute lg:bottom-0 lg:left-0 lg:mt-0">
+          // Embaixo do carrossel e no meio, no mesmo lugar em qualquer slide
+          // (só o cartaz ou com texto).
+          <div className="mt-5 flex items-center justify-center gap-2 sm:gap-3">
             <Button
               type="button"
               variant="outline"
               size="icon"
               className="size-11 rounded-full sm:size-9"
-              onClick={() => goTo((selected - 1 + banners.length) % banners.length)}
+              onClick={() => goTo((selected - 1 + visible.length) % visible.length)}
               aria-label="Aviso anterior"
             >
               <ChevronLeft />
             </Button>
-            <Button
-              type="button"
-              variant="outline"
-              size="icon"
-              className="size-11 rounded-full sm:size-9"
-              onClick={() => goTo((selected + 1) % banners.length)}
-              aria-label="Próximo aviso"
-            >
-              <ChevronRight />
-            </Button>
-            <div className="ml-1 flex items-center gap-1" role="group" aria-label="Escolher aviso">
-              {banners.map((b, i) => (
+            <div className="flex items-center gap-1" role="group" aria-label="Escolher aviso">
+              {visible.map((b, i) => (
                 <button
                   key={b.id}
                   type="button"
                   onClick={() => goTo(i)}
-                  aria-label={`Aviso ${i + 1}: ${b.title}`}
+                  // Sem título de verdade, só o número ("Aviso 1"), nunca "Aviso 1: .".
+                  aria-label={hasBannerTitle(b.title) ? `Aviso ${i + 1}: ${bannerTitle(b.title)}` : `Aviso ${i + 1}`}
                   aria-current={i === selected}
                   className="group/dot flex size-6 items-center justify-center rounded-full"
                 >
@@ -212,6 +235,16 @@ export function HeroSection() {
                 </button>
               ))}
             </div>
+            <Button
+              type="button"
+              variant="outline"
+              size="icon"
+              className="size-11 rounded-full sm:size-9"
+              onClick={() => goTo((selected + 1) % visible.length)}
+              aria-label="Próximo aviso"
+            >
+              <ChevronRight />
+            </Button>
           </div>
         )}
       </Carousel>

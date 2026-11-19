@@ -23,6 +23,7 @@ export type DocumentoDoNavegador =
   /** "Baixar PDF" do Financeiro (Relatório do Financeiro). */
   | 'financeiro'
   | 'relatorio-despesas'
+  | 'relatorio-receitas'
   | 'nota-empenho'
   | 'recibo'
   | 'unimed-ficha'

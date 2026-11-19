@@ -1,5 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { usePermissions } from '@/hooks/usePermissions'
 import { apiErrorMessage, loadErrorMessage } from '@/lib/api-error-message'
@@ -31,6 +31,7 @@ import { useOrgInfo } from '@/hooks/useSiteSettings'
 import { ORG_CONTACT } from '@/lib/org-contact'
 import { cn } from '@/lib/utils'
 import { despesasDoRelatorio, fornecedorDoLancamento } from '@/lib/relatorio-empenho'
+import { gerarRelatorioReceitas } from '@/lib/gerar-relatorio-receitas'
 import { alvoDoLancamento } from '@/lib/recibo'
 import { erroDoDocumento, periodoDoDocumento, registrarDocumento } from '@/lib/registrar-documento'
 import { Button } from '@/components/ui/button'
@@ -60,8 +61,18 @@ import { NumeroField } from '@/components/financeiro/NumeroField'
 import { NumeroSaltoDialog } from '@/components/financeiro/NumeroSaltoDialog'
 import { ClosedMonthBadge, ClosedMonthNotice } from '@/components/financeiro/ClosedMonth'
 import { MonthlyChart } from '@/components/financeiro/MonthlyChart'
-import { ExportMenu } from '@/components/export/ExportMenu'
+import { filtrosEmPalavras, type FiltrosDaVisao } from '@/components/export/report-builder'
 import { textosDoFinanceiro } from '@/components/export/filter-texts'
+import { useIsMobile } from '@/hooks/use-mobile'
+import { useReportTemplates } from '@/hooks/useReportTemplates'
+// Visões da lista (decisão 007, SR-150): a barra, o painel Colunas, a tabela com as colunas da visão e o Exportar da tela.
+import { BarraDaVisao } from '@/components/visoes/BarraDaVisao'
+import { PainelColunas } from '@/components/visoes/PainelColunas'
+import { ExportarATela } from '@/components/visoes/ExportarATela'
+import { CartoesDeLancamentos, TabelaDeLancamentos, type ColunaDaTela } from '@/components/visoes/TabelaDeLancamentos'
+import { useVisaoDaLista, type MudancaDaLista } from '@/components/visoes/use-visao-da-lista'
+import { filtrosDaVisaoEmPalavras, type FiltrosDaLista } from '@/components/visoes/visoes'
+import { textoDosTotaisDosLancamentos } from '@/components/visoes/lancamentos'
 import { MemberBadge } from '@/components/MemberBadge'
 import { AjudaLink } from '@/components/ajuda/AjudaLink'
 import { PageContainer, PageHeader } from '@/components/PageHeader'
@@ -97,6 +108,10 @@ type FinanceSearch = {
   /** "Sem transferências entre caixas" (SR-136): na URL só existe quando marcado (`?semTransf=true`). */
   semTransf?: true
   page?: number
+  /** A visão da lista de lançamentos (decisão 007): `padrao-tela`, `contabilidade`… ou `equipe:<id>`. */
+  visao?: string
+  /** As colunas, só quando diferem das da visão (chaves do catálogo, separadas por vírgula). */
+  cols?: string
 }
 const TABS: FinanceTab[] = ['dashboard', 'lancamentos', 'recorrentes', 'categorias', 'caixas', 'formas', 'fechamento']
 function str(v: unknown): string | undefined {
@@ -124,6 +139,8 @@ export const Route = createFileRoute('/_admin/admin/financeiro/')({
       ord: s.ord === 'number' ? 'number' : undefined,
       semTransf: lerSemTransferencias(s.semTransf),
       page: Number.isFinite(page) && page > 1 ? page : undefined,
+      visao: str(s.visao),
+      cols: str(s.cols),
     }
   },
   component: RouteComponent,
@@ -250,7 +267,29 @@ function DashboardTab({ enabled, onDrill }: {
   const summaryFailed = isError && !data
   const [pdfBusy, setPdfBusy] = useState(false)
   const [empenhoBusy, setEmpenhoBusy] = useState(false)
+  const [receitasBusy, setReceitasBusy] = useState(false)
   const org = useOrgInfo()
+
+  const entidade = () => ({
+    nome: 'SINDICATO RURAL DE TERRA ROXA / PR',
+    cnpj: ORG_CONTACT.cnpj,
+    endereco: org.street,
+    cepCidade: `CEP: ${org.zip} / ${org.city.toUpperCase()} / ${org.state}`,
+    telefone: org.phone,
+    site: 'www.ruraltr.com.br',
+  })
+
+  /** "RECEITAS / RELATÓRIO": o espelho do de despesas, com as entradas por categoria (SR-140). */
+  async function handleReceitasPdf() {
+    setReceitasBusy(true)
+    try {
+      await gerarRelatorioReceitas(range, entidade())
+    } catch (e) {
+      toast.error(apiErrorMessage(e, 'Erro ao gerar o relatório de receitas.'))
+    } finally {
+      setReceitasBusy(false)
+    }
+  }
 
   /** "DESPESAS / RELATÓRIO", no formato que o sindicato já usa em papel. */
   async function handleEmpenhoPdf() {
@@ -266,14 +305,7 @@ function DashboardTab({ enabled, onDrill }: {
         alvo: periodoDoDocumento(range.from, range.to),
         escopo: 'com filtros',
       })
-      await downloadRelatorioEmpenhoPdf(txns, {
-        nome: 'SINDICATO RURAL DE TERRA ROXA / PR',
-        cnpj: ORG_CONTACT.cnpj,
-        endereco: org.street,
-        cepCidade: `CEP: ${org.zip} / ${org.city.toUpperCase()} / ${org.state}`,
-        telefone: org.phone,
-        site: 'www.ruraltr.com.br',
-      }, range)
+      await downloadRelatorioEmpenhoPdf(txns, entidade(), range)
     } catch (e) {
       toast.error(apiErrorMessage(e, 'Erro ao gerar o relatório de despesas.'))
     } finally {
@@ -327,6 +359,9 @@ function DashboardTab({ enabled, onDrill }: {
         actions={<>
           <Button variant="outline" disabled={empenhoBusy} onClick={() => void handleEmpenhoPdf()}>
             <Receipt className="size-4" /> {empenhoBusy ? 'Gerando...' : 'Relatório de despesas'}
+          </Button>
+          <Button variant="outline" disabled={receitasBusy} onClick={() => void handleReceitasPdf()}>
+            <HandCoins className="size-4" /> {receitasBusy ? 'Gerando...' : 'Relatório de receitas'}
           </Button>
           <Button variant="outline" disabled={pdfBusy || isLoading || !data} onClick={handlePdf}>
             <FileDown className="size-4" /> {pdfBusy ? 'Gerando...' : 'Baixar PDF'}
@@ -792,6 +827,21 @@ const valorClasse = (t: Pick<FinanceTransaction, 'type'>) =>
   t.type === 'IN' ? 'text-success' : t.type === 'OUT' ? 'text-destructive' : 'text-muted-foreground'
 const sinal = (t: Pick<FinanceTransaction, 'type'>) => (t.type === 'IN' ? '+ ' : t.type === 'OUT' ? '− ' : '')
 
+/** Os filtros que uma visão liga (chaves da API) → a URL desta tela. Só as chaves que vierem. */
+function urlDosFiltros(f: FiltrosDaLista): Partial<FinanceSearch> {
+  const texto = (v: string | boolean | undefined) => (typeof v === 'string' && v ? v : undefined)
+  const u: Partial<FinanceSearch> = {}
+  if ('from' in f) u.from = texto(f.from)
+  if ('to' in f) u.to = texto(f.to)
+  if ('type' in f) u.fType = f.type === 'IN' || f.type === 'OUT' ? f.type : undefined
+  if ('categoryId' in f) u.cat = texto(f.categoryId)
+  if ('accountId' in f) u.acc = texto(f.accountId)
+  if ('method' in f) u.pm = texto(f.method)
+  if ('orderBy' in f) u.ord = f.orderBy === 'number' ? 'number' : undefined
+  if ('excludeTransfers' in f) u.semTransf = f.excludeTransfers === true ? true : undefined
+  return u
+}
+
 function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, canDelete }: {
   enabled: boolean
   search: FinanceSearch
@@ -807,9 +857,52 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
     orderBy: search.ord,
     excludeTransfers: search.semTransf,
   }), [page, search.from, search.to, search.fType, search.cat, search.acc, search.pm, search.q, search.ord, search.semTransf])
-  const { data, isLoading, isError, isFetching, refetch, error: listError } = useFinanceTransactions(filters, { enabled })
   const catsQuery = useFinanceCategories({ enabled })
   const accsQuery = useFinanceAccounts({ enabled })
+
+  // ── Visão da lista (decisão 007, SR-150) ──
+  // Os filtros da tela com as chaves da API: os que uma visão pode ligar, mais as datas.
+  const telaDaVisao: FiltrosDaLista = useMemo(() => ({
+    from: search.from, to: search.to, type: search.fType, categoryId: search.cat, accountId: search.acc,
+    method: search.pm, orderBy: search.ord, excludeTransfers: search.semTransf,
+  }), [search.from, search.to, search.fType, search.cat, search.acc, search.pm, search.ord, search.semTransf])
+  // Visão da equipe que filtra por categoria ou caixa: confere se ainda existem (com as inativas).
+  const modelosDaEquipe = useReportTemplates('finance-transactions', { enabled: false }).data
+  const filtraPorId = !!modelosDaEquipe?.some(m => m.filters && ('categoryId' in m.filters || 'accountId' in m.filters))
+  const categoriasComInativas = useFinanceCategories({ includeInactive: true, enabled: enabled && filtraPorId })
+  const caixasComInativos = useFinanceAccounts({ includeInactive: true, enabled: enabled && filtraPorId })
+  const todasAsCategorias = categoriasComInativas.data
+  const todosOsCaixas = caixasComInativos.data
+  const categoriasFalharam = categoriasComInativas.isError
+  const caixasFalharam = caixasComInativos.isError
+  // `undefined` = a lista ainda não chegou (a última visão espera por ela); se a lista
+  // não carregou, não dá para conferir e o filtro fica (como antes).
+  const existeNaLista = useCallback((chave: string, valor: string | boolean) => {
+    if (chave === 'categoryId') return todasAsCategorias ? todasAsCategorias.some(c => c.id === valor) : categoriasFalharam || undefined
+    if (chave === 'accountId') return todosOsCaixas ? todosOsCaixas.some(a => a.id === valor) : caixasFalharam || undefined
+    return true
+  }, [todasAsCategorias, todosOsCaixas, categoriasFalharam, caixasFalharam])
+  const visao = useVisaoDaLista({
+    dataset: 'finance-transactions',
+    enabled,
+    tela: telaDaVisao,
+    url: { visao: search.visao, cols: search.cols },
+    mudar: (m: MudancaDaLista) => setSearch({
+      // Volta à página 1 (só manda `page` quando não está nela: `page` na mudança leva a tela ao topo,
+      // e mexer nas colunas não pode fazer a tela pular).
+      visao: m.visao, cols: m.cols, ...(search.page ? { page: undefined } : {}), ...(m.filtros ? urlDosFiltros(m.filtros) : {}),
+    }),
+    existe: existeNaLista,
+    avisoDoQueSumiu: chave => (chave === 'accountId'
+      ? 'O caixa guardado na visão não existe mais e saiu da visão.'
+      : 'A categoria guardada na visão não existe mais e saiu da visão.'),
+  })
+  // Na visão Padrão sem mudança, a lista de sempre (sem `fields`); nas outras, as colunas da visão.
+  const { data, isLoading: carregandoAPagina, isError, isFetching, refetch, error: listError } = useFinanceTransactions(filters, {
+    enabled: enabled && !visao.carregando,
+    fields: visao.ehOPadraoSemMudanca ? null : visao.cols,
+  })
+  const isLoading = carregandoAPagina || visao.carregando
   const categories = catsQuery.data
   const accounts = accsQuery.data
   // Categorias e caixas alimentam os filtros e o formulário: sem eles os
@@ -1159,19 +1252,76 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
     if (pendingInputRef.current) pendingInputRef.current.value = ''
   }
 
-  // Exportar (SR-103): planilha, PDF e "Montar relatório…" da fonte `finance-transactions`, com os
-  // filtros e a ordem da tela (a lista não tem seleção). A linha "Filtros:" do montador diz o tipo,
-  // a categoria e o caixa pelo nome, como a API no PDF; o período, a forma e a busca ele já diz.
-  const temFiltro = !!(search.from || search.to || search.fType || search.cat || search.acc || search.pm || search.q || search.semTransf)
+  // Exportar o que está na tela (decisão 007): as colunas da visão, com os filtros e a ordem da tela
+  // (a lista não tem seleção). Os filtros em palavras dizem o tipo, a categoria e o caixa pelo nome,
+  // como a API no PDF; o período, a forma e a busca saem dos nomes do catálogo.
+  const nomeDaCategoria = (id: string) =>
+    (todasAsCategorias ?? cats).find(c => c.id === id)?.name ?? rows.find(r => r.categoryId === id)?.category?.name
+  const nomeDoCaixa = (id: string) => (todosOsCaixas ?? accs).find(a => a.id === id)?.name ?? accountNameOf(id)
   const textosDosFiltros = textosDoFinanceiro({
     type: search.fType,
     categoryId: search.cat,
-    categoria: cats.find(c => c.id === search.cat)?.name ?? rows.find(r => r.categoryId === search.cat)?.category?.name,
+    categoria: search.cat ? nomeDaCategoria(search.cat) : null,
     accountId: search.acc,
-    caixa: search.acc ? accountNameOf(search.acc) : null,
+    caixa: search.acc ? nomeDoCaixa(search.acc) : null,
     orderBy: search.ord,
     excludeTransfers: search.semTransf,
   })
+  const filtrosDaExportacao = financeExportFilters(filters)
+  const filterLabels = visao.catalog?.filterLabels ?? {}
+  const filtrosEmTexto = filtrosEmPalavras(filtrosDaExportacao, filterLabels, { textos: textosDosFiltros })
+  // Os filtros de uma visão em palavras (o seletor e o "Salvar como…"): "Tipo: Entrada · Período: mês passado".
+  const descreverFiltros = (f: FiltrosDaVisao | null) => filtrosDaVisaoEmPalavras(f, filterLabels, textosDoFinanceiro({
+    type: typeof f?.type === 'string' ? f.type : null,
+    categoryId: typeof f?.categoryId === 'string' ? f.categoryId : null,
+    categoria: typeof f?.categoryId === 'string' ? nomeDaCategoria(f.categoryId) : null,
+    accountId: typeof f?.accountId === 'string' ? f.accountId : null,
+    caixa: typeof f?.accountId === 'string' ? nomeDoCaixa(f.accountId) : null,
+    orderBy: typeof f?.orderBy === 'string' ? f.orderBy : null,
+    excludeTransfers: f?.excludeTransfers === true,
+  }))
+  const celular = useIsMobile()
+  // As colunas enquanto a resposta não chega (rótulo e tipo do catálogo).
+  const colunasDeReserva: ColunaDaTela[] = useMemo(() => {
+    const doCatalogo = new Map((visao.catalog?.groups ?? []).flatMap(g => g.fields.map(f => [f.key, f] as const)))
+    return visao.cols.map(k => ({ key: k, label: doCatalogo.get(k)?.label ?? k, type: doCatalogo.get(k)?.type ?? 'text', weight: 2 }))
+  }, [visao.catalog, visao.cols])
+  // Nota, Recorrente, Mês fechado e comprovantes (os selos da descrição, como na lista de sempre).
+  function selos(t: FinanceTransaction) {
+    const lockReason = rowLockReason(t)
+    if (!((!t.type && !t.transferId) || t.recurringId || lockReason || t.attachments.length > 0)) return null
+    return (
+      <>
+        {!t.type && !t.transferId && <Badge variant="outline">Nota</Badge>}
+        {t.recurringId && (
+          <Badge variant="outline" title="Criado por uma recorrência">
+            <Repeat aria-hidden /> Recorrente
+          </Badge>
+        )}
+        {lockReason && <ClosedMonthBadge reason={lockReason} />}
+        {t.attachments.length > 0 && (
+          <button
+            type="button"
+            onClick={() => handleOpenAttachment(t.attachments[0].id)}
+            title={`${t.attachments.length} comprovante(s) — abrir`}
+            aria-label={`${t.attachments.length} comprovante(s) — abrir`}
+            className="inline-flex h-5 items-center gap-0.5 rounded-sm bg-muted px-1.5 text-xs font-normal text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+          >
+            <Paperclip className="size-3" aria-hidden />{t.attachments.length}
+          </button>
+        )}
+      </>
+    )
+  }
+  const acoesDaLinha = (t: FinanceTransaction) => (t.transferId && !canDelete
+    ? <span className="text-xs text-faint-foreground">—</span>
+    : <RowActions label={acoesLabel(t)} actions={rowActions(t)} />)
+  const vazioDaLista = {
+    titulo: 'Nenhum lançamento',
+    descricao: canCreate
+      ? (celular ? 'Toque em "Novo lançamento".' : 'Clique em "Novo lançamento" para registrar.')
+      : 'Nada encontrado com esses filtros.',
+  }
 
   function abrirTransferencia() {
     setTransfer({ fromAccountId: '', toAccountId: '', amount: '', date: todayYmd(), description: '' })
@@ -1216,14 +1366,7 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
     <div className="flex flex-col gap-4">
       <FilterBar
         actions={<>
-          {/* Exportar (SR-103): planilha, PDF e "Montar relatório…", com os filtros e a ordem da tela. */}
-          <ExportMenu
-            dataset="finance-transactions"
-            filters={financeExportFilters(filters)}
-            total={data?.total}
-            filtered={temFiltro}
-            filterTexts={textosDosFiltros}
-          />
+          {/* O Exportar foi para o fim da barra da visão (decisão 007): exporta o que a barra descreve. */}
           {canCreate && accs.length >= 2 && (
             <Button variant="outline" onClick={abrirTransferencia}>
               <ArrowLeftRight className="size-4" /> Transferir
@@ -1321,6 +1464,40 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
         </label>
       </div>
 
+      {/* A barra da visão (decisão 007), entre os filtros e os totais. */}
+      <BarraDaVisao
+        v={visao}
+        tela={telaDaVisao}
+        descrever={descreverFiltros}
+        celular={celular}
+        colunas={(
+          <PainelColunas
+            catalog={visao.catalog}
+            cols={visao.cols}
+            onChange={visao.mudarColunas}
+            alterada={visao.alterada}
+            onVoltar={visao.voltarAoPadrao}
+            celular={celular}
+          />
+        )}
+        exportar={(
+          <ExportarATela
+            dataset="finance-transactions"
+            catalog={visao.catalog}
+            cols={visao.cols}
+            filtros={filtrosDaExportacao}
+            filtrosTexto={filtrosEmTexto}
+            total={data?.total}
+            visaoRotulo={visao.rotulo}
+            visao={visao.nomeApi}
+            nomes={{ um: 'lançamento', varios: 'lançamentos' }}
+            textoDosTotais={textoDosTotaisDosLancamentos(visao.cols, search.fType)}
+            celular={celular}
+            disabled={!visao.catalog || visao.cols.length === 0}
+          />
+        )}
+      />
+
       {listasFalharam && (
         <LoadErrorRetry
           variant="inline"
@@ -1342,6 +1519,22 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
 
       {(isLoading || data?.totals) && <FilteredTotals totals={data?.totals} loading={isLoading} />}
 
+      {/* Outra visão (ou o Padrão com colunas mudadas): a lista montada com as colunas da visão. */}
+      {!visao.ehOPadraoSemMudanca && (
+        <>
+          <CartoesDeLancamentos
+            rows={rows} colunas={data?.columns ?? null} reserva={colunasDeReserva}
+            isLoading={isLoading} vazio={vazioDaLista} selos={selos} acoes={acoesDaLinha}
+          />
+          <TabelaDeLancamentos
+            rows={rows} colunas={data?.columns ?? null} reserva={colunasDeReserva}
+            isLoading={isLoading} vazio={vazioDaLista} selos={selos} acoes={acoesDaLinha}
+          />
+        </>
+      )}
+
+      {/* Visão Padrão sem mudança: a lista de sempre, igual. */}
+      {visao.ehOPadraoSemMudanca && <>
       {/* Mobile: cada lançamento como cartão (tabela só rola de lado, ruim no celular). */}
       <div className="flex flex-col gap-2 md:hidden">
         {isLoading && Array.from({ length: 5 }).map((_, i) => (
@@ -1546,6 +1739,7 @@ function TransactionsTab({ enabled, search, setSearch, canCreate, canUpdate, can
           </Table>
         </div>
       </div>
+      </>}
 
       {(data?.total ?? 0) > 0 && (
         <Pagination

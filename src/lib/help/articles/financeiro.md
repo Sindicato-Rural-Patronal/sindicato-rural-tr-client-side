@@ -4,8 +4,8 @@ resumo: Lançamentos de caixa com número e recibo, recorrentes, categorias, cai
 grupo: gestao
 ordem: 1
 permissao: READ_FINANCE
-veja: como-registrar-lancamento, como-emitir-recibo, como-gerar-relatorio-de-receitas, exportar-planilhas, montar-relatorio, busca-e-filtros, auditoria
-busca: financeiro caixa lancamento entrada saida saldo categoria comprovante recorrente fechamento fechar reabrir mes fechado trava cadeado transferencia relatorio pdf nome razao social fornecedor nome fantasia empenho cnpj cpf coluna buscar planilha pausar reativar ativar visao geral numero n anterior numeracao sequencia automatico proximo salto corrigir ordenar ordem recibo recibos gerar recibo receber pagador despesas exportar exportar csv montar relatorio resumido excel xlsx planilha do excel forma de pagamento auditoria gerou o documento nota de empenho baixar pdf relatorio de despesas o pdf aceita ate 2.000 linhas receita receitas contabilidade contador total totais entradas por categoria
+veja: como-registrar-lancamento, como-emitir-recibo, como-gerar-relatorio-de-receitas, como-usar-visoes, exportar-planilhas, busca-e-filtros, auditoria
+busca: financeiro caixa lancamento entrada saida saldo categoria comprovante recorrente fechamento fechar reabrir mes fechado trava cadeado transferencia relatorio pdf nome razao social fornecedor nome fantasia empenho cnpj cpf coluna buscar planilha pausar reativar ativar visao geral numero n anterior numeracao sequencia automatico proximo salto corrigir ordenar ordem recibo recibos gerar recibo receber pagador despesas exportar exportar csv exportar o que esta na tela visao visoes barra da visao colunas salvar como salvar alteracoes padrao completa resumida montar relatorio resumido excel xlsx planilha do excel forma de pagamento auditoria gerou o documento nota de empenho baixar pdf relatorio de despesas o pdf aceita ate 2.000 linhas receita receitas contabilidade contador total totais entradas por categoria relatorio de receitas botao visao geral subtotal total geral
 ---
 
 **Financeiro** tem sete abas: **Visão geral**, **Lançamentos**, **Recorrentes**,
@@ -16,8 +16,8 @@ na **Visão geral**, mas o trabalho do dia a dia é na aba **Lançamentos**.
 
 Em cima, escolha o **Período**: **Este mês**, **Este ano** (o que abre),
 **Últimos 12 meses** ou **Personalizado**, que mostra os campos **De** e
-**Até**. Do outro lado ficam os botões **Relatório de despesas** e **Baixar
-PDF** (o relatório do período, com **Entradas por categoria** e **Saídas por categoria**; veja [Relatórios](#relatorios)).
+**Até**. Do outro lado ficam os botões **Relatório de despesas**, **Relatório
+de receitas** e **Baixar PDF** (o relatório do período, com **Entradas por categoria** e **Saídas por categoria**; veja [Relatórios](#relatorios)).
 
 Logo abaixo vêm quatro números: **Saldo em caixa** (de todas as datas),
 **Entradas**, **Saídas** e **Resultado** do período. Clicar em **Entradas** ou
@@ -27,14 +27,23 @@ O bloco principal é o gráfico **Entradas × Saídas por mês**. Ao lado dele (
 tela menor, embaixo) ficam as **Saídas por categoria** e, mais abaixo, o
 **Saldo por caixa**.
 
+O **Relatório de receitas** fica ao lado do de despesas e usa o período
+escolhido em cima. Ele baixa um PDF com as entradas, um bloco por categoria,
+com Nº, Data, Nome / Razão social, CNPJ / CPF, Descrição, Forma de pagamento e
+Valor, o subtotal de cada categoria e o **TOTAL GERAL** no fim. Saídas,
+transferências entre caixas e lançamentos marcados como só nota ficam de fora.
+É o jeito mais rápido de mandar as receitas ao contador; para Excel, use a
+visão **Contabilidade** na aba **Lançamentos** (veja
+[Como gerar o relatório de receitas](?topico=como-gerar-relatorio-de-receitas)).
+
 ## Lançamentos
 
 Cada linha é uma entrada ou uma saída de um caixa. No topo ficam os totais —
 **Entradas, Saídas e Saldo** — sempre **dos filtros que você está usando**, não
 do mês inteiro. Mudou o filtro, mudou o total.
 
-Em cima fica a barra com o campo **Buscar** e os botões **Exportar**,
-**Transferir** e **Novo lançamento**. Os filtros (**De**, **Até**, **Tipo**,
+Em cima fica a barra com o campo **Buscar** e os botões **Transferir** e
+**Novo lançamento**. Os filtros (**De**, **Até**, **Tipo**,
 **Categoria**, **Caixa**, **Forma de pagamento** e **Ordenar por**) ficam numa linha logo
 embaixo dela. No celular, eles aparecem dois por linha.
 
@@ -43,8 +52,28 @@ Marcada, as duas pernas de cada transferência (a saída e a entrada) saem da
 lista, dos totais da tela e do arquivo que você exporta. É o que faz as linhas
 somarem exatamente o total.
 
-Os filtros ficam no endereço da página, então **dá para salvar o link nos
-favoritos** ou mandar para um colega e ele vê a mesma lista.
+Os filtros, a visão e as colunas ficam no endereço da página, então **dá para
+salvar o link nos favoritos** ou mandar para um colega e ele vê a mesma lista.
+
+### A barra da visão
+
+Entre os filtros e os totais fica a barra da **visão**: o seletor **Visão**,
+**Colunas (N)**, **Salvar como…** e, no fim, **Exportar**. Nas visões da equipe
+aparecem também **Salvar alterações** e o **⋯**, com **Renomear…** e
+**Excluir…**.
+
+- **A visão escolhe as colunas da lista**, na ordem, e pode ligar filtros. As
+  de fábrica são **Padrão** (a tabela de sempre), **Contabilidade** (as
+  entradas do mês passado, com o CNPJ / CPF, para o contador), **Completa (como
+  a planilha de antes)** e **Resumida**.
+- **Colunas** muda as colunas na hora. O nome da visão ganha *(alterada)*.
+- **Salvar como…** guarda a lista como uma visão da equipe, com os filtros
+  ligados e um período (mês atual, mês passado…). Ela vale para todos.
+- **Exportar** baixa o que está na tela, em planilha CSV, Excel, PDF ou
+  Imprimir (veja [Relatórios](#relatorios)).
+
+O passo a passo, com imagens, está em
+[Como usar as visões em Lançamentos](?topico=como-usar-visoes).
 
 ### Os botões da linha
 
@@ -71,8 +100,9 @@ campo que a nota usa. Se você vincular uma pessoa ou uma empresa na nota, ele �
 preenchido sozinho. Se a razão social ficar vazia, a lista mostra o **nome
 fantasia** da nota.
 
-Em tela larga (a partir de 1280 px) é uma coluna; em tela menor o nome desce
-para uma linha miúda embaixo da descrição, no mesmo lugar.
+Na visão **Padrão**, em tela larga (a partir de 1280 px), é uma coluna; em
+tela menor o nome desce para uma linha miúda embaixo da descrição, no mesmo
+lugar. Nas outras visões, ele é uma coluna como as outras.
 
 ### Buscando um lançamento
 
@@ -101,7 +131,7 @@ pagamento**…), tem duas opções, e as duas vão **do maior para o menor**:
 - **Data** (o padrão) — o lançamento de data mais nova primeiro;
 - **Nº** — o de número maior primeiro. Lançamento sem número fica por último.
 
-A ordem vai no endereço da página, como os filtros, e é a mesma da planilha do
+A ordem vai no endereço da página, como os filtros, e é a mesma do arquivo do
 botão **Exportar**.
 
 ### Atalhos
@@ -143,7 +173,8 @@ do 1.
 - na busca e na ordem da lista, que você viu acima;
 - na **Nota de Empenho**, no [recibo](#recibo-de-entrada) e no **Relatório de
   despesas**;
-- na planilha e no PDF do botão **Exportar**, na primeira coluna;
+- no arquivo do botão **Exportar**, na primeira coluna (em todas as visões de
+  fábrica);
 - na [Auditoria](?topico=auditoria), na frase do lançamento: *Criou o lançamento
   "nº 123 — Compra de adubo"*.
 
@@ -420,14 +451,21 @@ anexar passa pelo **Editar**, que está desligado. Por isso vale anexar tudo
 
 ## Relatórios
 
-Na aba **Lançamentos**, o botão **Exportar** leva os lançamentos **com os
-filtros e a ordem da tela**. O menu tem três partes:
+Na aba **Lançamentos**, o botão **Exportar** fica no fim da barra da visão e
+leva **o que está na tela**: as colunas da visão, na ordem, com os filtros e a
+ordem da lista. Ele abre **Exportar o que está na tela**, com quatro botões:
+**Planilha CSV**, **Excel (.xlsx)**, **PDF** e **Imprimir**. Um clique baixa.
+Para mudar as colunas, troque a visão ou use **Colunas** antes de exportar.
 
-| Parte do menu | O que sai |
+| Para ter | Escolha a visão |
 |---|---|
-| **Planilha**, com os botões **CSV** e **Excel (.xlsx)** | A planilha de sempre, com todas as colunas (veja abaixo), no formato que você marcar. Marque o formato e depois clique em **Todos** |
-| **Relatório em PDF (para imprimir)** | Um PDF curto, no modelo **Resumido**: Nº, Data, Descrição, Nome / Razão social e Valor (R$) |
-| **Montar relatório…** | Você escolhe as colunas e a ordem. Dá para levar o que a planilha não tem, como o desconto e o endereço, o telefone e o banco da Nota de Empenho. Tem o modelo **Contabilidade** (veja abaixo). Veja [Como montar um relatório](?topico=montar-relatorio) |
+| A planilha de sempre, com todas as colunas (veja abaixo) | **Completa (como a planilha de antes)** |
+| Um PDF curto: Nº, Data, Descrição, Nome / Razão social e Valor (R$) | **Resumida** |
+| O relatório de receitas para o contador, com o total | **Contabilidade** |
+
+Lançamentos não tem mais o menu antigo, com **Todos**, o **Relatório em PDF**
+e o **Montar relatório…**. O passo a passo do **Exportar** está em
+[Como usar as visões em Lançamentos](?topico=como-usar-visoes).
 
 **Para fazer contas, use o Excel.** Na planilha do Excel, o **Valor (R$)** sai
 como número em reais, pronto para somar, e a **Data** sai como data, para
@@ -435,49 +473,50 @@ ordenar e filtrar por período. O CNPJ / CPF sai como texto, sem virar número. 
 diferença entre CSV e Excel está em
 [Exportar planilhas](?topico=exportar-planilhas).
 
-A lista não tem seleção: o menu leva sempre **Todos (N)**, ou **Todos com os
-filtros atuais (N)** quando há filtro. No montador, no cabeçalho do PDF e na
-aba *Sobre* da planilha do Excel, os filtros aparecem em palavras, como
+A lista não tem seleção: o arquivo leva **todos** os lançamentos com os filtros
+de agora, não só a página na tela. No resumo do **Exportar**, no cabeçalho do
+PDF e na aba *Sobre* da planilha do Excel, os filtros aparecem em palavras, como
 *Período: 01/10/2026 a 31/10/2026 · Tipo: Saída · Categoria: INSUMOS · Caixa:
 BANCO · Forma de pagamento: PIX · Busca: adubo · Ordem: Nº*. A ordem só aparece
 quando a lista está em **Ordenar por › Nº**. O filtro **Forma de pagamento** tem
-o mesmo nome na tela e nos filtros em palavras, mas a coluna da planilha continua
-se chamando **Método**.
+o mesmo nome na tela e nos filtros em palavras, mas a coluna se chama
+**Método**. O PDF e o Excel dizem também a visão, como *Visão: Contabilidade*.
 
-**O PDF aceita até 2.000 lançamentos.** Acima disso, os itens do **Relatório em
-PDF** ficam desligados, e o menu avisa embaixo: *O PDF aceita até 2.000 linhas.
-Baixe a planilha ou use um filtro.* Escolha um período menor ou baixe a
-planilha.
+**O PDF aceita até 2.000 lançamentos.** Acima disso, os botões **PDF** e
+**Imprimir** ficam desligados, e o **Exportar** avisa embaixo: *O PDF aceita até
+2.000 linhas. Baixe a planilha ou use um filtro.* Escolha um período menor ou
+baixe a planilha.
 
 **A planilha (CSV ou Excel) e o PDF ficam na [Auditoria](?topico=auditoria)**,
 como os das outras listas: quem baixou, quando e o que levou.
 
 ### Relatório de receitas para a contabilidade
 
-No **Montar relatório…**, escolha o modelo de fábrica **Contabilidade**: Nº,
-Data, Tipo, Nome / Razão social, CNPJ / CPF, Descrição, Categoria, Método e
-Valor (R$). **O modelo não filtra**: antes de abrir o montador, ponha **Tipo ›
-Entradas** e o período na tela, senão as saídas entram. Marque também **Sem
-transferências entre caixas**: assim as linhas somam exatamente o total. No
-**Excel** e no **PDF** do montador, o arquivo traz o **Total de entradas** (e o
-**Total de saídas**, se houver saídas) no fim. Transferências entre caixas e
-lançamentos "só nota" não entram nos totais (com a caixa desmarcada, as
-transferências aparecem nas linhas e o arquivo avisa disso). A planilha CSV e o
-Excel rápido do menu **Exportar** não têm totais. O passo a passo está em
+Escolha a visão **Contabilidade**. Ela põe as colunas Nº, Data, Tipo, Nome /
+Razão social, CNPJ / CPF, Descrição, Categoria, Método e Valor (R$) e liga
+sozinha o período do **mês passado**, **Tipo › Entradas** e **Sem
+transferências entre caixas**. Depois, clique em **Exportar** e em **Excel
+(.xlsx)** ou **PDF**: o arquivo traz o **Total de entradas** no fim.
+Transferências entre caixas e lançamentos "só nota" não entram nos totais (com a
+caixa desmarcada, as transferências aparecem nas linhas e o arquivo avisa
+disso). A planilha CSV não tem totais. O passo a passo, com imagens, está em
 [Como gerar o relatório de receitas para a contabilidade](?topico=como-gerar-relatorio-de-receitas).
 
 ### Os PDFs do Financeiro na Auditoria
 
-Na aba **Visão geral** ficam o **relatório em PDF** do período (**Baixar PDF**, com as **Entradas por categoria** e, depois, as **Saídas por categoria**)
-e o **Relatório de despesas**, no formato que o Sindicato já usa em papel. Na
+Na aba **Visão geral** ficam o **relatório em PDF** do período (**Baixar PDF**, com as **Entradas por categoria** e, depois, as **Saídas por categoria**),
+o **Relatório de despesas** e o **Relatório de receitas**, no formato que o
+Sindicato já usa em papel. Na
 aba **Lançamentos** ficam a **Nota de Empenho** e o **recibo** de cada
 lançamento.
 
-Os quatro também ficam na Auditoria. **Antes de gerar o PDF, o painel registra
+Todos eles também ficam na Auditoria. **Antes de gerar o PDF, o painel registra
 o documento**, com o período ou o lançamento:
 
 - *Gerou o documento "Relatório do Financeiro: 01/10/2026 a 31/10/2026 · 45
   registros"*
+- *Gerou o documento "Relatório de receitas: 01/10/2026 a 31/10/2026 · 32
+  registros · com CNPJ / CPF"*
 - *Gerou o documento "Recibo: Nº 128 · COOP LTDA · 1 registro"*
 
 A Nota de Empenho gerada de dentro do formulário (botão **Gerar Nota de
@@ -492,12 +531,13 @@ registro falhar, o PDF não sai**, e aparece uma destas mensagens:
 
 Veja também [Exportar planilhas](?topico=exportar-planilhas).
 
-A planilha dos lançamentos tem as colunas Nº (a primeira), Data, Tipo, Caixa,
-Categoria, Descrição, **Nome / Razão social**, **CNPJ / CPF**, **Nº anterior**,
-Método, Recorrente, Valor (R$) e Observações. As três em destaque saem da Nota
-de Empenho e ficam vazias quando o lançamento não tem nota. A busca digitada na
-tela e o **Ordenar por** valem também para a planilha: as linhas saem na mesma
-ordem da lista.
+A visão **Completa (como a planilha de antes)** tem as colunas da planilha de
+sempre: Nº (a primeira), Data, Tipo, Caixa, Categoria, Descrição, **Nome / Razão
+social**, **CNPJ / CPF**, **Nº anterior**, Método, Recorrente, Valor (R$) e
+Observações. As três em destaque saem da Nota de Empenho e ficam vazias quando o
+lançamento não tem nota. A planilha CSV dela sai igual à de antes. A busca
+digitada na tela e o **Ordenar por** valem também para o arquivo: as linhas
+saem na mesma ordem da lista.
 
 O **Relatório de despesas** traz a coluna **Nº** com o número do lançamento
 (**—** quando não tem). No mesmo dia, as linhas seguem a ordem do número.

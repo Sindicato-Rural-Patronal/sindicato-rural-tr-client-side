@@ -55,8 +55,8 @@ describe('HelpPage', () => {
 
   it('imagem do artigo: texto alternativo, carregamento preguiçoso, legenda e abre inteira em outra aba', () => {
     render(<HelpPage topico="como-gerar-relatorio-de-receitas" onChange={vi.fn()} />)
-    const imagem = screen.getByRole('img', { name: /Os filtros De e Até com o período/ })
-    expect(imagem).toHaveAttribute('src', '/ajuda-imagens/receitas/02-filtros.png')
+    const imagem = screen.getByRole('img', { name: /A visão Contabilidade aplicada/ })
+    expect(imagem).toHaveAttribute('src', '/ajuda-imagens/visoes/02-contabilidade-aplicada.jpg')
     expect(imagem).toHaveAttribute('loading', 'lazy')
     expect(imagem).toHaveAttribute('decoding', 'async')
     // Nunca passa da coluna do artigo, com a altura proporcional.
@@ -67,7 +67,7 @@ describe('HelpPage', () => {
 
     // Tocar na imagem abre o arquivo inteiro em outra aba (no celular dá para dar zoom).
     const link = imagem.closest('a')!
-    expect(link).toHaveAttribute('href', '/ajuda-imagens/receitas/02-filtros.png')
+    expect(link).toHaveAttribute('href', '/ajuda-imagens/visoes/02-contabilidade-aplicada.jpg')
     expect(link).toHaveAttribute('target', '_blank')
     expect(link).toHaveAttribute('rel', 'noreferrer')
     // Cada passo ilustrado tem a sua imagem, todas com texto alternativo.

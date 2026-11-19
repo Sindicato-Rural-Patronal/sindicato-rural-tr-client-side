@@ -371,14 +371,16 @@ export function textoDaCelula(valor: string, type: string, larguraUtil: number, 
 }
 
 /**
- * Linha do cabeçalho com o modelo e os filtros (vazio = não aparece). A seleção
- * já vem dita pela API ("Seleção: 8 registros") e não leva "Filtros:".
+ * Linha do cabeçalho com o modelo (ou a visão da tela, decisão 007) e os filtros
+ * (vazio = não aparece). A seleção já vem dita pela API ("Seleção: 8 registros")
+ * e não leva "Filtros:".
  */
-export function linhaDoModeloEFiltros(data: Pick<RelatorioJson, 'modelo' | 'filters'>): string | null {
+export function linhaDoModeloEFiltros(data: Pick<RelatorioJson, 'modelo' | 'filters' | 'visao'>): string | null {
   const filtros = data.filters
     ? (/^Seleção\b/.test(data.filters) ? data.filters : `Filtros: ${data.filters}`)
     : null
-  const partes = [data.modelo ? `Modelo: ${data.modelo}` : null, filtros].filter(Boolean)
+  const nome = data.visao ? `Visão: ${data.visao}` : data.modelo ? `Modelo: ${data.modelo}` : null
+  const partes = [nome, filtros].filter(Boolean)
   return partes.length ? partes.join(' · ') : null
 }
 

@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { ApiError, apiFetch } from '@/lib/api'
 import type { ExportDataset } from '@/lib/export'
 import {
-  comModelo, lerModeloDaEquipe, lerModelosDaEquipe, semModelo, type FormatoDoModelo, type ModeloDaEquipe,
+  comModelo, lerModeloDaEquipe, lerModelosDaEquipe, semModelo, type FiltrosDaVisao, type FormatoDoModelo, type ModeloDaEquipe,
 } from '@/components/export/report-builder'
 
 // Modelos de relatório da equipe (decisão 006, fase 3; contrato da SR-114 no
@@ -44,10 +44,20 @@ export function useReportTemplates(dataset: ExportDataset, { enabled = true }: {
   })
 }
 
-/** `POST`: o nome, as colunas e, se houver, o formato e o "Só confirmadas". */
-export type ModeloNovo = { name: string; fields: string[]; format?: FormatoDoModelo | null; confirmed?: boolean }
+/**
+ * `POST`: o nome, as colunas e, se houver, o formato e o "Só confirmadas". Nas fontes
+ * com visões da lista (decisão 007, SR-149; hoje `finance-transactions`), também os
+ * `filters` que a visão liga (só os ligados, mais o `periodo` relativo).
+ */
+export type ModeloNovo = {
+  name: string
+  fields: string[]
+  format?: FormatoDoModelo | null
+  confirmed?: boolean
+  filters?: FiltrosDaVisao | null
+}
 
-/** `PATCH`: só o que muda (`format: null` tira a preferência). */
+/** `PATCH`: só o que muda (`format: null` tira a preferência; `filters: null` tira os filtros). */
 export type MudancaDoModelo = Partial<ModeloNovo>
 
 async function modeloDaResposta(res: Response): Promise<ModeloDaEquipe> {

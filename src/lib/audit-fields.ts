@@ -140,6 +140,9 @@ export const AUDIT_FIELD_LABELS: Record<string, string> = {
   fields: 'Campos',
   format: 'Formato',
   onlyConfirmed: 'Só confirmadas',
+  // Visão da lista (decisão 007, SR-149): os filtros que a visão liga, já em palavras
+  // ("Tipo: Entrada · Sem transferências entre caixas · Período: mês passado").
+  filters: 'Filtros',
 }
 
 export function auditFieldLabel(field: string): string {

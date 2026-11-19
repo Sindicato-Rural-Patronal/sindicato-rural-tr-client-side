@@ -98,6 +98,13 @@ export type ExportOptions = {
   fields?: string[]
   /** Nome do modelo usado: só vai para a auditoria e para o cabeçalho do PDF. */
   modelo?: string
+  /**
+   * Nome da visão da tela que exporta (decisão 007, SR-149; até 64), NO LUGAR de
+   * `modelo`: o PDF e o Excel dizem "Visão: <nome>" e a auditoria guarda o nome.
+   * Com os dois, a API recusa (400 "Use modelo ou visao, não os dois."); aqui a
+   * visão ganha.
+   */
+  visao?: string
   /** Só as inscrições confirmadas (`registrations`). */
   confirmed?: boolean
   /** Imprimir: o PDF abre numa aba nova em vez de baixar. */
@@ -146,6 +153,8 @@ export type RelatorioJson = {
   /** Os filtros em palavras ("Aba Associados · Busca: silva"). */
   filters: string | null
   modelo: string | null
+  /** O nome da visão da tela (decisão 007): o PDF diz "Visão: <nome>" no lugar do modelo. */
+  visao?: string
   columns: RelatorioColuna[]
   rows: string[][]
   /** Totais já formatados, desenhados depois da tabela (SR-131/SR-132). Ausente = sem totais. */
@@ -189,6 +198,7 @@ export function lerRelatorioJson(data: unknown, fallbackTitle: string, fallbackF
     count: typeof d.count === 'number' ? d.count : rows.length,
     filters: texto(d.filters),
     modelo: texto(d.modelo),
+    ...(texto(d.visao) ? { visao: texto(d.visao) as string } : {}),
     columns,
     rows,
     ...(totais.length ? { totais } : {}),
@@ -209,7 +219,8 @@ export function reportBody(params: ExportParams, format: ExportFormat, opts: Exp
   if (opts.fields) {
     body.fields = opts.fields
     body.format = format
-    if (opts.modelo) body.modelo = opts.modelo
+    if (opts.visao) body.visao = opts.visao
+    else if (opts.modelo) body.modelo = opts.modelo
   } else if (format === 'xlsx') {
     body.format = format
   } else if (format === 'pdf') {

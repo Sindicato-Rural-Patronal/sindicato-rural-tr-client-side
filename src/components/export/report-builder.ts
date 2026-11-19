@@ -51,6 +51,22 @@ export type CatalogModelo = {
   daEquipe?: ModeloDaEquipe
 }
 
+/**
+ * Os filtros que uma visão da lista liga (decisão 007, SR-149), com as chaves dos
+ * filtros da lista (`type`, `categoryId`, `excludeTransfers`…) e o `periodo`
+ * relativo. Só o que está ligado: o que não vem fica como está na tela.
+ */
+export type FiltrosDaVisao = Record<string, string | boolean>
+
+/** Uma visão de fábrica da lista (`visoes` do catálogo; hoje só em `finance-transactions`). */
+export type VisaoDoCatalogo = {
+  id: string
+  name: string
+  fields: string[]
+  /** null = só as colunas: os filtros da tela ficam como estão. */
+  filters: FiltrosDaVisao | null
+}
+
 export type ExportCatalog = {
   dataset: string
   title: string
@@ -61,6 +77,30 @@ export type ExportCatalog = {
   /** Nome em palavras de cada filtro da lista ("search" → "Busca"). */
   filterLabels: Record<string, string>
   limits: { rows: number; pdfRows: number; fields: number }
+  /** As visões de fábrica da lista (decisão 007). Ausente = a fonte não tem visões. */
+  visoes?: VisaoDoCatalogo[]
+}
+
+/** Os filtros de uma visão como a API manda; fora do formato (ou vazio), null. */
+export function lerFiltrosDaVisao(v: unknown): FiltrosDaVisao | null {
+  if (!v || typeof v !== 'object' || Array.isArray(v)) return null
+  const filtros: FiltrosDaVisao = {}
+  for (const [k, valor] of Object.entries(v as Record<string, unknown>)) {
+    if (typeof valor === 'boolean' || (typeof valor === 'string' && valor !== '')) filtros[k] = valor
+  }
+  return Object.keys(filtros).length ? filtros : null
+}
+
+function lerVisoes(v: unknown): VisaoDoCatalogo[] | undefined {
+  if (!Array.isArray(v)) return undefined
+  return v.flatMap(x => {
+    if (!x || typeof x !== 'object') return []
+    const visao = x as Record<string, unknown>
+    if (!ehTexto(visao.id) || !ehTexto(visao.name)) return []
+    const fields = listaDeTextos(visao.fields)
+    if (fields.length === 0) return []
+    return [{ id: visao.id, name: visao.name, fields, filters: lerFiltrosDaVisao(visao.filters) }]
+  })
 }
 
 const LIMITES_PADRAO = { rows: 20_000, pdfRows: 2_000, fields: 80 }
@@ -136,7 +176,9 @@ export function lerCatalogo(data: unknown): ExportCatalog | null {
   }
 
   const limites = d.limits && typeof d.limits === 'object' ? d.limits as Record<string, unknown> : {}
+  const visoes = lerVisoes(d.visoes)
   return {
+    ...(visoes ? { visoes } : {}),
     dataset: ehTexto(d.dataset) ? d.dataset : '',
     title: ehTexto(d.title) ? d.title : '',
     groups,
@@ -212,6 +254,12 @@ export type ModeloDaEquipe = {
   format: FormatoDoModelo | null
   /** Só em `registrations` ("Só confirmadas"); null nos outros. */
   confirmed: boolean | null
+  /**
+   * Nas fontes com visões (decisão 007; hoje `finance-transactions`) o modelo é uma
+   * visão da lista, e estes são os filtros que ela liga. null = só as colunas
+   * (todo modelo salvo antes da SR-149) e nas outras fontes.
+   */
+  filters: FiltrosDaVisao | null
   createdAt: string
   updatedAt: string
   createdBy: AutorDoModelo
@@ -254,6 +302,7 @@ export function lerModeloDaEquipe(data: unknown): ModeloDaEquipe | null {
     missingFields: listaDeTextos(t.missingFields),
     format: FORMATOS_DO_MODELO.includes(t.format as FormatoDoModelo) ? t.format as FormatoDoModelo : null,
     confirmed: typeof t.confirmed === 'boolean' ? t.confirmed : null,
+    filters: lerFiltrosDaVisao(t.filters),
     createdAt: ehTexto(t.createdAt) ? t.createdAt : '',
     updatedAt: ehTexto(t.updatedAt) ? t.updatedAt : '',
     createdBy: lerAutor(t.createdBy) ?? { id: '', username: null },

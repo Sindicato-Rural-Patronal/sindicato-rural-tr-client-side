@@ -1,13 +1,12 @@
-import { useEffect, useId, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react'
+import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import {
   DndContext, KeyboardSensor, PointerSensor, closestCenter, useSensor, useSensors,
   type Announcements, type DragEndEvent, type ScreenReaderInstructions,
 } from '@dnd-kit/core'
-import { SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable'
-import { CSS } from '@dnd-kit/utilities'
+import { SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import {
-  ArrowDown, ArrowLeft, ArrowUp, GripVertical, Info, Loader2, Pencil, Plus, Save, ShieldAlert, Trash2, X,
+  ArrowLeft, Info, Loader2, Pencil, Plus, Save, ShieldAlert, Trash2, X,
 } from 'lucide-react'
 import { AjudaLink } from '@/components/ajuda/AjudaLink'
 import { Button } from '@/components/ui/button'
@@ -21,7 +20,8 @@ import {
   RelatorioVazioError, exportErrorMessage, exportarRelatorio, type ExportDataset, type ExportParams,
 } from '@/lib/export'
 import { cn } from '@/lib/utils'
-import { PrivacyBadge, ReportFieldPicker } from '@/components/export/ReportFieldPicker'
+import { ReportFieldPicker } from '@/components/export/ReportFieldPicker'
+import { LinhaArrastavel, LinhaDaColuna } from '@/components/export/LinhaDaColuna'
 import {
   AVISO_COLUNAS_PDF, NOME_DO_MODELO_MAX, TEXTO_NENHUM_REGISTRO, TEXTO_NENHUMA_CONFIRMADA, aplicarModelo, autoriaDoModelo,
   avisoDadosPessoais, avisoDoCorte, camposDoCatalogo, contagem, corpoDoModelo, ehDaEquipe, ehPdf, estadoInicial,
@@ -123,88 +123,6 @@ const ERRO_DO_PAINEL: Record<Painel['tipo'], string> = {
   atualizar: 'Não foi possível salvar o modelo. Tente de novo.',
   renomear: 'Não foi possível renomear o modelo. Tente de novo.',
   excluir: 'Não foi possível excluir o modelo. Tente de novo.',
-}
-
-function LinhaDaColuna({
-  campo, posicao, total, grande, onMover, onTirar, alca, refLinha, estilo, arrastando = false,
-}: {
-  campo: CampoComGrupo
-  posicao: number
-  total: number
-  grande: boolean
-  onMover: (passo: -1 | 1) => void
-  onTirar: () => void
-  alca?: ReactNode
-  refLinha?: (el: HTMLLIElement | null) => void
-  estilo?: CSSProperties
-  arrastando?: boolean
-}) {
-  const tamanho = grande ? 'size-11' : 'size-8'
-  return (
-    <li
-      ref={refLinha}
-      style={estilo}
-      data-coluna={campo.key}
-      className={cn(
-        'flex items-center gap-1 rounded-md border border-border bg-card pr-0.5 pl-1',
-        grande ? 'min-h-12' : 'min-h-9',
-        arrastando && 'relative z-10 shadow-float',
-      )}
-    >
-      {alca}
-      <span className="w-5 shrink-0 text-right text-xs text-muted-foreground tabular-nums">{posicao}</span>
-      <span className="flex min-w-0 flex-1 items-center gap-1.5 pl-1">
-        <span className="truncate" title={`${campo.group} › ${campo.label}`}>{campo.label}</span>
-        <PrivacyBadge privacy={campo.privacy} />
-      </span>
-      <Button
-        type="button" variant="ghost" size="icon" className={tamanho}
-        data-acao="subir" aria-label={`Subir ${campo.label}`} title="Subir"
-        disabled={posicao === 1} onClick={() => onMover(-1)}
-      >
-        <ArrowUp />
-      </Button>
-      <Button
-        type="button" variant="ghost" size="icon" className={tamanho}
-        data-acao="descer" aria-label={`Descer ${campo.label}`} title="Descer"
-        disabled={posicao === total} onClick={() => onMover(1)}
-      >
-        <ArrowDown />
-      </Button>
-      <Button
-        type="button" variant="ghost" size="icon" className={tamanho}
-        data-acao="tirar" aria-label={`Tirar ${campo.label}`} title="Tirar"
-        onClick={onTirar}
-      >
-        <X />
-      </Button>
-    </li>
-  )
-}
-
-/** A linha no computador: arrasta pela alça (mouse ou teclado). */
-function LinhaArrastavel(props: Omit<Parameters<typeof LinhaDaColuna>[0], 'alca' | 'refLinha' | 'estilo' | 'arrastando'>) {
-  const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } = useSortable({ id: props.campo.key })
-  return (
-    <LinhaDaColuna
-      {...props}
-      refLinha={setNodeRef}
-      estilo={{ transform: CSS.Translate.toString(transform), transition }}
-      arrastando={isDragging}
-      alca={(
-        <button
-          type="button"
-          ref={setActivatorNodeRef}
-          className="flex h-8 w-6 shrink-0 cursor-grab touch-none items-center justify-center rounded text-muted-foreground hover:bg-muted active:cursor-grabbing"
-          aria-label={`Arrastar ${props.campo.label}`}
-          {...attributes}
-          {...listeners}
-        >
-          <GripVertical className="size-4" aria-hidden />
-        </button>
-      )}
-    />
-  )
 }
 
 export function ReportBuilder({
